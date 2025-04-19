@@ -1,89 +1,138 @@
-// js/config.js - Global constants and configuration settings
+// 全局常量配置
+const PROXY_URL = '/proxy/';    // 适用于 Cloudflare, Netlify (带重写), Vercel (带重写)
+// const HOPLAYER_URL = 'https://hoplayer.com/index.html';
+const SEARCH_HISTORY_KEY = 'videoSearchHistory';
+const MAX_HISTORY_ITEMS = 5;
 
-// Proxy URL configuration (Update if deployment environment changes)
-const PROXY_URL = '/proxy/'; // Relative path for Cloudflare Pages, Vercel with rewrites, etc.
-
-// Local Storage Keys (Reverted to original names for compatibility)
-const SEARCH_HISTORY_KEY = 'videoSearchHistory';     // Reverted from _v2
-const VIEWING_HISTORY_KEY = 'viewingHistory';       // Assuming original was 'viewingHistory' or similar without suffix
-const CUSTOM_APIS_KEY = 'customAPIs';               // Reverted from _v2
-const SELECTED_APIS_KEY = 'selectedAPIs';           // Reverted from _v2
-const PASSWORD_STORAGE_KEY = 'passwordVerified';    // Reverted from 'passwordVerification_v2' to match original logic
-const AUTOPLAY_KEY = 'autoplayEnabled';
-const AD_FILTERING_KEY = 'adFilteringEnabled';     // Reverted from _v2 to match original player config usage
-const EPISODE_REVERSE_KEY = 'episodesReversed';
-const HAS_INITIALIZED_DEFAULTS_KEY = 'hasInitializedDefaults'; // Reverted from _v1
-const HAS_SEEN_DISCLAIMER_KEY = 'hasSeenDisclaimer';       // Reverted from _v1
-
-// History Limits
-// Using optimized variable name, but reverted value to original for search history compatibility
-const MAX_SEARCH_HISTORY_ITEMS = 5;  // Reverted value from 10 to 5 (original MAX_HISTORY_ITEMS)
-const MAX_VIEWING_HISTORY_ITEMS = 50; // Keep optimized value for viewing history
-
-// Password Protection Configuration
+// 密码保护配置
 const PASSWORD_CONFIG = {
-    localStorageKey: PASSWORD_STORAGE_KEY, // Uses the corrected key constant above
-    verificationTTL: 90 * 24 * 60 * 60 * 1000, // 90 days in milliseconds
+    localStorageKey: 'passwordVerified',  // 存储验证状态的键名
+    verificationTTL: 90 * 24 * 60 * 60 * 1000,  // 验证有效期（90天，约3个月）
 };
 
-// Site Information
+// 网站信息配置
 const SITE_CONFIG = {
     name: 'LibreTV',
-    url: 'https://libretv.is-an.org', // Update if domain changes
+    url: 'https://libretv.is-an.org',
     description: '免费在线视频搜索与观看平台',
-    logo: 'https://images.icon-icons.com/38/PNG/512/retrotv_5520.png', // Consider hosting locally
-    version: '1.0.4' // Update version as needed (Kept from optimization)
+    logo: 'https://images.icon-icons.com/38/PNG/512/retrotv_5520.png',
+    version: '1.0.3'
 };
 
-// Built-in API Site Definitions
-// 'adult': true marks potentially sensitive content sources
-// 'detail': URL base for sites requiring HTML scraping for details (optional)
+// API站点配置
 const API_SITES = {
-    // --- Regular Sources ---
-    heimuer:   { api: 'https://json.heimuer.xyz', name: '黑木耳', detail: 'https://heimuer.tv' },
-    ffzy:      { api: 'http://ffzy5.tv', name: '非凡影视', detail: 'http://ffzy5.tv' }, // Note: HTTP
-    tyyszy:    { api: 'https://tyyszy.com', name: '天涯资源' },
-    zy360:     { api: 'https://360zy.com', name: '360资源' },
-    wolong:    { api: 'https://wolongzyw.com', name: '卧龙资源' },
-    cjhw:      { api: 'https://cjhwba.com', name: '新华为' },
-    hwba:      { api: 'https://cjwba.com', name: '华为吧资源' },
-    jisu:      { api: 'https://jszyapi.com', name: '极速资源', detail: 'https://jszyapi.com' },
-    dbzy:      { api: 'https://dbzy.com', name: '豆瓣资源' },
-    bfzy:      { api: 'https://bfzyapi.com', name: '暴风资源' },
-    mozhua:    { api: 'https://mozhuazy.com', name: '魔爪资源' },
-    mdzy:      { api: 'https://www.mdzyapi.com', name: '魔都资源' },
-    ruyi:      { api: 'https://cj.rycjapi.com', name: '如意资源' },
-
-    // --- Adult Sources (Potentially Sensitive) ---
-    // Note: These might be unstable or contain explicit content.
-    // The HIDE_BUILTIN_ADULT_APIS flag controls their visibility in the UI.
-    ckzy:      { api: 'https://www.ckzy1.com', name: 'CK资源', adult: true },
-    jkun:      { api: 'https://jkunzyapi.com', name: 'JKUN资源', adult: true },
-    bwzy:      { api: 'https://api.bwzym3u8.com', name: '百万资源', adult: true },
-    souav:     { api: 'https://api.souavzy.vip', name: 'SouAV资源', adult: true },
-    siwa:      { api: 'https://siwazyw.tv', name: '丝袜资源', adult: true },
-    r155:      { api: 'https://155api.com', name: '155资源', adult: true },
-    lsb:       { api: 'https://apilsbzy1.com', name: 'LSB资源', adult: true },
-    huangcang: { api: 'https://hsckzy.vip', name: '黄色仓库', adult: true, detail: 'https://hsckzy.vip' }
+    heimuer: {
+        api: 'https://json.heimuer.xyz',
+        name: '黑木耳',
+        detail: 'https://heimuer.tv'
+    },
+    ffzy: {
+        api: 'http://ffzy5.tv',
+        name: '非凡影视',
+        detail: 'http://ffzy5.tv'
+    },
+    tyyszy: {
+        api: 'https://tyyszy.com',
+        name: '天涯资源',
+    },
+    ckzy: {
+        api: 'https://www.ckzy1.com',
+        name: 'CK资源',
+        adult: true
+    },
+    zy360: {
+        api: 'https://360zy.com',
+        name: '360资源',
+    },
+    wolong: {
+        api: 'https://wolongzyw.com',
+        name: '卧龙资源',
+    },
+    cjhw: {
+        api: 'https://cjhwba.com',
+        name: '新华为',
+    },
+    hwba: {
+        api: 'https://cjwba.com',
+        name: '华为吧资源',
+    },
+    jisu: {
+        api: 'https://jszyapi.com',
+        name: '极速资源',
+        detail: 'https://jszyapi.com'
+    },
+    dbzy: {
+        api: 'https://dbzy.com',
+        name: '豆瓣资源',
+    },
+    bfzy: {
+        api: 'https://bfzyapi.com',
+        name: '暴风资源',
+    },
+    mozhua: {
+        api: 'https://mozhuazy.com',
+        name: '魔爪资源',
+    },
+    mdzy: {
+        api: 'https://www.mdzyapi.com',
+        name: '魔都资源',
+    },
+    ruyi: {
+        api: 'https://cj.rycjapi.com',
+        name: '如意资源',
+    },
+    jkun: {
+        api: 'https://jkunzyapi.com',
+        name: 'jkun资源',
+        adult: true
+    },
+    bwzy: {
+        api: 'https://api.bwzym3u8.com',
+        name: '百万资源',
+        adult: true
+    },
+    souav: {
+        api: 'https://api.souavzy.vip',
+        name: 'souav资源',
+        adult: true
+    },
+    siwa: {
+        api: 'https://siwazyw.tv',
+        name: '丝袜资源',
+        adult: true
+    },
+    r155: {
+        api: 'https://155api.com',
+        name: '155资源',
+        adult: true
+    },
+    lsb: {
+        api: 'https://apilsbzy1.com',
+        name: 'lsb资源',
+        adult: true
+    },
+    huangcang: {
+        api: 'https://hsckzy.vip',
+        name: '黄色仓库',
+        adult: true,
+        detail: 'https://hsckzy.vip' // 添加detail URL以便特殊处理
+    }
+    // 您可以按需添加更多源
 };
 
-// Flag to control visibility of built-in adult APIs in the settings panel
-const HIDE_BUILTIN_ADULT_APIS = true; // Set to false to show adult sources by default (Kept from optimization)
-
-// *** Added back from original code for compatibility ***
-// Aggregated search configuration options
+// 添加聚合搜索的配置选项
 const AGGREGATED_SEARCH_CONFIG = {
-    enabled: true,             // Whether to enable aggregated search
-    timeout: 8000,            // Timeout for a single source (milliseconds)
-    maxResults: 10000,          // Maximum number of results (Note: High value, might impact performance)
-    parallelRequests: true,   // Whether to request all sources in parallel
-    showSourceBadges: true    // Whether to show source badges in results
+    enabled: true,             // 是否启用聚合搜索
+    timeout: 8000,            // 单个源超时时间（毫秒）
+    maxResults: 10000,          // 最大结果数量
+    parallelRequests: true,   // 是否并行请求所有源
+    showSourceBadges: true    // 是否显示来源徽章
 };
 
-// Standard API Request Paths and Headers (assuming CMS common paths)
-// Kept optimized version assuming detail fetching logic was updated
+// 抽象API请求配置
 const API_CONFIG = {
     search: {
+    	// 修改搜索接口为返回更多详细数据（包括视频封面、简介和播放列表）
         path: '/api.php/provide/vod/?ac=videolist&wd=',
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -91,6 +140,7 @@ const API_CONFIG = {
         }
     },
     detail: {
+    	// 修改详情接口也使用videolist接口，但是通过ID查询，减少请求次数
         path: '/api.php/provide/vod/?ac=videolist&ids=',
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -99,30 +149,26 @@ const API_CONFIG = {
     }
 };
 
-// Regex for extracting M3U8 URLs (used as fallback in api.js)
-// Kept optimized version
-const M3U8_PATTERN = /\$?(https?:\/\/[^$'"\s]+\.m3u8)/g;
+// 优化后的正则表达式模式
+const M3U8_PATTERN = /\$https?:\/\/[^"'\s]+?\.m3u8/g;
 
-// Player Configuration
+// 添加自定义播放器URL
+const CUSTOM_PLAYER_URL = 'player.html'; // 使用相对路径引用本地player.html
+
+// 增加视频播放相关配置
 const PLAYER_CONFIG = {
     autoplay: true,
     allowFullscreen: true,
-    timeout: 15000,            // Player load timeout (ms) - Handled within player.html logic
-    autoPlayNext: true,        // Default state for auto-play toggle - Handled by player.html logic
-    adFilteringEnabled: true, // Default state for ad filtering toggle
-    adFilteringStorage: AD_FILTERING_KEY, // Uses the corrected key constant
-    autoplayStorage: AUTOPLAY_KEY // Uses the corrected key constant
+    width: '100%',
+    height: '600',
+    timeout: 15000,  // 播放器加载超时时间
+    filterAds: true,  // 是否启用广告过滤
+    autoPlayNext: true,  // 默认启用自动连播功能
+    adFilteringEnabled: true, // 默认开启分片广告过滤
+    adFilteringStorage: 'adFilteringEnabled' // 存储广告过滤设置的键名
 };
 
-// Custom API Configuration
-const CUSTOM_API_CONFIG = {
-    maxSources: 10,          // Increased max custom sources (Kept from optimization)
-    testTimeout: 5000,       // Availability test timeout (ms) (Kept from optimization)
-    namePrefix: '自定义-',   // Prefix for display name if needed (not used currently)
-    localStorageKey: CUSTOM_APIS_KEY // Uses the corrected key constant
-};
-
-// Error Messages (Example - not currently used, but good for future i18n)
+// 增加错误信息本地化
 const ERROR_MESSAGES = {
     NETWORK_ERROR: '网络连接错误，请检查网络设置',
     TIMEOUT_ERROR: '请求超时，服务器响应时间过长',
@@ -131,40 +177,25 @@ const ERROR_MESSAGES = {
     UNKNOWN_ERROR: '发生未知错误，请刷新页面重试'
 };
 
-// Security related settings (Example - mostly handled server-side/proxy)
+// 添加进一步安全设置
 const SECURITY_CONFIG = {
-    enableXSSProtection: true, // Basic client-side sanitization is implemented
-    maxQueryLength: 100       // Max search query length handled in app.js (Kept from optimization)
+    enableXSSProtection: true,  // 是否启用XSS保护
+    sanitizeUrls: true,         // 是否清理URL
+    maxQueryLength: 100,        // 最大搜索长度
+    // allowedApiDomains 不再需要，因为所有请求都通过内部代理
 };
 
-// --- Make constants globally accessible (if not using modules) ---
-// Ensure all necessary constants, including the restored AGGREGATED_SEARCH_CONFIG
-// and constants with reverted key names, are exported.
-window.PROXY_URL = PROXY_URL;
-window.SEARCH_HISTORY_KEY = SEARCH_HISTORY_KEY;
-window.MAX_SEARCH_HISTORY_ITEMS = MAX_SEARCH_HISTORY_ITEMS; // Note: value reverted to 5
-window.PASSWORD_CONFIG = PASSWORD_CONFIG;
-window.SITE_CONFIG = SITE_CONFIG;
-window.API_SITES = API_SITES;
-window.HIDE_BUILTIN_ADULT_APIS = HIDE_BUILTIN_ADULT_APIS;
-window.AGGREGATED_SEARCH_CONFIG = AGGREGATED_SEARCH_CONFIG; // Export the restored config
-window.API_CONFIG = API_CONFIG;
-window.M3U8_PATTERN = M3U8_PATTERN;
-window.PLAYER_CONFIG = PLAYER_CONFIG;
-window.ERROR_MESSAGES = ERROR_MESSAGES;
-window.SECURITY_CONFIG = SECURITY_CONFIG;
-window.CUSTOM_API_CONFIG = CUSTOM_API_CONFIG;
-// Expose other keys (using reverted names)
-window.VIEWING_HISTORY_KEY = VIEWING_HISTORY_KEY;
-window.MAX_VIEWING_HISTORY_ITEMS = MAX_VIEWING_HISTORY_ITEMS;
-window.CUSTOM_APIS_KEY = CUSTOM_APIS_KEY;
-window.SELECTED_APIS_KEY = SELECTED_APIS_KEY;
-window.PASSWORD_STORAGE_KEY = PASSWORD_STORAGE_KEY; // Export the reverted key name constant
-window.AUTOPLAY_KEY = AUTOPLAY_KEY;
-window.AD_FILTERING_KEY = AD_FILTERING_KEY; // Export the reverted key name constant
-window.EPISODE_REVERSE_KEY = EPISODE_REVERSE_KEY;
-window.HAS_INITIALIZED_DEFAULTS_KEY = HAS_INITIALIZED_DEFAULTS_KEY;
-window.HAS_SEEN_DISCLAIMER_KEY = HAS_SEEN_DISCLAIMER_KEY;
+// 添加多个自定义API源的配置
+const CUSTOM_API_CONFIG = {
+    separator: ',',           // 分隔符
+    maxSources: 5,            // 最大允许的自定义源数量
+    testTimeout: 5000,        // 测试超时时间(毫秒)
+    namePrefix: 'Custom-',    // 自定义源名称前缀
+    validateUrl: true,        // 验证URL格式
+    cacheResults: true,       // 缓存测试结果
+    cacheExpiry: 5184000000,  // 缓存过期时间(2个月)
+    adultPropName: 'isAdult' // 用于标记成人内容的属性名
+};
 
-
-console.log("Config loaded (Compatibility corrections applied).");
+// 新增隐藏内置黄色采集站API的变量，默认为true
+const HIDE_BUILTIN_ADULT_APIS = true;
