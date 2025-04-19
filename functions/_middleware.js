@@ -1,4 +1,4 @@
-、// functions/_middleware.js - Cloudflare Pages Middleware
+// functions/_middleware.js - Cloudflare Pages Middleware
 
 // Note: Ensure 'sha256.js' exists at the correct relative path '../js/sha256.js'
 // or adjust the import path accordingly.
