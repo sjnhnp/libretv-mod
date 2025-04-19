@@ -185,7 +185,7 @@
         </div>
 
         <div class="player-container">
-            <div class="flex justify-between items-center mt-4 mb-2">
+            <div class="flex justify-between items-center my-4">
                 <button onclick="playPreviousEpisode()" id="prevButton" class="px-4 py-2 bg-[#222] hover:bg-[#333] border border-[#333] rounded-lg transition-colors">
                     <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
@@ -200,14 +200,19 @@
                     </svg>
                 </button>
             </div>
+        </div>
 
-            <div class="flex justify-end items-center mb-4">
+        <div class="player-container">
+            <div class="flex justify-between items-center mb-4 gap-2">
                 <span class="text-gray-400 text-sm">自动连播</span>
                 <label class="switch">
                     <input type="checkbox" id="autoplayToggle">
                     <span class="slider"></span>
                 </label>
-                <button onclick="toggleEpisodeOrder()" class="ml-4 px-4 py-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold rounded-full flex items-center justify-center space-x-2">
+                <button onclick="toggleEpisodeOrder()" class="ml-4 px-4 py-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" id="orderIcon" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" />
+                    </svg>
                     <span id="orderText">倒序排列</span>
                 </button>
             </div>
@@ -235,16 +240,16 @@
         let currentVideoTitle = '';
         let currentEpisodeIndex = 0;
         let currentEpisodes = [];
-        let episodesReversed = false;
+        let episodesReversed = false; // 添加倒序状态
         let dp = null;
 
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
             const videoUrl = urlParams.get('url');
             const title = urlParams.get('title');
-            currentEpisodeIndex = parseInt(urlParams.get('index'), 10) || 0;
-            currentVideoTitle = title || localStorage.getItem('currentVideoTitle') || '未知视频';
+            currentEpisodeIndex = parseInt(urlParams.get('index')) || 0;
 
+            currentVideoTitle = title || localStorage.getItem('currentVideoTitle') || '未知视频';
             if (videoUrl) {
                 initPlayer(videoUrl);
             } else {
@@ -276,7 +281,7 @@
         }
 
         function showError(message) {
-            if (dp && dp.video && dp.video.currentTime > 1) return;
+            if (dp && dp.video && dp.video.currentTime > 1) return; 
             document.getElementById('loading').style.display = 'none';
             const errorContainer = document.getElementById('error');
             errorContainer.style.display = 'flex';
@@ -284,12 +289,7 @@
         }
 
         function updateEpisodeInfo() {
-            const episodeInfo = document.getElementById('episodeInfo');
-            if (currentEpisodes.length > 0) {
-                episodeInfo.textContent = `第 ${currentEpisodeIndex + 1}/${currentEpisodes.length} 集`;
-            } else {
-                episodeInfo.textContent = '无集数信息';
-            }
+            document.getElementById('episodeInfo').textContent = `第 ${currentEpisodeIndex + 1}/${currentEpisodes.length} 集`;
         }
 
         function renderEpisodes() {
@@ -301,7 +301,9 @@
                 return;
             }
 
-            episodesList.innerHTML = currentEpisodes.map((episode, index) => {
+            const episodesToRender = episodesReversed ? [...currentEpisodes].reverse() : currentEpisodes;
+
+            episodesList.innerHTML = episodesToRender.map((episode, index) => {
                 return `<button onclick="playEpisode(${index})" class="px-4 py-2 bg-[#222] hover:bg-[#333] rounded-lg text-center text-xs">第 ${index + 1} 集</button>`;
             }).join('');
         }
@@ -321,7 +323,7 @@
 
         function toggleEpisodeOrder() {
             episodesReversed = !episodesReversed;
-            localStorage.setItem('episodesReversed', episodesReversed);
+            localStorage.setItem('episodesReversed', episodesReversed); // 保留状态
             renderEpisodes();
         }
     </script>
