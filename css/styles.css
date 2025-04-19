@@ -6,20 +6,41 @@
     --accent-color: #ff3c78;        /* 霓虹粉强调色 */
     --text-color: #e6f2ff;          /* 柔和的蓝白色文本 */
     --text-muted: #8599b2;          /* 淡蓝灰色次级文本 */
-    --border-color: rgba(0, 204, 255, 0.15);
+    --border-color: rgba(0, 204, 255, 0.15); /* 边框颜色 */
     --page-gradient-start: #0f1622; /* 深蓝黑起始色 */
     --page-gradient-end: #192231;   /* 深靛蓝结束色 */
     --card-gradient-start: #121b29; /* 卡片起始色 */
     --card-gradient-end: #1c2939;   /* 卡片结束色 */
     --card-accent: rgba(0, 204, 255, 0.12); /* 霓虹蓝卡片强调色 */
     --card-hover-border: rgba(0, 204, 255, 0.5); /* 悬停边框颜色 */
+    --scrollbar-thumb: #333; /* 滚动条滑块颜色 */
+    --scrollbar-track: #111; /* 滚动条轨道颜色 */
+    --scrollbar-thumb-hover: #444; /* 滚动条滑块悬停颜色 */
+    --settings-scrollbar-thumb: #444; /* 设置面板滚动条滑块 */
+    --settings-scrollbar-track: transparent; /* 设置面板滚动条轨道 */
+    --history-scrollbar-thumb: #444; /* 历史面板滚动条滑块 */
+    --history-scrollbar-track: #222; /* 历史面板滚动条轨道 */
+}
+
+/* 基本样式和布局 */
+html {
+    scrollbar-width: thin; /* Firefox scrollbar */
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); /* Firefox scrollbar */
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    color: var(--text-color);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* 使用系统默认字体 */
 }
 
 .page-bg {
     background: linear-gradient(180deg, var(--page-gradient-start), var(--page-gradient-end));
     min-height: 100vh;
     /* 柔和赛博点状背景 */
-    background-image: 
+    background-image:
         linear-gradient(180deg, var(--page-gradient-start), var(--page-gradient-end)),
         radial-gradient(circle at 25px 25px, rgba(0, 204, 255, 0.04) 2px, transparent 3px),
         radial-gradient(circle at 75px 75px, rgba(255, 60, 120, 0.02) 1px, transparent 2px),
@@ -28,37 +49,72 @@
     background-size: cover, 100px 100px, 50px 50px, 75px 75px;
 }
 
-button, .card-hover {
-    transition: all 0.3s ease;
+.container {
+    flex: 1; /* 让容器填充剩余空间 */
 }
 
-/* 改进卡片适应不同内容长度 */
+/* 页脚 */
+.footer {
+    width: 100%;
+    transition: all 0.3s ease;
+    margin-top: auto; /* 确保页脚始终在底部 */
+    background: linear-gradient(to bottom, transparent, var(--page-gradient-start));
+    border-top: 1px solid var(--border-color);
+}
+
+.footer a:hover {
+    text-decoration: underline;
+}
+
+/* 滚动条样式 (Webkit) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
+    transition: background-color 0.3s ease; /* 平滑颜色过渡 */
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
+
+/* 卡片样式 */
 .card-hover {
     border: 1px solid var(--border-color);
     background: linear-gradient(135deg, var(--card-gradient-start), var(--card-gradient-end));
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     position: relative;
-    overflow: hidden;
+    overflow: hidden; /* 配合 ::before 伪元素 */
     border-radius: 6px;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    height: 100%; /* 确保卡片填充网格单元 */
+    transition: all 0.3s ease; /* 统一过渡效果 */
 }
 
-/* 确保卡片内容区域高度一致性 */
 .card-hover .flex-grow {
-    min-height: 90px;
+    min-height: 90px; /* 内容区域最小高度 */
     display: flex;
     flex-direction: column;
 }
 
-/* 针对不同长度的标题优化显示 */
 .card-hover h3 {
-    min-height: 3rem;  /* 至少能显示2行标题 */
+    min-height: 3rem; /* 至少能显示2行标题 */
     display: -webkit-box;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    text-overflow: ellipsis; /* 优先使用 ellipsis */
     -webkit-line-clamp: 2; /* 最多显示2行 */
+    word-break: break-word; /* 允许单词内换行以适应空间 */
 }
 
 .card-hover::before {
@@ -70,59 +126,22 @@ button, .card-hover {
     height: 100%;
     background: linear-gradient(90deg, transparent, var(--card-accent), transparent);
     transition: left 0.6s ease;
+    pointer-events: none; /* 确保不影响点击 */
 }
 
 .card-hover:hover {
     border-color: var(--card-hover-border);
     transform: translateY(-3px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.6); /* 增加阴影 */
 }
 
 .card-hover:hover::before {
     left: 100%;
 }
 
-.gradient-text {
-    background: linear-gradient(to right, var(--primary-color), var(--accent-color));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-/* 改进设置面板样式 */
-.settings-panel {
-    scrollbar-width: thin;
-    scrollbar-color: #444 #222;
-    transform: translateX(100%);
-    transition: transform 0.3s ease;
-    background: linear-gradient(135deg, var(--page-gradient-end), var(--page-gradient-start));
-    border-left: 1px solid var(--primary-color);
-}
-
-.settings-panel.show {
-    transform: translateX(0);
-}
-
-.settings-panel::-webkit-scrollbar {
-    width: 6px;
-}
-
-.settings-panel::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.settings-panel::-webkit-scrollbar-thumb {
-    background-color: #444;
-    border-radius: 4px;
-}
-
-/* 设置面板区块样式 */
-.settings-panel .shadow-inner {
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
-    transition: all 0.2s ease-in-out;
-}
-
-.settings-panel .shadow-inner:hover {
-    box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
+/* 按钮和交互元素 */
+button {
+    transition: all 0.3s ease; /* 统一按钮过渡 */
 }
 
 .search-button {
@@ -134,31 +153,6 @@ button, .card-hover {
     background: var(--primary-light);
 }
 
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: #111;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #333;
-    border-radius: 4px;
-    transition: all 0.3s ease;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #444;
-}
-
-* {
-    scrollbar-width: thin;
-    scrollbar-color: #333 #111;
-}
-
 .search-tag {
     background: linear-gradient(135deg, var(--card-gradient-start), var(--card-gradient-end));
     color: var(--text-color);
@@ -167,154 +161,81 @@ button, .card-hover {
     font-size: 0.875rem;
     border: 1px solid var(--border-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease; /* 添加过渡 */
 }
 
 .search-tag:hover {
     background: linear-gradient(135deg, var(--card-gradient-end), var(--card-gradient-start));
     border-color: var(--primary-color);
+    transform: translateY(-1px); /* 轻微上移效果 */
 }
 
-.footer {
-    width: 100%;
-    transition: all 0.3s ease;
-    margin-top: auto;
-    background: linear-gradient(to bottom, transparent, var(--page-gradient-start));
-    border-top: 1px solid var(--border-color);
+/* 文本样式 */
+.gradient-text {
+    background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+    -webkit-background-clip: text;
+    background-clip: text; /* 标准属性 */
+    -webkit-text-fill-color: transparent;
+    color: transparent; /* 兼容性 */
 }
 
-.footer a:hover {
-    text-decoration: underline;
+/* 设置面板 */
+.settings-panel {
+    scrollbar-width: thin;
+    scrollbar-color: var(--settings-scrollbar-thumb) var(--settings-scrollbar-track);
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    background: linear-gradient(135deg, var(--page-gradient-end), var(--page-gradient-start));
+    border-left: 1px solid var(--primary-color);
+    box-shadow: -2px 0 10px rgba(0,0,0,0.3); /* 添加阴影 */
 }
 
-body {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
+.settings-panel.show {
+    transform: translateX(0);
 }
 
-.container {
-    flex: 1;
+.settings-panel::-webkit-scrollbar { width: 6px; }
+.settings-panel::-webkit-scrollbar-track { background: var(--settings-scrollbar-track); }
+.settings-panel::-webkit-scrollbar-thumb { background-color: var(--settings-scrollbar-thumb); border-radius: 4px; }
+
+.settings-panel .shadow-inner {
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+    transition: box-shadow 0.2s ease-in-out; /* 简化过渡 */
 }
 
-@media screen and (min-height: 800px) {
-    body {
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
-    }
-    
-    .container {
-        flex: 1;
-    }
-    
-    .footer {
-        margin-top: auto;
-    }
+.settings-panel .shadow-inner:hover {
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
 }
 
-@media screen and (max-width: 640px) {
-    .footer {
-        padding-bottom: 2rem;
-    }
+/* API 区域样式 */
+#apiCheckboxes, #customApisList {
+    scrollbar-width: thin;
+    scrollbar-color: var(--history-scrollbar-thumb) var(--history-scrollbar-track); /* 使用历史面板滚动条颜色 */
 }
 
-/* 移动端布局优化 */
-@media screen and (max-width: 768px) {
-    .card-hover h3 {
-        min-height: 2.5rem;
-    }
-    
-    .card-hover .flex-grow {
-        min-height: 80px;
-    }
+#apiCheckboxes::-webkit-scrollbar, #customApisList::-webkit-scrollbar { width: 6px; }
+#apiCheckboxes::-webkit-scrollbar-track, #customApisList::-webkit-scrollbar-track { background: var(--history-scrollbar-track); border-radius: 4px; }
+#apiCheckboxes::-webkit-scrollbar-thumb, #customApisList::-webkit-scrollbar-thumb { background-color: var(--history-scrollbar-thumb); border-radius: 4px; }
+
+.api-group-title {
+    grid-column: span 2; /* 确保标题跨越两列 */
+    padding: 0.25rem 0;
+    margin-top: 0.5rem;
+    border-top: 1px solid #333;
+    color: var(--text-muted); /* 使用变量 */
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+.api-group-title.adult {
+    color: #ff6b8b; /* 成人组标题特殊颜色 */
 }
 
-@keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
-}
-
-#modal.show {
-    animation: fadeIn 0.3s forwards;
-}
-
-#modal.hide {
-    animation: fadeOut 0.3s forwards;
-}
-
-#modal > div {
-    background: linear-gradient(135deg, var(--card-gradient-start), var(--card-gradient-end));
-    border: 1px solid var(--primary-color);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 15px rgba(0, 204, 255, 0.1);
-    border-radius: 8px;
-}
-
-#modalContent button {
-    background: rgba(0, 204, 255, 0.08);
-    border: 1px solid rgba(0, 204, 255, 0.2);
-    transition: all 0.2s ease;
-}
-
-#modalContent button:hover {
-    background: rgba(0, 204, 255, 0.15);
-    border-color: var(--primary-color);
-    box-shadow: 0 0 8px rgba(0, 204, 255, 0.3);
-}
-
-#yellowFilterToggle:checked + .toggle-bg {
-    background-color: var(--primary-color);
-}
-
-#yellowFilterToggle:checked ~ .toggle-dot {
-    transform: translateX(1.5rem);
-}
-
-#yellowFilterToggle:focus + .toggle-bg,
-#yellowFilterToggle:hover + .toggle-bg {
-    box-shadow: 0 0 0 2px rgba(0, 204, 255, 0.3);
-}
-
-/* 添加广告过滤开关的CSS */
-#adFilterToggle:checked + .toggle-bg {
-    background-color: var(--primary-color);
-}
-
-#adFilterToggle:checked ~ .toggle-dot {
-    transform: translateX(1.5rem);
-}
-
-#adFilterToggle:focus + .toggle-bg,
-#adFilterToggle:hover + .toggle-bg {
-    box-shadow: 0 0 0 2px rgba(0, 204, 255, 0.3);
-}
-
-.toggle-dot {
-    transition: transform 0.3s ease-in-out;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.toggle-bg {
-    transition: background-color 0.3s ease-in-out;
-}
-
-#yellowFilterToggle:checked ~ .toggle-dot {
-    box-shadow: 0 2px 4px rgba(0, 204, 255, 0.3);
-}
-
-#adFilterToggle:checked ~ .toggle-dot {
-    box-shadow: 0 2px 4px rgba(0, 204, 255, 0.3);
-}
-
-/* 添加API复选框样式 */
+/* 表单元素 (复选框, 开关) */
 .form-checkbox {
     appearance: none;
     -webkit-appearance: none;
-    -moz-appearance: none;
     height: 14px;
     width: 14px;
     background-color: #222;
@@ -323,6 +244,8 @@ body {
     cursor: pointer;
     position: relative;
     outline: none;
+    transition: background-color 0.2s ease, border-color 0.2s ease; /* 添加过渡 */
+    flex-shrink: 0; /* 防止复选框被压缩 */
 }
 
 .form-checkbox:checked {
@@ -342,89 +265,15 @@ body {
     transform: rotate(45deg);
 }
 
-/* API滚动区域美化 */
-#apiCheckboxes {
-    scrollbar-width: thin;
-    scrollbar-color: #444 #222;
+.form-checkbox:focus {
+    box-shadow: 0 0 0 2px rgba(0, 204, 255, 0.3); /* 添加焦点样式 */
 }
 
-#apiCheckboxes::-webkit-scrollbar {
-    width: 6px;
-}
-
-#apiCheckboxes::-webkit-scrollbar-track {
-    background: #222;
-    border-radius: 4px;
-}
-
-#apiCheckboxes::-webkit-scrollbar-thumb {
-    background-color: #444;
-    border-radius: 4px;
-}
-
-/* 自定义API列表样式 */
-#customApisList {
-    scrollbar-width: thin;
-    scrollbar-color: #444 #222;
-}
-
-#customApisList::-webkit-scrollbar {
-    width: 6px;
-}
-
-#customApisList::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-#customApisList::-webkit-scrollbar-thumb {
-    background-color: #444;
-    border-radius: 4px;
-}
-
-/* 设置面板滚动样式 */
-.settings-panel {
-    scrollbar-width: thin;
-    scrollbar-color: #444 #222;
-}
-
-.settings-panel::-webkit-scrollbar {
-    width: 6px;
-}
-
-.settings-panel::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.settings-panel::-webkit-scrollbar-thumb {
-    background-color: #444;
-    border-radius: 4px;
-}
-
-/* 添加自定义API表单动画 */
-#addCustomApiForm {
-    transition: all 0.3s ease;
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-}
-
-#addCustomApiForm.hidden {
-    max-height: 0;
-    padding: 0;
-    opacity: 0;
-}
-
-#addCustomApiForm:not(.hidden) {
-    max-height: 230px;
-    opacity: 1;
-}
-
-/* 成人内容API标记样式 */
+/* 成人内容 API 标签 */
 .api-adult + label {
-    color: #ff6b8b !important;
+    color: #ff6b8b !important; /* 使用!important确保覆盖 */
 }
 
-/* 添加警告图标和标签样式 */
 .adult-warning {
     display: inline-flex;
     align-items: center;
@@ -436,92 +285,79 @@ body {
     width: 12px;
     height: 12px;
     margin-right: 4px;
+    flex-shrink: 0; /* 防止图标被压缩 */
+}
+
+.adult-tag {
+    display: inline-flex;
+    align-items: center;
+    color: #ff6b8b;
+    font-size: 0.7rem;
+    font-weight: 500;
+    margin-right: 0.35rem;
+}
+
+/* 开关 (Toggle) 样式 */
+.toggle-bg {
+    background-color: #333;
+    width: 2.5rem; /* 固定宽度 */
+    height: 1.25rem; /* 固定高度 */
+    border-radius: 9999px; /* 圆角 */
+    transition: background-color 0.3s ease-in-out;
+}
+
+.toggle-dot {
+    position: absolute;
+    width: 1rem; /* 圆点大小 */
+    height: 1rem;
+    background-color: white;
+    border-radius: 50%;
+    top: 0.125rem; /* 垂直居中 */
+    left: 0.125rem; /* 起始位置 */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out; /* 添加阴影过渡 */
+}
+
+input[type="checkbox"]:checked + .toggle-bg {
+    background-color: var(--primary-color);
+}
+
+input[type="checkbox"]:checked ~ .toggle-dot {
+    transform: translateX(1.25rem); /* 移动距离 */
+    box-shadow: 0 2px 4px rgba(0, 204, 255, 0.3);
+}
+
+input[type="checkbox"]:focus + .toggle-bg,
+input[type="checkbox"]:hover + .toggle-bg {
+    box-shadow: 0 0 0 2px rgba(0, 204, 255, 0.3);
 }
 
 /* 过滤器禁用样式 */
 .filter-disabled {
-    opacity: 0.5;
-    pointer-events: none;
-    cursor: not-allowed;
-}
-
-/* API组标题样式 */
-.api-group-title {
-    grid-column: span 2;
-    padding: 0.25rem 0;
-    margin-top: 0.5rem;
-    border-top: 1px solid #333;
-    color: #8599b2;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.api-group-title.adult {
-    color: #ff6b8b;
-}
-
-/* 过滤器禁用样式 - 改进版本 */
-.filter-disabled {
     position: relative;
 }
 
 .filter-disabled::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.4);
-    border-radius: 0.5rem;
-    z-index: 5;
-}
-
-.filter-disabled > * {
-    opacity: 0.7;
-}
-
-.filter-disabled .toggle-bg {
-    background-color: #333 !important;
-}
-
-.filter-disabled .toggle-dot {
-    transform: translateX(0) !important;
-    background-color: #666 !important;
-}
-
-/* 改进过滤器禁用样式 */
-.filter-disabled .filter-description {
-    color: #ff6b8b !important;
-    font-style: italic;
-    font-weight: 500;
-}
-
-/* 修改过滤器禁用样式，确保文字清晰可见 */
-.filter-disabled {
-    position: relative;
-}
-
-.filter-disabled::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0; /* 等同于 top: 0; left: 0; width: 100%; height: 100%; */
     background-color: rgba(0,0,0,0.3);
     border-radius: 0.5rem;
     z-index: 5;
+    pointer-events: none; /* 允许点击下方元素（如果需要） */
 }
 
 .filter-disabled > * {
-    opacity: 1; /* 提高子元素不透明度，保证可见性 */
-    z-index: 6; /* 确保内容在遮罩上方 */
-    position: relative;
+    opacity: 0.7; /* 降低内容透明度 */
+    position: relative; /* 确保内容在遮罩之上 */
+    z-index: 6;
+    pointer-events: none; /* 禁止交互 */
 }
 
-/* 改进过滤器禁用状态下的描述样式 */
+.filter-disabled input[type="checkbox"] {
+    cursor: not-allowed; /* 禁用光标 */
+}
+
 .filter-disabled .filter-description {
     color: #ff7b9d !important; /* 更亮的粉色 */
     font-style: italic;
@@ -529,19 +365,15 @@ body {
     text-shadow: 0 0 2px rgba(0,0,0,0.8); /* 添加文字阴影提高对比度 */
 }
 
-/* 开关的禁用样式 */
 .filter-disabled .toggle-bg {
     background-color: #444 !important;
-    opacity: 0.8;
 }
 
 .filter-disabled .toggle-dot {
-    transform: translateX(0) ;
-    background-color: #777 ;
-    opacity: 0.9;
+    transform: translateX(0) !important;
+    background-color: #777 !important;
 }
 
-/* 警告提示样式改进 */
 .filter-tooltip {
     background-color: rgba(255, 61, 87, 0.1);
     border: 1px solid rgba(255, 61, 87, 0.2);
@@ -553,7 +385,7 @@ body {
     font-size: 0.75rem;
     line-height: 1.25;
     position: relative;
-    z-index: 10;
+    z-index: 10; /* 确保在禁用遮罩之上 */
 }
 
 .filter-tooltip svg {
@@ -563,17 +395,23 @@ body {
     margin-right: 0.35rem;
 }
 
-/* 编辑按钮样式 */
-.custom-api-edit {
-    color: #3b82f6;
-    transition: color 0.2s ease;
+/* 自定义API表单和列表 */
+#addCustomApiForm {
+    transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease; /* 平滑过渡 */
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    padding-top: 0;
+    padding-bottom: 0;
 }
 
-.custom-api-edit:hover {
-    color: #2563eb;
+#addCustomApiForm:not(.hidden) {
+    max-height: 230px; /* 足够容纳表单内容 */
+    opacity: 1;
+    padding-top: 0.5rem; /* 添加内边距 */
+    padding-bottom: 0.5rem;
 }
 
-/* 自定义API条目样式改进 */
 #customApisList .api-item {
     display: flex;
     align-items: center;
@@ -589,25 +427,25 @@ body {
     background-color: #2a2a2a;
 }
 
-/* 成人内容标签样式 */
-.adult-tag {
-    display: inline-flex;
-    align-items: center;
-    color: #ff6b8b;
-    font-size: 0.7rem;
-    font-weight: 500;
-    margin-right: 0.35rem;
+.custom-api-edit {
+    color: #3b82f6;
+    transition: color 0.2s ease;
 }
 
-/* 历史记录面板样式 */
+.custom-api-edit:hover {
+    color: #2563eb;
+}
+
+/* 历史记录面板 */
 .history-panel {
     box-shadow: 2px 0 10px rgba(0,0,0,0.5);
     transition: transform 0.3s ease-in-out;
-    overflow-y: scroll; /* 始终显示滚动条，防止宽度变化 */
-    overflow-x: hidden; /* 防止水平滚动 */
-    width: 320px; /* 固定宽度 */
-    box-sizing: border-box; /* 确保padding不影响总宽度 */
+    overflow-y: scroll;
+    overflow-x: hidden;
+    width: 320px;
+    box-sizing: border-box;
     scrollbar-gutter: stable; /* 现代浏览器：为滚动条预留空间 */
+    transform: translateX(-100%); /* 初始状态隐藏 */
 }
 
 .history-panel.show {
@@ -615,19 +453,18 @@ body {
 }
 
 #historyList {
-    padding-right: 6px; /* 为滚动条预留空间，确保内容不被挤压 */
+    padding-right: 6px; /* 为滚动条预留空间 */
 }
 
-/* 历史记录项样式优化 */
 .history-item {
     background: #1a1a1a;
-    border-radius: 6px; /* 减小圆角 */
+    border-radius: 6px;
     border: 1px solid #333;
     overflow: hidden;
     transition: all 0.2s ease;
     padding: 10px 14px;
     position: relative;
-    margin-bottom: 8px; /* 减小底部间距 */
+    margin-bottom: 8px;
     width: 100%; /* 确保宽度一致 */
 }
 
@@ -637,10 +474,16 @@ body {
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
-/* 添加组悬停效果，使删除按钮在悬停时显示 */
 .history-item .delete-btn {
     opacity: 0;
     transition: opacity 0.2s ease;
+    position: absolute; /* 使用绝对定位 */
+    right: 8px;
+    top: 8px;
+    z-index: 10; /* 确保在内容之上 */
+    background-color: rgba(26, 26, 26, 0.7); /* 添加背景便于点击 */
+    border-radius: 50%;
+    padding: 2px;
 }
 
 .history-item:hover .delete-btn {
@@ -648,14 +491,17 @@ body {
 }
 
 .history-info {
-    padding: 0; /* 移除额外的内边距 */
-    min-height: 70px;
+    padding: 0;
+    min-height: 70px; /* 内容最小高度 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* 垂直居中内容 */
 }
 
 .history-title {
     font-weight: 500;
-    font-size: 0.95rem; /* 减小字体大小 */
-    margin-bottom: 2px; /* 减小底部边距 */
+    font-size: 0.95rem;
+    margin-bottom: 2px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -663,61 +509,18 @@ body {
 
 .history-meta {
     color: #bbb;
-    font-size: 0.75rem; /* 减小字体大小 */
+    font-size: 0.75rem;
     display: flex;
-    flex-wrap: wrap;
-    margin-bottom: 1px; /* 减小边距 */
+    flex-wrap: wrap; /* 允许换行 */
+    align-items: center; /* 垂直居中 */
+    margin-bottom: 1px;
 }
 
-.history-episode {
-    color: #3b82f6;
-}
+.history-episode { color: #3b82f6; }
+.history-source { color: #10b981; }
+.history-separator { color: #666; margin: 0 4px; } /* 添加左右边距 */
+.history-time { color: #888; font-size: 0.7rem; margin-top: 1px; }
 
-.history-source {
-    color: #10b981;
-}
-
-.history-time {
-    color: #888;
-    font-size: 0.7rem; /* 减小字体大小 */
-    margin-top: 1px; /* 减小顶部边距 */
-}
-
-.history-separator {
-    color: #666;
-}
-
-.history-thumbnail {
-    width: 100%;
-    height: 90px;
-    background-color: #222;
-    overflow: hidden;
-}
-
-.history-thumbnail img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.history-info {
-    padding: 10px;
-}
-
-.history-time {
-    color: #888;
-    font-size: 0.8rem;
-    margin-top: 4px;
-}
-
-.history-title {
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* 添加播放进度条样式 */
 .history-progress {
     margin: 5px 0;
 }
@@ -734,6 +537,7 @@ body {
     height: 100%;
     background: linear-gradient(to right, #00ccff, #3b82f6);
     border-radius: 2px;
+    transition: width 0.3s ease; /* 平滑进度条变化 */
 }
 
 .progress-text {
@@ -742,10 +546,66 @@ body {
     text-align: right;
 }
 
-/* 添加恢复播放提示样式 */
+/* 模态框 (Modal) */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+#modal {
+    /* 使用类来控制显示/隐藏，而不是内联样式 */
+    opacity: 0;
+    pointer-events: none; /* 隐藏时不可交互 */
+    transition: opacity 0.3s ease;
+}
+
+#modal.show {
+    opacity: 1;
+    pointer-events: auto;
+    /* animation: fadeIn 0.3s forwards; */ /* animation 可以移除，用 transition */
+}
+
+#modal.hide {
+    opacity: 0;
+    pointer-events: none;
+    /* animation: fadeOut 0.3s forwards; */
+}
+
+#modal > div { /* 直接子元素，即模态框内容容器 */
+    background: linear-gradient(135deg, var(--card-gradient-start), var(--card-gradient-end));
+    border: 1px solid var(--primary-color);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 15px rgba(0, 204, 255, 0.1);
+    border-radius: 8px;
+    transform: scale(0.95); /* 初始缩小 */
+    transition: transform 0.3s ease; /* 添加缩放过渡 */
+}
+
+#modal.show > div {
+    transform: scale(1); /* 显示时恢复正常大小 */
+}
+
+#modalContent button.episode-btn { /* 特定给剧集按钮 */
+    background: rgba(0, 204, 255, 0.08);
+    border: 1px solid rgba(0, 204, 255, 0.2);
+    transition: all 0.2s ease;
+    color: var(--text-color); /* 确保文本颜色 */
+}
+
+#modalContent button.episode-btn:hover {
+    background: rgba(0, 204, 255, 0.15);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 8px rgba(0, 204, 255, 0.3);
+}
+
+#modalContent button.episode-btn.episode-active { /* 当前播放剧集 */
+    background: var(--primary-color) !important;
+    border-color: var(--primary-light) !important;
+    color: var(--secondary-color) !important; /* 反色文本 */
+    font-weight: bold;
+}
+
+/* 播放器相关样式 */
 .position-restore-hint {
     position: absolute;
-    bottom: 60px;
+    bottom: 60px; /* 根据实际播放器控件高度调整 */
     left: 50%;
     transform: translateX(-50%) translateY(20px);
     background-color: rgba(0, 0, 0, 0.7);
@@ -755,7 +615,8 @@ body {
     font-size: 14px;
     z-index: 100;
     opacity: 0;
-    transition: all 0.3s ease;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
 }
 
 .position-restore-hint.show {
@@ -763,17 +624,50 @@ body {
     transform: translateX(-50%) translateY(0);
 }
 
-/* 锁定控制时屏蔽交互 */
+/* 锁定控制 */
 .player-container.controls-locked .dplayer-controller,
 .player-container.controls-locked .dplayer-mask,
 .player-container.controls-locked .dplayer-bar-wrap,
-.player-container.controls-locked .dplayer-statusbar,
-.player-container.controls-locked .shortcut-hint {
+.player-container.controls-locked .dplayer-notice, /* 隐藏提示 */
+.player-container.controls-locked .dplayer-setting, /* 隐藏设置 */
+.player-container.controls-locked .dplayer-comment, /* 隐藏评论（如果启用）*/
+.player-container.controls-locked .dplayer-bezel, /* 隐藏中间的播放/暂停图标 */
+.player-container.controls-locked .dplayer-info-panel, /* 隐藏信息面板 */
+.player-container.controls-locked .shortcut-hint { /* 隐藏快捷键提示 */
     opacity: 0 !important;
     pointer-events: none !important;
+    visibility: hidden !important; /* 确保完全隐藏 */
 }
 /* 保留锁按钮可见可点 */
 .player-container.controls-locked #lockToggle {
     opacity: 1 !important;
     pointer-events: auto !important;
+    visibility: visible !important;
+}
+
+/* 媒体查询优化 */
+@media screen and (max-width: 768px) {
+    .card-hover h3 {
+        min-height: 2.5rem; /* 移动端标题高度 */
+    }
+    .card-hover .flex-grow {
+        min-height: 80px; /* 移动端内容高度 */
+    }
+    .settings-panel {
+        width: 90%; /* 移动端设置面板宽度 */
+        max-width: 300px;
+    }
+    .history-panel {
+        width: 85%; /* 移动端历史面板宽度 */
+        max-width: 300px;
+    }
+    #modal > div {
+        width: 95%; /* 移动端模态框宽度 */
+    }
+}
+
+@media screen and (max-width: 640px) {
+    .footer {
+        padding-bottom: 2rem; /* 移动端页脚底部填充 */
+    }
 }
