@@ -5,363 +5,350 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LibreTV - 免费在线视频搜索与观看平台</title>
     <meta name="description" content="LibreTV是一个免费的在线视频搜索平台，无广告、安全，提供来自多个视频源的内容搜索与观看服务，无需注册即可使用。">
-    <meta name="keywords" content="在线视频,免费视频,视频搜索,电影,电视剧,LibreTV">
+    <meta name="keywords" content="在线视频, 免费视频, 视频搜索, 电影, 电视剧, LibreTV, 影视搜索, 聚合搜索">
     <meta name="author" content="LibreTV Team">
-    <meta name="robots" content="index, follow">
-    
+    <meta name="robots" content="index, follow"> <!-- Allow search engine indexing -->
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://libretv.is-an.org/">
+    <meta property="og:url" content="https://libretv.is-an.org/"> <!-- Update with actual URL -->
     <meta property="og:title" content="LibreTV - 免费在线视频搜索与观看平台">
-    <meta property="og:description" content="搜索并观看来自多个视频源的内容，支持多种设备，无需注册即可使用。">
-    <meta property="og:image" content="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png">
-    
+    <meta property="og:description" content="搜索并观看来自多个视频源的内容，支持多种设备，无需注册即可使用。聚合影视搜索。">
+    <meta property="og:image" content="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png"> <!-- Update with a better preview image -->
+
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://libretv.is-an.org/">
+    <meta property="twitter:url" content="https://libretv.is-an.org/"> <!-- Update with actual URL -->
     <meta property="twitter:title" content="LibreTV - 免费在线视频搜索与观看平台">
-    <meta property="twitter:description" content="搜索并观看来自多个视频源的内容，支持多种设备，无需注册即可使用。">
-    <meta property="twitter:image" content="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png">
-    
+    <meta property="twitter:description" content="搜索并观看来自多个视频源的内容，支持多种设备，无需注册即可使用。聚合影视搜索。">
+    <meta property="twitter:image" content="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png"> <!-- Update with a better preview image -->
+
     <!-- Favicon -->
-    <link rel="icon" href="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png">
+    <link rel="icon" type="image/png" href="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png">
     <link rel="apple-touch-icon" href="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png">
-    
+
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://libretv.is-an.org/">
-    
+    <link rel="canonical" href="https://libretv.is-an.org/"> <!-- Update with actual URL -->
+
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="css/styles.css">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/styles.css"> <!-- Ensure path is correct -->
 </head>
-<body class="page-bg text-white">
-    <!-- 将历史记录按钮移到左上角 -->
+<body class="page-bg text-white flex flex-col min-h-screen">
+
+    <!-- Header Buttons (History & Settings) -->
     <div class="fixed top-4 left-4 z-50">
-        <button onclick="toggleHistory(event)" class="bg-[#222] hover:bg-[#333] border border-[#333] hover:border-white rounded-lg px-4 py-2 transition-colors" aria-label="观看历史">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <button onclick="toggleHistory(event)" class="bg-[#222] hover:bg-[#333] border border-[#333] hover:border-white rounded-lg p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#111] focus:ring-white" aria-label="观看历史">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
         </button>
     </div>
-
-    <!-- 设置按钮保留在右上角 -->
     <div class="fixed top-4 right-4 z-50">
-        <button onclick="toggleSettings(event)" class="bg-[#222] hover:bg-[#333] border border-[#333] hover:border-white rounded-lg px-4 py-2 transition-colors" aria-label="打开设置">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <button onclick="toggleSettings(event)" class="bg-[#222] hover:bg-[#333] border border-[#333] hover:border-white rounded-lg p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#111] focus:ring-white" aria-label="打开设置">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
             </svg>
         </button>
     </div>
-    
-    <!-- 历史记录面板 - 标题居中 -->
-    <div id="historyPanel" class="history-panel fixed left-0 top-0 h-full bg-[#111] border-r border-[#333] p-6 z-40 transform -translate-x-full transition-transform duration-300" aria-label="观看历史" aria-hidden="true">
-        <div class="flex justify-between items-center mb-6">
-            <button onclick="toggleHistory()" class="text-gray-400 hover:text-white" aria-label="关闭历史">&times;</button>
-            <h3 class="text-xl font-bold gradient-text mx-auto">观看历史</h3>
-            <div class="w-4"></div> <!-- 添加一个占位元素以确保标题居中 -->
-        </div>
-        <div id="historyList" class="pb-4">
-            <!-- 历史记录将在这里动态显示 -->
-            <div class="text-center text-gray-500 py-8">暂无观看记录</div>
-        </div>
-        <div class="mt-4 text-center sticky bottom-0 pb-2 pt-2 bg-[#111]">
-            <button onclick="clearViewingHistory()" class="px-4 py-2 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-lg text-sm transition-all duration-300 shadow-md hover:shadow-lg">
-                清空历史记录
+
+    <!-- History Panel -->
+    <aside id="historyPanel" class="history-panel fixed left-0 top-0 h-full bg-[#111] border-r border-[#333] p-4 z-40 transform -translate-x-full transition-transform duration-300 flex flex-col" aria-label="观看历史" aria-hidden="true">
+        <div class="flex justify-between items-center mb-4 flex-shrink-0">
+             <h3 class="text-lg font-bold gradient-text">观看历史</h3>
+            <button onclick="toggleHistory(event)" class="text-gray-400 hover:text-white p-1" aria-label="关闭历史记录">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
-    </div>
-
-    <!-- 设置面板 -->
-    <div id="settingsPanel" class="settings-panel fixed right-0 top-0 h-full w-80 bg-[#111] border-l border-[#333] p-6 z-40 overflow-y-auto" aria-label="设置面板" aria-hidden="true">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-bold gradient-text">设置</h3>
-            <button onclick="toggleSettings()" class="text-gray-400 hover:text-white" aria-label="关闭设置">&times;</button>
+        <div id="historyList" class="flex-grow overflow-y-auto mb-4 pr-1">
+            <!-- History items will be dynamically inserted here -->
+            <div class="text-center text-gray-500 py-8 text-sm">暂无观看记录</div>
         </div>
-        <div class="space-y-5">
-            <!-- 数据源设置区域 -->
-            <div class="p-3 bg-[#151515] rounded-lg shadow-inner">
-                <label class="block text-sm font-medium text-gray-400 mb-3 border-b border-[#333] pb-1">数据源设置</label>
-                
-                <!-- 批量操作按钮 -->
-                <div class="flex space-x-2 mb-3">
-                    <button onclick="selectAllAPIs(true)" class="px-2 py-1 bg-[#333] hover:bg-[#444] text-white text-xs rounded">全选</button>
-                    <button onclick="selectAllAPIs(false)" class="px-2 py-1 bg-[#333] hover:bg-[#444] text-white text-xs rounded">全不选</button>
-                    <button onclick="selectAllAPIs(true, true)" class="px-2 py-1 bg-[#333] hover:bg-[#444] text-white text-xs rounded">全选普通资源</button>
+        <div class="mt-auto flex-shrink-0"> <!-- Ensure button stays at bottom -->
+            <button onclick="clearViewingHistory()" class="w-full px-4 py-2 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white rounded-lg text-sm transition-all duration-300 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#111] focus:ring-red-500">
+                清空观看历史
+            </button>
+        </div>
+    </aside>
+
+    <!-- Settings Panel -->
+    <aside id="settingsPanel" class="settings-panel fixed right-0 top-0 h-full w-[90%] max-w-xs sm:max-w-sm bg-[#111] border-l border-[#333] p-4 z-40 transform translate-x-full overflow-y-auto transition-transform duration-300 flex flex-col" aria-label="设置面板" aria-hidden="true">
+        <div class="flex justify-between items-center mb-4 flex-shrink-0">
+            <h3 class="text-lg font-bold gradient-text">设置</h3>
+            <button onclick="toggleSettings(event)" class="text-gray-400 hover:text-white p-1" aria-label="关闭设置">
+                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="space-y-4 flex-grow overflow-y-auto pr-1"> <!-- Added overflow-y-auto here -->
+            <!-- Data Source Settings -->
+            <section class="p-3 bg-[#151515] rounded-lg shadow-inner">
+                <h4 class="block text-sm font-medium text-gray-400 mb-2 border-b border-[#333] pb-1">数据源选择</h4>
+                <div class="flex space-x-2 mb-2">
+                    <button type="button" onclick="selectAllAPIs(true)" class="px-2 py-1 bg-[#333] hover:bg-[#444] text-white text-xs rounded">全选</button>
+                    <button type="button" onclick="selectAllAPIs(false)" class="px-2 py-1 bg-[#333] hover:bg-[#444] text-white text-xs rounded">全不选</button>
+                    <button type="button" onclick="selectAllAPIs(true, true)" class="px-2 py-1 bg-[#333] hover:bg-[#444] text-white text-xs rounded" title="仅选择非成人资源">选常规</button>
                 </div>
-                
-                <!-- API选择区域 - 使用滚动区域 -->
-                <div class="max-h-40 overflow-y-auto bg-[#191919] p-2 rounded-lg mb-3">
-                    <div id="apiCheckboxes" class="grid grid-cols-2 gap-2">
-                        <!-- 这里将动态插入API复选框 -->
+                <div class="max-h-40 overflow-y-auto bg-[#191919] p-2 rounded-lg mb-2">
+                    <div id="apiCheckboxes" class="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                        <!-- API checkboxes will be inserted here -->
                     </div>
                 </div>
-                
-                <!-- API信息显示 -->
                 <div class="text-xs text-gray-500 flex justify-between items-center">
-                    <span>已选API数量：<span id="selectedApiCount" class="text-white">0</span></span>
-                    <span id="siteStatus" class="ml-2"></span>
+                    <span>已选: <span id="selectedApiCount" class="text-white font-medium">0</span></span>
+                    <!-- <span id="siteStatus" class="ml-2"></span> Site status check removed - less reliable -->
                 </div>
-            </div>
+            </section>
 
-            <!-- 自定义API管理区域 -->
-            <div class="p-3 bg-[#151515] rounded-lg shadow-inner">
-                <div class="flex justify-between items-center mb-2">
-                    <label class="block text-sm font-medium text-gray-400 border-b border-[#333] w-full pb-1">自定义API</label>
-                    <button onclick="showAddCustomApiForm()" class="bg-[#333] hover:bg-[#444] text-white w-6 h-6 rounded-full text-center leading-none text-lg ml-1">+</button>
+            <!-- Custom API Management -->
+            <section class="p-3 bg-[#151515] rounded-lg shadow-inner">
+                <div class="flex justify-between items-center mb-2 border-b border-[#333] pb-1">
+                    <h4 class="text-sm font-medium text-gray-400">自定义API</h4>
+                    <button type="button" onclick="showAddCustomApiForm()" class="bg-blue-600 hover:bg-blue-700 text-white w-5 h-5 rounded-full text-center leading-none text-lg flex-shrink-0" title="添加自定义API">+</button>
                 </div>
                 <div id="customApisList" class="max-h-32 overflow-y-auto mb-2">
-                    <!-- 自定义API将显示在这里 -->
+                    <!-- Custom APIs will be displayed here -->
                 </div>
-                
-                <!-- 添加自定义API表单 (默认隐藏) -->
-                <div id="addCustomApiForm" class="hidden mt-2 p-2 bg-[#191919] rounded-lg">
-                    <input type="text" id="customApiName" placeholder="API名称" class="w-full bg-[#222] border border-[#333] text-white px-2 py-1 rounded mb-2">
-                    <input type="text" id="customApiUrl" placeholder="https://abc.com" class="w-full bg-[#222] border border-[#333] text-white px-2 py-1 rounded mb-2">
-                    <!-- 添加成人内容切换 -->
-                    <div class="flex items-center mb-2">
-                        <input type="checkbox" id="customApiIsAdult" class="form-checkbox h-4 w-4 text-pink-500 bg-[#222] border border-[#333]">
-                        <label for="customApiIsAdult" class="ml-2 text-xs text-pink-400">黄色资源站</label>
+                <div id="addCustomApiForm" class="hidden mt-2 p-2 bg-[#191919] rounded-lg space-y-2">
+                    <input type="text" id="customApiName" placeholder="API名称 (例如：我的资源)" class="w-full bg-[#222] border border-[#333] text-white px-2 py-1 rounded text-sm placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                    <input type="url" id="customApiUrl" placeholder="API链接 (https://...)" class="w-full bg-[#222] border border-[#333] text-white px-2 py-1 rounded text-sm placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="customApiIsAdult" class="form-checkbox h-4 w-4 text-pink-500 bg-[#222] border border-[#333] rounded focus:ring-pink-500">
+                        <label for="customApiIsAdult" class="ml-2 text-xs text-pink-400 cursor-pointer">标记为黄色资源站</label>
                     </div>
-                    <div class="flex space-x-2">
-                        <button onclick="addCustomApi()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">添加</button>
-                        <button onclick="cancelAddCustomApi()" class="bg-[#444] hover:bg-[#555] text-white px-3 py-1 rounded text-xs">取消</button>
+                    <div id="customApiButtons" class="flex space-x-2">
+                        <button type="button" onclick="addCustomApi()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">添加</button>
+                        <button type="button" onclick="cancelAddCustomApi()" class="bg-[#444] hover:bg-[#555] text-white px-3 py-1 rounded text-xs">取消</button>
                     </div>
                 </div>
-            </div>
-            
-            <!-- 内容过滤设置区域 -->
-            <div class="p-3 bg-[#151515] rounded-lg shadow-inner">
-                <label class="block text-sm font-medium text-gray-400 mb-3 border-b border-[#333] pb-1">内容过滤</label>
-                
-                <!-- 黄色内容过滤开关 -->
-                <div class="flex flex-col mb-3 pb-3 border-b border-[#222] relative">
+            </section>
+
+            <!-- Content Filtering Settings -->
+            <section class="p-3 bg-[#151515] rounded-lg shadow-inner">
+                <h4 class="block text-sm font-medium text-gray-400 mb-3 border-b border-[#333] pb-1">内容过滤</h4>
+                <!-- Yellow Content Filter -->
+                <div id="yellowFilterContainer" class="mb-3 pb-3 border-b border-[#222]">
                     <div class="flex items-center justify-between">
-                        <div>
-                            <label class="text-sm font-medium text-gray-400">黄色内容过滤</label>
-                            <p class="text-xs text-gray-500 mt-1 filter-description">过滤"伦理片"等黄色内容</p>
+                        <div class="mr-2">
+                            <label for="yellowFilterToggle" class="text-sm font-medium text-gray-300 cursor-pointer">黄色内容过滤</label>
+                            <p id="yellowFilterDescription" class="text-xs text-gray-500 mt-0.5 filter-description">过滤"伦理片"等结果</p>
                         </div>
-                        <div class="relative inline-block w-12 align-middle select-none">
-                            <input type="checkbox" id="yellowFilterToggle" class="opacity-0 absolute w-full h-full cursor-pointer z-10">
-                            <div class="toggle-bg bg-[#333] w-12 h-6 rounded-full transition-colors duration-300 ease-in-out"></div>
-                            <div class="toggle-dot absolute w-5 h-5 bg-white rounded-full top-0.5 left-0.5 transition-transform duration-300 ease-in-out"></div>
+                        <div class="relative inline-block w-10 align-middle select-none flex-shrink-0"> <!-- Adjusted size -->
+                            <input type="checkbox" id="yellowFilterToggle" class="opacity-0 absolute w-full h-full cursor-pointer z-10 peer">
+                            <div class="toggle-bg block bg-[#333] w-10 h-5 rounded-full transition-colors duration-300 ease-in-out peer-checked:bg-blue-500"></div> <!-- Adjusted size -->
+                            <div class="toggle-dot absolute w-4 h-4 bg-white rounded-full top-0.5 left-0.5 transition-transform duration-300 ease-in-out peer-checked:translate-x-5 shadow-md"></div> <!-- Adjusted size -->
                         </div>
                     </div>
-                    <!-- 警告提示将在这里动态插入 -->
                 </div>
-                
-                <!-- 广告过滤开关 -->
+                <!-- Ad Filtering Toggle -->
                 <div class="flex items-center justify-between">
-                    <div>
-                        <label class="text-sm font-medium text-gray-400">分片广告过滤</label>
-                        <p class="text-xs text-gray-500 mt-1">关闭可减少旧版浏览器卡顿</p>
+                     <div class="mr-2">
+                        <label for="adFilterToggle" class="text-sm font-medium text-gray-300 cursor-pointer">分片广告过滤</label>
+                        <p class="text-xs text-gray-500 mt-0.5">尝试移除M3U8中的广告段</p>
                     </div>
-                    <div class="relative inline-block w-12 align-middle select-none">
-                        <input type="checkbox" id="adFilterToggle" class="opacity-0 absolute w-full h-full cursor-pointer z-10">
-                        <div class="toggle-bg bg-[#333] w-12 h-6 rounded-full transition-colors duration-300 ease-in-out"></div>
-                        <div class="toggle-dot absolute w-5 h-5 bg-white rounded-full top-0.5 left-0.5 transition-transform duration-300 ease-in-out"></div>
+                    <div class="relative inline-block w-10 align-middle select-none flex-shrink-0">
+                        <input type="checkbox" id="adFilterToggle" class="opacity-0 absolute w-full h-full cursor-pointer z-10 peer">
+                        <div class="toggle-bg block bg-[#333] w-10 h-5 rounded-full transition-colors duration-300 ease-in-out peer-checked:bg-blue-500"></div>
+                        <div class="toggle-dot absolute w-4 h-4 bg-white rounded-full top-0.5 left-0.5 transition-transform duration-300 ease-in-out peer-checked:translate-x-5 shadow-md"></div>
                     </div>
                 </div>
-            </div>
+            </section>
         </div>
-    </div>
+    </aside>
 
-    <div class="container mx-auto px-4 py-8 flex flex-col h-screen">
-        <div class="flex-1 flex flex-col">
-            <!-- 网站标志和口号 -->
-            <header class="text-center mb-2">
-                <div class="flex justify-center items-center mb-4">
-                    <svg class="w-10 h-10 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                    </svg>
-                    <h1 class="text-5xl font-bold gradient-text">LibreTV</h1>
+    <!-- Main Content Area -->
+    <main class="container mx-auto px-4 py-8 flex-grow flex flex-col">
+        <!-- Header -->
+        <header class="text-center mb-6 mt-12"> <!-- Added margin-top -->
+            <div class="flex justify-center items-center mb-2">
+                <svg class="w-10 h-10 mr-2 text-[#00ccff]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+                <h1 class="text-4xl sm:text-5xl font-bold gradient-text">LibreTV</h1>
+            </div>
+            <p class="text-gray-400 text-sm sm:text-base">自由观影，畅享精彩</p>
+        </header>
+
+        <!-- Search Area -->
+        <section id="searchArea" aria-label="视频搜索区域" class="flex-1 flex flex-col items-center justify-center transition-all duration-300 ease-in-out">
+            <!-- Search moved inside searchArea -->
+             <div class="w-full max-w-2xl">
+                 <h2 class="text-2xl sm:text-3xl font-bold gradient-text mb-6 text-center sr-only">视频搜索</h2> <!-- Screen reader only title -->
+                <div class="flex shadow-lg">
+                    <input type="search" id="searchInput" name="search" class="w-full bg-[#1a1a1a] border border-r-0 border-[#333] text-white px-4 sm:px-6 py-3 sm:py-4 rounded-l-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors text-base placeholder-gray-500" placeholder="搜索电影、剧集、动漫..." aria-label="视频搜索框">
+                    <button type="button" onclick="search()" class="px-6 sm:px-8 py-3 sm:py-4 bg-blue-600 text-white font-medium rounded-r-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#111] focus:ring-blue-500 flex-shrink-0" aria-label="搜索">
+                        搜索
+                    </button>
                 </div>
-                <p class="text-gray-400 mb-8">自由观影，畅享精彩</p>
-            </header>
-            
-            <!-- 搜索区域：默认居中 -->
-            <div id="searchArea" class="flex-1 flex flex-col items-center justify-center">
-                <h2 class="text-3xl font-bold gradient-text mb-8">视频搜索</h2>
-                <div class="w-full max-w-2xl">
-                    <div class="flex">
-                        <input type="text" 
-                               id="searchInput" 
-                               class="w-full bg-[#111] border border-[#333] text-white px-6 py-4 rounded-l-lg focus:outline-none focus:border-white transition-colors" 
-                               placeholder="搜索你喜欢的视频..."
-                               aria-label="视频搜索框">
-                        <button onclick="search()" 
-                                class="px-8 py-4 bg-white text-black font-medium rounded-r-lg hover:bg-gray-200 transition-colors"
-                                aria-label="搜索按钮">
-                            搜索
-                        </button>
-                    </div>
-                    
-                    <!-- 添加最近搜索记录部分 -->
-                    <div id="recentSearches" class="mt-4 flex flex-wrap gap-2" aria-label="最近搜索记录">
-                        <!-- 这里会动态插入最近的搜索记录 -->
-                    </div>
-                    <!-- 清除历史按钮已移至搜索历史标题行 -->
+                <!-- Recent Searches -->
+                <div id="recentSearches" class="mt-4 flex flex-wrap gap-2 justify-center" aria-label="最近搜索记录">
+                    <!-- Search history tags inserted by JS -->
                 </div>
             </div>
-            
-            <!-- 搜索结果：初始隐藏 -->
-            <div id="resultsArea" class="w-full hidden">
-                <div id="results" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                </div>
-            </div>
-        </div>
-    </div>
+        </section>
 
-    <!-- 页脚区域 -->
-    <footer class="footer mt-8 py-6 border-t border-[#333] bg-[#0a0a0a]">
+        <!-- Results Area (Initially Hidden) -->
+        <section id="resultsArea" aria-label="搜索结果区域" class="w-full hidden mt-8">
+            <div id="results" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+                <!-- Search results will be inserted here by JS -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer mt-auto py-6 border-t border-[#333] bg-[#0a0a0a]">
         <div class="container mx-auto px-4">
-            <div class="flex flex-col md:flex-row justify-between items-center">
+            <div class="flex flex-col md:flex-row justify-between items-center text-center md:text-left">
                 <div class="mb-4 md:mb-0">
-                    <div class="flex items-center justify-center md:justify-start">
-                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="flex items-center justify-center md:justify-start mb-1">
+                         <svg class="w-5 h-5 mr-2 text-[#00ccff]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                        </svg>
-                        <span class="gradient-text font-bold">LibreTV</span>
+                         </svg>
+                        <span class="gradient-text font-bold text-lg">LibreTV</span>
                     </div>
-                    <p class="text-gray-500 text-sm mt-2 text-center md:text-left">© 2025 LibreTV - 自由观影，畅享精彩</p>
+                    <p class="text-gray-500 text-xs">&copy; 2024 LibreTV - 自由观影，畅享精彩</p>
                 </div>
-                
-                <div class="text-center md:text-right">
-                    <p class="text-gray-500 text-sm max-w-md">
-                        免责声明：本站仅为视频搜索工具，不存储、上传或分发任何视频内容。
-                        所有视频均来自第三方API接口。如有侵权，请联系相关内容提供方。
+                <div class="text-xs text-gray-500 max-w-md">
+                    <p class="mb-1">
+                        免责声明：本站仅为视频聚合搜索工具，不存储、上传、分发任何视频。所有内容均来自第三方API。如有侵权，请联系源站处理。
                     </p>
-                    <div class="mt-2 flex justify-center md:justify-end space-x-4">
-                        <a href="about.html" class="text-gray-400 hover:text-white text-sm transition-colors">关于我们</a>
-                        <a href="privacy.html" class="text-gray-400 hover:text-white text-sm transition-colors">隐私政策</a>
+                    <div class="flex justify-center md:justify-end space-x-3">
+                        <!-- Add links if needed, e.g., About, Privacy -->
+                         <!-- <a href="#" class="text-gray-400 hover:text-white transition-colors">关于</a> -->
+                         <!-- <a href="#" class="text-gray-400 hover:text-white transition-colors">隐私</a> -->
                     </div>
                 </div>
             </div>
         </div>
     </footer>
 
-    <!-- 详情模态框 -->
-    <div id="modal" class="fixed inset-0 bg-black/95 hidden flex items-center justify-center transition-opacity duration-300">
-        <div class="bg-[#111] p-8 rounded-lg w-11/12 max-w-4xl border border-[#333] max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center mb-6 flex-none">
-                <h2 id="modalTitle" class="text-2xl font-bold gradient-text break-words pr-4 max-w-[80%]"></h2>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-white text-2xl transition-colors flex-shrink-0">&times;</button>
-            </div>
-            <div id="modalContent" class="overflow-auto flex-1 min-h-0">
-                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Modals & Overlays -->
+    <!-- Details Modal -->
+     <div id="modal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-[70] p-4" aria-modal="true" role="dialog">
+         <div class="bg-[#111] p-4 sm:p-6 rounded-lg w-full max-w-4xl border border-[#333] max-h-[90vh] flex flex-col shadow-xl">
+             <div class="flex justify-between items-center mb-4 flex-shrink-0">
+                 <h2 id="modalTitle" class="text-xl sm:text-2xl font-bold gradient-text break-words pr-4"></h2>
+                 <button onclick="closeModal()" class="text-gray-400 hover:text-white text-2xl transition-colors p-1 rounded-full hover:bg-gray-700 flex-shrink-0" aria-label="关闭详情">&times;</button>
+             </div>
+             <div id="modalContent" class="overflow-y-auto flex-grow min-h-0 pr-1">
+                 <!-- Episode grid inserted by JS -->
+                 <div class="text-center py-8 text-gray-400">加载剧集中...</div>
+             </div>
+         </div>
+     </div>
 
-    <!-- 密码验证弹窗 -->
-    <div id="passwordModal" class="fixed inset-0 bg-black/95 hidden items-center justify-center z-[65] transition-opacity duration-300">
-        <div class="bg-[#111] p-8 rounded-lg w-11/12 max-w-md border border-[#333] max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center mb-6 flex-none">
-                <h2 class="text-2xl font-bold gradient-text">访问验证</h2>
-            </div>
-            <div class="mb-6">
-                <p class="text-gray-300 mb-4">请输入密码继续访问</p>
-                <input type="password" id="passwordInput" class="w-full bg-[#111] border border-[#333] text-white px-4 py-3 rounded-lg focus:outline-none focus:border-white transition-colors" placeholder="密码...">
-                <p id="passwordError" class="text-red-500 mt-2 hidden">密码错误，请重试</p>
-            </div>
-            <button id="passwordSubmitBtn" class="px-6 py-3 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-300">
-                确认
+
+    <!-- Password Modal -->
+    <div id="passwordModal" class="fixed inset-0 bg-black/95 hidden items-center justify-center z-[80] p-4 transition-opacity duration-300" aria-modal="true" role="dialog">
+        <div class="bg-[#111] p-6 sm:p-8 rounded-lg w-full max-w-md border border-[#333] shadow-xl">
+            <h2 class="text-xl sm:text-2xl font-bold gradient-text mb-4 text-center">访问验证</h2>
+            <p class="text-gray-300 mb-4 text-sm text-center">此站点受密码保护，请输入密码继续。</p>
+            <input type="password" id="passwordInput" name="password" class="w-full bg-[#1a1a1a] border border-[#333] text-white px-4 py-3 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors mb-2 text-base placeholder-gray-500" placeholder="输入密码..." autocomplete="current-password">
+            <p id="passwordError" class="text-red-500 text-sm mt-1 mb-3 hidden text-center">密码错误，请重试。</p>
+            <button id="passwordSubmitBtn" type="button" onclick="handlePasswordSubmit()" class="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#111] focus:ring-blue-500">
+                确认访问
             </button>
         </div>
     </div>
 
-    <!-- 版权声明弹窗 -->
-    <div id="disclaimerModal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-[60]">
-        <div class="bg-[#111] p-8 rounded-lg border border-[#333] w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 class="text-2xl font-bold gradient-text mb-6 text-center">使用声明</h2>
-            <div class="text-gray-300 space-y-4">
-                <p>
-                    欢迎使用 LibreTV。在开始使用前，请您了解并同意以下条款：
-                </p>
-                <p>
-                    <strong class="text-blue-400">服务性质：</strong> LibreTV 仅提供视频搜索服务，不直接提供、存储或上传任何视频内容。所有搜索结果均来自第三方公开接口。
-                </p>
-                <p>
-                    <strong class="text-blue-400">用户责任：</strong> 用户在使用本站服务时，须遵守相关法律法规，不得利用搜索结果从事侵权行为，如下载、传播未经授权的作品等。
-                </p>
-                <p>
-                    <strong class="text-blue-400">侵权投诉：</strong> 若您是版权方或相关权利人，发现搜索结果中存在侵犯您合法权益的内容，请通过 <a href="mailto:troll@pissmail.com" class="text-blue-400 hover:underline">troll@pissmail.com</a> 向我们反馈。我们将在收到投诉后尽快核实处理。
-                </p>
+    <!-- Disclaimer Modal -->
+    <div id="disclaimerModal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-[90] p-4 transition-opacity duration-300" aria-modal="true" role="dialog">
+        <div class="bg-[#111] p-6 sm:p-8 rounded-lg border border-[#333] w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
+            <h2 class="text-xl sm:text-2xl font-bold gradient-text mb-4 text-center">使用声明</h2>
+            <div class="text-gray-300 space-y-3 text-sm sm:text-base">
+                <p>欢迎使用 LibreTV。在您使用本站服务前，请仔细阅读并理解以下条款：</p>
+                <p><strong class="text-blue-400">服务性质：</strong> LibreTV 是一个视频信息聚合和搜索工具，自身不存储、上传、下载或分发任何视听内容。所有内容均通过公开分享的第三方API接口获取。</p>
+                <p><strong class="text-blue-400">版权责任：</strong> 本站尊重并保护知识产权。内容的版权归原权利人所有。我们强烈建议用户通过合法渠道观看影视作品。</p>
+                 <p><strong class="text-blue-400">用户行为：</strong> 请用户在遵守当地法律法规的前提下使用本站。禁止利用本站服务从事任何侵犯他人合法权益（包括知识产权）或违反法律法规的行为。</p>
+                 <p><strong class="text-blue-400">内容准确性：</strong> 由于内容来自第三方接口，本站无法保证所有信息的实时性和准确性。</p>
+                 <p><strong class="text-blue-400">免责声明：</strong> 用户因使用本站服务而产生的任何直接或间接损失，本站不承担责任。您需要自行判断信息的可靠性并承担相应风险。</p>
             </div>
             <div class="mt-6 flex justify-center">
-                <button id="acceptDisclaimerBtn" class="px-6 py-3 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-300">
-                    我已了解并接受
+                <button id="acceptDisclaimerBtn" type="button" class="px-6 py-3 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#111] focus:ring-indigo-500">
+                    我已阅读并同意
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- 错误提示框 -->
-    <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 opacity-0 -translate-y-full">
+    <!-- Toast Notification Area -->
+    <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-lg shadow-lg text-white transform transition-all duration-300 opacity-0 -translate-y-full" role="alert">
         <p id="toastMessage"></p>
     </div>
 
-    <!-- 添加 loading 提示框 -->
-    <div id="loading" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50">
-        <div class="bg-[#111] p-8 rounded-lg border border-[#333] flex items-center space-x-4">
-            <div class="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-            <p class="text-white text-lg">加载中...</p>
+    <!-- Loading Overlay -->
+    <div id="loading" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[95]" role="status" aria-live="polite">
+        <div class="bg-[#111] p-6 rounded-lg border border-[#333] flex items-center space-x-4 shadow-xl">
+            <div class="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin" aria-hidden="true"></div>
+            <p class="text-white text-base">加载中...</p>
         </div>
     </div>
 
-    <!-- JSON-LD 结构化数据 -->
+    <!-- JSON-LD Structured Data for SEO -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "LibreTV",
-        "url": "https://libretv.is-an.org/",
-        "description": "免费在线视频搜索与观看平台",
+        "url": "https://libretv.is-an.org/", // Update with actual URL
+        "description": "免费在线视频搜索与观看平台，聚合多个影视资源。",
         "potentialAction": {
             "@type": "SearchAction",
-            "target": "https://libretv.is-an.org/?s={search_term_string}",
+            "target": {
+                 "@type": "EntryPoint",
+                 "urlTemplate": "https://libretv.is-an.org/?s={search_term_string}" // Update with actual URL and query param if different
+            },
             "query-input": "required name=search_term_string"
         }
     }
     </script>
 
-    <script src="js/config.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/password.js"></script>
-    <script src="js/app.js"></script>
+    <!-- JavaScript Files -->
+    <!-- Load dependencies first -->
+    <script src="js/config.js" defer></script>
+    <script src="js/sha256.js" defer></script> <!-- Needed by password.js -->
+    <script src="js/password.js" defer></script> <!-- Needs config.js and sha256.js -->
+    <script src="js/ui.js" defer></script>      <!-- Needs config.js -->
+    <script src="js/api.js" defer></script>     <!-- Needs config.js -->
+    <!-- Load main application logic last -->
+    <script src="js/app.js" defer></script>      <!-- Needs all above -->
 
-    <!-- 环境变量注入脚本 -->
+    <!-- Environment Variable Injection Placeholder -->
     <script>
-        // 创建全局环境变量对象
+        // Initialize global __ENV__ object if it doesn't exist
         window.__ENV__ = window.__ENV__ || {};
-        
-        // 注入服务器端环境变量 (将由服务器端替换)
-        // PASSWORD 变量将在这里被服务器端注入
+        // This placeholder will be replaced by middleware (_middleware.js or middleware.js)
+        // It injects the SHA-256 hash of the PASSWORD environment variable.
         window.__ENV__.PASSWORD = "{{PASSWORD}}";
     </script>
 
-    <!-- 弹窗显示脚本 -->
+    <!-- Disclaimer Popup Logic -->
     <script>
-        // 在页面加载完成后检查用户是否首次访问
+        // Show disclaimer only once per user session/device
         document.addEventListener('DOMContentLoaded', function() {
-            // 检查用户是否已经看过声明
-            const hasSeenDisclaimer = localStorage.getItem('hasSeenDisclaimer');
-            
+            const disclaimerKey = 'hasSeenDisclaimer_v1'; // Use key from config.js if defined there
+            const hasSeenDisclaimer = localStorage.getItem(disclaimerKey);
+
             if (!hasSeenDisclaimer) {
-                // 显示弹窗
                 const disclaimerModal = document.getElementById('disclaimerModal');
-                disclaimerModal.style.display = 'flex';
-                
-                // 添加接受按钮事件
-                document.getElementById('acceptDisclaimerBtn').addEventListener('click', function() {
-                    // 保存用户已看过声明的状态
-                    localStorage.setItem('hasSeenDisclaimer', 'true');
-                    // 隐藏弹窗
-                    disclaimerModal.style.display = 'none';
-                });
+                const acceptButton = document.getElementById('acceptDisclaimerBtn');
+
+                if (disclaimerModal && acceptButton) {
+                    disclaimerModal.style.display = 'flex'; // Show the modal
+                    acceptButton.addEventListener('click', function() {
+                        try {
+                            localStorage.setItem(disclaimerKey, 'true'); // Store acceptance
+                        } catch (e) {
+                            console.warn("Could not save disclaimer acceptance to localStorage:", e);
+                        }
+                        disclaimerModal.style.display = 'none'; // Hide the modal
+                    }, { once: true }); // Ensure listener is added only once
+                }
             }
         });
     </script>
 </body>
-</html>
