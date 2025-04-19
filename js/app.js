@@ -906,30 +906,7 @@ function createResultCard(item) {
 
     return card;
 }
-/ Also, ensure the sanitizeUrl function exists and handles potential non-string inputs safely.
-// If you don't have it, here's a basic version:
-/**
- * Basic URL sanitization (replace if you have a more robust one).
- * Ensures the output is a string and potentially escapes characters.
- * WARNING: This is NOT a replacement for proper URL validation/sanitization libraries
- * if security against complex attacks is paramount.
- * @param {any} urlInput - The URL to sanitize.
- * @returns {string} The sanitized URL string.
- */
-function sanitizeUrl(urlInput) {
-    if (urlInput === null || urlInput === undefined) {
-        return '';
-    }
-    const urlString = String(urlInput);
-    // Basic check for potentially harmful characters or protocols (customize as needed)
-    // This example is very basic and focuses on preventing simple script injection.
-    if (/^javascript:/i.test(urlString)) {
-        console.warn("Blocked potentially unsafe URL protocol:", urlString);
-        return ''; // Block javascript: URLs
-    }
-    // Simple escaping of characters that might break HTML attributes
-    return urlString.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
+
 // Add event listener to the results container for delegated clicks
 document.addEventListener('DOMContentLoaded', () => {
     const resultsContainer = document.getElementById('results');
