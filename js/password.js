@@ -73,6 +73,7 @@ async function verifyPassword(password) {
         return false;
     }
 
+
     try {
         // Use the globally available sha256 function (ensure sha256.js is loaded)
         if (typeof window.sha256 !== 'function') {
@@ -106,6 +107,7 @@ async function verifyPassword(password) {
         console.error('Error during password hashing or verification:', error);
         return false;
     }
+
 }
 
 // --- UI Interaction Functions ---

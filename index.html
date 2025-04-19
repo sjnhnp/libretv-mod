@@ -3,37 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LibreTV - 免费在线视频搜索与观看平台</title>
-    <meta name="description" content="LibreTV是一个免费的在线视频搜索平台，无广告、安全，提供来自多个视频源的内容搜索与观看服务，无需注册即可使用。">
-    <meta name="keywords" content="在线视频, 免费视频, 视频搜索, 电影, 电视剧, LibreTV, 影视搜索, 聚合搜索">
-    <meta name="author" content="LibreTV Team">
-    <meta name="robots" content="index, follow"> <!-- Allow search engine indexing -->
 
+    <title>X</title>
+    <meta name="description" content="">
+    <meta name="keywords" content="">
+    <meta name="author" content="">
+    <meta name="robots" content="index, follow">
+    
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://libretv.is-an.org/"> <!-- Update with actual URL -->
-    <meta property="og:title" content="LibreTV - 免费在线视频搜索与观看平台">
-    <meta property="og:description" content="搜索并观看来自多个视频源的内容，支持多种设备，无需注册即可使用。聚合影视搜索。">
-    <meta property="og:image" content="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png"> <!-- Update with a better preview image -->
-
+    <meta property="og:url" content="">
+    <meta property="og:title" content="">
+    <meta property="og:description" content="">
+    <meta property="og:image" content="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png">
+    
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://libretv.is-an.org/"> <!-- Update with actual URL -->
-    <meta property="twitter:title" content="LibreTV - 免费在线视频搜索与观看平台">
-    <meta property="twitter:description" content="搜索并观看来自多个视频源的内容，支持多种设备，无需注册即可使用。聚合影视搜索。">
-    <meta property="twitter:image" content="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png"> <!-- Update with a better preview image -->
+    <meta property="twitter:url" content="">
+    <meta property="twitter:title" content="">
+    <meta property="twitter:description" content="">
+    <meta property="twitter:image" content="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png">
+    
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png">
     <link rel="apple-touch-icon" href="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://libretv.is-an.org/"> <!-- Update with actual URL -->
+
+    <link rel="canonical" href=""> <!-- Update with actual URL -->
 
     <!-- Preconnect for performance -->
     <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
 
-    <!-- Tailwind CSS -->
+
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Custom Styles -->
     <link rel="stylesheet" href="css/styles.css"> <!-- Ensure path is correct -->
@@ -160,6 +164,7 @@
         </div>
     </aside>
 
+
     <!-- Main Content Area -->
     <main class="container mx-auto px-4 py-8 flex-grow flex flex-col">
         <!-- Header -->
@@ -183,6 +188,7 @@
                     <button type="button" onclick="search()" class="px-6 sm:px-8 py-3 sm:py-4 bg-blue-600 text-white font-medium rounded-r-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#111] focus:ring-blue-500 flex-shrink-0" aria-label="搜索">
                         搜索
                     </button>
+
                 </div>
                 <!-- Recent Searches -->
                 <div id="recentSearches" class="mt-4 flex flex-wrap gap-2 justify-center" aria-label="最近搜索记录">
@@ -207,10 +213,12 @@
                     <div class="flex items-center justify-center md:justify-start mb-1">
                          <svg class="w-5 h-5 mr-2 text-[#00ccff]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+
                          </svg>
                         <span class="gradient-text font-bold text-lg">LibreTV</span>
                     </div>
                     <p class="text-gray-500 text-xs">&copy; 2024 LibreTV - 自由观影，畅享精彩</p>
+
                 </div>
                 <div class="text-xs text-gray-500 max-w-md">
                     <p class="mb-1">
@@ -255,17 +263,27 @@
         </div>
     </div>
 
-    <!-- Disclaimer Modal -->
-    <div id="disclaimerModal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-[90] p-4 transition-opacity duration-300" aria-modal="true" role="dialog">
-        <div class="bg-[#111] p-6 sm:p-8 rounded-lg border border-[#333] w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
-            <h2 class="text-xl sm:text-2xl font-bold gradient-text mb-4 text-center">使用声明</h2>
-            <div class="text-gray-300 space-y-3 text-sm sm:text-base">
-                <p>欢迎使用 LibreTV。在您使用本站服务前，请仔细阅读并理解以下条款：</p>
-                <p><strong class="text-blue-400">服务性质：</strong> LibreTV 是一个视频信息聚合和搜索工具，自身不存储、上传、下载或分发任何视听内容。所有内容均通过公开分享的第三方API接口获取。</p>
-                <p><strong class="text-blue-400">版权责任：</strong> 本站尊重并保护知识产权。内容的版权归原权利人所有。我们强烈建议用户通过合法渠道观看影视作品。</p>
-                 <p><strong class="text-blue-400">用户行为：</strong> 请用户在遵守当地法律法规的前提下使用本站。禁止利用本站服务从事任何侵犯他人合法权益（包括知识产权）或违反法律法规的行为。</p>
-                 <p><strong class="text-blue-400">内容准确性：</strong> 由于内容来自第三方接口，本站无法保证所有信息的实时性和准确性。</p>
-                 <p><strong class="text-blue-400">免责声明：</strong> 用户因使用本站服务而产生的任何直接或间接损失，本站不承担责任。您需要自行判断信息的可靠性并承担相应风险。</p>
+
+    <!-- 版权声明弹窗 -->
+    <div id="disclaimerModal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-[60]">
+        <div class="bg-[#111] p-8 rounded-lg border border-[#333] w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold gradient-text mb-6 text-center">使用说明</h2>
+            <div class="text-gray-300 space-y-4">
+                <p>
+                    网页顶端[左右]功能键：
+                </p>
+
+                <p>
+                    <strong class="text-blue-400">左 观看历史：</strong> 集数定位、观看进度
+                </p>
+                <p>
+                    <strong class="text-blue-400">右 功能设置：</strong> 
+                                <ul>
+<li>1、选择线路：默认黑木耳清晰度最高、可多选来源</li>
+<li>2、自定义添加影视采集资源</li>
+<li>3、去广告、去色情</li>                               
+</ul>
+
             </div>
             <div class="mt-6 flex justify-center">
                 <button id="acceptDisclaimerBtn" type="button" class="px-6 py-3 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#111] focus:ring-indigo-500">
@@ -307,6 +325,7 @@
     }
     </script>
 
+
     <!-- JavaScript Files -->
     <!-- Load dependencies first -->
     <script src="js/config.js" defer></script>
@@ -317,13 +336,26 @@
     <!-- Load main application logic last -->
     <script src="js/app.js" defer></script>      <!-- Needs all above -->
 
+    <!-- 引入纯 JS sha256（HTTP 下依然可用） -->
+    <script src="https://cdn.jsdelivr.net/npm/js-sha256@0.9.0/build/sha256.min.js"></script>
+    <script>
+        // 保存原始 js‑sha256 实现，避免被 password.js 覆盖
+        window._jsSha256 = window.sha256;
+    </script>
+
+
     <!-- Environment Variable Injection Placeholder -->
     <script>
         // Initialize global __ENV__ object if it doesn't exist
         window.__ENV__ = window.__ENV__ || {};
-        // This placeholder will be replaced by middleware (_middleware.js or middleware.js)
-        // It injects the SHA-256 hash of the PASSWORD environment variable.
+
+        // 注入服务器端环境变量 (将由服务器端替换)
+        // PASSWORD 变量将在这里被服务器端注入
+
         window.__ENV__.PASSWORD = "{{PASSWORD}}";
+        // Docker 部署时可通过构建/启动脚本注入 PROXY_URL/PROXY_URLS
+        // 例如 window.__ENV__.PROXY_URL = "https://api.codetabs.com/v1/proxy?quest=";
+        // window.__ENV__.PROXY_URLS = ["https://api.codetabs.com/v1/proxy?quest=", ...];
     </script>
 
     <!-- Disclaimer Popup Logic -->
@@ -352,3 +384,6 @@
         });
     </script>
 </body>
+
+</html>
+

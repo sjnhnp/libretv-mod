@@ -1,4 +1,6 @@
+
 // js/config.js - Global constants and configuration settings
+
 
 // Proxy URL configuration (Update if deployment environment changes)
 const PROXY_URL = '/proxy/'; // Relative path for Cloudflare Pages, Vercel with rewrites, etc.
@@ -27,11 +29,13 @@ const PASSWORD_CONFIG = {
 
 // Site Information
 const SITE_CONFIG = {
-    name: 'LibreTV',
-    url: 'https://libretv.is-an.org', // Update if domain changes
-    description: '免费在线视频搜索与观看平台',
-    logo: 'https://images.icon-icons.com/38/PNG/512/retrotv_5520.png', // Consider hosting locally
-    version: '1.0.4' // Update version as needed
+
+    name: 'x,
+    url: '',
+    description: '',
+    logo: 'https://images.icon-icons.com/38/PNG/512/retrotv_5520.png',
+    version: '1.0.3'
+
 };
 
 // Built-in API Site Definitions

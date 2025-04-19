@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LibreTV 播放器</title>
+    <title>播放器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/styles.css">
     <style>
@@ -89,7 +89,7 @@
                 <svg class="w-8 h-8 mr-2 text-[#00ccff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                 </svg>
-                <h1 class="text-xl font-bold gradient-text">LibreTV</h1>
+                <h1 class="text-xl font-bold gradient-text">X</h1>
             </a>
         </div>
         <h2 id="videoTitle" class="text-xl font-semibold truncate flex-1 text-center"></h2>
@@ -170,6 +170,7 @@
     <script src="https://s4.zstatic.net/ajax/libs/hls.js/1.5.6/hls.min.js" integrity="sha256-X1GmLMzVcTBRiGjEau+gxGpjRK96atNczcLBg5w6hKA=" crossorigin="anonymous"></script>
     <script src="https://s4.zstatic.net/ajax/libs/dplayer/1.26.0/DPlayer.min.js" integrity="sha256-OJg03lDZP0NAcl3waC9OT5jEa8XZ8SM2n081Ik953o4=" crossorigin="anonymous"></script>
     <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
     <script>
     // ======= 优化重构后player.html核心JS =======
     let currentVideoTitle = '';
@@ -198,6 +199,7 @@
             localStorage.setItem('autoplayEnabled', autoplayEnabled);
         });
 
+
         // 合理恢复集数、修正索引
         try {
             currentEpisodes = episodesList ? JSON.parse(decodeURIComponent(episodesList))
@@ -208,6 +210,31 @@
                 const newUrl = new URL(window.location.href);
                 newUrl.searchParams.set('index', index);
                 window.history.replaceState({}, '', newUrl);
+
+            // 设置页面标题
+            document.title = currentVideoTitle + ' - 播放器';
+            document.getElementById('videoTitle').textContent = currentVideoTitle;
+            
+            // 初始化播放器
+            if (videoUrl) {
+                initPlayer(videoUrl);
+                
+                // 尝试从URL参数中恢复播放位置
+                const position = urlParams.get('position');
+                if (position) {
+                    setTimeout(() => {
+                        if (dp && dp.video) {
+                            const positionNum = parseInt(position);
+                            if (!isNaN(positionNum) && positionNum > 0) {
+                                dp.seek(positionNum);
+                                showPositionRestoreHint(positionNum);
+                            }
+                        }
+                    }, 1500);
+                }
+            } else {
+                showError('无效的视频链接');
+
             }
             currentEpisodeIndex = index;
         } catch (e) {
@@ -239,6 +266,7 @@
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') saveCurrentProgress();
         });
+
 
         const waitForVideo = setInterval(() => {
             if (dp && dp.video) {
@@ -353,6 +381,7 @@
                                 bufferAppendErrorCount++;
                                 if (playbackStarted) return;
                                 if (bufferAppendErrorCount >= 3) hls.recoverMediaError();
+
                             }
                             if (data.fatal && !playbackStarted) {
                                 switch(data.type) {

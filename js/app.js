@@ -54,7 +54,7 @@ function initializeApp() {
     // Set initial state for filter toggles
     const yellowFilterToggle = document.getElementById('yellowFilterToggle');
     if (yellowFilterToggle) {
-        yellowFilterToggle.checked = localStorage.getItem('yellowFilterEnabled') === 'true';
+        yellowFilterToggle.checked = localStorage.getItem('yellowFilterEnabled') !== 'false';
     }
 
     const adFilterToggle = document.getElementById('adFilterToggle');
@@ -1204,6 +1204,14 @@ function playVideo(encodedUrl, encodedVodName, episodeIndex) {
     if (typeof addToViewingHistory === 'function') {
         addToViewingHistory(videoInfo);
     }
+
+    
+    // 构建播放页面URL，传递必要参数
+    const playerUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(videoTitle)}&index=${episodeIndex}&source=${encodeURIComponent(sourceName)}`;
+    
+    // 在新标签页中打开播放页面
+    window.location.href = playerUrl;
+
 
     // Construct player URL with necessary parameters
     const playerUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(vodName)}&index=${episodeIndex}&source=${encodeURIComponent(sourceName)}`;
