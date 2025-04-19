@@ -836,29 +836,36 @@ function createResultCard(item) {
     const card = document.createElement('div');
     card.className = 'card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full'; // Ensure h-full
 
-    // Use helper function to safely get properties
-    const id = getSafeProperty(item, 'vod_id');
+    // --- MODIFICATION START ---
+    // Get raw ID first, handle potential non-string types explicitly for the dataset
+    const rawId = item?.vod_id;
+    const idString = (rawId !== null && rawId !== undefined) ? String(rawId) : ''; // Convert ID to string, handle null/undefined
+
+    // Use helper function for properties that need sanitization and might be missing
     const name = getSafeProperty(item, 'vod_name', '未知标题');
     const remarks = getSafeProperty(item, 'vod_remarks', '暂无介绍');
     const typeName = getSafeProperty(item, 'type_name');
     const year = getSafeProperty(item, 'vod_year');
-    const pic = sanitizeUrl(item.vod_pic || ''); // Sanitize URL
     const sourceName = getSafeProperty(item, 'source_name');
     const sourceCode = getSafeProperty(item, 'source_code');
-    const apiUrl = sanitizeUrl(item.api_url || ''); // For custom APIs
+
+    // Sanitize URLs separately
+    const pic = item?.vod_pic ? sanitizeUrl(String(item.vod_pic)) : ''; // Ensure URL is string before sanitizing
+    const apiUrl = item?.api_url ? sanitizeUrl(String(item.api_url)) : ''; // Ensure URL is string before sanitizing
+    // --- MODIFICATION END ---
 
     const hasCover = pic.startsWith('http'); // Check if pic is a valid URL
 
     // Add data attributes for click handler
-    card.dataset.id = id;
-    card.dataset.name = name;
-    card.dataset.source = sourceCode;
+    // Use the processed idString for data-id
+    card.dataset.id = idString;
+    card.dataset.name = name; // Already sanitized
+    card.dataset.source = sourceCode; // Already sanitized
     if (apiUrl) {
-        card.dataset.apiUrl = apiUrl;
+        card.dataset.apiUrl = apiUrl; // Already sanitized
     }
      // Add specific identifier for event delegation
      card.dataset.action = 'showDetails';
-
 
     card.innerHTML = `
         <div class="md:flex h-full"> <!-- Ensure flex container takes full height -->
@@ -899,7 +906,30 @@ function createResultCard(item) {
 
     return card;
 }
-
+/ Also, ensure the sanitizeUrl function exists and handles potential non-string inputs safely.
+// If you don't have it, here's a basic version:
+/**
+ * Basic URL sanitization (replace if you have a more robust one).
+ * Ensures the output is a string and potentially escapes characters.
+ * WARNING: This is NOT a replacement for proper URL validation/sanitization libraries
+ * if security against complex attacks is paramount.
+ * @param {any} urlInput - The URL to sanitize.
+ * @returns {string} The sanitized URL string.
+ */
+function sanitizeUrl(urlInput) {
+    if (urlInput === null || urlInput === undefined) {
+        return '';
+    }
+    const urlString = String(urlInput);
+    // Basic check for potentially harmful characters or protocols (customize as needed)
+    // This example is very basic and focuses on preventing simple script injection.
+    if (/^javascript:/i.test(urlString)) {
+        console.warn("Blocked potentially unsafe URL protocol:", urlString);
+        return ''; // Block javascript: URLs
+    }
+    // Simple escaping of characters that might break HTML attributes
+    return urlString.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 // Add event listener to the results container for delegated clicks
 document.addEventListener('DOMContentLoaded', () => {
     const resultsContainer = document.getElementById('results');
