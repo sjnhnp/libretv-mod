@@ -185,7 +185,7 @@
         </div>
 
         <div class="player-container">
-            <div class="flex justify-between items-center my-4">
+            <div class="flex justify-between items-center mt-4 mb-2">
                 <button onclick="playPreviousEpisode()" id="prevButton" class="px-4 py-2 bg-[#222] hover:bg-[#333] border border-[#333] rounded-lg transition-colors">
                     <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
@@ -200,15 +200,16 @@
                     </svg>
                 </button>
             </div>
-        </div>
 
-        <div class="player-container">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex justify-end items-center mb-4">
                 <span class="text-gray-400 text-sm">自动连播</span>
                 <label class="switch">
                     <input type="checkbox" id="autoplayToggle">
                     <span class="slider"></span>
                 </label>
+                <button onclick="toggleEpisodeOrder()" class="ml-4 px-4 py-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold rounded-full flex items-center justify-center space-x-2">
+                    <span id="orderText">倒序排列</span>
+                </button>
             </div>
         </div>
 
@@ -234,6 +235,7 @@
         let currentVideoTitle = '';
         let currentEpisodeIndex = 0;
         let currentEpisodes = [];
+        let episodesReversed = false;
         let dp = null;
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -241,8 +243,8 @@
             const videoUrl = urlParams.get('url');
             const title = urlParams.get('title');
             currentEpisodeIndex = parseInt(urlParams.get('index'), 10) || 0;
-
             currentVideoTitle = title || localStorage.getItem('currentVideoTitle') || '未知视频';
+
             if (videoUrl) {
                 initPlayer(videoUrl);
             } else {
@@ -254,7 +256,6 @@
         });
 
         function initPlayer(videoUrl) {
-            // Create player instance and load video
             dp = new DPlayer({
                 container: document.getElementById('player'),
                 autoplay: true,
@@ -269,14 +270,13 @@
                 updateEpisodeInfo();
             });
 
-            // Handle error events
             dp.on('error', function() {
                 showError('视频播放失败，请检查视频源或网络连接');
             });
         }
 
         function showError(message) {
-            if (dp && dp.video && dp.video.currentTime > 1) return;  // Ignore if video is playing
+            if (dp && dp.video && dp.video.currentTime > 1) return;
             document.getElementById('loading').style.display = 'none';
             const errorContainer = document.getElementById('error');
             errorContainer.style.display = 'flex';
@@ -284,10 +284,11 @@
         }
 
         function updateEpisodeInfo() {
+            const episodeInfo = document.getElementById('episodeInfo');
             if (currentEpisodes.length > 0) {
-                document.getElementById('episodeInfo').textContent = `第 ${currentEpisodeIndex + 1}/${currentEpisodes.length} 集`;
+                episodeInfo.textContent = `第 ${currentEpisodeIndex + 1}/${currentEpisodes.length} 集`;
             } else {
-                document.getElementById('episodeInfo').textContent = '无集数信息';
+                episodeInfo.textContent = '无集数信息';
             }
         }
 
@@ -317,8 +318,12 @@
             }
             updateEpisodeInfo();
         }
-        
-        // 这里继续添加其他函数...
+
+        function toggleEpisodeOrder() {
+            episodesReversed = !episodesReversed;
+            localStorage.setItem('episodesReversed', episodesReversed);
+            renderEpisodes();
+        }
     </script>
 </body>
 </html>
