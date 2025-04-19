@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LibreTV 播放器</title>
+    <title>播放器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/styles.css">
     <style>
@@ -162,7 +162,7 @@
                 <svg class="w-8 h-8 mr-2 text-[#00ccff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                 </svg>
-                <h1 class="text-xl font-bold gradient-text">LibreTV</h1>
+                <h1 class="text-xl font-bold gradient-text">X</h1>
             </a>
         </div>
         <h2 id="videoTitle" class="text-xl font-semibold truncate flex-1 text-center"></h2>
@@ -254,6 +254,7 @@
     <script src="https://s4.zstatic.net/ajax/libs/hls.js/1.5.6/hls.min.js" integrity="sha256-X1GmLMzVcTBRiGjEau+gxGpjRK96atNczcLBg5w6hKA=" crossorigin="anonymous"></script>
     <script src="https://s4.zstatic.net/ajax/libs/dplayer/1.26.0/DPlayer.min.js" integrity="sha256-OJg03lDZP0NAcl3waC9OT5jEa8XZ8SM2n081Ik953o4=" crossorigin="anonymous"></script>
     <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
     <script>
         // 全局变量
         let currentVideoTitle = '';
@@ -337,7 +338,7 @@
             }
 
             // 设置页面标题
-            document.title = currentVideoTitle + ' - LibreTV播放器';
+            document.title = currentVideoTitle + ' - 播放器';
             document.getElementById('videoTitle').textContent = currentVideoTitle;
             
             // 初始化播放器
@@ -509,22 +510,23 @@
                 hotkey: true,        // 启用键盘控制，包括空格暂停/播放、方向键控制进度和音量
                 mutex: true,
                 volume: 0.7,
+                playbackSpeed: [0.5, 0.75, 1, 1.25, 1.5, 2],
                 screenshot: true,                // 启用截图功能
-                preventClickToggle: false,       // 允许点击视频切换播放/暂停
+                preventClickToggle: true,       // 允许点击视频切换播放/暂停
                 airplay: true,                   // 在Safari中启用AirPlay功能
                 chromecast: true,                // 启用Chromecast投屏功能
-                contextmenu: [                   // 自定义右键菜单
-                    {
-                        text: '关于 LibreTV',
-                        link: 'https://github.com/bestzwei/LibreTV'
-                    },
-                    {
-                        text: '问题反馈',
-                        click: (player) => {
-                            window.open('https://github.com/bestzwei/LibreTV/issues', '_blank');
-                        }
-                    }
-                ],
+                //contextmenu: [                   // 自定义右键菜单
+                   // {
+                   //     text: '关于 LibreTV',
+                   //     link: 'https://github.com/bestzwei/LibreTV'
+                  //  },
+                  //  {
+                  //      text: '问题反馈',
+                  //      click: (player) => {
+                  //          window.open('https://github.com/bestzwei/LibreTV/issues', '_blank');
+                 //       }
+                 //   }
+              //  ],
                 video: {
                     url: videoUrl,
                     type: 'hls',

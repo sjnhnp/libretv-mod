@@ -12,6 +12,12 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY docker-entrypoint.sh /
 RUN chmod +x /docker-entrypoint.sh
 
+# 环境变量注入（假设用 nginx 或 http-server）
+ENV PROXY_URL=https://api.codetabs.com/v1/proxy?quest=
+# 构建后用脚本注入到 index.html 或 window.__ENV__
+# 例如:
+# RUN sed -i "s|window.__ENV__.PROXY_URL = .*|window.__ENV__.PROXY_URL = \"$PROXY_URL\";|" /usr/share/nginx/html/index.html
+
 # 暴露端口
 EXPOSE 80
 

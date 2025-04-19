@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 设置黄色内容过滤开关初始状态
     const yellowFilterToggle = document.getElementById('yellowFilterToggle');
     if (yellowFilterToggle) {
-        yellowFilterToggle.checked = localStorage.getItem('yellowFilterEnabled') === 'true';
+        yellowFilterToggle.checked = localStorage.getItem('yellowFilterEnabled') !== 'false';
     }
     
     // 设置广告过滤开关初始状态
@@ -924,7 +924,7 @@ function playVideo(url, vod_name, episodeIndex = 0) {
     const playerUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(videoTitle)}&index=${episodeIndex}&source=${encodeURIComponent(sourceName)}`;
     
     // 在新标签页中打开播放页面
-    window.open(playerUrl, '_blank');
+    window.location.href = playerUrl;
 }
 
 // 播放上一集
