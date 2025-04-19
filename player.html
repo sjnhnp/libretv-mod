@@ -741,5 +741,125 @@
             : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11V7a3 3 0 00-6 0v4m-3 4h12v6H6v-6z"/>';
     }
     </script>
+
+
+<script>
+// ======== 预加载下集(m3u8和前3个ts分片)极致快切方案 ========
+(function () {
+    // 检查浏览器是否支持 Cache Storage
+    const supportsCacheStorage = 'caches' in window && window.caches.open;
+
+    // 简单判断移动网络，2G等弱网不预加载
+    function isSlowNetwork() {
+        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        if (!connection || !connection.effectiveType) return false;
+        return /2g|slow-2g/.test(connection.effectiveType);
+    }
+
+    // 主预加载函数
+    async function preloadNextEpisodeParts() {
+        // 1. 网络与环境判断
+        if (isSlowNetwork()) return;
+        if (!window.currentEpisodes || typeof window.currentEpisodeIndex !== 'number') return;
+        // 2. 检查下集
+        const idx = window.currentEpisodeIndex;
+        if (idx >= window.currentEpisodes.length - 1) return;
+        const nextUrl = window.currentEpisodes[idx + 1];
+        if (!nextUrl || typeof nextUrl !== 'string') return;
+
+        try {
+            // 3. 预取m3u8
+            const m3u8Resp = await fetch(nextUrl, { method: "GET", credentials: "same-origin" });
+            if (!m3u8Resp.ok) return;
+            const m3u8Text = await m3u8Resp.text();
+
+            // 4. 解析前3个ts分片url
+            const tsUrls = [];
+            let base = nextUrl.substring(0, nextUrl.lastIndexOf('/') + 1);
+            m3u8Text.split('\n').forEach(line => {
+                const t = line.trim();
+                if (t && !t.startsWith("#") && /\.ts(\?|$)/i.test(t) && tsUrls.length < 3) {
+                    tsUrls.push(/^https?:\/\//i.test(t) ? t : base + t);
+                }
+            });
+            if (tsUrls.length === 0) return;
+
+            // 5. fetch ts分片，存入cache
+            tsUrls.forEach(tsUrl => {
+                if (supportsCacheStorage) {
+                    caches.open('libretv-preload1').then(cache => {
+                        cache.match(tsUrl).then(cachedResp => {
+                            if (!cachedResp) {
+                                fetch(tsUrl, { method: "GET", credentials: "same-origin" }).then(resp => {
+                                    if (resp.ok) cache.put(tsUrl, resp.clone());
+                                }).catch(()=>{});
+                            }
+                        });
+                    });
+                } else {
+                    fetch(tsUrl, { method: "GET", credentials: "same-origin" }).catch(()=>{});
+                }
+            });
+        } catch (e) {
+            // 静默错误
+        }
+    }
+
+    // export to window 便于外部调用
+    window.preloadNextEpisodeParts = preloadNextEpisodeParts;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // 1. 鼠标悬停/触摸“下一集”按钮预加载
+        var nextBtn = document.getElementById('nextButton');
+        if (nextBtn) {
+            nextBtn.addEventListener('mouseenter', preloadNextEpisodeParts, { passive: true });
+            nextBtn.addEventListener('touchstart', preloadNextEpisodeParts, { passive: true });
+        }
+
+        // 2. 当前视频播到结尾前预加载下集
+        function setupTimeupdatePreload() {
+            if (window.dp && window.dp.video && typeof window.dp.video.addEventListener === 'function') {
+                window.dp.video.addEventListener('timeupdate', () => {
+                    if (
+                        window.dp.video.duration &&
+                        window.dp.video.currentTime > window.dp.video.duration - 12
+                    ) {
+                        preloadNextEpisodeParts();
+                    }
+                });
+            }
+        }
+        if (window.dp && window.dp.video) {
+            setupTimeupdatePreload();
+        } else {
+            // DPlayer 异步init兼容
+            var tries = 0;
+            var timer = setInterval(() => {
+                if (window.dp && window.dp.video) {
+                    setupTimeupdatePreload();
+                    clearInterval(timer);
+                }
+                if (++tries > 50) clearInterval(timer);
+            }, 200);
+        }
+
+        // 3. 点击任何集数按钮均预加载下集
+        var episodesList = document.getElementById('episodesList');
+        if (episodesList) {
+            episodesList.addEventListener('click', function (e) {
+                var btn = e.target.closest('button[id^="episode-"]');
+                if (btn) {
+                    setTimeout(function () {
+                        if (typeof window.preloadNextEpisodeParts === 'function') {
+                            window.preloadNextEpisodeParts();
+                        }
+                    }, 200);
+                }
+            });
+        }
+    });
+})();
+</script>
+
 </body>
 </html>
