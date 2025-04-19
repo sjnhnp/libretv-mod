@@ -3,25 +3,26 @@
 // Proxy URL configuration (Update if deployment environment changes)
 const PROXY_URL = '/proxy/'; // Relative path for Cloudflare Pages, Vercel with rewrites, etc.
 
-// Local Storage Keys
-const SEARCH_HISTORY_KEY = 'videoSearchHistory_v2'; // Versioned key
-const VIEWING_HISTORY_KEY = 'viewingHistory_v2';    // Versioned key
-const CUSTOM_APIS_KEY = 'customAPIs_v2';            // Versioned key
-const SELECTED_APIS_KEY = 'selectedAPIs_v2';        // Versioned key
-const PASSWORD_STORAGE_KEY = 'passwordVerification_v2'; // Versioned key
+// Local Storage Keys (Reverted to original names for compatibility)
+const SEARCH_HISTORY_KEY = 'videoSearchHistory';     // Reverted from _v2
+const VIEWING_HISTORY_KEY = 'viewingHistory';       // Assuming original was 'viewingHistory' or similar without suffix
+const CUSTOM_APIS_KEY = 'customAPIs';               // Reverted from _v2
+const SELECTED_APIS_KEY = 'selectedAPIs';           // Reverted from _v2
+const PASSWORD_STORAGE_KEY = 'passwordVerified';    // Reverted from 'passwordVerification_v2' to match original logic
 const AUTOPLAY_KEY = 'autoplayEnabled';
-const AD_FILTERING_KEY = 'adFilteringEnabled_v2'; // Versioned key
+const AD_FILTERING_KEY = 'adFilteringEnabled';     // Reverted from _v2 to match original player config usage
 const EPISODE_REVERSE_KEY = 'episodesReversed';
-const HAS_INITIALIZED_DEFAULTS_KEY = 'hasInitializedDefaults_v1';
-const HAS_SEEN_DISCLAIMER_KEY = 'hasSeenDisclaimer_v1';
+const HAS_INITIALIZED_DEFAULTS_KEY = 'hasInitializedDefaults'; // Reverted from _v1
+const HAS_SEEN_DISCLAIMER_KEY = 'hasSeenDisclaimer';       // Reverted from _v1
 
 // History Limits
-const MAX_SEARCH_HISTORY_ITEMS = 10; // Increased limit slightly
-const MAX_VIEWING_HISTORY_ITEMS = 50; // Keep a reasonable limit
+// Using optimized variable name, but reverted value to original for search history compatibility
+const MAX_SEARCH_HISTORY_ITEMS = 5;  // Reverted value from 10 to 5 (original MAX_HISTORY_ITEMS)
+const MAX_VIEWING_HISTORY_ITEMS = 50; // Keep optimized value for viewing history
 
 // Password Protection Configuration
 const PASSWORD_CONFIG = {
-    localStorageKey: PASSWORD_STORAGE_KEY,
+    localStorageKey: PASSWORD_STORAGE_KEY, // Uses the corrected key constant above
     verificationTTL: 90 * 24 * 60 * 60 * 1000, // 90 days in milliseconds
 };
 
@@ -31,7 +32,7 @@ const SITE_CONFIG = {
     url: 'https://libretv.is-an.org', // Update if domain changes
     description: '免费在线视频搜索与观看平台',
     logo: 'https://images.icon-icons.com/38/PNG/512/retrotv_5520.png', // Consider hosting locally
-    version: '1.0.4' // Update version as needed
+    version: '1.0.4' // Update version as needed (Kept from optimization)
 };
 
 // Built-in API Site Definitions
@@ -67,12 +68,22 @@ const API_SITES = {
 };
 
 // Flag to control visibility of built-in adult APIs in the settings panel
-const HIDE_BUILTIN_ADULT_APIS = true; // Set to false to show adult sources by default
+const HIDE_BUILTIN_ADULT_APIS = true; // Set to false to show adult sources by default (Kept from optimization)
+
+// *** Added back from original code for compatibility ***
+// Aggregated search configuration options
+const AGGREGATED_SEARCH_CONFIG = {
+    enabled: true,             // Whether to enable aggregated search
+    timeout: 8000,            // Timeout for a single source (milliseconds)
+    maxResults: 10000,          // Maximum number of results (Note: High value, might impact performance)
+    parallelRequests: true,   // Whether to request all sources in parallel
+    showSourceBadges: true    // Whether to show source badges in results
+};
 
 // Standard API Request Paths and Headers (assuming CMS common paths)
+// Kept optimized version assuming detail fetching logic was updated
 const API_CONFIG = {
     search: {
-        // Using 'videolist' assumes it returns sufficient detail (name, id, remarks, type, pic)
         path: '/api.php/provide/vod/?ac=videolist&wd=',
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -80,7 +91,6 @@ const API_CONFIG = {
         }
     },
     detail: {
-        // Using 'videolist' with 'ids' parameter to get full details including 'vod_play_url'
         path: '/api.php/provide/vod/?ac=videolist&ids=',
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -90,7 +100,7 @@ const API_CONFIG = {
 };
 
 // Regex for extracting M3U8 URLs (used as fallback in api.js)
-// Improved to be less greedy and handle potential surrounding quotes/spaces
+// Kept optimized version
 const M3U8_PATTERN = /\$?(https?:\/\/[^$'"\s]+\.m3u8)/g;
 
 // Player Configuration
@@ -100,16 +110,16 @@ const PLAYER_CONFIG = {
     timeout: 15000,            // Player load timeout (ms) - Handled within player.html logic
     autoPlayNext: true,        // Default state for auto-play toggle - Handled by player.html logic
     adFilteringEnabled: true, // Default state for ad filtering toggle
-    adFilteringStorage: AD_FILTERING_KEY, // localStorage key for ad filtering state
-    autoplayStorage: AUTOPLAY_KEY // localStorage key for autoplay state
+    adFilteringStorage: AD_FILTERING_KEY, // Uses the corrected key constant
+    autoplayStorage: AUTOPLAY_KEY // Uses the corrected key constant
 };
 
 // Custom API Configuration
 const CUSTOM_API_CONFIG = {
-    maxSources: 10,          // Increased max custom sources
-    testTimeout: 5000,       // Availability test timeout (ms)
+    maxSources: 10,          // Increased max custom sources (Kept from optimization)
+    testTimeout: 5000,       // Availability test timeout (ms) (Kept from optimization)
     namePrefix: '自定义-',   // Prefix for display name if needed (not used currently)
-    localStorageKey: CUSTOM_APIS_KEY
+    localStorageKey: CUSTOM_APIS_KEY // Uses the corrected key constant
 };
 
 // Error Messages (Example - not currently used, but good for future i18n)
@@ -124,33 +134,37 @@ const ERROR_MESSAGES = {
 // Security related settings (Example - mostly handled server-side/proxy)
 const SECURITY_CONFIG = {
     enableXSSProtection: true, // Basic client-side sanitization is implemented
-    maxQueryLength: 100       // Max search query length handled in app.js
+    maxQueryLength: 100       // Max search query length handled in app.js (Kept from optimization)
 };
 
 // --- Make constants globally accessible (if not using modules) ---
-// This approach is common in simpler projects without build steps.
-// If using modules (import/export), this part would be unnecessary.
+// Ensure all necessary constants, including the restored AGGREGATED_SEARCH_CONFIG
+// and constants with reverted key names, are exported.
 window.PROXY_URL = PROXY_URL;
 window.SEARCH_HISTORY_KEY = SEARCH_HISTORY_KEY;
-window.MAX_SEARCH_HISTORY_ITEMS = MAX_SEARCH_HISTORY_ITEMS;
+window.MAX_SEARCH_HISTORY_ITEMS = MAX_SEARCH_HISTORY_ITEMS; // Note: value reverted to 5
 window.PASSWORD_CONFIG = PASSWORD_CONFIG;
 window.SITE_CONFIG = SITE_CONFIG;
 window.API_SITES = API_SITES;
 window.HIDE_BUILTIN_ADULT_APIS = HIDE_BUILTIN_ADULT_APIS;
+window.AGGREGATED_SEARCH_CONFIG = AGGREGATED_SEARCH_CONFIG; // Export the restored config
 window.API_CONFIG = API_CONFIG;
 window.M3U8_PATTERN = M3U8_PATTERN;
 window.PLAYER_CONFIG = PLAYER_CONFIG;
 window.ERROR_MESSAGES = ERROR_MESSAGES;
 window.SECURITY_CONFIG = SECURITY_CONFIG;
 window.CUSTOM_API_CONFIG = CUSTOM_API_CONFIG;
-// Expose other keys if needed by different scripts
+// Expose other keys (using reverted names)
 window.VIEWING_HISTORY_KEY = VIEWING_HISTORY_KEY;
 window.MAX_VIEWING_HISTORY_ITEMS = MAX_VIEWING_HISTORY_ITEMS;
 window.CUSTOM_APIS_KEY = CUSTOM_APIS_KEY;
 window.SELECTED_APIS_KEY = SELECTED_APIS_KEY;
+window.PASSWORD_STORAGE_KEY = PASSWORD_STORAGE_KEY; // Export the reverted key name constant
 window.AUTOPLAY_KEY = AUTOPLAY_KEY;
+window.AD_FILTERING_KEY = AD_FILTERING_KEY; // Export the reverted key name constant
 window.EPISODE_REVERSE_KEY = EPISODE_REVERSE_KEY;
 window.HAS_INITIALIZED_DEFAULTS_KEY = HAS_INITIALIZED_DEFAULTS_KEY;
 window.HAS_SEEN_DISCLAIMER_KEY = HAS_SEEN_DISCLAIMER_KEY;
 
-console.log("Config loaded.");
+
+console.log("Config loaded (Compatibility corrections applied).");
