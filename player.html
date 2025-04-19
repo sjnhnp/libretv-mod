@@ -7,246 +7,739 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/styles.css">
     <style>
-        /* 优化后的CSS样式 */
-        :root {
-            --player-height: 60vh;
-            --control-zindex: 1000;
-            --transition-duration: 0.3s;
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0f1622;
+            color: white;
         }
-
         .player-container {
             width: 100%;
             max-width: 1200px;
             margin: 0 auto;
-            position: relative;
         }
-
         #player {
             width: 100%;
-            height: var(--player-height);
+            height: 60vh;
         }
-
-        .loading-container {
+        .loading-container,
+        .error-container {
             position: absolute;
             inset: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: var(--control-zindex);
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            z-index: 100;
             flex-direction: column;
+            text-align: center;
         }
-
+        .loading-container { display: flex; }
+        .error-container { display: none; }
         .loading-spinner {
             width: 50px;
             height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
             border-top-color: white;
-            animation: spin 1s linear infinite;
+            animation: spin 1s ease-in-out infinite;
             margin-bottom: 10px;
         }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .error-icon { font-size: 48px; margin-bottom: 10px; }
+        .episode-active { background-color: #3b82f6 !important; border-color: #60a5fa !important; }
+        .episode-grid { max-height: 30vh; overflow-y: auto; padding: 1rem 0; }
+        .switch {
+            position: relative; display: inline-block; width: 46px; height: 24px;
         }
-
-        .error-container {
-            /* 保持原有错误提示样式 */
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333; transition: .4s; border-radius: 24px;
         }
-
-        .episode-active {
-            background-color: #3b82f6 !important;
-            border-color: #60a5fa !important;
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px;
+            left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;
         }
-
+        input:checked + .slider { background-color: #00ccff; }
+        input:checked + .slider:before { transform: translateX(22px); }
         .shortcut-hint {
-            /* 优化动画效果 */
-            transition: opacity var(--transition-duration) ease;
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background-color: rgba(0,0,0,0.8); color: white; padding: 1rem 2rem; border-radius: 0.5rem;
+            font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem; z-index: 1000; opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .shortcut-hint.show { opacity: 1; }
+        .player-container:-webkit-full-screen, .player-container:fullscreen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: 10000; background-color: #000;
+        }
+        .player-container:-webkit-full-screen #player, .player-container:fullscreen #player {
+            width: 100%; height: 100%;
         }
     </style>
 </head>
-<body class="bg-[#0f1622] text-white">
-    <!-- 保持原有DOM结构不变 -->
+<body>
     <header class="bg-[#111] p-4 flex justify-between items-center border-b border-[#333]">
-        <!-- 头部内容保持不变 -->
+        <div class="flex items-center">
+            <a href="index.html" class="flex items-center">
+                <svg class="w-8 h-8 mr-2 text-[#00ccff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+                <h1 class="text-xl font-bold gradient-text">LibreTV</h1>
+            </a>
+        </div>
+        <h2 id="videoTitle" class="text-xl font-semibold truncate flex-1 text-center"></h2>
+        <a href="index.html" class="px-4 py-2 bg-[#222] hover:bg-[#333] border border-[#333] rounded-lg transition-colors">
+            返回首页
+        </a>
     </header>
 
     <main class="container mx-auto px-4 py-4">
-        <div class="player-container">
+        <div id="playerContainer" class="player-container">
             <div class="relative">
                 <div id="player"></div>
-                <!-- 加载和错误提示容器保持不变 -->
+                <div class="loading-container" id="loading">
+                    <div class="loading-spinner"></div>
+                    <div>正在加载视频...</div>
+                </div>
+                <div class="error-container" id="error">
+                    <div class="error-icon">⚠️</div>
+                    <div id="error-message">视频加载失败</div>
+                    <div style="margin-top: 10px; font-size: 14px; color: #aaa;">请尝试其他视频源或稍后重试</div>
+                </div>
             </div>
-            
-            <!-- 集数导航和控件保持结构不变 -->
+        </div>
+
+        <div class="player-container">
+            <div class="flex justify-between items-center my-4">
+                <button onclick="playPreviousEpisode()" id="prevButton" class="px-4 py-2 bg-[#222] hover:bg-[#333] border border-[#333] rounded-lg transition-colors">
+                    <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    上一集
+                </button>
+                <span class="text-gray-400" id="episodeInfo">加载中...</span>
+                <button onclick="playNextEpisode()" id="nextButton" class="px-4 py-2 bg-[#222] hover:bg-[#333] border border-[#333] rounded-lg transition-colors">
+                    下一集
+                    <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="player-container">
+            <div class="flex justify-end items-center mb-4 gap-2">
+                <span class="text-gray-400 text-sm">自动连播</span>
+                <label class="switch">
+                    <input type="checkbox" id="autoplayToggle">
+                    <span class="slider"></span>
+                </label>
+                <button onclick="toggleEpisodeOrder()" class="ml-4 px-4 py-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" id="orderIcon" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" />
+                    </svg>
+                    <span id="orderText">倒序排列</span>
+                </button>
+                <button id="lockToggle" onclick="toggleControlsLock()" title="锁定控制" class="px-2 py-1 bg-[#333] hover:bg-[#444] text-white rounded-full transition">
+                    <svg id="lockIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15 11V7a3 3 0 00-6 0v4m-3 4h12v6H6v-6z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="player-container">
+            <div class="episode-grid" id="episodesGrid">
+                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2" id="episodesList">
+                    <div class="col-span-full text-center text-gray-400 py-8">加载中...</div>
+                </div>
+            </div>
         </div>
     </main>
-
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.6/dist/hls.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dplayer@1.26.0/dist/DPlayer.min.js"></script>
+    <div class="shortcut-hint" id="shortcutHint">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="shortcutIcon">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+        <span id="shortcutText"></span>
+    </div>
+    <script src="https://s4.zstatic.net/ajax/libs/hls.js/1.5.6/hls.min.js" integrity="sha256-X1GmLMzVcTBRiGjEau+gxGpjRK96atNczcLBg5w6hKA=" crossorigin="anonymous"></script>
+    <script src="https://s4.zstatic.net/ajax/libs/dplayer/1.26.0/DPlayer.min.js" integrity="sha256-OJg03lDZP0NAcl3waC9OT5jEa8XZ8SM2n081Ik953o4=" crossorigin="anonymous"></script>
     <script src="js/config.js"></script>
     <script>
-        // 使用模块模式封装代码
-        (function() {
-            'use strict';
-            
-            const app = {
-                state: {
-                    currentVideoTitle: '',
-                    currentEpisodeIndex: 0,
-                    currentEpisodes: [],
-                    episodesReversed: false,
-                    dp: null,
-                    hls: null,
-                    autoplay: true,
-                    isSeeking: false,
-                    videoEnded: false,
-                    lastSaveTime: 0
-                },
+    // ======= 优化重构后player.html核心JS =======
+    let currentVideoTitle = '';
+    let currentEpisodeIndex = 0;
+    let currentEpisodes = [];
+    let episodesReversed = false;
+    let dp = null, currentHls = null;
+    let autoplayEnabled = true, adFilteringEnabled = true;
+    let isUserSeeking = false, videoHasEnded = false, userClickedPosition = null;
+    let shortcutHintTimeout = null, progressSaveInterval = null;
 
-                init() {
-                    this.parseURLParams();
-                    this.setupUI();
-                    this.initPlayer();
-                    this.bindEvents();
-                    this.restoreProgress();
-                },
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const videoUrl = urlParams.get('url');
+        const title = urlParams.get('title');
+        let index = parseInt(urlParams.get('index') || '0');
+        const episodesList = urlParams.get('episodes');
+        currentVideoTitle = title || localStorage.getItem('currentVideoTitle') || '未知视频';
+        autoplayEnabled = localStorage.getItem('autoplayEnabled') !== 'false';
+        adFilteringEnabled = localStorage.getItem(window.PLAYER_CONFIG?.adFilteringStorage || 'adFilteringEnabled_v2') !== 'false';
+        episodesReversed = localStorage.getItem('episodesReversed') === 'true';
 
-                parseURLParams() {
-                    const params = new URLSearchParams(location.search);
-                    this.state.currentVideoTitle = params.get('title') || '未知视频';
-                    this.state.currentEpisodeIndex = Math.max(0, parseInt(params.get('index') || 0));
-                    
-                    try {
-                        const episodes = params.get('episodes');
-                        this.state.currentEpisodes = episodes ? JSON.parse(decodeURIComponent(episodes)) : [];
-                    } catch(e) {
-                        console.error('剧集解析失败:', e);
-                        this.state.currentEpisodes = [];
+        document.getElementById('autoplayToggle').checked = autoplayEnabled;
+        document.getElementById('autoplayToggle').addEventListener('change', function(e) {
+            autoplayEnabled = e.target.checked;
+            localStorage.setItem('autoplayEnabled', autoplayEnabled);
+        });
+
+        // 合理恢复集数、修正索引
+        try {
+            currentEpisodes = episodesList ? JSON.parse(decodeURIComponent(episodesList))
+                : JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
+            if (index < 0 || (currentEpisodes.length > 0 && index >= currentEpisodes.length)) {
+                if (index >= currentEpisodes.length && currentEpisodes.length > 0) index = currentEpisodes.length - 1;
+                else index = 0;
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.set('index', index);
+                window.history.replaceState({}, '', newUrl);
+            }
+            currentEpisodeIndex = index;
+        } catch (e) {
+            currentEpisodes = []; currentEpisodeIndex = 0; episodesReversed = false;
+        }
+
+        document.title = currentVideoTitle + ' - LibreTV播放器';
+        document.getElementById('videoTitle').textContent = currentVideoTitle;
+
+        if (videoUrl) {
+            initPlayer(videoUrl);
+            const position = urlParams.get('position');
+            if (position) setTimeout(() => {
+                if (dp && dp.video) {
+                    const positionNum = parseInt(position);
+                    if (!isNaN(positionNum) && positionNum > 0) {
+                        dp.seek(positionNum); showPositionRestoreHint(positionNum);
                     }
-                },
+                }
+            }, 1500);
+        } else {
+            showError('无效的视频链接');
+        }
 
-                setupUI() {
-                    document.title = `${this.state.currentVideoTitle} - LibreTV`;
-                    document.getElementById('videoTitle').textContent = this.state.currentVideoTitle;
-                    this.updateEpisodeUI();
-                    this.renderEpisodes();
-                },
+        updateEpisodeInfo(); renderEpisodes(); updateButtonStates(); updateOrderButton();
+        setTimeout(setupProgressBarPreciseClicks, 1000);
+        document.addEventListener('keydown', handleKeyboardShortcuts);
+        window.addEventListener('beforeunload', saveCurrentProgress);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') saveCurrentProgress();
+        });
 
-                initPlayer() {
-                    const url = new URLSearchParams(location.search).get('url');
-                    if (!url) return this.showError('无效的视频链接');
-
-                    this.cleanupPlayer();
-                    
-                    this.state.dp = new DPlayer({
-                        container: document.getElementById('player'),
-                        video: {
-                            url: url,
-                            type: 'hls',
-                            customType: {
-                                hls: this.setupHLS.bind(this)
-                            }
-                        },
-                        // 其他配置保持不变
-                    });
-
-                    this.bindPlayerEvents();
-                },
-
-                setupHLS(video) {
-                    this.state.hls = new Hls({
-                        // 优化HLS配置
-                        maxBufferLength: 30,
-                        maxMaxBufferLength: 60,
-                        capLevelToPlayerSize: true
-                    });
-
-                    this.state.hls.loadSource(video.src);
-                    this.state.hls.attachMedia(video);
-                    this.setupHLSEvents();
-                },
-
-                bindPlayerEvents() {
-                    const { dp } = this.state;
-                    dp.on('loadedmetadata', this.onVideoReady.bind(this));
-                    dp.on('error', this.onPlayerError.bind(this));
-                    dp.on('ended', this.onVideoEnded.bind(this));
-                    dp.video.addEventListener('timeupdate', this.onTimeUpdate.bind(this));
-                },
-
-                onVideoReady() {
-                    this.hideLoading();
-                    this.saveHistory();
-                    this.setupProgressTracking();
-                },
-
-                onPlayerError() {
-                    if (this.state.dp.video.readyState > 2) return;
-                    this.showError('视频加载失败，请检查网络或源地址');
-                },
-
-                onVideoEnded() {
-                    this.state.videoEnded = true;
-                    if (this.state.autoplay) this.playNext();
-                },
-
-                onTimeUpdate() {
+        const waitForVideo = setInterval(() => {
+            if (dp && dp.video) {
+                dp.video.addEventListener('pause', saveCurrentProgress);
+                let lastSave = 0;
+                dp.video.addEventListener('timeupdate', function() {
                     const now = Date.now();
-                    if (now - this.state.lastSaveTime > 5000) {
-                        this.saveProgress();
-                        this.state.lastSaveTime = now;
+                    if (now - lastSave > 5000) {
+                        saveCurrentProgress(); lastSave = now;
                     }
-                },
+                });
+                clearInterval(waitForVideo);
+            }
+        }, 200);
+    });
 
-                // 其他方法保持类似结构，优化重复逻辑
-                playEpisode(index) {
-                    if (index < 0 || index >= this.state.currentEpisodes.length) return;
-                    
-                    this.saveProgress();
-                    this.state.currentEpisodeIndex = index;
-                    
-                    const newURL = new URL(location.href);
-                    newURL.searchParams.set('index', index);
-                    newURL.searchParams.set('url', this.state.currentEpisodes[index]);
-                    history.replaceState(null, '', newURL);
+    function handleKeyboardShortcuts(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (e.altKey && e.key === 'ArrowLeft') {
+            if (currentEpisodeIndex > 0) { playPreviousEpisode(); showShortcutHint('上一集', 'left'); e.preventDefault(); }
+        }
+        if (e.altKey && e.key === 'ArrowRight') {
+            if (currentEpisodeIndex < currentEpisodes.length - 1) { playNextEpisode(); showShortcutHint('下一集', 'right'); e.preventDefault(); }
+        }
+    }
+    function showShortcutHint(text, direction) {
+        const hintElement = document.getElementById('shortcutHint');
+        const textElement = document.getElementById('shortcutText');
+        const iconElement = document.getElementById('shortcutIcon');
+        if (shortcutHintTimeout) clearTimeout(shortcutHintTimeout);
+        textElement.textContent = text;
+        iconElement.innerHTML = direction === 'left'
+            ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>'
+            : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>';
+        hintElement.classList.add('show');
+        shortcutHintTimeout = setTimeout(() => { hintElement.classList.remove('show'); }, 2000);
+    }
 
-                    this.initPlayer();
-                    this.updateEpisodeUI();
-                },
-
-                optimizeProgressBar() {
-                    const bar = document.querySelector('.dplayer-bar-wrap');
-                    if (!bar) return;
-
-                    const handler = (e) => {
-                        const rect = bar.getBoundingClientRect();
-                        const percent = (e.clientX - rect.left) / rect.width;
-                        const time = percent * this.state.dp.video.duration;
-                        this.state.dp.seek(time);
-                    };
-
-                    bar.addEventListener('mousedown', handler);
-                    bar.addEventListener('touchstart', e => handler(e.touches[0]));
-                },
-
-                cleanupPlayer() {
-                    if (this.state.hls) {
-                        this.state.hls.destroy();
-                        this.state.hls = null;
+    function initPlayer(videoUrl) {
+        if (!videoUrl) return;
+        const hlsConfig = {
+            debug: false,
+            loader: adFilteringEnabled ? CustomHlsJsLoader : Hls.DefaultConfig.loader,
+            enableWorker: true,
+            lowLatencyMode: false,
+            backBufferLength: 90,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
+            maxBufferSize: 30 * 1000 * 1000,
+            maxBufferHole: 0.5,
+            fragLoadingMaxRetry: 6,
+            fragLoadingMaxRetryTimeout: 64000,
+            fragLoadingRetryDelay: 1000,
+            manifestLoadingMaxRetry: 3,
+            manifestLoadingRetryDelay: 1000,
+            levelLoadingMaxRetry: 4,
+            levelLoadingRetryDelay: 1000,
+            startLevel: -1,
+            abrEwmaDefaultEstimate: 500000,
+            abrBandWidthFactor: 0.95,
+            abrBandWidthUpFactor: 0.7,
+            abrMaxWithRealBitrate: true,
+            stretchShortVideoTrack: true,
+            appendErrorMaxRetry: 5,
+            liveSyncDurationCount: 3,
+            liveDurationInfinity: false
+        };
+        dp = new DPlayer({
+            container: document.getElementById('player'),
+            autoplay: true,
+            theme: '#00ccff',
+            preload: 'auto',
+            loop: false,
+            lang: 'zh-cn',
+            hotkey: true,
+            mutex: true,
+            volume: 0.7,
+            screenshot: true,
+            preventClickToggle: false,
+            airplay: true,
+            chromecast: true,
+            contextmenu: [
+                { text: '关于 LibreTV', link: 'https://github.com/bestzwei/LibreTV' },
+                { text: '问题反馈', click: () => window.open('https://github.com/bestzwei/LibreTV/issues', '_blank') }
+            ],
+            video: {
+                url: videoUrl,
+                type: 'hls',
+                pic: 'https://img.picgo.net/2025/04/12/image362e7d38b4af4a74.png',
+                customType: {
+                    hls: function(video, player) {
+                        if (currentHls && currentHls.destroy) { try { currentHls.destroy(); } catch (e) {} }
+                        const hls = new Hls(hlsConfig);
+                        currentHls = hls;
+                        let errorDisplayed = false, errorCount = 0, playbackStarted = false, bufferAppendErrorCount = 0;
+                        video.addEventListener('playing', function() {
+                            playbackStarted = true;
+                            document.getElementById('loading').style.display = 'none';
+                            document.getElementById('error').style.display = 'none';
+                        });
+                        video.addEventListener('timeupdate', function() {
+                            if (video.currentTime > 1) document.getElementById('error').style.display = 'none';
+                        });
+                        hls.loadSource(video.src);
+                        hls.attachMedia(video);
+                        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                            video.play().catch(e => {});
+                        });
+                        hls.on(Hls.Events.ERROR, function(event, data) {
+                            errorCount++;
+                            if (data.details === 'bufferAppendError') {
+                                bufferAppendErrorCount++;
+                                if (playbackStarted) return;
+                                if (bufferAppendErrorCount >= 3) hls.recoverMediaError();
+                            }
+                            if (data.fatal && !playbackStarted) {
+                                switch(data.type) {
+                                    case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
+                                    case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
+                                    default:
+                                        if (errorCount > 3 && !errorDisplayed) {
+                                            errorDisplayed = true;
+                                            showError('视频加载失败，可能是格式不兼容或源不可用');
+                                        }
+                                        break;
+                                }
+                            }
+                        });
+                        hls.on(Hls.Events.FRAG_LOADED, () => document.getElementById('loading').style.display = 'none');
+                        hls.on(Hls.Events.LEVEL_LOADED, () => document.getElementById('loading').style.display = 'none');
+                        hls.on(Hls.Events.FRAG_PARSED, (event, data) => {
+                            if (data.frag.endList) {
+                                const cur = hls.media.currentTime, dur = hls.media.duration || 0;
+                                if (cur < dur) {
+                                    data.frag.endList = undefined;
+                                    hls.config.maxBufferLength = 0.1 < 1 ? 2 : hls.config.maxBufferLength;
+                                    hls.loadSource(video.src); hls.attachMedia(video);
+                                    hls.media.currentTime = cur + 0.1;
+                                    hls.config.maxBufferLength = 5 < 1 ? 2 : hls.config.maxBufferLength;
+                                    player.video.play().catch(()=>{});
+                                } else {
+                                    player.video.pause();
+                                }
+                            }
+                        });
                     }
-                    if (this.state.dp) {
-                        this.state.dp.destroy();
-                        this.state.dp = null;
+                }
+            }
+        });
+        dp.on('fullscreen', () => {
+            if (window.screen.orientation && window.screen.orientation.lock) {
+                window.screen.orientation.lock('landscape').catch(()=>{});
+            }
+        });
+        dp.on('fullscreen_cancel', () => {
+            if (window.screen.orientation && window.screen.orientation.unlock) window.screen.orientation.unlock();
+        });
+        dp.on('loadedmetadata', function() {
+            document.getElementById('loading').style.display = 'none';
+            videoHasEnded = false;
+            setupProgressBarPreciseClicks();
+            setTimeout(saveToHistory, 3000);
+            startProgressSaveInterval();
+        });
+        dp.on('error', function() {
+            if (dp.video && dp.video.currentTime > 1) return;
+            showError('视频播放失败，请检查视频源或网络连接');
+        });
+        dp.on('seeking', function() {
+            isUserSeeking = true; videoHasEnded = false;
+            if (userClickedPosition !== null && dp.video) {
+                const clickedTime = userClickedPosition;
+                dp.video.currentTime = (Math.abs(dp.video.duration - clickedTime) < 0.5)
+                    ? Math.max(0, clickedTime - 0.5) : clickedTime;
+                setTimeout(()=>{ userClickedPosition = null; }, 200);
+            }
+        });
+        dp.on('seeked', function() {
+            if (dp.video && dp.video.duration > 0) {
+                if (dp.video.duration - dp.video.currentTime < 0.3 && isUserSeeking) {
+                    dp.video.currentTime = Math.max(0, dp.video.currentTime - 1);
+                }
+            }
+            setTimeout(()=>{ isUserSeeking = false; }, 200);
+        });
+        dp.on('ended', function() {
+            videoHasEnded = true;
+            clearVideoProgress();
+            if (autoplayEnabled && currentEpisodeIndex < currentEpisodes.length - 1) {
+                setTimeout(function() {
+                    if (videoHasEnded && !isUserSeeking) {
+                        playNextEpisode();
+                        videoHasEnded = false;
                     }
-                },
-
-                // 其他辅助方法...
-            };
-
-            // 初始化应用
-            document.addEventListener('DOMContentLoaded', () => app.init());
+                }, 1000);
+            }
+        });
+        dp.on('timeupdate', function() {
+            if (dp.video && dp.duration > 0 && isUserSeeking && dp.video.currentTime > dp.video.duration * 0.95) {
+                videoHasEnded = false;
+            }
+        });
+        setTimeout(function() {
+            if (dp && dp.video && dp.video.currentTime > 0) return;
+            if (document.getElementById('loading').style.display !== 'none') {
+                document.getElementById('loading').innerHTML = `
+                    <div class="loading-spinner"></div>
+                    <div>视频加载时间较长，请耐心等待...</div>
+                    <div style="font-size: 12px; color: #aaa; margin-top: 10px;">如长时间无响应，请尝试其他视频源</div>
+                `;
+            }
+        }, 10000);
+        (() => {
+            const fsContainer = document.getElementById('playerContainer');
+            dp.on('fullscreen', () => { if (fsContainer.requestFullscreen) fsContainer.requestFullscreen().catch(()=>{}); });
+            dp.on('fullscreen_cancel', () => { if (document.fullscreenElement) document.exitFullscreen(); });
         })();
+    }
+
+    class CustomHlsJsLoader extends Hls.DefaultConfig.loader {
+        constructor(config) {
+            super(config);
+            const load = this.load.bind(this);
+            this.load = function(context, config, callbacks) {
+                if (context.type === 'manifest' || context.type === 'level') {
+                    const onSuccess = callbacks.onSuccess;
+                    callbacks.onSuccess = function(response, stats, context) {
+                        if (response.data && typeof response.data === 'string') response.data = filterAdsFromM3U8(response.data, true);
+                        return onSuccess(response, stats, context);
+                    };
+                }
+                load(context, config, callbacks);
+            };
+        }
+    }
+    function filterAdsFromM3U8(m3u8Content) {
+        if (!m3u8Content) return '';
+        return m3u8Content.split('\n').filter(line => !line.includes('#EXT-X-DISCONTINUITY')).join('\n');
+    }
+
+    function showError(message) {
+        if (dp && dp.video && dp.video.currentTime > 1) return;
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').style.display = 'flex';
+        document.getElementById('error-message').textContent = message;
+    }
+    function updateEpisodeInfo() {
+        document.getElementById('episodeInfo').textContent = currentEpisodes.length > 0
+            ? `第 ${currentEpisodeIndex + 1}/${currentEpisodes.length} 集` : '无集数信息';
+    }
+    function updateButtonStates() {
+        const prevButton = document.getElementById('prevButton');
+        const nextButton = document.getElementById('nextButton');
+        prevButton.disabled = currentEpisodeIndex <= 0;
+        nextButton.disabled = currentEpisodeIndex >= currentEpisodes.length - 1;
+        prevButton.classList.toggle('bg-gray-700', prevButton.disabled);
+        prevButton.classList.toggle('cursor-not-allowed', prevButton.disabled);
+        nextButton.classList.toggle('bg-gray-700', nextButton.disabled);
+        nextButton.classList.toggle('cursor-not-allowed', nextButton.disabled);
+    }
+    function renderEpisodes() {
+        const episodesList = document.getElementById('episodesList');
+        if (!episodesList) return;
+        if (!currentEpisodes || currentEpisodes.length === 0) {
+            episodesList.innerHTML = '<div class="col-span-full text-center text-gray-400 py-8">没有可用的集数</div>';
+            return;
+        }
+        const episodes = episodesReversed ? [...currentEpisodes].reverse() : currentEpisodes;
+        episodesList.innerHTML = episodes.map((episode, index) => {
+            const realIndex = episodesReversed ? currentEpisodes.length - 1 - index : index;
+            const isActive = realIndex === currentEpisodeIndex;
+            return `
+                <button id="episode-${realIndex}"
+                        onclick="playEpisode(${realIndex})"
+                        class="px-4 py-2 ${isActive ? 'episode-active' : 'bg-[#222] hover:bg-[#333]'} border ${isActive ? 'border-blue-500' : 'border-[#333]'} rounded-lg transition-colors text-center episode-btn">
+                    第${realIndex + 1}集
+                </button>
+            `;
+        }).join('');
+    }
+    function playEpisode(index) {
+        if (index < 0 || index >= currentEpisodes.length) { showToast(`无效的剧集索引: ${index + 1}, 当前剧集总数: ${currentEpisodes.length}`); return; }
+        if (dp && dp.video && !dp.video.paused && !videoHasEnded) saveCurrentProgress();
+        if (progressSaveInterval) { clearInterval(progressSaveInterval); progressSaveInterval = null; }
+        document.getElementById('error').style.display = 'none';
+        document.getElementById('loading').style.display = 'flex';
+        document.getElementById('loading').innerHTML = `<div class="loading-spinner"></div><div>正在加载视频...</div>`;
+        const url = currentEpisodes[index];
+        currentEpisodeIndex = index;
+        videoHasEnded = false;
+        const urlParams = new URLSearchParams(window.location.search);
+        const sourceName = urlParams.get('source') || '';
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('index', index);
+        newUrl.searchParams.set('url', url);
+        if (sourceName) newUrl.searchParams.set('source', sourceName);
+        window.history.pushState({}, '', newUrl);
+        if (dp) {
+            try {
+                dp.switchVideo({ url: url, type: 'hls' });
+                const playPromise = dp.play();
+                if (playPromise !== undefined) playPromise.catch(() => initPlayer(url));
+            } catch (e) { initPlayer(url); }
+        } else { initPlayer(url); }
+        updateEpisodeInfo(); updateButtonStates(); renderEpisodes();
+        userClickedPosition = null;
+        setTimeout(saveToHistory, 3000);
+    }
+    function playPreviousEpisode() { if (currentEpisodeIndex > 0) playEpisode(currentEpisodeIndex - 1); }
+    function playNextEpisode() { if (currentEpisodeIndex < currentEpisodes.length - 1) playEpisode(currentEpisodeIndex + 1); }
+    function toggleEpisodeOrder() {
+        episodesReversed = !episodesReversed;
+        localStorage.setItem('episodesReversed', episodesReversed);
+        renderEpisodes();
+        updateOrderButton();
+    }
+    function updateOrderButton() {
+        const orderText = document.getElementById('orderText');
+        const orderIcon = document.getElementById('orderIcon');
+        if (orderText && orderIcon) {
+            orderText.textContent = episodesReversed ? '正序排列' : '倒序排列';
+            orderIcon.style.transform = episodesReversed ? 'rotate(180deg)' : '';
+        }
+    }
+    function setupProgressBarPreciseClicks() {
+        const progressBar = document.querySelector('.dplayer-bar-wrap');
+        if (!progressBar || !dp || !dp.video) return;
+        progressBar.removeEventListener('mousedown', handleProgressBarClick);
+        progressBar.addEventListener('mousedown', handleProgressBarClick);
+        progressBar.removeEventListener('touchstart', handleProgressBarTouch);
+        progressBar.addEventListener('touchstart', handleProgressBarTouch);
+    }
+    function handleProgressBarClick(e) {
+        if (!dp || !dp.video) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const percentage = (e.clientX - rect.left) / rect.width;
+        const duration = dp.video.duration;
+        let clickTime = percentage * duration;
+        if (duration - clickTime < 1) clickTime = Math.min(clickTime, duration - 1.5);
+        userClickedPosition = clickTime;
+        e.stopPropagation();
+        dp.seek(clickTime);
+    }
+    function handleProgressBarTouch(e) {
+        if (!dp || !dp.video || !e.touches[0]) return;
+        const touch = e.touches[0];
+        const rect = e.currentTarget.getBoundingClientRect();
+        const percentage = (touch.clientX - rect.left) / rect.width;
+        const duration = dp.video.duration;
+        let clickTime = percentage * duration;
+        if (duration - clickTime < 1) clickTime = Math.min(clickTime, duration - 1.5);
+        userClickedPosition = clickTime;
+        e.stopPropagation();
+        dp.seek(clickTime);
+    }
+    function saveToHistory() {
+        if (!currentEpisodes || currentEpisodes.length === 0) return;
+        const urlParams = new URLSearchParams(window.location.search);
+        const sourceName = urlParams.get('source') || '';
+        let currentPosition = 0, videoDuration = 0;
+        if (dp && dp.video) { currentPosition = dp.video.currentTime; videoDuration = dp.video.duration; }
+        const videoInfo = {
+            title: currentVideoTitle,
+            url: `player.html?title=${encodeURIComponent(currentVideoTitle)}&source=${encodeURIComponent(sourceName)}`,
+            episodeIndex: currentEpisodeIndex,
+            sourceName: sourceName,
+            timestamp: Date.now(),
+            playbackPosition: currentPosition > 10 ? currentPosition : 0,
+            duration: videoDuration,
+            episodes: currentEpisodes && currentEpisodes.length > 0 ? [...currentEpisodes] : []
+        };
+        if (typeof addToViewingHistory === 'function') {
+            addToViewingHistory(videoInfo);
+        } else {
+            try {
+                const history = JSON.parse(localStorage.getItem('viewingHistory') || '[]');
+                const existingIndex = history.findIndex(item => item.title === videoInfo.title);
+                if (existingIndex !== -1) {
+                    history[existingIndex].episodeIndex = currentEpisodeIndex;
+                    history[existingIndex].timestamp = Date.now();
+                    history[existingIndex].playbackPosition = currentPosition > 10 ? currentPosition : history[existingIndex].playbackPosition;
+                    history[existingIndex].duration = videoDuration || history[existingIndex].duration;
+                    history[existingIndex].url = window.location.href;
+                    if (currentEpisodes && currentEpisodes.length > 0) {
+                        if (!history[existingIndex].episodes ||
+                            !Array.isArray(history[existingIndex].episodes) ||
+                            history[existingIndex].episodes.length !== currentEpisodes.length) {
+                            history[existingIndex].episodes = [...currentEpisodes];
+                        }
+                    }
+                    const updatedItem = history.splice(existingIndex, 1)[0];
+                    history.unshift(updatedItem);
+                } else {
+                    videoInfo.url = window.location.href;
+                    history.unshift(videoInfo);
+                }
+                if (history.length > 50) history.splice(50);
+                localStorage.setItem('viewingHistory', JSON.stringify(history));
+            } catch (e) {}
+        }
+    }
+    function showPositionRestoreHint(position) {
+        if (!position || position < 10) return;
+        const hint = document.createElement('div');
+        hint.className = 'position-restore-hint';
+        hint.innerHTML = `<div class="hint-content">已从 ${formatTime(position)} 继续播放</div>`;
+        const playerContainer = document.querySelector('.player-container');
+        playerContainer.appendChild(hint);
+        setTimeout(() => {
+            hint.classList.add('show');
+            setTimeout(() => {
+                hint.classList.remove('show');
+                setTimeout(() => hint.remove(), 300);
+            }, 3000);
+        }, 100);
+    }
+    function formatTime(seconds) {
+        if (isNaN(seconds)) return '00:00';
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.floor(seconds % 60);
+        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+    function startProgressSaveInterval() {
+        if (progressSaveInterval) clearInterval(progressSaveInterval);
+        progressSaveInterval = setInterval(saveCurrentProgress, 30000);
+    }
+    function saveCurrentProgress() {
+        if (!dp || !dp.video) return;
+        const currentTime = dp.video.currentTime, duration = dp.video.duration;
+        if (!duration || currentTime < 1) return;
+        const progressKey = `videoProgress_${getVideoId()}`;
+        const progressData = { position: currentTime, duration: duration, timestamp: Date.now() };
+        try {
+            localStorage.setItem(progressKey, JSON.stringify(progressData));
+            try {
+                const historyRaw = localStorage.getItem('viewingHistory');
+                if (historyRaw) {
+                    const history = JSON.parse(historyRaw);
+                    const idx = history.findIndex(item =>
+                        item.title === currentVideoTitle &&
+                        (item.episodeIndex === undefined || item.episodeIndex === currentEpisodeIndex)
+                    );
+                    if (idx !== -1) {
+                        if (
+                            Math.abs((history[idx].playbackPosition || 0) - currentTime) > 2 ||
+                            Math.abs((history[idx].duration || 0) - duration) > 2
+                        ) {
+                            history[idx].playbackPosition = currentTime;
+                            history[idx].duration = duration;
+                            history[idx].timestamp = Date.now();
+                            localStorage.setItem('viewingHistory', JSON.stringify(history));
+                        }
+                    }
+                }
+            } catch (e) {}
+        } catch (e) {}
+    }
+    function clearVideoProgress() {
+        const progressKey = `videoProgress_${getVideoId()}`;
+        try { localStorage.removeItem(progressKey); } catch (e) {}
+    }
+    function getVideoId() {
+        return `${encodeURIComponent(currentVideoTitle)}_${currentEpisodeIndex}`;
+    }
+    function showToast(message, type = 'error') {
+        const existingToast = document.getElementById('custom-toast');
+        if (existingToast) document.body.removeChild(existingToast);
+        const toast = document.createElement('div');
+        toast.id = 'custom-toast';
+        toast.style.position = 'fixed';
+        toast.style.top = '20px';
+        toast.style.left = '50%';
+        toast.style.transform = 'translateX(-50%)';
+        toast.style.backgroundColor = type === 'error' ? '#f44336' : '#4caf50';
+        toast.style.color = 'white';
+        toast.style.padding = '12px 20px';
+        toast.style.borderRadius = '4px';
+        toast.style.zIndex = '10000';
+        toast.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease-in-out';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => { if (toast.parentNode) document.body.removeChild(toast); }, 300);
+            }, 3000);
+        }, 10);
+    }
+    let controlsLocked = false;
+    function toggleControlsLock() {
+        const container = document.getElementById('playerContainer');
+        controlsLocked = !controlsLocked;
+        container.classList.toggle('controls-locked', controlsLocked);
+        const icon = document.getElementById('lockIcon');
+        icon.innerHTML = controlsLocked
+            ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0-8V7a4 4 0 00-8 0v2m8 0H4v8h16v-8h-4z"/>'
+            : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11V7a3 3 0 00-6 0v4m-3 4h12v6H6v-6z"/>';
+    }
     </script>
 </body>
 </html>
