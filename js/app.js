@@ -442,4 +442,5 @@ document.addEventListener('stateChange', e => {
     if (keys.includes('viewingHistory')) window.loadViewingHistory();
     // 其它 keys 可根据需要补充
 });
+window.search = search;
 
