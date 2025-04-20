@@ -11,13 +11,8 @@ let duration = 0;
 let dplayer = null;
 let lastBlobUrl = null;
 
-// ----------- 新增：广告分片过滤工具 -----------
+// ============ 广告过滤 =============
 
-/**
- * 过滤m3u8内容中常见广告片段（ts/url/注释中带广告特征关键字的行及其片段）
- * @param {string} m3u8Str
- * @returns {string}
- */
 function filterAdInM3U8String(m3u8Str) {
     const adPatterns = [
         /ad/i, /ads/i, /广告/, /tvc/i, /ssp/i, /\.jpg/, /logo/i, /watermark/i, /pause/i, /广编/, /guanggao/i,
@@ -30,7 +25,6 @@ function filterAdInM3U8String(m3u8Str) {
         for (const pat of adPatterns) {
             if (pat.test(lines[i])) { skip = true; break; }
         }
-        // ts/url行一般在非#EXT头后一行，广告片段会成对出现
         if (!skip && i && lines[i-1].startsWith('#EXTINF')) {
             for (const pat of adPatterns) {
                 if (pat.test(lines[i])) { skip = true; break; }
@@ -41,11 +35,6 @@ function filterAdInM3U8String(m3u8Str) {
     return filtered.join('\n');
 }
 
-/**
- * 若ad过滤开关打开且为m3u8流，则拉取m3u8文本、分片过滤后创建本地blob，返回blob URL
- * @param {string} url
- * @returns {Promise<string>} 可播URL
- */
 async function getFilteredM3u8UrlIfNeeded(url) {
     const adFiltering = getState().settings.adFilteringEnabled;
     if (!adFiltering) return url;
@@ -64,7 +53,8 @@ async function getFilteredM3u8UrlIfNeeded(url) {
     }
 }
 
-// ----------- 参数与UI渲染 -----------
+
+// ========== 集数和参数渲染 ==========
 
 function parseUrlParams() {
     const url = new URL(window.location.href);
@@ -137,6 +127,7 @@ function showLoading(show = true) {
     document.getElementById('loading').style.display = show ? 'flex' : 'none';
 }
 
+
 // ================= 播放核心 ====================
 
 async function initPlayer() {
@@ -160,10 +151,8 @@ async function initPlayer() {
         return;
     }
 
-    // ---------- 广告过滤关键处理 ----------
     url = await getFilteredM3u8UrlIfNeeded(url);
     if (url.startsWith('blob:')) lastBlobUrl = url;
-    // -------------------------------------
 
     dplayer = new window.DPlayer({
         container: document.getElementById('player'),
@@ -181,7 +170,6 @@ async function initPlayer() {
         hideError();
         showLoading(false);
         duration = dplayer.video.duration || 0;
-        // 恢复记录点（如有）
         try {
             const params = parseUrlParams();
             if (params.position && !isNaN(Number(params.position))) {
@@ -214,8 +202,7 @@ async function initPlayer() {
     });
 }
 
-// ================= 记录与连播/切集 ====================
-
+// ========== 记录与连播/切集 ==========
 function saveViewingHistory() {
     try {
         if (!currentTitle) return;
@@ -261,6 +248,100 @@ function onAutoplayToggleChange(e) {
 }
 
 
+// ====== 预加载补丁 - 新架构集成 ======
+
+// 配置：预加载几集（如2或3）
+const PRELOAD_EPISODE_COUNT = 2;  // 可根据需要在 config.js 配成变量
+const supportsCacheStorage = 'caches' in window && window.caches.open;
+
+function isSlowNetwork() {
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!connection || !connection.effectiveType) return false;
+    return /2g|slow-2g/.test(connection.effectiveType);
+}
+
+// 主预加载函数
+async function preloadNextEpisodeParts(preloadCount = PRELOAD_EPISODE_COUNT) {
+    // 控制开关，低速网/配置/无集时跳过
+    if (!PLAYER_CONFIG.enablePreloading) return;
+    if (isSlowNetwork()) return;
+    if (!episodes || typeof episodeIndex !== 'number') return;
+    const idx = episodeIndex, maxIndex = episodes.length - 1;
+    for (let offset = 1; offset <= preloadCount; offset++) {
+        const episodeIdx = idx + offset;
+        if (episodeIdx > maxIndex) break;
+        const nextUrl = episodes[episodeIdx];
+        if (!nextUrl || typeof nextUrl !== 'string') continue;
+        try {
+            const m3u8Resp = await fetch(nextUrl, { method: "GET", credentials: "same-origin" });
+            if (!m3u8Resp.ok) continue;
+            const m3u8Text = await m3u8Resp.text();
+            const tsUrls = [];
+            // 取前3个 ts 分片
+            let base = nextUrl.substring(0, nextUrl.lastIndexOf('/') + 1);
+            m3u8Text.split('\n').forEach(line => {
+                const t = line.trim();
+                if (t && !t.startsWith("#") && /\.ts(\?|$)/i.test(t) && tsUrls.length < 3) {
+                    tsUrls.push(/^https?:\/\//i.test(t) ? t : base + t);
+                }
+            });
+            for (const tsUrl of tsUrls) {
+                // 先查缓存，并拉取分片
+                if (supportsCacheStorage) {
+                    const cache = await caches.open('libretv-preload1');
+                    const cachedResp = await cache.match(tsUrl);
+                    if (!cachedResp) {
+                        fetch(tsUrl, { method: "GET", credentials: "same-origin" }).then(resp => {
+                            if (resp.ok) cache.put(tsUrl, resp.clone());
+                        });
+                    }
+                } else {
+                    fetch(tsUrl, { method: "GET", credentials: "same-origin" });
+                }
+            }
+        } catch (e) {
+            // 静默
+        }
+    }
+}
+
+// ====== 预加载相关事件注册 ======
+
+function setupPreloadEvents() {
+    if (!PLAYER_CONFIG.enablePreloading) return;
+    // 鼠标悬停/触摸“下一集”按钮
+    const nextBtn = document.getElementById('nextButton');
+    if (nextBtn) {
+        nextBtn.addEventListener('mouseenter', () => preloadNextEpisodeParts(PRELOAD_EPISODE_COUNT), { passive: true });
+        nextBtn.addEventListener('touchstart', () => preloadNextEpisodeParts(PRELOAD_EPISODE_COUNT), { passive: true });
+    }
+    // 切集按钮点击
+    const episodesList = document.getElementById('episodesList');
+    if (episodesList) {
+        episodesList.addEventListener('click', function (e) {
+            const btn = e.target.closest('button[id^="episode-"]');
+            if (btn) setTimeout(() => preloadNextEpisodeParts(PRELOAD_EPISODE_COUNT), 200);
+        });
+    }
+    // 当前视频接近结尾，预拉后几集
+    function setupDPlayerTimeupdatePreload() {
+        if (dplayer && dplayer.video && typeof dplayer.video.addEventListener === 'function') {
+            dplayer.video.addEventListener('timeupdate', () => {
+                if (
+                    dplayer.video.duration &&
+                    dplayer.video.currentTime > dplayer.video.duration - 12
+                ) {
+                    preloadNextEpisodeParts(PRELOAD_EPISODE_COUNT);
+                }
+            });
+        }
+    }
+    // 在播放器每次 init 后，都做一次绑定
+    document.addEventListener('DPlayerInited', setupDPlayerTimeupdatePreload);
+    // 首次页面 ready 时延迟装载
+    setTimeout(setupDPlayerTimeupdatePreload, 500);
+}
+
 // ========== 事件绑定 ==========
 document.addEventListener('DOMContentLoaded', () => {
     parseUrlParams();
@@ -270,7 +351,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAutoplayToggle();
     updateOrderBtn();
 
-    // Button events
     document.getElementById('prevButton')?.addEventListener('click', playPreviousEpisode);
     document.getElementById('nextButton')?.addEventListener('click', playNextEpisode);
     document.getElementById('toggleEpisodeOrderBtn')?.addEventListener('click', toggleEpisodeOrder);
@@ -283,7 +363,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('lockToggle')?.addEventListener('click', toggleControlsLock);
 
-    // 剧集按钮事件委托
     document.getElementById('episodesList')?.addEventListener('click', e => {
         const btn = e.target.closest('button[id^="episode-"]');
         if (btn) {
@@ -297,7 +376,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 快捷键：J(上一集) K(暂停/播放) L(下一集) O(正倒序) A(自动连播开关)
     document.addEventListener('keydown', e => {
         if (e.target && ['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
         if (e.code === 'KeyJ') playPreviousEpisode();
@@ -314,9 +392,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 首次初始化
+    // 首次初始化主播放器
     initPlayer();
+
+    // 注：在主逻辑渲染后启动预加载相关事件注册
+    setupPreloadEvents();
 });
+
+// ----- dplayer 完成每次 init 后发事件, 用于外部补钩子 -----
+function triggerDPlayerInitedEvent() {
+    document.dispatchEvent(new Event('DPlayerInited'));
+}
+const oldInitPlayer = initPlayer;
+initPlayer = async function() {
+    await oldInitPlayer.apply(this, arguments);
+    triggerDPlayerInitedEvent();
+};
+
 
 // ========== 播放控制区锁定 ==========
 let isLocked = false;
@@ -341,4 +433,3 @@ window.toggleControlsLock = toggleControlsLock;
 // ========== 关闭/离开时保存进度 ==========
 window.addEventListener('beforeunload', saveViewingHistory);
 window.addEventListener('pagehide', saveViewingHistory);
-
