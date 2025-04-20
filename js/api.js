@@ -20,16 +20,29 @@ async function handleApiRequest(url) {
     const handler = routeHandlers[parsedUrl.pathname];
 
     if (!handler) {
-        return createErrorResponse(ERROR_CODES.BAD_REQUEST, '无效的API路径');
+        return new Response(JSON.stringify({ code: ERROR_CODES.BAD_REQUEST, msg: '无效的API路径' }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
 
     try {
-        return await handler(parsedUrl);
+        const result = await handler(parsedUrl);
+        // 确保结果是一个有效的 Response 对象
+        if (result instanceof Response) {
+            return result;
+        }
+        // 如果不是 Response 对象，将结果包装成 JSON 响应
+        return new Response(JSON.stringify(result), {
+            headers: { 'Content-Type': 'application/json' }
+        });
     } catch (error) {
         console.error('API请求处理错误:', error);
-        return createErrorResponse(ERROR_CODES.SERVER_ERROR, '服务器内部错误');
+        return new Response(JSON.stringify({ code: ERROR_CODES.SERVER_ERROR, msg: '服务器内部错误' }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
 }
+
 
 // 处理搜索请求
 async function handleSearch(url) {
