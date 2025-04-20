@@ -418,3 +418,110 @@ function getCustomApiInfo(customApiIndex){
 
 // (点击事件等留给原有onClick实现)
 
+// ==================== 视频播放相关 =====================
+
+/**
+ * 播放视频
+ * 供剧集/结果页的“播放”按钮调用（全局暴露给onclick）。
+ * @param {string} url         播放地址
+ * @param {string} vod_name    视频标题
+ * @param {number} episodeIndex 集数索引（可选，默认0）
+ */
+function playVideo(url, vod_name, episodeIndex = 0) {
+    // 若启用密码保护，但尚未校验，则弹出输入框
+    if (window.isPasswordProtected && window.isPasswordVerified) {
+        if (window.isPasswordProtected() && !window.isPasswordVerified()) {
+            if (typeof showPasswordModal === 'function') showPasswordModal();
+            return;
+        }
+    }
+    if (!url) {
+        showToast && showToast('无效的视频链接', 'error');
+        return;
+    }
+
+    // 来源站点名自动提取（从模态标题的灰色小字）
+    let sourceName = '';
+    const modalTitle = document.getElementById('modalTitle');
+    if (modalTitle) {
+        const sourceSpan = modalTitle.querySelector('span.text-gray-400');
+        if (sourceSpan) {
+            const match = /\(([^)]+)\)/.exec(sourceSpan.textContent);
+            sourceName = match?.[1]?.trim() || '';
+        }
+    }
+
+    // 设置本次播放相关历史数据
+    localStorage.setItem('currentVideoTitle', vod_name);
+    localStorage.setItem('currentEpisodeIndex', episodeIndex);
+    localStorage.setItem('currentEpisodes', JSON.stringify(window.state?.currentEpisodes ?? []));
+    localStorage.setItem('episodesReversed', window.state?.episodesReversed ?? false);
+
+    // 保存到观看历史（如果已实现该函数）
+    const videoInfo = {
+        title: vod_name,
+        url,
+        episodeIndex,
+        sourceName,
+        timestamp: Date.now(),
+        episodes: Array.isArray(window.state?.currentEpisodes) ? [...window.state.currentEpisodes] : []
+    };
+    if (typeof addToViewingHistory === 'function') {
+        addToViewingHistory(videoInfo);
+    }
+
+    // 跳转到播放器页面（带参数）
+    const playerUrl = `player.html` +
+        `?url=${encodeURIComponent(url)}` +
+        `&title=${encodeURIComponent(vod_name)}` +
+        `&index=${episodeIndex}` +
+        `&source=${encodeURIComponent(sourceName)}`;
+
+    window.location.href = playerUrl;
+}
+
+// 全局暴露，供HTML按钮onclick调用
+window.playVideo = playVideo;
+
+
+// ================= 数据源相关（API管理） =================
+
+/**
+ * 勾选全部内置源及自定义API源
+ * 供“全选按钮”调用（全局暴露）
+ */
+function selectAllAPIs() {
+    // 批量选中全部checkbox
+    const apiCheckboxes = [
+        ...document.querySelectorAll('#apiCheckboxes input[type="checkbox"]'),
+        ...document.querySelectorAll('#customApisList input[type="checkbox"]')
+    ];
+    apiCheckboxes.forEach(cb => { cb.checked = true; });
+
+    // 刷新选中源保存
+    updateSelectedAPIs && updateSelectedAPIs();
+    checkAdultAPIsSelected && checkAdultAPIsSelected();
+}
+window.selectAllAPIs = selectAllAPIs;
+
+
+/**
+ * 显示“添加自定义API”弹窗并清空表单
+ * 供按钮调用（全局暴露）
+ */
+function showAddCustomApiForm() {
+    // 获取表单控件
+    const modal        = document.getElementById('customApiModal');
+    const nameInput    = document.getElementById('customApiNameInput');
+    const urlInput     = document.getElementById('customApiUrlInput');
+    const adultCheckbox = document.getElementById('customApiAdultInput');
+
+    // 显示弹窗
+    if (modal) modal.classList.remove('hidden');
+    // 清空表单内容
+    if (nameInput)    nameInput.value = '';
+    if (urlInput)     urlInput.value = '';
+    if (adultCheckbox) adultCheckbox.checked = false;
+}
+window.showAddCustomApiForm = showAddCustomApiForm;
+
