@@ -1,252 +1,176 @@
 // /js/store.js
-import { API_SITES, CUSTOM_API_CONFIG, PASSWORD_CONFIG } from './config.js';
 
-// Internal state - not exported directly to prevent accidental modification
+import {
+  API_SITES,
+  CUSTOM_API_CONFIG,
+  PASSWORD_CONFIG,
+  SEARCH_HISTORY_KEY,
+  MAX_HISTORY_ITEMS,
+} from './config.js';
+
+// ========== 默认API选中逻辑(补丁) ==========
+// 优先黑木耳id，否则API_SITES第一个非adult key
+function getDefaultSelectedAPIs() {
+  // 按你的API_SITES结构约定，“heimuer”为黑木耳
+  if (API_SITES.heimuer && !API_SITES.heimuer.adult) return ['heimuer'];
+  // fallback: 取第一个非adult
+  for (const k of Object.keys(API_SITES)) {
+    if (!API_SITES[k].adult) return [k];
+  }
+  // fallback: 取第一个API
+  return Object.keys(API_SITES).length ? [Object.keys(API_SITES)[0]] : [];
+}
+
+// ------- State Structure --------
 let state = {
-    selectedAPIs: [], // Array of API keys (string)
-    customAPIs: [], // Array of custom API objects
-    searchHistory: [],
-    viewingHistory: [],
-    settings: {
-        yellowFilterEnabled: false,
-        adFilteringEnabled: true, // Default ad filtering to true
-        episodesReversed: false,
-        autoplayEnabled: true,
-        hasSeenDisclaimer: false,
-    },
-    uiState: {
-        isLoading: false,
-        isSettingsPanelOpen: false,
-        isHistoryPanelOpen: false,
-        passwordVerified: false, // Initial state, assuming not verified
-        passwordRequired: false, // Will be set based on env
-    },
+  selectedAPIs: [],
+  customAPIs: [],
+  searchHistory: [],
+  viewingHistory: [],
+  settings: {
+    yellowFilterEnabled: true,
+    adFilteringEnabled: true,
+    autoplayEnabled: true
+  },
+  uiState: {
+    settingsPanelVisible: false,
+    historyPanelVisible: false,
+    passwordVerified: false
+  }
 };
 
-// --- Private Helper Functions ---
-
-function save(key, value) {
-    try {
-        localStorage.setItem(key, JSON.stringify(value));
-    } catch (e) {
-        console.error(`Error saving state for key "${key}":`, e);
+// ============== 初始化从 localStorage 加载 ==============
+export function initializeStore() {
+  state.customAPIs = load('customAPIs', []);
+  // 修改点: 使用 getDefaultSelectedAPIs()
+  state.selectedAPIs = load('selectedAPIs', null);
+  if (!Array.isArray(state.selectedAPIs) || state.selectedAPIs.length === 0) {
+    state.selectedAPIs = getDefaultSelectedAPIs();
+    save('selectedAPIs', state.selectedAPIs);
+  }
+  state.searchHistory = load(SEARCH_HISTORY_KEY, []);
+  state.viewingHistory = load('viewingHistory', []);
+  state.settings.yellowFilterEnabled = (localStorage.getItem('yellowFilterEnabled') !== 'false');
+  state.settings.adFilteringEnabled = (localStorage.getItem(CUSTOM_API_CONFIG.adFilteringStorage || 'adFilteringEnabled') !== 'false');
+  state.settings.autoplayEnabled = (localStorage.getItem('autoplayEnabled') !== 'false');
+  // passwordVerified优先通过localStorage校验
+  const raw = localStorage.getItem(PASSWORD_CONFIG.localStorageKey);
+  let verified = false;
+  try {
+    if (raw) {
+      const obj = JSON.parse(raw);
+      verified = !!obj.verified && typeof obj.timestamp === 'number'
+        && (Date.now() < obj.timestamp + PASSWORD_CONFIG.verificationTTL);
     }
+  } catch {}
+  state.uiState.passwordVerified = verified;
 }
-
-function load(key, defaultValue = null) {
-    try {
-        const item = localStorage.getItem(key);
-        if (item === null) {
-            return defaultValue;
-        }
-        // Basic validation: Ensure it's parsable JSON
-        JSON.parse(item); // Try parsing to catch invalid JSON
-        return JSON.parse(item); // Return the parsed object/value
-    } catch (e) {
-        console.error(`Error loading state for key "${key}", using default:`, e);
-        // If loading fails, remove the invalid item
-        localStorage.removeItem(key);
-        return defaultValue;
-    }
-}
-
-function getDefaultSelectedAPIs() {
-    // Select first 3 non-adult APIs by default, or fewer if not available
-    const defaultKeys = Object.keys(API_SITES)
-        .filter(key => !API_SITES[key].is_adult)
-        .slice(0, 3);
-    console.log('getDefaultSelectedAPIs:', defaultKeys);
-    return defaultKeys;
-}
-
-// --- Public API ---
-
+// =================== getter ====================
 export function getState() {
-    // Return a deep clone to prevent direct state mutation
-    return JSON.parse(JSON.stringify(state));
+  // 返回 state 的克隆以防外部直接修改
+  return JSON.parse(JSON.stringify(state));
 }
-
-export function initializeStore(envPasswordHash) {
-    console.log('Initializing store...');
-    // Load persistent state
-    state.customAPIs = load(CUSTOM_API_CONFIG.localStorageKey, []);
-    state.searchHistory = load('videoSearchHistory', []); // Assuming old key name
-    state.viewingHistory = load('viewingHistory', []);
-
-    // Load settings with defaults
-    const loadedSettings = load('userSettings'); // Load settings object
-    state.settings = {
-        yellowFilterEnabled: loadedSettings?.yellowFilterEnabled ?? false,
-        adFilteringEnabled: loadedSettings?.adFilteringEnabled ?? true,
-        episodesReversed: loadedSettings?.episodesReversed ?? false,
-        autoplayEnabled: loadedSettings?.autoplayEnabled ?? true,
-        hasSeenDisclaimer: loadedSettings?.hasSeenDisclaimer ?? false,
-    };
-
-    // Load selected APIs - **CRITICAL FOR SEARCH**
-    let loadedSelectedAPIs = load('selectedAPIs');
-    // Ensure loadedSelectedAPIs is a valid array
-    if (!Array.isArray(loadedSelectedAPIs)) {
-         console.warn('Invalid selectedAPIs loaded from localStorage, resetting to default.');
-         loadedSelectedAPIs = null; // Force reset below
-    }
-    // Use default if null, empty, or still invalid
-    if (loadedSelectedAPIs === null || loadedSelectedAPIs.length === 0) {
-        console.log('No valid selected APIs found in storage, using default.');
-        state.selectedAPIs = getDefaultSelectedAPIs();
-        // **Save the default back to localStorage immediately**
-        save('selectedAPIs', state.selectedAPIs);
-    } else {
-         state.selectedAPIs = loadedSelectedAPIs;
-    }
-
-    // Initialize password state based on environment
-    state.uiState.passwordRequired = !!envPasswordHash;
-    if (state.uiState.passwordRequired) {
-        const storedVerification = load(PASSWORD_CONFIG.localStorageKey);
-        if (storedVerification && storedVerification.timestamp) {
-             const now = Date.now();
-             if (now < storedVerification.timestamp + PASSWORD_CONFIG.verificationTTL) {
-                 state.uiState.passwordVerified = true;
-                 console.log('Password verification loaded from valid storage.');
-             } else {
-                 console.log('Password verification expired.');
-                 localStorage.removeItem(PASSWORD_CONFIG.localStorageKey); // Clean expired item
-             }
-        }
-    } else {
-        state.uiState.passwordVerified = true; // Not required, so considered verified
-    }
-
-    console.log('Store initialized:', getState());
-
-    // Initial state sync dispatch (optional, might cause initial double renders)
-    // document.dispatchEvent(new CustomEvent('stateChange', { detail: { changedKeys: Object.keys(state) } }));
+// ======= 通用工具 =======
+function load(key, def) {
+  try {
+    const d = localStorage.getItem(key);
+    return d ? JSON.parse(d) : def;
+  } catch { return def; }
 }
-
-function dispatchStateChange(changedKeys = []) {
-    document.dispatchEvent(new CustomEvent('stateChange', { detail: { changedKeys } }));
+function save(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+  // 都在 write API 调用了 emitChange
 }
-
-// --- State Update Functions (Mutations/Actions) ---
-
-export function updateSelectedAPIs(newApiKeys) {
-    if (Array.isArray(newApiKeys)) {
-        // Optional: Add validation to ensure keys exist in API_SITES or customAPIs?
-        state.selectedAPIs = [...newApiKeys]; // Use spread to ensure new array
-        save('selectedAPIs', state.selectedAPIs);
-        dispatchStateChange(['selectedAPIs']);
-        console.log('Store: selectedAPIs updated', state.selectedAPIs);
-    } else {
-        console.error('Store: updateSelectedAPIs received invalid value:', newApiKeys);
-    }
+// ========== Mutator APIs (全部 emitChange) ==========
+export function updateSelectedAPIs(newAPIs) {
+  // 补丁逻辑：避免"全不选"时空数据
+  let validAPIs = Array.isArray(newAPIs) ? newAPIs.filter(id => API_SITES[id]) : [];
+  if (validAPIs.length === 0) {
+    // 自动选中默认（如黑木耳），保证至少有一个
+    validAPIs = getDefaultSelectedAPIs();
+  }
+  state.selectedAPIs = [...validAPIs];
+  save('selectedAPIs', state.selectedAPIs);
+  emitChange(['selectedAPIs']);
 }
-
-export function updateCustomAPIs(newCustomApis) {
-     if (Array.isArray(newCustomApis)) {
-         state.customAPIs = newCustomApis.map(api => ({ ...api })); // Deep clone items
-         save(CUSTOM_API_CONFIG.localStorageKey, state.customAPIs);
-         dispatchStateChange(['customAPIs']);
-         console.log('Store: customAPIs updated', state.customAPIs);
-     } else {
-          console.error('Store: updateCustomAPIs received invalid value:', newCustomApis);
-     }
+export function updateCustomAPIs(newCustomAPIs) {
+  state.customAPIs = [...newCustomAPIs];
+  save('customAPIs', state.customAPIs);
+  emitChange(['customAPIs']);
 }
-
-export function addSearchHistoryItem(item) {
-    // Prevent duplicates and limit size
-    state.searchHistory = state.searchHistory.filter(existing => existing.text !== item.text);
-    state.searchHistory.unshift({ ...item, timestamp: Date.now() }); // Add timestamp
-    if (state.searchHistory.length > (CUSTOM_API_CONFIG.maxHistoryItems || 20)) { // Use config or default
-        state.searchHistory.pop();
-    }
-    save('videoSearchHistory', state.searchHistory);
-    dispatchStateChange(['searchHistory']);
+export function addSearchHistoryItem(text) {
+  if (!text || typeof text !== 'string') return;
+  const q = text.trim().substring(0, 50).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  state.searchHistory = state.searchHistory.filter(item => item.text !== q);
+  state.searchHistory.unshift({ text: q, timestamp: Date.now() });
+  if (state.searchHistory.length > MAX_HISTORY_ITEMS) state.searchHistory = state.searchHistory.slice(0, MAX_HISTORY_ITEMS);
+  save(SEARCH_HISTORY_KEY, state.searchHistory);
+  emitChange(['searchHistory']);
 }
-
-export function clearSearchHistory() {
-    state.searchHistory = [];
-    save('videoSearchHistory', state.searchHistory);
-    dispatchStateChange(['searchHistory']);
+export function clearSearchHistoryStore() {
+  state.searchHistory = [];
+  save(SEARCH_HISTORY_KEY, []);
+  emitChange(['searchHistory']);
 }
-
 export function addViewingHistoryItem(item) {
-    // Find existing item by unique identifier (e.g., title and source)
-    const key = `${item.title}_${item.source}`; // Simple key
-    const existingIndex = state.viewingHistory.findIndex(h => `${h.title}_${h.source}` === key);
-
-    const newItem = { ...item, lastViewed: Date.now() };
-
-    if (existingIndex > -1) {
-        // Update existing item, move to top
-        state.viewingHistory.splice(existingIndex, 1);
-    }
-    state.viewingHistory.unshift(newItem);
-
-    // Limit size
-    if (state.viewingHistory.length > (CUSTOM_API_CONFIG.maxHistoryItems || 50)) { // Different limit?
-        state.viewingHistory.pop();
-    }
-
-    save('viewingHistory', state.viewingHistory);
-    dispatchStateChange(['viewingHistory']);
+  // item: 同历史viewingHistory结构
+  if (!item || !item.title) return;
+  const idx = state.viewingHistory.findIndex(i => i.title === item.title);
+  if (idx !== -1) {
+    const old = state.viewingHistory[idx];
+    Object.assign(old, item); state.viewingHistory.splice(idx, 1);
+    state.viewingHistory.unshift(old);
+  } else {
+    state.viewingHistory.unshift(item);
+  }
+  while (state.viewingHistory.length > 50) state.viewingHistory.pop();
+  save('viewingHistory', state.viewingHistory);
+  emitChange(['viewingHistory']);
+}
+export function clearViewingHistoryStore() {
+  state.viewingHistory = [];
+  save('viewingHistory', []);
+  emitChange(['viewingHistory']);
+}
+export function deleteViewingHistoryItem(title) {
+  state.viewingHistory = state.viewingHistory.filter(item => item.title !== title);
+  save('viewingHistory', state.viewingHistory);
+  emitChange(['viewingHistory']);
+}
+// ------ 设置相关 ------
+export function setSetting(key, val) {
+  state.settings[key] = val;
+  if (key === 'yellowFilterEnabled') localStorage.setItem('yellowFilterEnabled', val ? 'true' : 'false');
+  if (key === 'adFilteringEnabled') localStorage.setItem(CUSTOM_API_CONFIG.adFilteringStorage || 'adFilteringEnabled', val ? 'true' : 'false');
+  if (key === 'autoplayEnabled') localStorage.setItem('autoplayEnabled', val ? 'true' : 'false');
+  // 【补丁】针对数据源变动时写入持久化
+  if (key === 'selectedAPIs') {
+    // 自动做校验：不可全空，否则默认黑木耳/首API
+    let fixVal = Array.isArray(val) && val.length ? val.filter(id => API_SITES[id]) : getDefaultSelectedAPIs();
+    state.selectedAPIs = fixVal;
+    save('selectedAPIs', fixVal);
+    emitChange(['selectedAPIs']);
+    return;
+  }
+  emitChange(['settings']);
+}
+// ----- UI State -----
+export function setUIState(key, val) {
+  state.uiState[key] = val;
+  emitChange(['uiState']);
+}
+// ----- 密码相关 -----
+export function setPasswordVerified(status) {
+  state.uiState.passwordVerified = !!status;
+  emitChange(['uiState']);
 }
 
-export function removeViewingHistoryItem(itemKey) { // Assuming itemKey is `${title}_${source}`
-     state.viewingHistory = state.viewingHistory.filter(h => `${h.title}_${h.source}` !== itemKey);
-     save('viewingHistory', state.viewingHistory);
-     dispatchStateChange(['viewingHistory']);
+// ========== 补丁：快捷getter ==========
+export function getSelectedAPIs() {
+  return Array.isArray(state.selectedAPIs) ? state.selectedAPIs.slice() : [];
 }
 
-export function clearViewingHistory() {
-    state.viewingHistory = [];
-    save('viewingHistory', state.viewingHistory);
-    dispatchStateChange(['viewingHistory']);
+// ========== Event (全局) ==========
+function emitChange(changedKeys) {
+  document.dispatchEvent(new CustomEvent('stateChange', { detail: { changedKeys } }));
 }
-
-export function updateSetting(key, value) {
-    if (key in state.settings) {
-        state.settings[key] = value;
-        save('userSettings', state.settings); // Save the whole settings object
-        dispatchStateChange(['settings']);
-        console.log(`Store: Setting ${key} updated to ${value}`);
-    } else {
-        console.warn(`Store: Attempted to update unknown setting "${key}"`);
-    }
-}
-
-export function setLoading(isLoading) {
-    state.uiState.isLoading = !!isLoading;
-    dispatchStateChange(['uiState']);
-}
-
-export function setSettingsPanelOpen(isOpen) {
-    state.uiState.isSettingsPanelOpen = !!isOpen;
-    dispatchStateChange(['uiState']);
-}
-
-export function setHistoryPanelOpen(isOpen) {
-    state.uiState.isHistoryPanelOpen = !!isOpen;
-    dispatchStateChange(['uiState']);
-}
-
-export function setPasswordVerified(isVerified) {
-     state.uiState.passwordVerified = !!isVerified;
-     if (isVerified && state.uiState.passwordRequired) {
-          // Save verification timestamp
-          save(PASSWORD_CONFIG.localStorageKey, { timestamp: Date.now() });
-     } else if (!isVerified) {
-          // Clear verification on explicit logout/fail
-          localStorage.removeItem(PASSWORD_CONFIG.localStorageKey);
-     }
-     dispatchStateChange(['uiState']);
-     console.log('Store: Password verification status set to', state.uiState.passwordVerified);
-}
-
-// Add other state update functions as needed...
-
-// --- Comment explaining state export decision ---
-// The 'state' variable itself is not exported directly to encourage
-// modification only through the exported update functions, ensuring
-// consistency and allowing side effects like localStorage persistence
-// and event dispatching. Use getState() for read access.
