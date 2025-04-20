@@ -1,357 +1,369 @@
+
 // /js/ui.js
-import { getState, setSettingsPanelOpen, setHistoryPanelOpen, clearSearchHistory, clearViewingHistory, removeViewingHistoryItem } from './store.js'; // Import store functions
-import { createHistoryItemElement } from './components/HistoryItem.js'; // Import component
 
-// DOM Elements (Cache if accessed frequently)
-let toastContainer;
-let loadingIndicator;
-let settingsPanel;
-let historyPanel;
-let modalElement;
-let modalTitleElement;
-let modalContentElement;
-let historyListElement; // Cache history list container
+import { SEARCH_HISTORY_KEY, MAX_HISTORY_ITEMS, API_SITES } from './config.js';
+import {
+    getState,
+    setUIState,
+    addSearchHistoryItem,
+    clearSearchHistoryStore,
+    addViewingHistoryItem,
+    clearViewingHistoryStore,
+    deleteViewingHistoryItem,
+    getSelectedAPIs,
+    updateSelectedAPIs,
+    setSetting
+} from './store.js';
+import { createHistoryItemElement } from "./components/HistoryItem.js";
+//import { showToast as globalShowToast } from './utils.js';
+// ----------- Toast/Modal 控件 ------------
 
-let toastTimeout = null; // For toast management
+let toastQueue = [];
+let isShowingToast = false;
+export function showToast(message, type = 'error') {
+    toastQueue.push({ message, type });
+    if (!isShowingToast) showNextToast();
+}
+window.showToast = showToast; // For compatibility with old code
 
-// --- Initialization ---
-
-function cacheDOMElements() {
-     toastContainer = document.getElementById('toast');
-     loadingIndicator = document.getElementById('loading');
-     settingsPanel = document.getElementById('settingsPanel');
-     historyPanel = document.getElementById('historyPanel');
-     modalElement = document.getElementById('modal');
-     modalTitleElement = document.getElementById('modalTitle');
-     modalContentElement = document.getElementById('modalContent');
-     historyListElement = document.getElementById('historyList'); // Cache history list
+function showNextToast() {
+    if (!toastQueue.length) { isShowingToast = false; return; }
+    isShowingToast = true;
+    const { message, type } = toastQueue.shift();
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toastMessage');
+    if (!toast || !toastMsg) return;
+    toastMsg.textContent = message;
+    const bgColors = {
+        error:   'bg-red-500',
+        success: 'bg-green-500',
+        info:    'bg-blue-500',
+        warning: 'bg-yellow-500'
+    };
+    toast.className = `fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${bgColors[type] || bgColors.error} text-white`;
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(-50%) translateY(0)';
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-50%) translateY(-100%)';
+        setTimeout(showNextToast, 300);
+    }, 3000);
 }
 
-function setupUIEventListeners() {
-     // Listener for modal close button
-     if (modalElement) {
-          const closeButton = modalElement.querySelector('.close-modal-button'); // Assuming a class for the close button
-          if (closeButton) {
-              closeButton.addEventListener('click', closeModal);
-          }
-          // Optional: Close modal on backdrop click
-          modalElement.addEventListener('click', (event) => {
-              if (event.target === modalElement) { // Clicked on backdrop
-                  closeModal();
-              }
-          });
-     }
+// ----------- Loading 遮罩 -----------
+let loadingTimeoutId = null;
 
-     // Listeners for history clear buttons (using delegation on history panel)
-     if (historyPanel) {
-          historyPanel.addEventListener('click', (event) => {
-              if (event.target.id === 'clearSearchHistoryButton') {
-                  if (confirm('确定要清除所有搜索历史吗？')) {
-                      clearSearchHistory(); // Use store action
-                  }
-              } else if (event.target.id === 'clearViewingHistoryButton') {
-                  if (confirm('确定要清除所有观看历史吗？')) {
-                      clearViewingHistory(); // Use store action
-                  }
-              }
-          });
-     }
-
-     // Listener for dynamically added history items (delete/play) using delegation
-     if (historyListElement) {
-          historyListElement.addEventListener('click', handleHistoryItemClick);
-     }
-
-     // Listen to state changes to update UI elements managed by ui.js
-     document.addEventListener('stateChange', handleStateChange);
+export function showLoading(message = '加载中...') {
+    if (loadingTimeoutId) clearTimeout(loadingTimeoutId);
+    const loading = document.getElementById('loading');
+    if (!loading) return;
+    const msgEl = loading.querySelector('p');
+    if (msgEl) msgEl.textContent = message;
+    loading.style.display = 'flex';
+    loadingTimeoutId = setTimeout(() => {
+        hideLoading();
+        showToast('操作超时，请稍后重试', 'warning');
+    }, 30000);
 }
-
-export function initUI() {
-     console.log('Initializing UI...');
-     cacheDOMElements();
-     setupUIEventListeners();
-     // Initial UI state sync based on store
-     const initialState = getState();
-     setLoading(initialState.uiState.isLoading);
-     updatePanelVisibility(settingsPanel, initialState.uiState.isSettingsPanelOpen);
-     updatePanelVisibility(historyPanel, initialState.uiState.isHistoryPanelOpen);
-     renderHistory(); // Initial history render
-     // Hide modal initially
-     if (modalElement) modalElement.classList.add('hidden');
-     console.log('UI Initialization complete.');
-}
-
-// --- State Change Handler ---
-
-function handleStateChange(event) {
-    const changedKeys = event.detail.changedKeys || [];
-    const currentState = getState(); // Get current state
-
-    if (changedKeys.includes('uiState')) {
-        setLoading(currentState.uiState.isLoading);
-        updatePanelVisibility(settingsPanel, currentState.uiState.isSettingsPanelOpen);
-        updatePanelVisibility(historyPanel, currentState.uiState.isHistoryPanelOpen);
-        // Handle password modal visibility if needed here or in password.js listener
-    }
-    if (changedKeys.includes('searchHistory') || changedKeys.includes('viewingHistory')) {
-        renderHistory(); // Re-render history lists if they change
-    }
-}
-
-// --- Core UI Functions ---
-
-export function showToast(message, type = 'info', duration = 3000) {
-    if (!toastContainer) return;
-
-    // Clear existing timeout if any
-    if (toastTimeout) {
-        clearTimeout(toastTimeout);
-    }
-
-    // Remove previous type classes
-    toastContainer.classList.remove('bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-red-500');
-
-    // Apply new type class
-    let bgColor = 'bg-blue-500'; // Default info
-    if (type === 'success') bgColor = 'bg-green-500';
-    if (type === 'warning') bgColor = 'bg-yellow-500';
-    if (type === 'error') bgColor = 'bg-red-500';
-    toastContainer.classList.add(bgColor);
-
-    toastContainer.textContent = message;
-    toastContainer.classList.remove('hidden', 'opacity-0', 'translate-y-full');
-    toastContainer.classList.add('opacity-100', 'translate-y-0');
-
-    toastTimeout = setTimeout(() => {
-        toastContainer.classList.remove('opacity-100', 'translate-y-0');
-        toastContainer.classList.add('opacity-0', 'translate-y-full');
-        // Use transitionend event for potentially smoother hiding?
-        // For simplicity, hide after transition duration (adjust timeout if needed)
-        setTimeout(() => {
-           if (!toastContainer.classList.contains('opacity-100')) { // Check if another toast hasn't appeared
-               toastContainer.classList.add('hidden');
-           }
-        }, 500); // Match transition duration
-    }, duration);
-}
-
-export function showLoading() {
-    if (loadingIndicator) {
-        loadingIndicator.classList.remove('hidden');
-    }
-}
+window.showLoading = showLoading;
 
 export function hideLoading() {
-    if (loadingIndicator) {
-        loadingIndicator.classList.add('hidden');
+    if (loadingTimeoutId) {
+        clearTimeout(loadingTimeoutId);
+        loadingTimeoutId = null;
     }
+    const loading = document.getElementById('loading');
+    if (loading) loading.style.display = 'none';
 }
+window.hideLoading = hideLoading;
 
-export function showModal(title, contentElement) {
-    if (!modalElement || !modalTitleElement || !modalContentElement) return;
-
-    modalTitleElement.textContent = title;
-    modalContentElement.innerHTML = ''; // Clear previous content
-    modalContentElement.appendChild(contentElement); // Append new content (already created DOM element)
-
-    modalElement.classList.remove('hidden');
-    // Add focus trapping and escape key closing for accessibility if needed
-}
-
+// ----------- Modal -----------
 export function closeModal() {
-    if (modalElement) {
-        modalElement.classList.add('hidden');
-        modalContentElement.innerHTML = ''; // Clear content on close
-    }
+    const modal = document.getElementById('modal');
+    const modalContent = document.getElementById('modalContent');
+    modal && modal.classList.add('hidden');
+    if (modalContent) modalContent.innerHTML = '';
+}
+window.closeModal = closeModal;
+
+// ----------- 站点可用性标记 -----------
+export function updateSiteStatus(isAvailable) {
+    const statusEl = document.getElementById('siteStatus');
+    if (!statusEl) return;
+    statusEl.innerHTML = isAvailable
+        ? '<span class="text-green-500">●</span> 可用'
+        : '<span class="text-red-500">●</span> 不可用';
+}
+window.updateSiteStatus = updateSiteStatus;
+
+// ================== ★ 数据源API复选框渲染和勾选保存补丁 ★ ==================
+
+// 取API列表
+function _getApiArr() {
+    // 你的API_SITES为对象 {"heimuer":{...}, ...}，取value和id组装
+    return Object.entries(API_SITES).map(([id, val]) => ({
+        id, name: val.name || id, ...val
+    }));
 }
 
+// 渲染API勾选区，首次必有默认，勾选/取消自动持久化
+export function renderAPICheckboxes() {
+    const container = document.getElementById('apiCheckboxes');
+    if (!container) return;
+    container.innerHTML = '';
+    const selectedAPIs = getSelectedAPIs();
 
-// --- Panel Logic ---
+    const apis = _getApiArr();
+    apis.forEach(api => {
+        const id = api.id;
+        const label = api.name;
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `api-checkbox-${id}`;
+        checkbox.value = id;
+        checkbox.checked = selectedAPIs.includes(id);
+        checkbox.className = 'form-checkbox h-4 w-4 text-indigo-600 bg-[#222] border-[#444] mr-2';
 
-export function toggleSettings() {
-    const isOpen = getState().uiState.isSettingsPanelOpen;
-    setSettingsPanelOpen(!isOpen); // Update store
-    if (!isOpen) { // If opening settings, close history
-        setHistoryPanelOpen(false);
-    }
-}
-
-export function toggleHistory() {
-    const isOpen = getState().uiState.isHistoryPanelOpen;
-    setHistoryPanelOpen(!isOpen); // Update store
-    if (!isOpen) { // If opening history, close settings
-        setSettingsPanelOpen(false);
-    }
-}
-
-function updatePanelVisibility(panel, isOpen) {
-    if (!panel) return;
-    if (isOpen) {
-        panel.classList.remove('hidden');
-        panel.classList.add('panel-visible'); // Use class for animation/state
-        panel.classList.remove('panel-hidden');
-    } else {
-        panel.classList.remove('panel-visible');
-        panel.classList.add('panel-hidden');
-        // Delay adding hidden to allow animation (match CSS transition duration)
-        setTimeout(() => {
-            // Check if it wasn't opened again during the timeout
-            if (!panel.classList.contains('panel-visible')) {
-                panel.classList.add('hidden');
+        // 切换时自动同步
+        checkbox.addEventListener('change', function() {
+            let now = getSelectedAPIs().slice();
+            if (checkbox.checked) {
+                if (!now.includes(id)) now.push(id);
+            } else {
+                now = now.filter(x => x !== id);
             }
-        }, 300); // Adjust duration to match CSS transition
+            // 如果结果为空，禁止全取消，强制把这项勾回并提示
+            if (now.length === 0) {
+                checkbox.checked = true;
+                showToast('至少保留一个数据源', 'warning');
+                return;
+            }
+            updateSelectedAPIs(now);
+            updateSelectedApiCount();
+        });
+
+        const labelEl = document.createElement('label');
+        labelEl.htmlFor = checkbox.id;
+        labelEl.textContent = label;
+        labelEl.className = 'text-xs text-gray-300 flex items-center gap-1 cursor-pointer mb-1';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex items-center';
+        wrapper.appendChild(checkbox);
+        wrapper.appendChild(labelEl);
+
+        container.appendChild(wrapper);
+    });
+    updateSelectedApiCount();
+}
+
+function updateSelectedApiCount() {
+    const el = document.getElementById('selectedApiCount');
+    if (!el) return;
+    el.textContent = getSelectedAPIs().length;
+}
+
+// =================== 搜索历史相关 ===================
+export function renderSearchHistory() {
+    const container = document.getElementById('recentSearches');
+    if (!container) return;
+    const history = getState().searchHistory;
+    if (!history.length) {
+        container.innerHTML = '';
+        return;
+    }
+    // 头部
+    container.innerHTML = `
+      <div class="flex justify-between items-center w-full mb-2">
+        <div class="text-gray-500">最近搜索:</div>
+        <button id="clearHistoryBtn" class="text-gray-500 hover:text-white transition-colors" aria-label="清除搜索历史">清除搜索历史</button>
+      </div>`;
+    // 历史标签
+    const frag = document.createDocumentFragment();
+    history.forEach(item => {
+        const btn = document.createElement('button');
+        btn.className = 'search-tag';
+        btn.textContent = item.text;
+        btn.title = item.timestamp ? `搜索于: ${new Date(item.timestamp).toLocaleString()}` : '';
+        frag.appendChild(btn);
+    });
+    container.appendChild(frag);
+}
+
+// 搜索标签点击、清除事件（事件委托注册）
+document.addEventListener('DOMContentLoaded', function() {
+    // API 勾选区首次渲染
+    renderAPICheckboxes();
+
+    // 搜索历史
+    const container = document.getElementById('recentSearches');
+    if (container) {
+        container.addEventListener('click', function(e){
+            if (e.target.classList.contains('search-tag')) {
+                const input = document.getElementById('searchInput');
+                if (input) input.value = e.target.textContent;
+                if (typeof window.search === 'function') window.search();
+            } else if (e.target && e.target.id === 'clearHistoryBtn') {
+                clearSearchHistoryStore();
+                showToast('搜索历史已清除', 'success');
+            }
+        });
+    }
+});
+
+// =================== 观看历史相关 ===================
+export function loadViewingHistory() {
+    const list = document.getElementById('historyList');
+    if (!list) return;
+    const history = getState().viewingHistory;
+    list.innerHTML = '';
+    if (!history.length) {
+        list.innerHTML = '<div class="text-center text-gray-500 py-8">暂无观看记录</div>';
+        return;
+    }
+    const frag = document.createDocumentFragment();
+    history.forEach(item => {
+        const elem = createHistoryItemElement(item, "viewing", playFromHistory, item => {
+            deleteViewingHistoryItem(item.title); // 仅传title
+            loadViewingHistory();
+            showToast('已删除该记录', 'success');
+        });
+        frag.appendChild(elem);
+    });
+    list.appendChild(frag);
+}
+// 历史面板 click 事件已在组件/委托实现
+
+export function clearViewingHistory() {
+    clearViewingHistoryStore();
+    showToast('观看历史已清空', 'success');
+    loadViewingHistory();
+}
+window.clearViewingHistory = clearViewingHistory;
+
+// ============== 搜索/播放历史 通用 组件式 Play ==============
+export function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
+    try {
+        let episodesList = [];
+        const history = getState().viewingHistory;
+        const item = history.find(h => h.title === title);
+        if (item?.episodes?.length) episodesList = item.episodes;
+        else {
+            try {
+                const cand = JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
+                if (cand.length) episodesList = cand;
+            } catch {}
+        }
+        const posParam = playbackPosition > 10 ? `&position=${Math.floor(playbackPosition)}` : '';
+        const epParam = episodesList.length ? `&episodes=${encodeURIComponent(JSON.stringify(episodesList))}` : '';
+        let targetUrl;
+        if (url.includes('?')) {
+            targetUrl = url;
+            if (!url.includes('index=') && episodeIndex > 0) targetUrl += `&index=${episodeIndex}`;
+            if (posParam) targetUrl += posParam;
+            if (epParam && !url.includes('episodes=')) targetUrl += epParam;
+            window.open(targetUrl, '_blank');
+        } else {
+            targetUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}${posParam}${epParam}`;
+            window.open(targetUrl, '_blank');
+        }
+    } catch {
+        window.open(`player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}`, '_blank');
     }
 }
+window.playFromHistory = playFromHistory;
 
-// --- History Logic ---
-
-function renderHistory() {
-     if (!historyListElement) return;
-     historyListElement.innerHTML = ''; // Clear existing
-     const { searchHistory, viewingHistory } = getState();
-     const fragment = document.createDocumentFragment();
-
-     // Viewing History Section
-     const viewingTitle = document.createElement('h3');
-     viewingTitle.className = 'text-lg font-semibold mb-2 text-gray-200 px-2';
-     viewingTitle.textContent = '观看历史';
-     fragment.appendChild(viewingTitle);
-
-     if (viewingHistory.length > 0) {
-          viewingHistory.forEach(item => {
-              const historyElement = createHistoryItemElement(
-                   item,
-                   'viewing',
-                   // Callbacks handled by delegation
-              );
-              fragment.appendChild(historyElement);
-          });
-     } else {
-          const noViewing = document.createElement('p');
-          noViewing.className = 'text-gray-400 text-sm px-2 mb-4';
-          noViewing.textContent = '暂无观看历史。';
-          fragment.appendChild(noViewing);
-     }
-
-     // Search History Section
-     const searchTitle = document.createElement('h3');
-     searchTitle.className = 'text-lg font-semibold mb-2 text-gray-200 px-2 mt-4';
-     searchTitle.textContent = '搜索历史';
-     fragment.appendChild(searchTitle);
-
-     if (searchHistory.length > 0) {
-          searchHistory.forEach(item => {
-              const historyElement = createHistoryItemElement(
-                  item,
-                  'search',
-                  // Callbacks handled by delegation
-              );
-              fragment.appendChild(historyElement);
-          });
-     } else {
-          const noSearch = document.createElement('p');
-          noSearch.className = 'text-gray-400 text-sm px-2';
-          noSearch.textContent = '暂无搜索历史。';
-          fragment.appendChild(noSearch);
-     }
-
-     historyListElement.appendChild(fragment);
-}
-
-function handleHistoryItemClick(event) {
-     const playButton = event.target.closest('.play-history-button');
-     const deleteButton = event.target.closest('.delete-history-button');
-     const searchLink = event.target.closest('.search-history-link');
-
-     if (playButton) {
-          const key = playButton.dataset.key; // Assuming key is stored on button
-          if (key) {
-              playFromHistory(key);
-          }
-     } else if (deleteButton) {
-          const key = deleteButton.dataset.key;
-          const type = deleteButton.dataset.type;
-          if (key && type) {
-              if (confirm(`确定要删除这条${type === 'viewing' ? '观看' : '搜索'}历史吗？`)) {
-                  deleteHistoryItem(key, type);
-              }
-          }
-     } else if (searchLink) {
-          event.preventDefault(); // Prevent default link navigation
-          const query = searchLink.dataset.query;
-          if (query) {
-               // Find search input and trigger search (assuming app.js handles search)
-               const searchInput = document.getElementById('searchInput');
-               const searchForm = document.getElementById('searchForm');
-               if (searchInput && searchForm) {
-                    searchInput.value = query;
-                    searchForm.requestSubmit(); // Programmatically submit form
-                    toggleHistory(); // Close history panel
-               }
-          }
-     }
-}
-
-
-// --- History Item Actions ---
-
-function playFromHistory(itemKey) { // key is likely `${title}_${source}` for viewing history
-    console.log('Attempting to play from history:', itemKey);
-    const viewingHistory = getState().viewingHistory;
-    const item = viewingHistory.find(h => `${h.title}_${h.source}` === itemKey);
-
-    if (item && item.id && item.source && item.title) {
-         const playerUrl = PLAYER_CONFIG.playerUrl || 'player.html';
-         const params = new URLSearchParams({
-              id: item.id,
-              title: item.title,
-              source: item.source,
-              isCustom: item.isCustom?.toString() || 'false',
-              // Pass playback position if available
-              position: item.currentTime ? Math.floor(item.currentTime).toString() : '0',
-              // Pass episode index if available
-              index: item.currentEpisodeIndex?.toString() || '0',
-              // Note: Passing full episodes list via URL can be very long.
-              // Player should ideally re-fetch details based on id/source.
-         });
-         window.location.href = `${playerUrl}?${params.toString()}`;
-    } else {
-         showToast('无法播放该历史记录项', 'error');
-         console.error('Could not find valid data to play history item:', itemKey, item);
-    }
-}
-
-function deleteHistoryItem(itemKey, type) {
-     if (type === 'viewing') {
-          removeViewingHistoryItem(itemKey); // Use store action
-          showToast('观看历史已删除', 'success');
-     } else if (type === 'search') {
-          // Search history deletion needs specific implementation if key isn't simple
-          console.warn('Search history item deletion by key not fully implemented.');
-          // Assuming key is the search text for now
-          const currentSearchHistory = getState().searchHistory;
-          const updatedHistory = currentSearchHistory.filter(item => item.text !== itemKey);
-          // Need a specific store action for this potentially
-          // saveSearchHistory(updatedHistory); // Replace with store action if available
-          clearSearchHistory(); // Temp: Clear all for now, needs refinement
-          showToast('搜索历史已删除', 'success'); // Adjust message
-     }
-}
-
-// --- Utility Functions ---
-
+// ============== 友好格式化 ==============
 export function formatTimestamp(timestamp) {
-    if (!timestamp) return '';
-    const date = new Date(timestamp);
-    return date.toLocaleString('zh-CN', { dateStyle: 'short', timeStyle: 'short' });
+    const date = new Date(timestamp), now = Date.now();
+    const diff = now - date;
+    if (diff < 3.6e6) {
+        const m = Math.floor(diff / 6e4);
+        return m <= 0 ? '刚刚' : `${m}分钟前`;
+    }
+    if (diff < 8.64e7) return `${Math.floor(diff / 3.6e6)}小时前`;
+    if (diff < 6.048e8) return `${Math.floor(diff / 8.64e7)}天前`;
+    return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
 }
+window.formatTimestamp = formatTimestamp;
 
 export function formatPlaybackTime(seconds) {
-     if (isNaN(seconds) || seconds < 0) return '0:00';
-     const minutes = Math.floor(seconds / 60);
-     const secs = Math.floor(seconds % 60);
-     return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    if (!seconds || isNaN(seconds)) return '00:00';
+    const m = Math.floor(seconds / 60), s = Math.floor(seconds % 60);
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+window.formatPlaybackTime = formatPlaybackTime;
+
+// ===================== 面板可见性与事件注册 =====================
+
+// 设置面板
+export function toggleSettings(e) {
+    e && e.stopPropagation();
+    const currState = getState().uiState.settingsPanelVisible;
+    setUIState('settingsPanelVisible', !currState);
+    if (!currState) setUIState('historyPanelVisible', false); // 关闭历史面板
+}
+window.toggleSettings = toggleSettings;
+
+// 历史面板
+export function toggleHistory(e) {
+    e && e.stopPropagation();
+    const currState = getState().uiState.historyPanelVisible;
+    setUIState('historyPanelVisible', !currState);
+    if (!currState) setUIState('settingsPanelVisible', false); // 关闭设置面板
+    if (!currState) loadViewingHistory();
+}
+window.toggleHistory = toggleHistory;
+
+// 监听 UI/面板变化以显示/隐藏 DOM
+document.addEventListener('stateChange', (e) => {
+    const keys = e.detail.changedKeys || [];
+    const uiState = getState().uiState;
+    if (keys.includes('uiState')) {
+        // 设置面板
+        const settingsPanel = document.getElementById('settingsPanel');
+        if (settingsPanel) {
+            if (uiState.settingsPanelVisible) settingsPanel.classList.add('show');
+            else settingsPanel.classList.remove('show');
+        }
+        // 历史面板
+        const historyPanel = document.getElementById('historyPanel');
+        if (historyPanel) {
+            if (uiState.historyPanelVisible) historyPanel.classList.add('show');
+            else historyPanel.classList.remove('show');
+        }
+    }
+});
+
+// 面板外点击自动关闭
+document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('click', function(e) {
+        const historyPanel = document.getElementById('historyPanel');
+        const historyBtn = document.getElementById('historyBtn');
+        if (historyPanel && historyBtn && !historyPanel.contains(e.target) && !historyBtn.contains(e.target)
+            && historyPanel.classList.contains('show')) {
+            setUIState('historyPanelVisible', false);
+        }
+        const settingsPanel = document.getElementById('settingsPanel');
+        const settingsBtn = document.getElementById('settingsBtn');
+        if (settingsPanel && settingsBtn && !settingsPanel.contains(e.target) && !settingsBtn.contains(e.target)
+            && settingsPanel.classList.contains('show')) {
+            setUIState('settingsPanelVisible', false);
+        }
+    });
+});
+
+// ===================== 过滤/设置开关控制 =====================
+
+export function addToggleListener(id, settingKey) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', e => {
+        setSetting(settingKey, e.target.checked);
+    });
 }
 
-// No need to export window. functions anymore
-// Remove: window.showToast = showToast; etc.
+// ===================== 兼容旧逻辑 =====================
+window.showToast = showToast;
+window.showLoading = showLoading;
+window.hideLoading = hideLoading;
+window.clearViewingHistory = clearViewingHistory;
