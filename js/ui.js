@@ -4,6 +4,7 @@ import { SEARCH_HISTORY_KEY, MAX_HISTORY_ITEMS } from './config.js';
 import { getState, addSearchHistoryItem, clearSearchHistoryStore, addViewingHistoryItem, clearViewingHistoryStore, deleteViewingHistoryItem } from './store.js';
 import { createHistoryItemElement } from "./components/HistoryItem.js";
 import { showToast as globalShowToast } from './utils.js';
+import { setUIState, getState } from './store.js';
 
 // ----------- Toast/Modal 控件 ------------
 
@@ -214,7 +215,7 @@ window.formatPlaybackTime = formatPlaybackTime;
 
 // ===================== 面板可见性与事件注册 =====================
 
-import { setUIState, getState } from './store.js';
+
 
 // 设置面板
 export function toggleSettings(e) {
