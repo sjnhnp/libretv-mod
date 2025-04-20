@@ -315,7 +315,12 @@ async function search() {
         showSearchUI();
         const resultsDiv = document.getElementById('results');
         allResults = filterResultsByYellow(allResults);
-        resultsDiv.innerHTML = allResults.length ? allResults.map(renderResultCard).join('') : renderNoResultsHtml();
+        resultsDiv.innerHTML = '';
+if (allResults.length) {
+    allResults.map(renderResultCard).forEach(card => resultsDiv.appendChild(card));
+} else {
+    resultsDiv.innerHTML = renderNoResultsHtml();
+}
     } catch (e) {
         console.error('搜索错误:', e);
         showToast(e.name === 'AbortError' ? '搜索请求超时，请检查网络连接' : '搜索请求失败，请稍后重试', 'error');
