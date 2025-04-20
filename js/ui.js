@@ -1,10 +1,20 @@
 // /js/ui.js
 
-import { SEARCH_HISTORY_KEY, MAX_HISTORY_ITEMS } from './config.js';
-import { getState, setUIState, addSearchHistoryItem, clearSearchHistoryStore, addViewingHistoryItem, clearViewingHistoryStore, deleteViewingHistoryItem } from './store.js';
+import { SEARCH_HISTORY_KEY, MAX_HISTORY_ITEMS, API_SITES } from './config.js';
+import {
+    getState,
+    setUIState,
+    addSearchHistoryItem,
+    clearSearchHistoryStore,
+    addViewingHistoryItem,
+    clearViewingHistoryStore,
+    deleteViewingHistoryItem,
+    getSelectedAPIs,
+    updateSelectedAPIs,
+    setSetting
+} from './store.js';
 import { createHistoryItemElement } from "./components/HistoryItem.js";
 //import { showToast as globalShowToast } from './utils.js';
-
 
 // ----------- Toast/Modal 控件 ------------
 
@@ -86,6 +96,73 @@ export function updateSiteStatus(isAvailable) {
 }
 window.updateSiteStatus = updateSiteStatus;
 
+// ================== ★ 数据源API复选框渲染和勾选保存补丁 ★ ==================
+
+// 取API列表
+function _getApiArr() {
+    // 你的API_SITES为对象 {"heimuer":{...}, ...}，取value和id组装
+    return Object.entries(API_SITES).map(([id, val]) => ({
+        id, name: val.name || id, ...val
+    }));
+}
+
+// 渲染API勾选区，首次必有默认，勾选/取消自动持久化
+export function renderAPICheckboxes() {
+    const container = document.getElementById('apiCheckboxes');
+    if (!container) return;
+    container.innerHTML = '';
+    const selectedAPIs = getSelectedAPIs();
+
+    const apis = _getApiArr();
+    apis.forEach(api => {
+        const id = api.id;
+        const label = api.name;
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `api-checkbox-${id}`;
+        checkbox.value = id;
+        checkbox.checked = selectedAPIs.includes(id);
+        checkbox.className = 'form-checkbox h-4 w-4 text-indigo-600 bg-[#222] border-[#444] mr-2';
+
+        // 切换时自动同步
+        checkbox.addEventListener('change', function() {
+            let now = getSelectedAPIs().slice();
+            if (checkbox.checked) {
+                if (!now.includes(id)) now.push(id);
+            } else {
+                now = now.filter(x => x !== id);
+            }
+            // 如果结果为空，禁止全取消，强制把这项勾回并提示
+            if (now.length === 0) {
+                checkbox.checked = true;
+                showToast('至少保留一个数据源', 'warning');
+                return;
+            }
+            updateSelectedAPIs(now);
+            updateSelectedApiCount();
+        });
+
+        const labelEl = document.createElement('label');
+        labelEl.htmlFor = checkbox.id;
+        labelEl.textContent = label;
+        labelEl.className = 'text-xs text-gray-300 flex items-center gap-1 cursor-pointer mb-1';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex items-center';
+        wrapper.appendChild(checkbox);
+        wrapper.appendChild(labelEl);
+
+        container.appendChild(wrapper);
+    });
+    updateSelectedApiCount();
+}
+
+function updateSelectedApiCount() {
+    const el = document.getElementById('selectedApiCount');
+    if (!el) return;
+    el.textContent = getSelectedAPIs().length;
+}
+
 // =================== 搜索历史相关 ===================
 export function renderSearchHistory() {
     const container = document.getElementById('recentSearches');
@@ -115,6 +192,10 @@ export function renderSearchHistory() {
 
 // 搜索标签点击、清除事件（事件委托注册）
 document.addEventListener('DOMContentLoaded', function() {
+    // API 勾选区首次渲染
+    renderAPICheckboxes();
+
+    // 搜索历史
     const container = document.getElementById('recentSearches');
     if (container) {
         container.addEventListener('click', function(e){
@@ -215,8 +296,6 @@ window.formatPlaybackTime = formatPlaybackTime;
 
 // ===================== 面板可见性与事件注册 =====================
 
-
-
 // 设置面板
 export function toggleSettings(e) {
     e && e.stopPropagation();
@@ -283,12 +362,8 @@ export function addToggleListener(id, settingKey) {
     });
 }
 
-
 // ===================== 兼容旧逻辑 =====================
-
 window.showToast = showToast;
 window.showLoading = showLoading;
 window.hideLoading = hideLoading;
-window.clearViewingHistory = clearViewingHistory; // 用于按钮事件委托
-
-
+window.clearViewingHistory = clearViewingHistory;
