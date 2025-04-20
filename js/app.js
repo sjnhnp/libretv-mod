@@ -1,12 +1,3 @@
-document.addEventListener('click', function(e) {
-    const card = e.target.closest('.card-hover');
-    if (card && card.dataset.videoId && card.dataset.source) {
-        const results = document.getElementById('results');
-        if (results && results.contains(card)) {
-            showDetails(card.dataset.videoId, card.querySelector('h3')?.textContent || '', card.dataset.source);
-        }
-    }
-});
 import {
     PROXY_URL, API_SITES, HIDE_BUILTIN_ADULT_APIS, PLAYER_CONFIG
 } from './config.js';
@@ -34,6 +25,16 @@ import { searchVideos, getVideoDetails } from './apiService.js';
 import { createSearchResultCardElement } from './components/SearchResultCard.js';
 import { createApiCheckboxElement } from './components/ApiCheckbox.js';
 import { createCustomApiListItemElement } from './components/CustomApiListItem.js';
+
+document.addEventListener('click', function(e) {
+    const card = e.target.closest('.card-hover');
+    if (card && card.dataset.videoId && card.dataset.source) {
+        const results = document.getElementById('results');
+        if (results && results.contains(card)) {
+            showDetails(card.dataset.videoId, card.querySelector('h3')?.textContent || '', card.dataset.source);
+        }
+    }
+});
 
 // ========== 当前页面局部状态 ==========
 let currentEpisodes = [];
