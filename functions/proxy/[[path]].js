@@ -3,7 +3,6 @@ const MEDIA_FILE_EXTENSIONS = [
   '.mp3','.wav','.ogg','.aac','.m4a','.flac','.wma','.alac','.aiff','.opus',
   '.jpg','.jpeg','.png','.gif','.webp','.bmp','.tiff','.svg','.avif','.heic'
 ];
-
 const MEDIA_CONTENT_TYPES = ['video/', 'audio/', 'image/'];
 
 // ===================== Utility: Logging & Header =====================
@@ -39,7 +38,7 @@ function extractTargetUrl(pathname, DEBUG_ENABLED) {
   try {
     const decoded = decodeURIComponent(encodedUrl);
     if (/^https?:\/\//i.test(decoded)) return decoded;
-    if (/^https?:\/\//i.test(encodedUrl)) return encodedUrl; // warn: not encoded, but looks valid
+    if (/^https?:\/\//i.test(encodedUrl)) return encodedUrl;
     logDebug(`无效目标 URL 格式 (解码后): ${decoded}`, DEBUG_ENABLED);
     return null;
   } catch (e) {
@@ -99,7 +98,6 @@ function isMediaFile(url, contentType) {
 
 // ============= Fetch, KV, Content ================
 
-// 获取env.USER_AGENTS
 function getUserAgents(env, DEBUG_ENABLED) {
   let UAs = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -138,30 +136,6 @@ async function fetchContentWithType(targetUrl, reqHeaders, UAs, DEBUG_ENABLED) {
     logDebug(`请求异常: ${targetUrl}: ${e.message}`, DEBUG_ENABLED);
     throw new Error(`请求目标失败: ${targetUrl}: ${e.message}`);
   }
-}
-
-async function getOrSetKV(kv, key, fetchFn, processFn, env, cacheSeconds, DEBUG_ENABLED, waitUntil) {
-  if (kv) {
-    try {
-      const cached = await kv.get(key);
-      if (cached) return { fromCache: true, result: cached };
-    } catch(e) {
-      logDebug(`读取缓存失败(${key}): ${e.message}`, DEBUG_ENABLED);
-    }
-  }
-  const { content, contentType, responseHeaders } = await fetchFn();
-  let result;
-  if (typeof processFn === 'function') result = await processFn(content, contentType, responseHeaders);
-  else result = content;
-  if (kv) {
-    try {
-      waitUntil && waitUntil(kv.put(key, typeof result === "string" ? result : JSON.stringify(result), { expirationTtl: cacheSeconds }));
-      logDebug(`已缓存到KV: ${key}`, DEBUG_ENABLED);
-    } catch(e) {
-      logDebug(`缓存写入失败(${key}): ${e.message}`, DEBUG_ENABLED);
-    }
-  }
-  return { fromCache: false, result, contentType, responseHeaders };
 }
 
 // ========== M3U8 Processors ==========
@@ -295,7 +269,24 @@ export async function onRequest(context) {
         const contentType = headers["content-type"] || headers["Content-Type"] || '';
         if (isM3u8Content(content, contentType)) {
           logDebug("缓存内容为 M3U8，需重写内容", DEBUG_ENABLED);
+
+          // ------ 优化1：如命中已处理M3U8，直接回包（避免processM3u8Content重复解析） ------
+          if (kv) {
+            const cacheKeyProcessed = `m3u8_processed:${targetUrl}`;
+            try {
+              const processedM3u8 = await kv.get(cacheKeyProcessed);
+              if (processedM3u8) {
+                logDebug(`[优化] 命中已处理M3U8(${cacheKeyProcessed})，直接回包`, DEBUG_ENABLED);
+                return buildM3u8Response(processedM3u8, CACHE_TTL);
+              }
+            } catch(e) { logDebug(`[优化] 获取已处理M3U8异常(${cacheKeyProcessed}): ${e.message}`, DEBUG_ENABLED);}
+          }
+          // 不存在已处理缓存，才走process
           const replay = await processM3u8Content(targetUrl, content, 0, env, CACHE_TTL, DEBUG_ENABLED, waitUntil);
+          // 写入到 processed cache（后台）
+          if (kv) try {
+            waitUntil && waitUntil(kv.put(`m3u8_processed:${targetUrl}`, replay, { expirationTtl: CACHE_TTL }));
+          } catch(e) { logDebug('[优化] KV写processed失败:' + e.message, DEBUG_ENABLED); }
           return buildM3u8Response(replay, CACHE_TTL);
         }
         logDebug("缓存内容为其它媒体类型", DEBUG_ENABLED);
@@ -327,6 +318,11 @@ export async function onRequest(context) {
     // 5. 判断/处理M3U8、直接媒体、其它
     if (isM3u8Content(content, contentType)) {
       const replay = await processM3u8Content(targetUrl, content, 0, env, CACHE_TTL, DEBUG_ENABLED, waitUntil);
+      // ------ 优化2: 处理完后也写入 processed cache，确保后面查找更快 ------
+      if (kv) try {
+        waitUntil && waitUntil(kv.put(`m3u8_processed:${targetUrl}`, replay, { expirationTtl: CACHE_TTL }));
+        logDebug('[优化] 已缓存processed m3u8', DEBUG_ENABLED);
+      } catch(e){ logDebug('[优化] KV写processed异常: ' + e.message, DEBUG_ENABLED);}
       return buildM3u8Response(replay, CACHE_TTL);
     } else {
       const outHeaders = new Headers(responseHeaders);
