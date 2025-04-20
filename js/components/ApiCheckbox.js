@@ -1,6 +1,6 @@
 
 // /js/components/ApiCheckbox.js
-import { getState } from '../store.js';
+
 /**
  * apiConfig: { name, key, isAdult }
  * isChecked: boolean
