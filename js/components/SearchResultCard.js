@@ -15,10 +15,10 @@ export function createSearchResultCardElement(itemData/*, apiConfig, sourceIdent
         'cursor-pointer', 'transition-all', 'hover:scale-[1.02]', 'h-full'
     );
     // 关键信息 data
-    if (itemData.vod_id) card.dataset.videoId = itemData.vod_id;
-    if (itemData.source_code) card.dataset.source = itemData.source_code;
-    if (itemData.api_url) card.dataset.apiUrl = itemData.api_url;
-
+card.dataset.videoId = itemData.vod_id || itemData.id; // 兼容不同API的ID字段
+card.dataset.source = itemData.source_code || itemData.source || 'default'; // 统一来源标识
+if (itemData.api_url) card.dataset.apiUrl = itemData.api_url;
+    
     // 卡片内结构复刻原renderResultCard，但用纯DOM拼装
     const flexDiv = document.createElement('div');
     flexDiv.classList.add('md:flex');
