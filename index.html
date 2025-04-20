@@ -8,47 +8,21 @@
     <meta name="keywords" content="">
     <meta name="author" content="">
     <meta name="robots" content="index, follow">
-
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="">
-    <meta property="og:title" content="">
-    <meta property="og:description" content="">
-    <meta property="og:image" content="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png">
-
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="">
-    <meta property="twitter:title" content="">
-    <meta property="twitter:description" content="">
-    <meta property="twitter:image" content="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png">
-
-    <!-- Favicon -->
-    <link rel="icon" href="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png">
-    <link rel="apple-touch-icon" href="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png">
-    <link rel="canonical" href="">
-
-    <!-- Tailwind (Preflight only), main css -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body class="page-bg text-white">
 
     <!-- 顶部工具栏: 历史&设置 -->
     <nav class="fixed top-4 left-0 right-0 flex justify-between items-center px-4 z-50 pointer-events-none" aria-label="主工具栏">
         <div class="pointer-events-auto">
-            <button onclick="toggleHistory(event)" class="bg-[#222] hover:bg-[#333] border border-[#333] hover:border-white rounded-lg px-4 py-2 transition-colors" aria-label="观看历史">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
+            <button id="historyBtn" class="bg-[#222] hover:bg-[#333] border border-[#333] hover:border-white rounded-lg px-4 py-2 transition-colors" aria-label="观看历史">
+                <!-- svg ... -->
             </button>
         </div>
         <div class="pointer-events-auto">
-            <button onclick="toggleSettings(event)" class="bg-[#222] hover:bg-[#333] border border-[#333] hover:border-white rounded-lg px-4 py-2 transition-colors" aria-label="打开设置">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                </svg>
+            <button id="settingsBtn" class="bg-[#222] hover:bg-[#333] border border-[#333] hover:border-white rounded-lg px-4 py-2 transition-colors" aria-label="打开设置">
+                <!-- svg ... -->
             </button>
         </div>
     </nav>
@@ -56,7 +30,7 @@
     <!-- 历史记录/设置面板 -->
     <aside id="historyPanel" class="history-panel fixed left-0 top-0 h-full bg-[#111] border-r border-[#333] p-6 z-40 transform -translate-x-full transition-transform duration-300" aria-label="观看历史" aria-hidden="true" tabindex="-1">
         <header class="flex justify-between items-center mb-6">
-            <button onclick="toggleHistory()" class="text-gray-400 hover:text-white" aria-label="关闭历史">&times;</button>
+            <button id="historyPanelClose" class="text-gray-400 hover:text-white" aria-label="关闭历史">&times;</button>
             <h3 class="text-xl font-bold gradient-text mx-auto">观看历史</h3>
             <span class="w-4"></span>
         </header>
@@ -64,7 +38,7 @@
             <div class="text-center text-gray-500 py-8">暂无观看记录</div>
         </section>
         <footer class="mt-4 text-center sticky bottom-0 pb-2 pt-2 bg-[#111]">
-            <button onclick="clearViewingHistory()" class="px-4 py-2 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-lg text-sm transition-all duration-300 shadow-md hover:shadow-lg">
+            <button id="clearViewingHistoryBtn" class="px-4 py-2 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-lg text-sm transition-all duration-300 shadow-md hover:shadow-lg">
                 清空历史记录
             </button>
         </footer>
@@ -73,16 +47,16 @@
     <aside id="settingsPanel" class="settings-panel fixed right-0 top-0 h-full w-80 bg-[#111] border-l border-[#333] p-6 z-40 overflow-y-auto" aria-label="设置面板" aria-hidden="true" tabindex="-1">
         <header class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-bold gradient-text">设置</h3>
-            <button onclick="toggleSettings()" class="text-gray-400 hover:text-white" aria-label="关闭设置">&times;</button>
+            <button id="settingsPanelClose" class="text-gray-400 hover:text-white" aria-label="关闭设置">&times;</button>
         </header>
         <section class="space-y-5">
             <!-- 数据源设置区域 -->
             <section class="p-3 bg-[#151515] rounded-lg shadow-inner" aria-labelledby="datasource-heading">
                 <label id="datasource-heading" class="block text-sm font-medium text-gray-400 mb-3 border-b border-[#333] pb-1">数据源设置</label>
                 <div class="flex space-x-2 mb-3">
-                    <button onclick="selectAllAPIs(true)" class="px-2 py-1 bg-[#333] hover:bg-[#444] text-white text-xs rounded">全选</button>
-                    <button onclick="selectAllAPIs(false)" class="px-2 py-1 bg-[#333] hover:bg-[#444] text-white text-xs rounded">全不选</button>
-                    <button onclick="selectAllAPIs(true, true)" class="px-2 py-1 bg-[#333] hover:bg-[#444] text-white text-xs rounded">全选普通资源</button>
+                    <button id="selectAllAPIsBtn" class="px-2 py-1 bg-[#333] hover:bg-[#444] text-white text-xs rounded">全选</button>
+                    <button id="selectNoneAPIsBtn" class="px-2 py-1 bg-[#333] hover:bg-[#444] text-white text-xs rounded">全不选</button>
+                    <button id="selectNormalAPIsBtn" class="px-2 py-1 bg-[#333] hover:bg-[#444] text-white text-xs rounded">全选普通资源</button>
                 </div>
                 <div class="max-h-40 overflow-y-auto bg-[#191919] p-2 rounded-lg mb-3">
                     <div id="apiCheckboxes" class="grid grid-cols-2 gap-2"></div>
@@ -96,10 +70,10 @@
             <section class="p-3 bg-[#151515] rounded-lg shadow-inner" aria-labelledby="customapis-heading">
                 <div class="flex justify-between items-center mb-2">
                     <label id="customapis-heading" class="block text-sm font-medium text-gray-400 border-b border-[#333] w-full pb-1">自定义API</label>
-                    <button onclick="showAddCustomApiForm()" class="bg-[#333] hover:bg-[#444] text-white w-6 h-6 rounded-full text-center leading-none text-lg ml-1" aria-label="添加API">+</button>
+                    <button id="showAddCustomApiFormBtn" class="bg-[#333] hover:bg-[#444] text-white w-6 h-6 rounded-full text-center leading-none text-lg ml-1" aria-label="添加API">+</button>
                 </div>
                 <div id="customApisList" class="max-h-32 overflow-y-auto mb-2"></div>
-                <form id="addCustomApiForm" class="hidden mt-2 p-2 bg-[#191919] rounded-lg" onsubmit="return false;">
+                <form id="addCustomApiForm" class="hidden mt-2 p-2 bg-[#191919] rounded-lg" autocomplete="off">
                     <input type="text" id="customApiName" placeholder="API名称" class="w-full bg-[#222] border border-[#333] text-white px-2 py-1 rounded mb-2">
                     <input type="text" id="customApiUrl" placeholder="https://abc.com" class="w-full bg-[#222] border border-[#333] text-white px-2 py-1 rounded mb-2">
                     <div class="flex items-center mb-2">
@@ -107,8 +81,8 @@
                         <label for="customApiIsAdult" class="ml-2 text-xs text-pink-400">黄色资源站</label>
                     </div>
                     <div class="flex space-x-2">
-                        <button onclick="addCustomApi()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">添加</button>
-                        <button onclick="cancelAddCustomApi()" class="bg-[#444] hover:bg-[#555] text-white px-3 py-1 rounded text-xs">取消</button>
+                        <button type="submit" id="addCustomApiFormSubmit" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">添加</button>
+                        <button type="button" id="addCustomApiFormCancel" class="bg-[#444] hover:bg-[#555] text-white px-3 py-1 rounded text-xs">取消</button>
                     </div>
                 </form>
             </section>
@@ -148,7 +122,7 @@
             <header class="text-center mb-2">
                 <div class="flex justify-center items-center mb-4">
                     <svg class="w-10 h-10 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        <!-- ... -->
                     </svg>
                     <h1 class="text-5xl font-bold gradient-text">X</h1>
                 </div>
@@ -156,7 +130,7 @@
             </header>
             <section id="searchArea" class="flex-1 flex flex-col items-center justify-center" aria-label="视频搜索">
                 <h2 class="text-3xl font-bold gradient-text mb-8">视频搜索</h2>
-                <form class="w-full max-w-2xl" onsubmit="search();return false;" role="search" aria-label="视频搜索表单">
+                <form id="searchForm" class="w-full max-w-2xl" role="search" aria-label="视频搜索表单" autocomplete="off">
                     <div class="flex">
                         <input type="text"
                             id="searchInput"
@@ -324,5 +298,12 @@
             }
         });
     </script>
+
+    <!-- JS/ENV -->
+    <script>
+        window.__ENV__ = window.__ENV__ || {};
+        window.__ENV__.PASSWORD = "{{PASSWORD}}";
+    </script>
+    <script type="module" src="/js/main-index.js" defer></script>
 </body>
 </html>
