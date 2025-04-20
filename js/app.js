@@ -8,6 +8,9 @@ import {
     isPasswordProtected, isPasswordVerified, showPasswordModal, initPasswordProtection
 } from './password.js';
 
+import { searchVideos, getVideoDetails, testApiAvailability } from './apiService.js';
+
+
 // ========== App: 全局状态 & State Helpers ==========
 let selectedAPIs = getStateFromStorage('selectedAPIs', ["heimuer"]);
 let customAPIs = getStateFromStorage('customAPIs', []);
@@ -304,7 +307,6 @@ function selectAllAPIs(selectAll = true, excludeAdult = false) {
 // ============= 搜索核心逻辑 ===============
 
 async function search() {
-    // 密码保护校验
     if (window.isPasswordProtected && window.isPasswordVerified) {
         if (window.isPasswordProtected() && !window.isPasswordVerified()) {
             showPasswordModal && showPasswordModal();
@@ -319,18 +321,23 @@ async function search() {
     try {
         saveSearchHistory(query);
         let allResults = [];
-        const searchPromises = selectedAPIs.map(apiId => searchSingleApi(apiId, query));
-        (await Promise.all(searchPromises)).forEach(arr => arr.length && (allResults = allResults.concat(arr)));
+
+        const res = await searchVideos(query, selectedAPIs);
+        if (res && Array.isArray(res.list)) {
+            allResults = res.list;
+        } else {
+            allResults = [];
+        }
 
         showSearchUI();
         const resultsDiv = document.getElementById('results');
         allResults = filterResultsByYellow(allResults);
         resultsDiv.innerHTML = '';
-if (allResults.length) {
-    allResults.map(renderResultCard).forEach(card => resultsDiv.appendChild(card));
-} else {
-    resultsDiv.innerHTML = renderNoResultsHtml();
-}
+        if (allResults.length) {
+            allResults.map(renderResultCard).forEach(card => resultsDiv.appendChild(card));
+        } else {
+            resultsDiv.innerHTML = renderNoResultsHtml();
+        }
     } catch (e) {
         console.error('搜索错误:', e);
         showToast(e.name === 'AbortError' ? '搜索请求超时，请检查网络连接' : '搜索请求失败，请稍后重试', 'error');
@@ -534,23 +541,21 @@ function renderResultCard(item) {
 // ============= 详情展示 & 剧集按钮渲染 ==============
 
 async function showDetails(id, vod_name, sourceCode) {
-    // 密码保护
     if (window.isPasswordProtected && window.isPasswordVerified)
         if (window.isPasswordProtected() && !window.isPasswordVerified()) { showPasswordModal && showPasswordModal(); return; }
     if (!id) return showToast('视频ID无效', 'error');
     showLoading();
     try {
-        let apiParams = '';
+        let customApiConfig = null;
         if (sourceCode.startsWith('custom_')) {
             const customIndex = sourceCode.replace('custom_', '');
-            const customApi = getCustomApiInfo(customIndex);
-            if (!customApi) { showToast('自定义API配置无效', 'error'); hideLoading(); return; }
-            apiParams = '&customApi=' + encodeURIComponent(customApi.url) + '&source=custom';
-        } else {
-            apiParams = '&source=' + sourceCode;
+            customApiConfig = getCustomApiInfo(customIndex);
+            if (!customApiConfig) { showToast('自定义API配置无效', 'error'); hideLoading(); return; }
         }
-        const response = await fetch('/api/detail?id=' + encodeURIComponent(id) + apiParams);
-        const data = await response.json();
+        const res = await getVideoDetails(
+            id, sourceCode, customApiConfig
+        );
+        const data = res || {};
         const modal = document.getElementById('modal');
         const modalTitle = document.getElementById('modalTitle');
         const modalContent = document.getElementById('modalContent');
