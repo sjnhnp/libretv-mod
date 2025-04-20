@@ -365,6 +365,7 @@ function filterResultsByYellow(results) {
 
 // ========== 详情展示 ==========
 async function showDetails(id, vod_name, sourceCode) {
+     console.log('showDetails执行', { id, vod_name, sourceCode });
     if (isPasswordProtected() && !isPasswordVerified()) {
         showPasswordModal();
         return;
