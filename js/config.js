@@ -1,133 +1,163 @@
-// =============================
-// 全局配置模块（ESM重构版） /js/config.js
-// =============================
+// /js/config.js
 
-// 1. 代理相关配置
-export const DEFAULT_PROXY_URLS = [
-    "/proxy/"
+// --- Core Settings ---
+
+// Use a fixed proxy path, assuming Cloudflare Function is at /proxy/
+export const PROXY_URL = "/proxy/";
+
+// Fallback/alternate proxy URLs (Keep if used for testing or other purposes)
+export const PROXY_URLS = [
+    "/proxy/", // Default Cloudflare path
+    // "https://your-custom-proxy.com/", // Example custom proxy
 ];
 
-export const PROXY_URL  = (window.__ENV__ && window.__ENV__.PROXY_URL)  || DEFAULT_PROXY_URLS[0];
-export const PROXY_URLS = (window.__ENV__ && window.__ENV__.PROXY_URLS) || DEFAULT_PROXY_URLS;
+// --- History & Storage ---
+export const SEARCH_HISTORY_KEY = "videoSearchHistory"; // Kept for potential direct use if needed
+export const VIEWING_HISTORY_KEY = "viewingHistory"; // Kept for potential direct use if needed
+export const MAX_HISTORY_ITEMS = 50; // Example limit
 
-// 2. 历史和本地存储
-export const SEARCH_HISTORY_KEY = 'videoSearchHistory';
-export const MAX_HISTORY_ITEMS = 5;
-
-// 3. 密码保护配置
+// --- Password Protection ---
 export const PASSWORD_CONFIG = {
-    localStorageKey: 'passwordVerified',
-    verificationTTL: 90 * 24 * 60 * 60 * 1000
+    localStorageKey: "passwordVerification",
+    verificationTTL: 3 * 60 * 60 * 1000 // 3 hours in milliseconds
 };
 
-// 4. 站点元信息
+// --- Site Metadata (Example) ---
 export const SITE_CONFIG = {
-    name: 'X',
-    url: '',
-    description: '',
-    logo: 'https://images.icon-icons.com/38/PNG/512/retrotv_5520.png',
-    version: '1.0.3'
+    title: "Libre TV",
+    description: "一个简单的在线视频聚合搜索和播放应用",
+    logoUrl: "./logo.png", // Example path
+    faviconUrl: "./favicon.ico" // Example path
 };
 
-// 5. API数据源
+// --- Built-in API Source Definitions ---
 export const API_SITES = {
-    heimuer:  { api: 'https://json.heimuer.xyz',      name: '黑木耳',   detail: 'https://heimuer.tv'  },
-    ffzy:     { api: 'http://ffzy5.tv',               name: '非凡影视', detail: 'http://ffzy5.tv'    },
-    tyyszy:   { api: 'https://tyyszy.com',            name: '天涯资源'                          },
-    ckzy:     { api: 'https://www.ckzy1.com',         name: 'CK资源',   adult: true                },
-    zy360:    { api: 'https://360zy.com',             name: '360资源'                           },
-    wolong:   { api: 'https://wolongzyw.com',         name: '卧龙资源'                          },
-    cjhw:     { api: 'https://cjhwba.com',            name: '新华为'                            },
-    hwba:     { api: 'https://cjwba.com',             name: '华为吧资源'                        },
-    jisu:     { api: 'https://jszyapi.com',           name: '极速资源', detail: 'https://jszyapi.com' },
-    dbzy:     { api: 'https://dbzy.com',              name: '豆瓣资源'                          },
-    bfzy:     { api: 'https://bfzyapi.com',           name: '暴风资源'                          },
-    mozhua:   { api: 'https://mozhuazy.com',          name: '魔爪资源'                          },
-    mdzy:     { api: 'https://www.mdzyapi.com',       name: '魔都资源'                          },
-    ruyi:     { api: 'https://cj.rycjapi.com',        name: '如意资源'                          },
-    jkun:     { api: 'https://jkunzyapi.com',         name: 'jkun资源', adult: true              },
-    bwzy:     { api: 'https://api.bwzym3u8.com',      name: '百万资源', adult: true              },
-    souav:    { api: 'https://api.souavzy.vip',       name: 'souav资源', adult: true            },
-    siwa:     { api: 'https://siwazyw.tv',            name: '丝袜资源', adult: true              },
-    r155:     { api: 'https://155api.com',            name: '155资源',  adult: true              },
-    lsb:      { api: 'https://apilsbzy1.com',         name: 'lsb资源',  adult: true              },
-    huangcang:{ api: 'https://hsckzy.vip',            name: '黄色仓库', adult: true, detail: 'https://hsckzy.vip' }
+    "ffzy": {
+        "name": "非凡资源",
+        "url": "https://cj.ffzyapi.com",
+        "is_adult": false,
+        "search": { "path": "/api.php/provide/vod/?ac=list&wd=" },
+        "detail": { "path": "/api.php/provide/vod/?ac=detail&ids=" }
+    },
+    "xxzy": {
+        "name": "迅速资源",
+        "url": "https://api.xxzy.org",
+        "is_adult": false,
+        "search": { "path": "/api.php/provide/vod/at/json/?ac=list&wd=" },
+        "detail": { "path": "/api.php/provide/vod/at/json/?ac=detail&ids=" }
+    },
+    "jinying": {
+        "name": "金鹰资源",
+        "url": "https://jyzyapi.com",
+        "is_adult": false,
+        "search": { "path": "/api.php/provide/vod/at/json/?ac=list&wd=" },
+        "detail": { "path": "/api.php/provide/vod/at/json/?ac=detail&ids=" }
+    },
+    "fantuan": {
+         "name": "饭团资源",
+         "url": "https://fantuan.tk",
+         "is_adult": false,
+         "search": { "path": "/api.php/provide/vod/?ac=list&wd=" },
+         "detail": { "path": "/api.php/provide/vod/?ac=detail&ids=" }
+    },
+    "jisu": {
+        "name": "极速资源",
+        "url": "https://jszyapi.com",
+        "is_adult": false,
+        "search": { "path": "/api.php/provide/vod/?ac=list&wd=" },
+        "detail": { "path": "/api.php/provide/vod/?ac=detail&ids=" }
+    },
+    "hongniu": {
+        "name": "红牛资源",
+        "url": "https://www.hongniuzy2.com",
+        "is_adult": false,
+        "search": { "path": "/api.php/provide/vod/?ac=list&wd=" },
+        "detail": { "path": "/api.php/provide/vod/?ac=detail&ids=" }
+    },
+    "liangzi": {
+         "name": "量子资源",
+         "url": "https://cj.lziapi.com",
+         "is_adult": false,
+         "search": { "path": "/api.php/provide/vod/?ac=list&wd=" },
+         "detail": { "path": "/api.php/provide/vod/?ac=detail&ids=" }
+    },
+    "taopian": {
+         "name": "套片资源",
+         "url": "https://taopianapi.com",
+         "is_adult": true, // Marked as adult
+         "search": { "path": "/vod/listing?wd=" },
+         "detail": { "path": "/vod/detail?ids=" }
+    },
+     "sex": {
+          "name": "AVSex",
+          "url": "https://api.avsex.club",
+          "is_adult": true, // Marked as adult
+          "search": { "path": "/api.php/provide/vod/route/list?wd=" },
+          "detail": { "path": "/api.php/provide/vod/route/detail?ids=" }
+     },
+    // Add other built-in sites here
 };
 
-// 6. 聚合搜索相关参数
-export const AGGREGATED_SEARCH_CONFIG = {
-    enabled:          true,
-    timeout:          8000,
-    maxResults:       10000,
-    parallelRequests: true,
-    showSourceBadges: true
-};
-
-// 7. API请求配置
+// --- API Interaction Defaults ---
 export const API_CONFIG = {
     search: {
-        path:    '/api.php/provide/vod/?ac=videolist&wd=',
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept':     'application/json'
-        }
+        path: "/api.php/provide/vod/?ac=list&wd=", // Default search path if not specified by site
+        headers: {}
     },
     detail: {
-        path:    '/api.php/provide/vod/?ac=videolist&ids=',
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept':     'application/json'
-        }
+        path: "/api.php/provide/vod/?ac=detail&ids=", // Default detail path
+        headers: {}
+    },
+    timeout: 10000 // Default fetch timeout (ms) - managed in apiService now
+};
+
+// --- Player Configuration ---
+export const PLAYER_CONFIG = {
+    playerUrl: "player.html", // Relative path to the player page
+    debugMode: false, // Enable detailed console logging in player
+    enablePreloading: true, // Enable/disable next episode preloading
+    preloadMaxMb: 50, // Max MB to preload per episode (approximate)
+    // DPlayer specific options can be added here if needed globally
+    dplayerOptions: {
+         screenshot: true,
+         hotkey: true,
+         autoplay: true, // Note: This is DPlayer's option, distinct from store's autoplay setting
     }
 };
 
-// 8. M3U8分段正则
-export const M3U8_PATTERN = /\$https?:\/\/[^"'\s]+?\.m3u8/g;
-
-// 9. 播放器相关配置
-export const CUSTOM_PLAYER_URL = 'player.html';
-
-export const PLAYER_CONFIG = {
-    autoplay:             true,
-    allowFullscreen:      true,
-    width:                '100%',
-    height:               '600',
-    timeout:              15000,
-    filterAds:            true,
-    autoPlayNext:         true,
-    adFilteringEnabled:   true,
-    adFilteringStorage:   'adFilteringEnabled',
-    enablePreloading:     true,
-    debugMode:            false
-};
-
-// 10. 通用错误信息
-export const ERROR_MESSAGES = {
-    NETWORK_ERROR: '网络连接错误，请检查网络设置',
-    TIMEOUT_ERROR: '请求超时，服务器响应时间过长',
-    API_ERROR:     'API接口返回错误，请尝试更换数据源',
-    PLAYER_ERROR:  '播放器加载失败，请尝试其他视频源',
-    UNKNOWN_ERROR: '发生未知错误，请刷新页面重试'
-};
-
-// 11. 安全配置
-export const SECURITY_CONFIG = {
-    enableXSSProtection: true,
-    sanitizeUrls:        true,
-    maxQueryLength:  100
-};
-
-// 12. 自定义API相关
+// --- Custom API Settings ---
 export const CUSTOM_API_CONFIG = {
-    separator:      ',',
-    maxSources:     5,
-    testTimeout:    5000,
-    namePrefix:     'Custom-',
-    validateUrl:    true,
-    cacheResults:   true,
-    cacheExpiry:    5184000000,
-    adultPropName:  'isAdult'
+    localStorageKey: "customAPIs",
+    maxHistoryItems: 50, // General history limit
 };
 
-// 13. 成人采集源隐藏
-export const HIDE_BUILTIN_ADULT_APIS = true;
+// --- Feature Flags ---
+export const HIDE_BUILTIN_ADULT_APIS = false; // Set to true to hide adult APIs in settings
+
+// --- Error Messages (Example) ---
+export const ERROR_MESSAGES = {
+    fetchFailed: "网络请求失败，请检查网络连接或代理设置。",
+    apiError: "API源返回错误。",
+    timeout: "请求超时，请稍后再试。",
+    noResults: "未找到相关结果。",
+    // Add more specific messages
+};
+
+// --- Security Settings ---
+export const SECURITY_CONFIG = {
+    // Configurations related to security, if any (e.g., CORS modes - handled by proxy now)
+};
+
+// --- M3U8 Handling ---
+// Patterns used by the proxy function, kept here for reference if needed elsewhere
+export const M3U8_PATTERNS = {
+    resolutionRegex: /#EXT-X-STREAM-INF:.*?RESOLUTION=(\d+x\d+)/,
+    bandwidthRegex: /#EXT-X-STREAM-INF:.*?BANDWIDTH=(\d+)/,
+    uriRegex: /#EXT-X-STREAM-INF:.*?\n(.*?)$/,
+    keyMethodNoneRegex: /#EXT-X-KEY:METHOD=NONE/,
+    keyMethodAesRegex: /#EXT-X-KEY:METHOD=AES-128/,
+    keyUriRegex: /#EXT-X-KEY:.*?URI="(.*?)"/,
+    keyIvRegex: /#EXT-X-KEY:.*?IV=(.*?)(?:,|$)/,
+    mapUriRegex: /#EXT-X-MAP:.*?URI="(.*?)"/,
+    segmentUrlRegex: /(?:#EXTINF:.*?,)\s*(?!#)(.+)/ // Matches segment URLs
+};
