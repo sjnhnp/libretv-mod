@@ -26,6 +26,12 @@ import { createSearchResultCardElement } from './components/SearchResultCard.js'
 import { createApiCheckboxElement } from './components/ApiCheckbox.js';
 import { createCustomApiListItemElement } from './components/CustomApiListItem.js';
 
+
+// ========== 当前页面局部状态 ==========
+let currentEpisodes = [];
+let currentVideoTitle = '';
+let episodesReversed = false;
+
 document.addEventListener('click', function(e) {
     const card = e.target.closest('.card-hover');
     if (card && card.dataset.videoId && card.dataset.source) {
@@ -35,13 +41,6 @@ document.addEventListener('click', function(e) {
         }
     }
 });
-
-// ========== 当前页面局部状态 ==========
-let currentEpisodes = [];
-let currentVideoTitle = '';
-let episodesReversed = false;
-
-
 // ========== 页面初始化 ==========
 document.addEventListener('DOMContentLoaded', function() {
     // 1. API 和自定义 API 复选框
