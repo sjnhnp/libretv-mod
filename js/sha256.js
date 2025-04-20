@@ -13,4 +13,3 @@ export async function sha256(message) {
         throw new Error("SHA-256 computation failed: " + (e && e.message ? e.message : e));
     }
 }
-
