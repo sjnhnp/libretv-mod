@@ -2,14 +2,17 @@ import {
     PROXY_URL, API_SITES, API_CONFIG, HIDE_BUILTIN_ADULT_APIS, CUSTOM_API_CONFIG, PLAYER_CONFIG
 } from './config.js';
 import {
-    showToast, showLoading, hideLoading, saveSearchHistory, renderSearchHistory, getSearchHistory
+    showToast, showLoading, hideLoading, saveSearchHistory, renderSearchHistory
 } from './ui.js';
 import {
     isPasswordProtected, isPasswordVerified, showPasswordModal, initPasswordProtection
 } from './password.js';
 
-import { searchVideos, getVideoDetails, testApiAvailability } from './apiService.js';
+import { searchVideos, getVideoDetails } from './apiService.js';
 
+import { createSearchResultCardElement } from './components/SearchResultCard.js';
+import { createApiCheckboxElement } from './components/ApiCheckbox.js';
+import { createCustomApiListItemElement } from './components/CustomApiListItem.js';
 
 // ========== App: 全局状态 & State Helpers ==========
 let selectedAPIs = getStateFromStorage('selectedAPIs', ["heimuer"]);
@@ -70,12 +73,16 @@ function initAPICheckboxes() {
     const container = document.getElementById('apiCheckboxes');
     if (!container) return;
     container.innerHTML = '';
-
     container.appendChild(renderApiGroupTitle('普通资源'));
-
     Object.entries(API_SITES).forEach(([apiKey, api]) => {
         if (!api.adult) {
-            container.appendChild(renderApiCheckbox(apiKey, api.name, selectedAPIs.includes(apiKey), false));
+            const checkbox = createApiCheckboxElement(
+                { name: api.name, key: apiKey, isAdult: !!api.adult },
+                selectedAPIs.includes(apiKey),
+                false,
+                (checked, key) => { updateSelectedAPIs(); checkAdultAPIsSelected(); }
+            );
+            container.appendChild(checkbox);
         }
     });
 
@@ -153,13 +160,19 @@ function checkAdultAPIsSelected() {
 function renderCustomAPIsList() {
     const container = document.getElementById('customApisList');
     if (!container) return;
-
     if (!customAPIs.length) {
         container.innerHTML = '<p class="text-xs text-gray-500 text-center my-2">未添加自定义API</p>';
         return;
     }
     container.innerHTML = '';
-    customAPIs.forEach((api, idx) => container.appendChild(renderCustomApiItem(api, idx)));
+    customAPIs.forEach((api, idx) => {
+        const item = createCustomApiListItemElement(
+            api, idx,
+            editCustomApi,
+            removeCustomApi
+        );
+        container.appendChild(item);
+    });
 }
 function renderCustomApiItem(api, index) {
     const item = document.createElement('div');
@@ -318,32 +331,23 @@ async function search() {
     if (!selectedAPIs.length) return showToast('请至少选择一个API源', 'warning');
 
     showLoading();
-    try {
-        saveSearchHistory(query);
-        let allResults = [];
-
-        const res = await searchVideos(query, selectedAPIs);
-        if (res && Array.isArray(res.list)) {
-            allResults = res.list;
-        } else {
-            allResults = [];
-        }
-
+    searchVideos(query, selectedAPIs).then(res => {
+        let allResults = Array.isArray(res.list) ? res.list : [];
         showSearchUI();
         const resultsDiv = document.getElementById('results');
         allResults = filterResultsByYellow(allResults);
         resultsDiv.innerHTML = '';
         if (allResults.length) {
-            allResults.map(renderResultCard).forEach(card => resultsDiv.appendChild(card));
+            allResults.forEach(item => {
+                const card = createSearchResultCardElement(item);
+                resultsDiv.appendChild(card);
+            });
         } else {
             resultsDiv.innerHTML = renderNoResultsHtml();
         }
-    } catch (e) {
-        console.error('搜索错误:', e);
-        showToast(e.name === 'AbortError' ? '搜索请求超时，请检查网络连接' : '搜索请求失败，请稍后重试', 'error');
-    } finally {
-        hideLoading();
-    }
+    }).catch(e => {
+        showToast('搜索请求失败，请稍后重试', 'error');
+    }).finally(() => hideLoading());
 }
 
 /**
