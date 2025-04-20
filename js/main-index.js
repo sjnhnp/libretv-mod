@@ -1,8 +1,9 @@
+import { initializeStore } from './store.js';
 import { initPasswordProtection } from './password.js';
-import './ui.js'; // 向全局注册UI、部分helpers
-import './app.js'; // 主应用业务逻辑与监听
+import './ui.js';
+import './app.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    initializeStore();
     initPasswordProtection();
-    // 其它初始化均在ui.js/app.js注册
 });
