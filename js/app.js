@@ -417,3 +417,55 @@ function getCustomApiInfo(customApiIndex){
 
 // (点击事件等留给原有onClick实现)
 
+// 播放视频函数（暴露全局，供剧集按钮点击用）
+function playVideo(url, vod_name, episodeIndex = 0) {
+    if (window.isPasswordProtected && window.isPasswordVerified) {
+        if (window.isPasswordProtected() && !window.isPasswordVerified()) {
+            showPasswordModal && showPasswordModal();
+            return;
+        }
+    }
+    if (!url) {
+        showToast('无效的视频链接', 'error');
+        return;
+    }
+
+    // 来源名称解析（从模态框标题中提取）
+    let sourceName = '';
+    const modalTitle = document.getElementById('modalTitle');
+    if (modalTitle) {
+        const sourceSpan = modalTitle.querySelector('span.text-gray-400');
+        if (sourceSpan) {
+            const match = sourceSpan.textContent.match(/\(([^)]+)\)/);
+            if (match && match[1]) {
+                sourceName = match[1].trim();
+            }
+        }
+    }
+
+    localStorage.setItem('currentVideoTitle', vod_name);
+    localStorage.setItem('currentEpisodeIndex', episodeIndex);
+    localStorage.setItem('currentEpisodes', JSON.stringify(state.currentEpisodes));
+    localStorage.setItem('episodesReversed', state.episodesReversed);
+
+    const videoInfo = {
+        title: vod_name,
+        url,
+        episodeIndex,
+        sourceName,
+        timestamp: Date.now(),
+        episodes: [...(state.currentEpisodes || [])]
+    };
+
+    if (typeof addToViewingHistory === 'function') {
+        addToViewingHistory(videoInfo);
+    }
+
+    // 跳转到播放器
+    const playerUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(vod_name)}&index=${episodeIndex}&source=${encodeURIComponent(sourceName)}`;
+    window.location.href = playerUrl;
+}
+// 确保暴露到全局，供HTML onclick调用
+window.playVideo = playVideo;
+
+
