@@ -1,3 +1,13 @@
+import {
+    PROXY_URL, API_SITES, API_CONFIG, HIDE_BUILTIN_ADULT_APIS, CUSTOM_API_CONFIG, PLAYER_CONFIG
+} from './config.js';
+import {
+    showToast, showLoading, hideLoading, saveSearchHistory, renderSearchHistory, getSearchHistory
+} from './ui.js';
+import {
+    isPasswordProtected, isPasswordVerified, showPasswordModal, initPasswordProtection
+} from './password.js';
+
 // ========== App: 全局状态 & State Helpers ==========
 let selectedAPIs = getStateFromStorage('selectedAPIs', ["heimuer"]);
 let customAPIs = getStateFromStorage('customAPIs', []);
