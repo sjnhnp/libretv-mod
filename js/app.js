@@ -1,4 +1,12 @@
-
+document.addEventListener('click', function(e) {
+    const card = e.target.closest('.card-hover');
+    if (card && card.dataset.videoId && card.dataset.source) {
+        const results = document.getElementById('results');
+        if (results && results.contains(card)) {
+            showDetails(card.dataset.videoId, card.querySelector('h3')?.textContent || '', card.dataset.source);
+        }
+    }
+});
 import {
     PROXY_URL, API_SITES, HIDE_BUILTIN_ADULT_APIS, PLAYER_CONFIG
 } from './config.js';
@@ -90,13 +98,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btn.textContent === '✕' && !isNaN(idx)) removeCustomApi(idx);
     });
 
-    // 搜索结果事件委托
-document.addEventListener('click', function(e) {
-    const card = e.target.closest('.card-hover');
-    if (card && card.dataset.videoId && card.dataset.source) {
-        showDetails(card.dataset.videoId, card.querySelector('h3')?.textContent || '', card.dataset.source);
-    }
-});
+
 
 // ===================== 组件式 API & 数据源 =====================
 
