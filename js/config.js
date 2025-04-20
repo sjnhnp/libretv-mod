@@ -136,7 +136,7 @@ window.PLAYER_CONFIG = {
 window.PLAYER_CONFIG.enablePreloading = true;  // 可根据需要设为 false
 
 // 是否启用详细调试日志（推荐测试/定位问题时启用）。如需关闭，设为 false 或删除此行
-window.PLAYER_CONFIG.debugMode = true;         // 或 false/留空关闭详细日志
+window.PLAYER_CONFIG.debugMode = false;         // 或 false/留空关闭详细日志
 
 /* ---------------------------------
    10. 通用错误信息配置
