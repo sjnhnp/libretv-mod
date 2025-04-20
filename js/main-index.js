@@ -5,7 +5,3 @@ initPasswordProtection();
 import './ui.js';
 import './app.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-    initializeStore();
-    initPasswordProtection();
-});
