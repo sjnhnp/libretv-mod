@@ -83,10 +83,8 @@ function save(key, val) {
 }
 // ========== Mutator APIs (全部 emitChange) ==========
 export function updateSelectedAPIs(newAPIs) {
-  // 补丁逻辑：避免"全不选"时空数据
   let validAPIs = Array.isArray(newAPIs) ? newAPIs.filter(id => API_SITES[id]) : [];
   if (validAPIs.length === 0) {
-    // 自动选中默认（如黑木耳），保证至少有一个
     validAPIs = getDefaultSelectedAPIs();
   }
   state.selectedAPIs = [...validAPIs];
