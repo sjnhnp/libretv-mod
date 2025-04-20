@@ -3,7 +3,7 @@
 import { SEARCH_HISTORY_KEY, MAX_HISTORY_ITEMS } from './config.js';
 import { getState, setUIState, addSearchHistoryItem, clearSearchHistoryStore, addViewingHistoryItem, clearViewingHistoryStore, deleteViewingHistoryItem } from './store.js';
 import { createHistoryItemElement } from "./components/HistoryItem.js";
-import { showToast as globalShowToast } from './utils.js';
+//import { showToast as globalShowToast } from './utils.js';
 
 
 // ----------- Toast/Modal 控件 ------------
