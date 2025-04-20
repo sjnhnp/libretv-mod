@@ -1,4 +1,4 @@
-console.log('API_SITES 加载:', window.API_SITES);
+
 // ========== 全局状态 ==========
 const state = {
     selectedAPIs: safeParseArray(localStorage.getItem('selectedAPIs')) ?? ['heimuer'],
