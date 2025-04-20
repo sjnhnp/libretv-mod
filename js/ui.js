@@ -284,17 +284,6 @@ export function addToggleListener(id, settingKey) {
 }
 
 
-// ===================== 站点状态标记、状态提示 ====================
-
-export function updateSiteStatus(isAvailable) {
-    const statusEl = document.getElementById('siteStatus');
-    if (!statusEl) return;
-    statusEl.innerHTML = isAvailable
-        ? '<span class="text-green-500">●</span> 可用'
-        : '<span class="text-red-500">●</span> 不可用';
-}
-window.updateSiteStatus = updateSiteStatus;
-
 // ===================== 兼容旧逻辑 =====================
 
 window.showToast = showToast;
