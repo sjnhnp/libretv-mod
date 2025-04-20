@@ -37,11 +37,7 @@ document.addEventListener('click', function(e) {
     console.log('点击事件捕获', {card, target:e.target});
     if (card) console.log('card.dataset=', card.dataset);
     if (card && card.dataset.videoId && card.dataset.source) {
-        const results = document.getElementById('results');
-        if (results && results.contains(card)) {
-            console.log('调用showDetails', card.dataset);
-            showDetails(card.dataset.videoId, card.querySelector('h3')?.textContent || '', card.dataset.source);
-        }
+  
     }
 });
 // ========== 页面初始化 ==========
