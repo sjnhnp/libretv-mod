@@ -383,11 +383,15 @@ async function showDetails(id, vod_name, sourceCode) {
                 return;
             }
         }
+        console.log('准备调用getVideoDetails');
         const res = await getVideoDetails(
             id, sourceCode, customApiConfig
         );
+     console.log('getVideoDetails返回', res);
         const data = res || {};
+
         const modal = document.getElementById('modal');
+         console.log('modal节点', modal);
         const modalTitle = document.getElementById('modalTitle');
         const modalContent = document.getElementById('modalContent');
         const sourceName = data.videoInfo && data.videoInfo.source_name
@@ -418,7 +422,9 @@ async function showDetails(id, vod_name, sourceCode) {
             modalContent.innerHTML = '<p class="text-center text-gray-400 py-8">没有找到可播放的视频</p>';
         }
         modal.classList.remove('hidden');
+            console.log('已执行 modal.classList.remove("hidden")');
     } catch (e) {
+        console.log('详情报错', e);
         showToast('获取详情失败，请稍后重试', 'error');
     } finally {
         hideLoading();
