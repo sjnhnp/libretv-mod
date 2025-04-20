@@ -11,11 +11,12 @@ import {
     deleteViewingHistoryItem,
     getSelectedAPIs,
     updateSelectedAPIs,
+    initializeStore,
     setSetting
 } from './store.js';
 import { createHistoryItemElement } from "./components/HistoryItem.js";
 //import { showToast as globalShowToast } from './utils.js';
-
+initializeStore(); 
 // ----------- Toast/Modal 控件 ------------
 
 let toastQueue = [];
