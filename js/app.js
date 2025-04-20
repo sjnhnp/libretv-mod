@@ -298,18 +298,23 @@ function removeCustomApi(idx) {
 
 // =========== 搜索流程 ===========
 export function search() {
-    if (isPasswordProtected() && !isPasswordVerified()) {
-        showPasswordModal();
-        return;
-    }
     const query = document.getElementById('searchInput').value.trim();
     if (!query) return showToast('请输入搜索内容', 'info');
-    if (!getState().selectedAPIs.length) return showToast('请至少选择一个API源', 'warning');
+
+    const selectedAPIs = getState().selectedAPIs;
+    if (!selectedAPIs || !selectedAPIs.length) {
+        showToast('请在设置中至少选择一个API源', 'warning');
+        hideLoading();
+        return;
+    }
 
     showLoading();
     addSearchHistoryItem(query);
 
-    searchVideos(query, getState().selectedAPIs).then(res => {
+    // 调试日志，生产可移除
+    console.log('[search] 发起，query:', query, 'selectedAPIs:', selectedAPIs);
+
+    searchVideos(query, selectedAPIs).then(res => {
         let allResults = Array.isArray(res.list) ? res.list : [];
         showSearchResults(allResults);
     }).catch(e => {
