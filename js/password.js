@@ -1,5 +1,6 @@
 import { PASSWORD_CONFIG } from './config.js';
 import { sha256 } from './sha256.js';
+import { setPasswordVerified } from './store.js';
 
 export function isPasswordProtected() {
     const hash = window.__ENV__ && window.__ENV__.PASSWORD;
