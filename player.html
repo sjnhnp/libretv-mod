@@ -4,15 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>播放器</title>
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/styles.css" />
 </head>
 <body>
   <header class="bg-[#111] p-4 flex justify-between items-center border-b border-[#333]">
       <div class="flex items-center">
           <a href="index.html" class="flex items-center" aria-label="返回首页">
-              <!-- svg ... -->
-              <h1 class="text-xl font-bold gradient-text">X</h1>
+              <!-- svg ... 可放LOGO -->
+              <h1 class="text-xl font-bold gradient-text ml-1">X</h1>
           </a>
       </div>
       <h2 id="videoTitle" class="text-xl font-semibold truncate flex-1 text-center"></h2>
@@ -66,7 +67,7 @@
                   <span id="orderText">倒序排列</span>
               </button>
               <button id="lockToggle" aria-label="锁定/解锁控制区" title="锁定控制"
-                      class="px-2 py-1 bg-[#333] hover:bg-[#444] text-white rounded-full transition">
+                  class="px-2 py-1 bg-[#333] hover:bg-[#444] text-white rounded-full transition">
                   <svg id="lockIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
               </button>
           </div>
@@ -83,8 +84,10 @@
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="shortcutIcon"></svg>
       <span id="shortcutText"></span>
   </div>
+  <!-- HLS.js、DPlayer依赖，可用CDN或自行打包 -->
   <script src="https://s4.zstatic.net/ajax/libs/hls.js/1.5.6/hls.min.js" crossorigin="anonymous"></script>
   <script src="https://s4.zstatic.net/ajax/libs/dplayer/1.26.0/DPlayer.min.js" crossorigin="anonymous"></script>
-  <script type="module" src="/js/main-player.js" defer></script>
+  <!-- 入口 JS，必须为 type="module" -->
+  <script type="module" src="/js/main-player.js"></script>
 </body>
 </html>
