@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btn.textContent === '✕' && !isNaN(idx)) removeCustomApi(idx);
     });
 
-
+  });
 
 // ===================== 组件式 API & 数据源 =====================
 
