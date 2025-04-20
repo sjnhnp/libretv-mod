@@ -161,5 +161,16 @@
         window.__ENV__.PASSWORD = "{{PASSWORD}}";
     </script>
     <script type="module" src="/js/main-index.js"></script>
+
+<!-- 放在 body 的最后面或者合适的位置，可以在其它内容之后： -->
+<div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+  <div class="bg-white rounded shadow-lg w-full max-w-lg p-4 relative">
+    <div id="modalTitle" class="text-lg font-semibold mb-2"></div>
+    <div id="modalContent" class="mb-4"></div>
+    <button type="button" onclick="document.getElementById('modal').classList.add('hidden')" class="absolute top-2 right-2 text-gray-600 hover:text-gray-900 text-xl">&times;</button>
+  </div>
+</div>
+
+    
 </body>
 </html>
