@@ -59,7 +59,7 @@ window.API_SITES = {
     wolong:   { api: 'https://wolongzyw.com',         name: '卧龙资源'                          },
     cjhw:     { api: 'https://cjhwba.com',            name: '新华为'                            },
     hwba:     { api: 'https://cjwba.com',             name: '华为吧资源'                        },
-    jisu:     { api: 'https://jszyapi.com',           name: '极速资源', detail: 'https://jszyapi.com' },
+    jisu:     { api: 'https://jszyapi.com',           name: '极速资源' },
     dbzy:     { api: 'https://dbzy.com',              name: '豆瓣资源'                          },
     bfzy:     { api: 'https://bfzyapi.com',           name: '暴风资源'                          },
     mozhua:   { api: 'https://mozhuazy.com',          name: '魔爪资源'                          },
@@ -71,8 +71,10 @@ window.API_SITES = {
     siwa:     { api: 'https://siwazyw.tv',            name: '丝袜资源', adult: true              },
     r155:     { api: 'https://155api.com',            name: '155资源',  adult: true              },
     lsb:      { api: 'https://apilsbzy1.com',         name: 'lsb资源',  adult: true              },
-    huangcang:{ api: 'https://hsckzy.vip',            name: '黄色仓库', adult: true, detail: 'https://hsckzy.vip' }
-    // ...如需扩展请仿此格式追加
+    huangcang:{ api: 'https://hsckzy.vip',            name: '黄色仓库', adult: true       },
+    zuid:     { api: 'https://api.zuidapi.com',       name: '最大资源'                       },
+    suoni:    { api: 'https://suoniapi.com',          name: '索尼资源'                    },
+    yutu:     { api: 'https://yutuzy10.com',          name: '玉兔资源', adult: true       }
 };
 
 /* -----------------------------------
