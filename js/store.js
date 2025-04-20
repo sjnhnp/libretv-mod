@@ -42,9 +42,9 @@ let state = {
 // ============== 初始化从 localStorage 加载 ==============
 export function initializeStore() {
   state.customAPIs = load('customAPIs', []);
-  // 修改点: 使用 getDefaultSelectedAPIs()
   state.selectedAPIs = load('selectedAPIs', null);
-  if (!Array.isArray(state.selectedAPIs) || state.selectedAPIs.length === 0) {
+  if (!Array.isArray(state.selectedAPIs) || state.selectedAPIs.length === 0 ||
+      !state.selectedAPIs.every(id => API_SITES[id])) {
     state.selectedAPIs = getDefaultSelectedAPIs();
     save('selectedAPIs', state.selectedAPIs);
   }
