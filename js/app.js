@@ -7,21 +7,35 @@ import {
 import {
     isPasswordProtected, isPasswordVerified, showPasswordModal, initPasswordProtection
 } from './password.js';
-
+import {
+    initializeStore, getState, updateSelectedAPIs, updateCustomAPIs, setSetting,
+    addSearchHistoryItem, addViewingHistoryItem, deleteViewingHistoryItem,
+    clearViewingHistoryStore, clearSearchHistoryStore
+} from './store.js';
 import { searchVideos, getVideoDetails } from './apiService.js';
-
 import { createSearchResultCardElement } from './components/SearchResultCard.js';
 import { createApiCheckboxElement } from './components/ApiCheckbox.js';
 import { createCustomApiListItemElement } from './components/CustomApiListItem.js';
 
+
+
+
 // ========== App: 全局状态 & State Helpers ==========
-let selectedAPIs = getStateFromStorage('selectedAPIs', ["heimuer"]);
-let customAPIs = getStateFromStorage('customAPIs', []);
+
 let currentEpisodeIndex = 0;
 let currentEpisodes = [];
 let currentVideoTitle = '';
 let episodesReversed = false;
 
+document.addEventListener('stateChange', e => {
+    // 针对 changedKeys 判断刷新什么
+    const keys = e.detail.changedKeys || [];
+    if (keys.includes('selectedAPIs')) renderSelectedApiCount();
+    if (keys.includes('customAPIs')) renderCustomAPIsList();
+    if (keys.includes('searchHistory')) renderSearchHistory();
+    if (keys.includes('viewingHistory')) window.loadViewingHistory();
+    // ...等
+});
 /**
  * 从localStorage获取数据，带默认值与JSON安全解析
  */
@@ -125,6 +139,12 @@ function renderApiCheckbox(apiKey, apiName, checked, isAdult) {
     return wrap;
 }
 
+function onApiCheckboxChange(checked, key) {
+    // 重构API复选，调用 updateSelectedAPIs()
+    const curr = new Set(getState().selectedAPIs);
+    if (checked) curr.add(key); else curr.delete(key);
+    updateSelectedAPIs([...curr]);
+}
 // =========== 成人API选择、过滤器状态维护 ============
 
 function checkAdultAPIsSelected() {
@@ -320,6 +340,7 @@ function selectAllAPIs(selectAll = true, excludeAdult = false) {
 // ============= 搜索核心逻辑 ===============
 
 async function search() {
+    const selectedAPIs = getState().selectedAPIs;
     if (window.isPasswordProtected && window.isPasswordVerified) {
         if (window.isPasswordProtected() && !window.isPasswordVerified()) {
             showPasswordModal && showPasswordModal();
