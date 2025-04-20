@@ -469,4 +469,29 @@ function playVideo(url, vod_name, episodeIndex = 0) {
 // 确保暴露到全局，供HTML onclick调用
 window.playVideo = playVideo;
 
+function selectAllAPIs() {
+    // 全部内置源与自定义源全选
+    const allApiInputs = document.querySelectorAll('#apiCheckboxes input[type="checkbox"]');
+    const customApiInputs = document.querySelectorAll('#customApisList input[type="checkbox"]');
+    allApiInputs.forEach(i => i.checked = true);
+    customApiInputs.forEach(i => i.checked = true);
+
+    updateSelectedAPIs();
+    checkAdultAPIsSelected();
+}
+window.selectAllAPIs = selectAllAPIs;
+
+function showAddCustomApiForm() {
+    // 假设有一个模态框 id="customApiModal"
+    var modal = document.getElementById('customApiModal');
+    if(modal) modal.classList.remove('hidden'); // 显示
+    // 清空输入
+    var nameInput = document.getElementById('customApiNameInput');
+    var urlInput = document.getElementById('customApiUrlInput');
+    var adultCheckbox = document.getElementById('customApiAdultInput');
+    if (nameInput) nameInput.value = '';
+    if (urlInput) urlInput.value = '';
+    if (adultCheckbox) adultCheckbox.checked = false;
+}
+window.showAddCustomApiForm = showAddCustomApiForm;
 
