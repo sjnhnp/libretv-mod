@@ -91,12 +91,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // 搜索结果事件委托
-    document.getElementById('results')?.addEventListener('click', e => {
-        const card = e.target.closest('.card-hover');
-        if (card && card.dataset.videoId && card.dataset.source) {
-            showDetails(card.dataset.videoId, card.querySelector('h3')?.textContent || '', card.dataset.source);
-        }
-    });
+document.addEventListener('click', function(e) {
+    const card = e.target.closest('.card-hover');
+    if (card && card.dataset.videoId && card.dataset.source) {
+        showDetails(card.dataset.videoId, card.querySelector('h3')?.textContent || '', card.dataset.source);
+    }
 });
 
 // ===================== 组件式 API & 数据源 =====================
