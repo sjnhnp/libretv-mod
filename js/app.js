@@ -34,10 +34,12 @@ let episodesReversed = false;
 
 document.addEventListener('click', function(e) {
     const card = e.target.closest('.card-hover');
-        console.log('点击事件捕获', {card, target: e.target});
+    console.log('点击事件捕获', {card, target:e.target});
+    if (card) console.log('card.dataset=', card.dataset);
     if (card && card.dataset.videoId && card.dataset.source) {
         const results = document.getElementById('results');
         if (results && results.contains(card)) {
+            console.log('调用showDetails', card.dataset);
             showDetails(card.dataset.videoId, card.querySelector('h3')?.textContent || '', card.dataset.source);
         }
     }
