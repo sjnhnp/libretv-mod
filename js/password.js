@@ -27,12 +27,12 @@ export async function verifyPassword(password) {
     try {
         const inputHash = await sha256(password);
         const match = inputHash === storedHash;
-        if (match) {
-            const checkObj = { verified: true, timestamp: Date.now() };
-            localStorage.setItem(PASSWORD_CONFIG.localStorageKey, JSON.stringify(checkObj));
-        }
-        return match;
-    } catch {
+    if (match) {
+        localStorage.setItem(PASSWORD_CONFIG.localStorageKey, JSON.stringify(checkObj));
+        setPasswordVerified(true);
+    }
+    return match;
+} catch {
         return false;
     }
 }
