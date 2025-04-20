@@ -389,42 +389,132 @@ function filterResultsByYellow(results) {
  * 搜索列表每一项安全渲染
  */
 function renderResultCard(item) {
-    const safeId = (item.vod_id || '').toString().replace(/[^\w-]/g, '');
-    const safeName = (item.vod_name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const sourceInfo = item.source_name ?
-        `<span class="bg-[#222] text-xs px-2 py-1 rounded-full">${item.source_name}</span>` : '';
-    const sourceCode = item.source_code || '';
-    const apiUrlAttr = item.api_url ? `data-api-url="${item.api_url.replace(/"/g, '&quot;')}"` : '';
-    const hasCover = item.vod_pic && item.vod_pic.startsWith('http');
-    return `
-    <div class="card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full" 
-         onclick="showDetails('${safeId}','${safeName}','${sourceCode}')" ${apiUrlAttr}>
-      <div class="md:flex">
-        ${hasCover ? `<div class="md:w-1/4 relative overflow-hidden"><div class="w-full h-40 md:h-full">
-        <img src="${item.vod_pic}" alt="${safeName}" class="w-full h-full object-cover transition-transform hover:scale-110" onerror="this.onerror=null;this.src='https://via.placeholder.com/300x450?text=无封面';this.classList.add('object-contain');" loading="lazy">
-        <div class="absolute inset-0 bg-gradient-to-t from-[#111] to-transparent opacity-60"></div></div></div>` : ''}
-        <div class="p-3 flex flex-col flex-grow ${hasCover ? 'md:w-3/4' : 'w-full'}">
-          <div class="flex-grow">
-            <h3 class="text-lg font-semibold mb-2 break-words">${safeName}</h3>
-            <div class="flex flex-wrap gap-1 mb-2">${
-                (item.type_name || '').replace(/</g, '&lt;') ?
-                `<span class="text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-blue-500 text-blue-300">${(item.type_name || '').replace(/</g, '&lt;')}</span>` : ''
-            }${item.vod_year ? `<span class="text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-purple-500 text-purple-300">${item.vod_year}</span>` : ''}
-            </div>
-            <p class="text-gray-400 text-xs h-9 overflow-hidden">${(item.vod_remarks || '暂无介绍').replace(/</g, '&lt;')}</p>
-          </div>
-          <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-800">
-            ${sourceInfo ? `<div>${sourceInfo}</div>` : '<div></div>'}
-            <span class="text-xs text-gray-500 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              点击播放
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-    `;
+    // 创建卡片主体
+    const card = document.createElement('div');
+    card.classList.add(
+        'card-hover', 'bg-[#111]', 'rounded-lg', 'overflow-hidden',
+        'cursor-pointer', 'transition-all', 'hover:scale-[1.02]', 'h-full'
+    );
+
+    // 设置自定义数据属性（如 api_url），如果有
+    if (item.api_url) {
+        card.setAttribute('data-api-url', item.api_url);
+    }
+
+    // onclick 安全闭包（原始item.vod_id/vod_name/source_code不会被注入为JS代码）
+    card.onclick = function() {
+        showDetails(
+            (item.vod_id || '').toString(),
+            item.vod_name || '',
+            item.source_code || ''
+        );
+    };
+
+    // 主体布局容器
+    const flexDiv = document.createElement('div');
+    flexDiv.classList.add('md:flex');
+
+    // 左侧封面
+    let hasCover = item.vod_pic && typeof item.vod_pic === 'string' && item.vod_pic.startsWith('http');
+    if (hasCover) {
+        const leftDiv = document.createElement('div');
+        leftDiv.classList.add('md:w-1/4', 'relative', 'overflow-hidden');
+
+        const wrapperDiv = document.createElement('div');
+        wrapperDiv.classList.add('w-full', 'h-40', 'md:h-full');
+
+        const img = document.createElement('img');
+        img.classList.add('w-full', 'h-full', 'object-cover', 'transition-transform', 'hover:scale-110');
+        img.setAttribute('alt', item.vod_name || '');
+        img.setAttribute('loading', 'lazy');
+        img.setAttribute('src', item.vod_pic);
+        img.onerror = function() {
+            this.onerror = null;
+            this.src = 'https://via.placeholder.com/300x450?text=无封面';
+            this.classList.add('object-contain');
+        };
+
+        // 覆盖层
+        const overlay = document.createElement('div');
+        overlay.classList.add('absolute', 'inset-0', 'bg-gradient-to-t', 'from-[#111]', 'to-transparent', 'opacity-60');
+
+        wrapperDiv.appendChild(img);
+        wrapperDiv.appendChild(overlay);
+        leftDiv.appendChild(wrapperDiv);
+        flexDiv.appendChild(leftDiv);
+    }
+
+    // 右侧内容区
+    const contentDiv = document.createElement('div');
+    contentDiv.className = `p-3 flex flex-col flex-grow ${hasCover ? 'md:w-3/4' : 'w-full'}`;
+
+    // 上部内容
+    const topContent = document.createElement('div');
+    topContent.classList.add('flex-grow');
+
+    // 片名
+    const h3 = document.createElement('h3');
+    h3.classList.add('text-lg', 'font-semibold', 'mb-2', 'break-words');
+    h3.textContent = item.vod_name || '';
+    topContent.appendChild(h3);
+
+    // 类型与年份标签
+    const tagsDiv = document.createElement('div');
+    tagsDiv.classList.add('flex', 'flex-wrap', 'gap-1', 'mb-2');
+
+    if (item.type_name) {
+        const typeTag = document.createElement('span');
+        typeTag.classList.add('text-xs', 'py-0.5', 'px-1.5', 'rounded', 'bg-opacity-20', 'bg-blue-500', 'text-blue-300');
+        typeTag.textContent = item.type_name;
+        tagsDiv.appendChild(typeTag);
+    }
+    if (item.vod_year) {
+        const yearTag = document.createElement('span');
+        yearTag.classList.add('text-xs', 'py-0.5', 'px-1.5', 'rounded', 'bg-opacity-20', 'bg-purple-500', 'text-purple-300');
+        yearTag.textContent = item.vod_year;
+        tagsDiv.appendChild(yearTag);
+    }
+    topContent.appendChild(tagsDiv);
+
+    // 剧情简介
+    const p = document.createElement('p');
+    p.classList.add('text-gray-400', 'text-xs', 'h-9', 'overflow-hidden');
+    p.textContent = item.vod_remarks || '暂无介绍';
+    topContent.appendChild(p);
+
+    contentDiv.appendChild(topContent);
+
+    // 下部区块（来源名与播放提示）
+    const infoRow = document.createElement('div');
+    infoRow.classList.add('flex', 'justify-between', 'items-center', 'mt-2', 'pt-2', 'border-t', 'border-gray-800');
+
+    // 来源信息
+    if (item.source_name) {
+        const sourceDiv = document.createElement('div');
+        const srcBadge = document.createElement('span');
+        srcBadge.classList.add('bg-[#222]', 'text-xs', 'px-2', 'py-1', 'rounded-full');
+        srcBadge.textContent = item.source_name;
+        sourceDiv.appendChild(srcBadge);
+        infoRow.appendChild(sourceDiv);
+    } else {
+        infoRow.appendChild(document.createElement('div'));
+    }
+
+    // “点击播放”提示（含svg）
+    const playHint = document.createElement('span');
+    playHint.classList.add('text-xs', 'text-gray-500', 'flex', 'items-center');
+    playHint.innerHTML =
+        `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>` +
+        '点击播放';
+    infoRow.appendChild(playHint);
+
+    contentDiv.appendChild(infoRow);
+    flexDiv.appendChild(contentDiv);
+    card.appendChild(flexDiv);
+
+    return card;
 }
+
 
 // ============= 详情展示 & 剧集按钮渲染 ==============
 
