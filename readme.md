@@ -1,27 +1,3 @@
-# LibreTV - 免费在线视频搜索与观看平台
-
-<div align="center">
-  <img src="https://images.icon-icons.com/38/PNG/512/retrotv_5520.png" alt="LibreTV Logo" width="120">
-  <br>
-  <p><strong>自由观影，畅享精彩</strong></p>
-</div>
-
-## 📺 项目简介
-
-LibreTV 是一个轻量级、免费的在线视频搜索与观看平台，提供来自多个视频源的内容搜索与播放服务。无需注册，即开即用，支持多种设备访问。项目结合了前端技术和后端代理功能，可部署在支持服务端功能的各类网站托管服务上。
-
-本项目基于 [bestK/tv](https://github.com/bestK/tv) 进行重构与增强。
-
-<details>
-  <summary>点击查看项目截图</summary>
-  <img src="https://testingcf.jsdelivr.net/gh/bestZwei/imgs@master/picgo/image-20250406231222216.png" alt="项目截图" style="max-width:600px">
-</details>
-
-## 🚀 快速部署
-
-选择以下任一平台，点击一键部署按钮，即可快速创建自己的 LibreTV 实例：
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FLibreSpark%2FLibreTV)[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/LibreSpark/LibreTV)
 
 ## 📋 详细部署指南
 
