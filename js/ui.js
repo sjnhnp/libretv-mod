@@ -270,9 +270,9 @@ export function playFromHistory(url, title, episodeIndex, playbackPosition = 0, 
             targetUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}${posParam}${epParam}`;
             window.open(targetUrl, '_blank');
         }
-    } catch {
+    } catch (e) { 
         console.error("Error in playFromHistory:", e);
-        // 保持简单的回退，虽然可能缺少 episodes
+    
         window.open(`player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}`, '_blank');
     }
 }
