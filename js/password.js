@@ -29,7 +29,8 @@ export async function verifyPassword(password) {
         const inputHash = await sha256(password);
         const match = inputHash === storedHash;
     if (match) {
-        localStorage.setItem(PASSWORD_CONFIG.localStorageKey, JSON.stringify(checkObj));
+        const stateToStore = { verified: true, timestamp: Date.now() };
+        localStorage.setItem(PASSWORD_CONFIG.localStorageKey, JSON.stringify(stateToStore));
         setPasswordVerified(true);
     }
     return match;
