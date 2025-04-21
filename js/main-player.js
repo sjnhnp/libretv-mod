@@ -21,7 +21,7 @@ let isLocked = false; // 控制区锁定状态
 
 async function getFilteredM3u8UrlIfNeeded(url) {
     // 1. Check if filtering is enabled and if the URL is potentially filterable
-    if (!PLAYER_CONFIG.enableAdFiltering) {
+    if (!PLAYER_CONFIG.adFilteringEnabled) {
         console.log("Ad filtering disabled in config.");
         return url;
     }
