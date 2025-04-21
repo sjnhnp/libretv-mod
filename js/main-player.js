@@ -36,21 +36,8 @@ function filterAdInM3U8String(m3u8Str) {
 }
 
 async function getFilteredM3u8UrlIfNeeded(url) {
-    const adFiltering = getState().settings.adFilteringEnabled;
-    if (!adFiltering) return url;
-    if (!/\.m3u8($|\?)/i.test(url)) return url;
-    try {
-        const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
-        if (!res.ok) throw new Error('m3u8请求失败');
-        let text = await res.text();
-        text = filterAdInM3U8String(text);
-        const blob = new Blob([text], { type: 'application/vnd.apple.mpegurl' });
-        const m3u8BlobUrl = URL.createObjectURL(blob);
-        return m3u8BlobUrl;
-    } catch (e) {
-        console.warn('m3u8广告过滤失败，尝试原流', e);
-        return url;
-    }
+    console.log("临时测试：跳过广告过滤，直接使用原始 URL:", url); // 添加日志方便确认
+    return url; // 直接返回原始 URL
 }
 
 
