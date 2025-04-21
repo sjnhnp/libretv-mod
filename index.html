@@ -165,6 +165,29 @@
         </div>
     </main>
 
+
+<!-- Add this Password Modal block somewhere in your body, e.g., before the closing </body> tag -->
+<div id="passwordModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-75">
+    <div class="bg-[#1f1f1f] text-white rounded-lg shadow-xl p-6 w-full max-w-sm border border-[#444]">
+        <h2 class="text-xl font-semibold mb-4 text-center gradient-text">需要密码验证</h2>
+        <p class="text-sm text-gray-400 mb-4 text-center">请输入密码以继续访问。</p>
+
+        <input type="password"
+               id="passwordInput"
+               class="w-full bg-[#111] border border-[#333] text-white px-4 py-2 rounded mb-3 focus:outline-none focus:border-white transition-colors"
+               placeholder="输入密码"
+               autocomplete="current-password">
+
+        <p id="passwordError" class="text-red-500 text-sm mb-3 hidden text-center">密码错误，请重试。</p>
+
+        <button id="passwordSubmitBtn"
+                class="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg">
+            验证
+        </button>
+    </div>
+</div>
+
+    
 <!-- Modal -->
 <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
     <div class="bg-[#1a1a1a] text-white rounded shadow-lg w-full max-w-lg p-4 relative border border-[#333]">
