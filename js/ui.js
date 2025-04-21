@@ -241,60 +241,68 @@ export function clearViewingHistory() {
 }
 window.clearViewingHistory = clearViewingHistory;
 
+// 在 js/ui.js 中修改 playFromHistory 函数
+
 export function playFromHistory(url, title, episodeIndex, playbackPosition = 0, passedEpisodes = null) {
     try {
         let episodesList = [];
         if (Array.isArray(passedEpisodes) && passedEpisodes.length > 0) {
             episodesList = passedEpisodes;
         } else {
+            // ... (保持从 history 或 localStorage 获取 episodesList 的逻辑不变) ...
             const history = getState().viewingHistory;
             const item = history.find(h => h.title === title);
-
-            // --- MODIFICATION 1: Add braces for clarity and robustness ---
-            if (item?.episodes?.length) { // Added braces
+            if (item?.episodes?.length) {
                 episodesList = item.episodes;
             } else {
                 try {
                     const cand = JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
-                    // --- MODIFICATION 2: Add braces here too ---
-                    if (cand.length) { // Added braces
+                    if (cand.length) {
                        episodesList = cand;
                     }
-                // --- MODIFICATION 3: Capture error in inner catch (even if ignored) ---
-                } catch (error) { // Changed from catch {}
-                   // Optionally log warning: console.warn("Ignoring localStorage parse error:", error);
+                } catch (error) {
+                   // console.warn("Ignoring localStorage parse error:", error);
                 }
             }
-            // --- End Modifications ---
         }
 
+        // --- 新增：将剧集列表存入 sessionStorage ---
+        try {
+            if (episodesList.length > 0) {
+                sessionStorage.setItem('playerEpisodeList', JSON.stringify(episodesList));
+            } else {
+                // 如果列表为空，确保清除可能存在的旧数据
+                sessionStorage.removeItem('playerEpisodeList');
+            }
+        } catch (e) {
+            console.error("Failed to save episodes to sessionStorage:", e);
+        
+        }
+      
+
         const posParam = playbackPosition > 10 ? `&position=${Math.floor(playbackPosition)}` : '';
-        // Corrected epParam generation (though unlikely related to build error)
-        const epParam = episodesList.length ? `&episodes=${encodeURIComponent(JSON.stringify(episodesList))}` : '';
         let targetUrl;
 
         if (url.includes('?')) {
             targetUrl = url;
-            // FIX LOGIC BUG for concatenation: Use the param directly as it includes '&'
-            if (!url.includes('&index=') && !url.includes('?index=') && episodeIndex > 0) targetUrl += `&index=${episodeIndex}`;
-            if (!url.includes('&position=') && !url.includes('?position=') && posParam) targetUrl += posParam; // Fixed: removed .replace()
-            if (!url.includes('&episodes=') && !url.includes('?episodes=') && epParam) targetUrl += epParam; // Fixed: Add '&' before if needed, or modify epParam to include it
-             // Safer approach for adding params to existing query string:
-             // if (!url.includes('&episodes=') && !url.includes('?episodes=')) {
-             //   targetUrl += (targetUrl.includes('?') ? '&' : '?') + `episodes=${encodeURIComponent(JSON.stringify(episodesList))}`;
-             // } // Apply similar logic for index and position if needed
-            window.open(targetUrl, '_blank');
+         
+            if (!url.includes('&index=') && !url.includes('?index=') && episodeIndex >= 0) targetUrl += `&index=${episodeIndex}`; // index >= 0 seems more correct
+            if (!url.includes('&position=') && !url.includes('?position=') && posParam) targetUrl += posParam; 
+            
+             window.open(targetUrl, '_blank');
         } else {
-            // Ensure params start correctly if they exist
-            targetUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}${posParam}${epParam}`;
+            
+            targetUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}${posParam}`; // <-- 新代码，移除了 ${epParam}
             window.open(targetUrl, '_blank');
         }
     } catch (e) {
         console.error("Error in playFromHistory:", e);
+
         window.open(`player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}`, '_blank');
     }
 }
-window.playFromHistory = playFromHistory;
+window.playFromHistory = playFromHistory; // 保持全局访问（如果需要）
+
 
 
 
