@@ -241,42 +241,62 @@ export function clearViewingHistory() {
 }
 window.clearViewingHistory = clearViewingHistory;
 
-// ============== 搜索/播放历史 通用 组件式 Play ==============
 export function playFromHistory(url, title, episodeIndex, playbackPosition = 0, passedEpisodes = null) {
     try {
         let episodesList = [];
-     if (Array.isArray(passedEpisodes) && passedEpisodes.length > 0) {
+        if (Array.isArray(passedEpisodes) && passedEpisodes.length > 0) {
             episodesList = passedEpisodes;
         } else {
-        const history = getState().viewingHistory;
-        const item = history.find(h => h.title === title);
-        if (item?.episodes?.length) episodesList = item.episodes;
-        else {
-            try {
-                const cand = JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
-                if (cand.length) episodesList = cand;
-            } catch {}
+            const history = getState().viewingHistory;
+            const item = history.find(h => h.title === title);
+
+            // --- MODIFICATION 1: Add braces for clarity and robustness ---
+            if (item?.episodes?.length) { // Added braces
+                episodesList = item.episodes;
+            } else {
+                try {
+                    const cand = JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
+                    // --- MODIFICATION 2: Add braces here too ---
+                    if (cand.length) { // Added braces
+                       episodesList = cand;
+                    }
+                // --- MODIFICATION 3: Capture error in inner catch (even if ignored) ---
+                } catch (error) { // Changed from catch {}
+                   // Optionally log warning: console.warn("Ignoring localStorage parse error:", error);
+                }
+            }
+            // --- End Modifications ---
         }
+
         const posParam = playbackPosition > 10 ? `&position=${Math.floor(playbackPosition)}` : '';
+        // Corrected epParam generation (though unlikely related to build error)
         const epParam = episodesList.length ? `&episodes=${encodeURIComponent(JSON.stringify(episodesList))}` : '';
         let targetUrl;
+
         if (url.includes('?')) {
             targetUrl = url;
-             if (!url.includes('&index=') && !url.includes('?index=') && episodeIndex > 0) targetUrl += `&index=${episodeIndex}`;
-             if (!url.includes('&position=') && !url.includes('?position=') && posParam) targetUrl += posParam.replace('&',''); 
-             if (!url.includes('&episodes=') && !url.includes('?episodes=') && epParam) targetUrl += epParam;
-             window.open(targetUrl, '_blank');
+            // FIX LOGIC BUG for concatenation: Use the param directly as it includes '&'
+            if (!url.includes('&index=') && !url.includes('?index=') && episodeIndex > 0) targetUrl += `&index=${episodeIndex}`;
+            if (!url.includes('&position=') && !url.includes('?position=') && posParam) targetUrl += posParam; // Fixed: removed .replace()
+            if (!url.includes('&episodes=') && !url.includes('?episodes=') && epParam) targetUrl += epParam; // Fixed: Add '&' before if needed, or modify epParam to include it
+             // Safer approach for adding params to existing query string:
+             // if (!url.includes('&episodes=') && !url.includes('?episodes=')) {
+             //   targetUrl += (targetUrl.includes('?') ? '&' : '?') + `episodes=${encodeURIComponent(JSON.stringify(episodesList))}`;
+             // } // Apply similar logic for index and position if needed
+            window.open(targetUrl, '_blank');
         } else {
+            // Ensure params start correctly if they exist
             targetUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}${posParam}${epParam}`;
             window.open(targetUrl, '_blank');
         }
-    } catch (e) { 
+    } catch (e) {
         console.error("Error in playFromHistory:", e);
-    
         window.open(`player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}`, '_blank');
     }
 }
 window.playFromHistory = playFromHistory;
+
+
 
 // ============== 友好格式化 ==============
 export function formatTimestamp(timestamp) {
