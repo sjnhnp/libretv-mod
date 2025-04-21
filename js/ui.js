@@ -242,9 +242,12 @@ export function clearViewingHistory() {
 window.clearViewingHistory = clearViewingHistory;
 
 // ============== 搜索/播放历史 通用 组件式 Play ==============
-export function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
+export function playFromHistory(url, title, episodeIndex, playbackPosition = 0, passedEpisodes = null) {
     try {
         let episodesList = [];
+     if (Array.isArray(passedEpisodes) && passedEpisodes.length > 0) {
+            episodesList = passedEpisodes;
+        } else {
         const history = getState().viewingHistory;
         const item = history.find(h => h.title === title);
         if (item?.episodes?.length) episodesList = item.episodes;
@@ -259,15 +262,17 @@ export function playFromHistory(url, title, episodeIndex, playbackPosition = 0) 
         let targetUrl;
         if (url.includes('?')) {
             targetUrl = url;
-            if (!url.includes('index=') && episodeIndex > 0) targetUrl += `&index=${episodeIndex}`;
-            if (posParam) targetUrl += posParam;
-            if (epParam && !url.includes('episodes=')) targetUrl += epParam;
-            window.open(targetUrl, '_blank');
+             if (!url.includes('&index=') && !url.includes('?index=') && episodeIndex > 0) targetUrl += `&index=${episodeIndex}`;
+             if (!url.includes('&position=') && !url.includes('?position=') && posParam) targetUrl += posParam.replace('&',''); 
+             if (!url.includes('&episodes=') && !url.includes('?episodes=') && epParam) targetUrl += epParam;
+             window.open(targetUrl, '_blank');
         } else {
             targetUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}${posParam}${epParam}`;
             window.open(targetUrl, '_blank');
         }
     } catch {
+        console.error("Error in playFromHistory:", e);
+        // 保持简单的回退，虽然可能缺少 episodes
         window.open(`player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}`, '_blank');
     }
 }
