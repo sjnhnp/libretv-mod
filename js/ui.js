@@ -602,11 +602,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // window.showToast = showToast; // Already done
 // window.showLoading = showLoading; // Already done
 // window.hideLoading = hideLoading; // Already done
-// window.clearViewingHistory = clearViewingHistory; // Called internally now, maybe remove global
+window.clearViewingHistory = clearViewingHistory; // Called internally now, maybe remove global
 // window.playFromHistory = playFromHistory; // Kept for now
 // window.formatTimestamp = formatTimestamp; // Kept
 // window.formatPlaybackTime = formatPlaybackTime; // Kept
 // window.toggleSettings = toggleSettings; // Already done
 // window.toggleHistory = toggleHistory; // Already done
 
-
+window.loadViewingHistory = loadViewingHistory;
