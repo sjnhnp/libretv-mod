@@ -1,5 +1,5 @@
 // js/main-player.js
-// (完整版本，整合 sessionStorage 读取，移除全局暴露 toggleControlsLock)
+// (完整版本，整合 sessionStorage 读取, 用户广告过滤开关, 错误处理)
 
 import { PLAYER_CONFIG } from './config.js';
 import { getState, setSetting, addViewingHistoryItem } from './store.js';
@@ -16,71 +16,124 @@ let dplayer = null;
 let lastBlobUrl = null; // 用于 Blob URL 的清理
 let isLocked = false; // 控制区锁定状态
 
-// ============ 广告过滤 (当前为临时跳过状态) =============
+// --- NEW: Ad Filter State and Icons ---
+let isAdFilteringCurrentlyEnabled = PLAYER_CONFIG.adFilteringEnabled; // Initialize with default, will be overwritten by localStorage
+const ICON_FILTER_ON = `<svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>`; // Example: Shield Check
+const ICON_FILTER_OFF = `<svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>`; // Example: Shield Slash/Eye Off
 
 
+// ============ 广告过滤 (用户可配置) =============
+
+// --- NEW: Load Initial Ad Filter Setting ---
+function loadInitialAdFilterSetting() {
+    const storageKey = PLAYER_CONFIG.adFilteringStorage || 'userAdFilteringPreference'; // Use key from config or a default
+    try {
+        const storedValue = localStorage.getItem(storageKey);
+        if (storedValue !== null) {
+            isAdFilteringCurrentlyEnabled = (storedValue === 'true'); // Convert string to boolean
+            console.log(`Loaded ad filter setting from localStorage (${storageKey}): ${isAdFilteringCurrentlyEnabled}`);
+        } else {
+            // No stored value, use default from config
+            isAdFilteringCurrentlyEnabled = PLAYER_CONFIG.adFilteringEnabled;
+            console.log(`No ad filter setting in localStorage, using default: ${isAdFilteringCurrentlyEnabled}`);
+            // Optionally save the default to localStorage now
+            // localStorage.setItem(storageKey, isAdFilteringCurrentlyEnabled.toString());
+        }
+    } catch (e) {
+        console.error("Error reading ad filter setting from localStorage:", e);
+        // Fallback to default config value in case of error
+        isAdFilteringCurrentlyEnabled = PLAYER_CONFIG.adFilteringEnabled;
+    }
+    // Update the UI immediately after loading the setting
+    updateAdFilterToggleUI();
+}
+
+// --- NEW: Update Ad Filter Toggle UI ---
+function updateAdFilterToggleUI() {
+    const button = document.getElementById('adFilterToggle');
+    const iconSpan = document.getElementById('adFilterIcon');
+    if (!button || !iconSpan) {
+        // console.warn("Ad filter UI elements (#adFilterToggle or #adFilterIcon) not found.");
+        return;
+    }
+
+    if (isAdFilteringCurrentlyEnabled) {
+        iconSpan.innerHTML = ICON_FILTER_ON;
+        button.title = "广告过滤已开启 (点击关闭)";
+        button.setAttribute('aria-pressed', 'true'); // For accessibility
+    } else {
+        iconSpan.innerHTML = ICON_FILTER_OFF;
+        button.title = "广告过滤已关闭 (点击开启)";
+        button.setAttribute('aria-pressed', 'false'); // For accessibility
+    }
+}
+
+// --- NEW: Toggle Ad Filtering ---
+function toggleAdFiltering() {
+    isAdFilteringCurrentlyEnabled = !isAdFilteringCurrentlyEnabled; // Flip the state
+    const storageKey = PLAYER_CONFIG.adFilteringStorage || 'userAdFilteringPreference';
+
+    try {
+        // Save the new state to localStorage as a string
+        localStorage.setItem(storageKey, isAdFilteringCurrentlyEnabled.toString());
+        console.log(`Saved ad filter setting to localStorage (${storageKey}): ${isAdFilteringCurrentlyEnabled}`);
+    } catch (e) {
+        console.error("Error saving ad filter setting to localStorage:", e);
+    }
+
+    updateAdFilterToggleUI(); // Update button appearance
+
+    // Show a notification (requires dplayer instance)
+    dplayer?.notice(`广告过滤已${isAdFilteringCurrentlyEnabled ? '开启' : '关闭'} (下次加载生效)`, 2000);
+    console.log(`Ad filtering toggled to: ${isAdFilteringCurrentlyEnabled}. Change applies on next video load.`);
+}
+
+
+// --- MODIFIED: Checks isAdFilteringCurrentlyEnabled ---
 async function getFilteredM3u8UrlIfNeeded(url) {
-    // 1. Check if filtering is enabled and if the URL is potentially filterable
-    if (!PLAYER_CONFIG.adFilteringEnabled) {
-        console.log("Ad filtering disabled in config.");
+    // 1. Check the *current* runtime setting, not just the config default
+    if (!isAdFilteringCurrentlyEnabled) { // <<< MODIFIED HERE
+        console.log("Ad filtering currently disabled by user setting.");
         return url;
     }
+    // Continue with existing checks
     if (!url || !(url.includes('.m3u8') || url.includes('format=m3u8'))) { // Check for .m3u8 or common query param
         console.log("URL is not M3U8, skipping filtering:", url);
         return url;
     }
-     // Skip non-http(s) URLs (like blob: or data:)
      if (!url.startsWith('http')) {
          console.log("URL is not HTTP(S), skipping filtering:", url);
          return url;
      }
 
-
-    console.log("Attempting to filter ads for:", url);
+    console.log("Attempting to filter ads for (filtering enabled):", url);
 
     try {
         // 2. Fetch the M3U8 content
-        // Use 'cors' mode and 'omit' credentials for better compatibility with public M3U8s
-        // If the server requires credentials, you might need 'include', but 'omit' is safer first.
         const response = await fetch(url, {
-            method: 'GET',
-            mode: 'cors',         // Crucial for cross-origin requests
-            credentials: 'omit',  // Usually 'omit' for public M3U8s
-            redirect: 'follow'    // Follow redirects if any
+            method: 'GET', mode: 'cors', credentials: 'omit', redirect: 'follow'
         });
 
         // 3. Check if the fetch was successful
         if (!response.ok) {
-            // Log specific HTTP status if available
             console.warn(`Failed to fetch M3U8 (HTTP ${response.status}), using original URL:`, url);
-            return url; // Fallback to original URL on fetch error
+            return url;
         }
-
-        // Optional: Check content type if needed (can be unreliable)
-        // const contentType = response.headers.get('content-type');
-        // if (contentType && !contentType.includes('mpegurl') && !contentType.includes('text/plain')) {
-        //     console.warn(`Unexpected M3U8 Content-Type (${contentType}), using original URL:`, url);
-        //     return url;
-        // }
 
         // 4. Read the M3U8 text content
         const m3u8Text = await response.text();
-
-        // Basic check if content looks like M3U8
         if (!m3u8Text || !m3u8Text.trim().startsWith('#EXTM3U')) {
              console.warn("Fetched content doesn't look like a valid M3U8 playlist, using original URL.");
              return url;
         }
 
-
         // 5. Filter the M3U8 string
-        const filteredM3u8 = filterAdInM3U8String(m3u8Text); // Use the existing filter function
+        const filteredM3u8 = filterAdInM3U8String(m3u8Text);
 
         // 6. Validate the filtered result
         if (!filteredM3u8 || filteredM3u8.length < m3u8Text.length * 0.1 || !filteredM3u8.trim().startsWith('#EXTM3U')) {
-            // If filtering resulted in empty or drastically smaller content, or lost the header, assume it failed.
             console.warn("Ad filtering resulted in invalid or empty content, using original URL.");
-            return url; // Fallback
+            return url;
         }
 
         // 7. Create a Blob URL from the filtered content
@@ -90,44 +143,39 @@ async function getFilteredM3u8UrlIfNeeded(url) {
         if (lastBlobUrl) {
             console.log("Revoking previous Blob URL:", lastBlobUrl);
             URL.revokeObjectURL(lastBlobUrl);
-            lastBlobUrl = null; // Reset the variable
+            lastBlobUrl = null;
         }
 
         // 9. Create the new Blob URL
         lastBlobUrl = URL.createObjectURL(blob);
         console.log("Ad filtering successful. Using Blob URL:", lastBlobUrl);
-        return lastBlobUrl; // Return the Blob URL for the player
+        return lastBlobUrl;
 
     } catch (error) {
-        // 10. Catch ANY error during the process (fetch, text, filter, blob creation)
+        // 10. Catch ANY error during the process
         console.error("Error during M3U8 ad filtering process, falling back to original URL:", error);
-        // Ensure any partially created blob URL is cleaned up if an error happened after its creation
-        if (lastBlobUrl && !lastBlobUrl.startsWith('blob:')) { // Check if it was assigned but maybe not a blob url due to error
-             lastBlobUrl = null;
-        } else if (lastBlobUrl && error) {
-             // If an error happened *after* blob creation but before return
-             // It's tricky, maybe revoke it just in case, but often unnecessary as it wasn't returned
-             // Let's keep it simple: the main cleanup happens before creating a *new* one.
+        if (lastBlobUrl && typeof lastBlobUrl === 'string' && lastBlobUrl.startsWith('blob:')) {
+           // Clean up potential blob if error occurred after creation but before return
+           try { URL.revokeObjectURL(lastBlobUrl); } catch (revokeError) { /* ignore */ }
+           lastBlobUrl = null;
         }
-
         return url; // Fallback to the original URL on any error
     }
 }
 
-// Your existing filterAdInM3U8String function (ensure it preserves necessary tags)
+// Your existing filterAdInM3U8String function (seems reasonable, keep as is)
 function filterAdInM3U8String(m3u8Str) {
     const adPatterns = [
         /ad/i, /ads/i, /广告/, /tvc/i, /ssp/i, /\.jpg/, /logo/i, /watermark/i,
         /pause/i, /广编/, /guanggao/i, /tracker/, /promo/, /\bpreroll\b/i,
         /interstitial/i, /sponsor/i
-        // Add more specific patterns if you identify them
     ];
     const lines = m3u8Str.split('\n');
     const filtered = [];
-    let skipNextLine = false; // Flag to skip the media segment line after a matching #EXTINF
+    let skipNextLine = false;
 
     for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
+        const line = lines[i].trim(); // Trim here for checks
 
         // Preserve essential playlist-wide tags unconditionally
         if (line.startsWith('#EXTM3U') ||
@@ -135,29 +183,29 @@ function filterAdInM3U8String(m3u8Str) {
             line.startsWith('#EXT-X-TARGETDURATION') ||
             line.startsWith('#EXT-X-MEDIA-SEQUENCE') ||
             line.startsWith('#EXT-X-PLAYLIST-TYPE') ||
-            line.startsWith('#EXT-X-KEY') ||         // Preserve encryption keys
-            line.startsWith('#EXT-X-MAP') ||          // Preserve initialization segments
-            line.startsWith('#EXT-X-PROGRAM-DATE-TIME') || // Preserve date markers
-            line.startsWith('#EXT-X-DISCONTINUITY') || // Preserve discontinuity tags
-            line.startsWith('#EXT-X-ENDLIST')) {      // Preserve endlist tag
-            filtered.push(lines[i]); // Push original line with potential whitespace
-            skipNextLine = false; // Reset flag for these lines
+            line.startsWith('#EXT-X-KEY') ||
+            line.startsWith('#EXT-X-MAP') ||
+            line.startsWith('#EXT-X-PROGRAM-DATE-TIME') ||
+            line.startsWith('#EXT-X-DISCONTINUITY') ||
+            line.startsWith('#EXT-X-ENDLIST')) {
+            filtered.push(lines[i]); // Push original line (with potential whitespace)
+            skipNextLine = false;
             continue;
         }
 
         // Handle the previous skip flag first
         if (skipNextLine) {
-            // This line is a media segment following a matched #EXTINF, skip it
-            skipNextLine = false; // Reset flag
-            console.log("Filtering media segment:", line);
-            continue; // Skip this line
+            skipNextLine = false;
+            // Only log if line is not empty (sometimes empty lines follow #EXTINF)
+            if (line) console.log("Filtering media segment:", line);
+            continue;
         }
 
         // Check if the current line is an #EXTINF line matching ad patterns
         if (line.startsWith('#EXTINF')) {
             let isAdInf = false;
             for (const pat of adPatterns) {
-                if (pat.test(line)) { // Check the #EXTINF line itself (e.g., for ad titles)
+                if (pat.test(line)) {
                     isAdInf = true;
                     break;
                 }
@@ -170,16 +218,11 @@ function filterAdInM3U8String(m3u8Str) {
         }
 
         // If the line is not skipped and not an ad #EXTINF, keep it
-        filtered.push(lines[i]);
+        filtered.push(lines[i]); // Push original line
     }
 
     return filtered.join('\n');
 }
-
-
-// --- Make sure PLAYER_CONFIG is defined or imported ---
-// Example: Assuming it's imported or defined globally/in scope
-// const PLAYER_CONFIG = { enableAdFiltering: true }; // Set to true to enable
 
 
 // ========== 数据加载与参数处理 ==========
@@ -187,19 +230,16 @@ function loadPlayerData() {
     const url = new URL(window.location.href);
     const params = Object.fromEntries(url.searchParams.entries());
 
-    // 1. 获取基础信息
     currentTitle = decodeURIComponent(params.title || '') || '正在播放';
     episodeIndex = Number(params.index || 0);
     const fallbackUrl = params.url;
 
-    // 2. 优先从 sessionStorage 获取剧集列表
     console.log("尝试从 sessionStorage 加载剧集列表...");
     try {
         const episodesJson = sessionStorage.getItem('playerEpisodeList');
         if (episodesJson) {
             episodes = JSON.parse(episodesJson);
             console.log("成功从 sessionStorage 加载了", episodes.length, "集");
-            // sessionStorage.removeItem('playerEpisodeList'); // 根据需要决定是否移除
         } else {
              console.warn("SessionStorage 中未找到 'playerEpisodeList'。");
              episodes = [];
@@ -209,7 +249,6 @@ function loadPlayerData() {
         episodes = [];
     }
 
-    // 3. 兼容 URL 'episodes' 参数
     if (episodes.length === 0 && params.episodes) {
         console.warn("SessionStorage 无数据，尝试从 URL 'episodes' 参数加载...");
         try {
@@ -221,14 +260,12 @@ function loadPlayerData() {
         }
     }
 
-    // 4. 创建单集列表
     if (episodes.length === 0 && fallbackUrl) {
          console.log("无剧集列表，根据 URL 'url' 参数创建单集播放。");
          episodes = [fallbackUrl];
          episodeIndex = 0;
     }
 
-    // 5. 修正 episodeIndex 边界
     if (episodeIndex < 0) episodeIndex = 0;
     if (episodes.length > 0 && episodeIndex >= episodes.length) {
         episodeIndex = episodes.length - 1;
@@ -359,9 +396,18 @@ async function initPlayer() {
 
     if (dplayer) {
         console.log("销毁旧的 DPlayer 实例...");
-        try { dplayer.destroy(); } catch (e) { console.warn("销毁旧播放器实例时出错:", e); }
-        dplayer = null;
-        if (lastBlobUrl) { URL.revokeObjectURL(lastBlobUrl); lastBlobUrl = null; }
+        try {
+            // Revoke blob URL BEFORE destroying DPlayer which might still use it
+            if (lastBlobUrl) {
+                console.log("Revoking blob URL before player destroy:", lastBlobUrl);
+                URL.revokeObjectURL(lastBlobUrl);
+                lastBlobUrl = null;
+            }
+            dplayer.destroy();
+        } catch (e) {
+            console.warn("销毁旧播放器实例或撤销 Blob URL 时出错:", e);
+        }
+        dplayer = null; // Ensure it's nullified
     }
 
     let url = getCurrentVideoUrl();
@@ -370,31 +416,53 @@ async function initPlayer() {
         showLoading(false);
         return;
     }
-    console.log(`获取到播放 URL: ${url}`);
+    console.log(`获取到原始播放 URL: ${url}`);
 
+    // --- MODIFIED: Use the filtered URL, reset lastBlobUrl if filtering is disabled/fails ---
+    let finalUrl = url; // Start with original
     try {
-        url = await getFilteredM3u8UrlIfNeeded(url);
-        if (url.startsWith('blob:')) lastBlobUrl = url;
-        console.log(`过滤后的 URL: ${url}`);
-    } catch (filterError) { console.error("广告过滤失败:", filterError); }
+        const filteredUrl = await getFilteredM3u8UrlIfNeeded(url); // This now checks isAdFilteringCurrentlyEnabled
+        if (filteredUrl !== url && filteredUrl.startsWith('blob:')) {
+            finalUrl = filteredUrl; // Use the blob URL
+            // lastBlobUrl is already set inside getFilteredM3u8UrlIfNeeded on success
+            console.log(`使用过滤后的 Blob URL: ${finalUrl}`);
+        } else if (filteredUrl === url) {
+            console.log(`未使用过滤 URL (过滤禁用或失败)，使用原始 URL: ${finalUrl}`);
+            // Ensure lastBlobUrl is null if we aren't using a blob this time
+            if (lastBlobUrl) {
+                 console.log("Filtering didn't produce a blob, ensuring old blob URL is revoked:", lastBlobUrl);
+                 URL.revokeObjectURL(lastBlobUrl);
+                 lastBlobUrl = null;
+            }
+        }
+    } catch (filterError) {
+        console.error("广告过滤过程中发生意外错误:", filterError);
+        finalUrl = url; // Fallback to original URL
+         if (lastBlobUrl) { // Clean up just in case
+              try { URL.revokeObjectURL(lastBlobUrl); } catch(e){} lastBlobUrl = null;
+         }
+    }
 
-    console.log("创建新的 DPlayer 实例...");
+    console.log("创建新的 DPlayer 实例，使用 URL:", finalUrl);
     try {
         dplayer = new window.DPlayer({
-            container: document.getElementById('player'),
+            container: document.getElementById('player'), // Ensure this ID matches your HTML
             autoplay: true, theme: '#b73a82', loop: false, lang: 'zh-cn',
             screenshot: true, hotkey: true, preload: 'auto', logo: false,
             volume: 0.7, mutex: true,
             video: {
-                url: url,
-                type: url.includes('.m3u8') ? 'hls' : 'auto',
+                url: finalUrl, // Use the potentially filtered URL
+                // Correct type detection for blob URLs (usually HLS)
+                type: finalUrl.includes('.m3u8') || finalUrl.startsWith('blob:') ? 'hls' : 'auto',
             },
-            // hlsjsConfig: { /* HLS.js 配置 */ }
+            // hlsjsConfig: { /* Consider adding HLS.js config if needed, e.g., for segment loading */ }
         });
+
+        // --- DPlayer Event Listeners ---
 
         dplayer.on('loadedmetadata', () => {
             console.log("DPlayer 事件: loadedmetadata");
-            hideError();
+            hideError(); // Hide error if loading succeeds after a failure
             showLoading(false);
             duration = dplayer.video.duration || 0;
             console.log("视频时长:", duration);
@@ -402,94 +470,208 @@ async function initPlayer() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const position = urlParams.get('position');
                 if (position && !isNaN(Number(position)) && Number(position) > 0) {
-                    const seekTime = Math.min(Number(position), duration - 1);
-                    if (seekTime > 0) { console.log(`尝试跳转到: ${seekTime}s`); dplayer.seek(seekTime); }
+                    const seekTime = Math.min(Number(position), duration > 1 ? duration - 1 : duration); // Avoid seeking past end
+                    if (seekTime > 0) {
+                        console.log(`尝试跳转到上次播放位置: ${seekTime}s`);
+                        dplayer.seek(seekTime);
+                    }
                 }
-            } catch(seekError) { console.error("跳转位置出错:", seekError); }
+            } catch(seekError) { console.error("跳转到上次播放位置时出错:", seekError); }
         });
-        dplayer.on('canplay', () => { console.log("DPlayer 事件: canplay"); showLoading(false); });
-        dplayer.on('error', (err) => { console.error("DPlayer 事件: error:", err); showError(`播放失败: ${dplayer.notice || '未知错误'}`); showLoading(false); });
-        dplayer.on('timeupdate', () => { lastPosition = dplayer.video.currentTime || 0; });
+
+        dplayer.on('canplay', () => {
+            console.log("DPlayer 事件: canplay");
+            showLoading(false); // Ensure loading is hidden
+        });
+
+        // --- MODIFIED/CONFIRMED: Error handling uses the improved logic ---
+        dplayer.on('error', (err) => {
+            console.error("DPlayer 事件: error:", err); // Log the raw error object
+
+            let errorMessage = '未知错误'; // Default message
+            if (err) {
+                errorMessage = err.message || String(err); // Try message or stringify error
+                // Check if notice contains text (and isn't the function itself)
+                 if (dplayer?.template?.notice?.textContent && typeof dplayer.template.notice.textContent === 'string' && !dplayer.template.notice.textContent.startsWith('function')) {
+                     errorMessage += ` (${dplayer.template.notice.textContent})`;
+                 }
+            } else if (dplayer?.video?.error) {
+                // Fallback to HTML video element error
+                const videoError = dplayer.video.error;
+                errorMessage = `媒体错误代码: ${videoError.code}`;
+                switch (videoError.code) {
+                    case MediaError.MEDIA_ERR_ABORTED: errorMessage += ' (用户中止)'; break;
+                    case MediaError.MEDIA_ERR_NETWORK: errorMessage += ' (网络错误)'; break;
+                    case MediaError.MEDIA_ERR_DECODE: errorMessage += ' (解码错误)'; break;
+                    case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED: errorMessage += ' (媒体资源不支持)'; break;
+                    default: errorMessage += ' (未知媒体错误)';
+                }
+                 console.error("HTMLVideoElement Error:", videoError);
+            }
+
+            // Consider adding more context if possible
+            if (lastBlobUrl === finalUrl) {
+                errorMessage += " (可能与广告过滤有关)";
+            }
+
+            showError(`播放失败: ${errorMessage}`); // Use the extracted errorMessage
+            showLoading(false);
+            // Maybe destroy player on fatal error? Or provide a retry button?
+            // dplayer.destroy(); dplayer = null;
+        });
+
+        dplayer.on('timeupdate', () => {
+            lastPosition = dplayer.video.currentTime || 0;
+            // Throttle history saving if needed, but saving on pause/end/unload is usually sufficient
+        });
+
         dplayer.on('ended', () => {
             console.log(`DPlayer 事件: ended - Ep ${episodeIndex + 1}`);
-            saveViewingHistory();
-            if (autoPlayNext) playNextEpisode();
-            else dplayer?.notice("播放完毕", 2000);
+            saveViewingHistory(); // Save progress at the very end
+            if (autoPlayNext) {
+                playNextEpisode();
+            } else {
+                dplayer?.notice("播放完毕", 2000);
+            }
         });
-        dplayer.on('pause', () => { console.log("DPlayer 事件: pause"); saveViewingHistory(); });
-        dplayer.on('play', () => { console.log("DPlayer 事件: play"); });
-        dplayer.on('destroy', () => { console.log("DPlayer 事件: destroy"); });
 
+        dplayer.on('pause', () => {
+            console.log("DPlayer 事件: pause");
+            saveViewingHistory(); // Save progress on pause
+        });
+
+        dplayer.on('play', () => {
+            console.log("DPlayer 事件: play");
+            hideError(); // Hide error message if user manually plays after an error
+            showLoading(false); // Ensure loading is hidden
+        });
+
+        dplayer.on('destroy', () => {
+            console.log("DPlayer 事件: destroy");
+            // Ensure blob URL is revoked if not already done
+            if (lastBlobUrl) {
+                console.log("Revoking blob URL on player destroy:", lastBlobUrl);
+                URL.revokeObjectURL(lastBlobUrl);
+                lastBlobUrl = null;
+            }
+        });
+
+        // Trigger custom event for potential external hooks (like preloading)
         triggerDPlayerInitedEvent();
 
     } catch (initError) {
         console.error("初始化 DPlayer 时发生严重错误:", initError);
         showError(`播放器初始化失败: ${initError.message}`);
         showLoading(false);
+        // Clean up blob if init failed after blob creation but before player used it
+        if (lastBlobUrl && finalUrl === lastBlobUrl) {
+            try { URL.revokeObjectURL(lastBlobUrl); } catch(e){}
+            lastBlobUrl = null;
+        }
     }
 }
 
+
 // ========== 记录与连播/切集 ==========
 function saveViewingHistory() {
-    if (!currentTitle || !dplayer || !dplayer.video) return;
+    if (!currentTitle || !dplayer || !dplayer.video) {
+        // console.warn("无法保存历史记录: 缺少标题或播放器实例。");
+        return;
+    }
     const currentPos = dplayer.video.currentTime || lastPosition || 0;
     const totalDuration = dplayer.video.duration || duration || 0;
-    const currentUrl = getCurrentVideoUrl();
-    if (!currentUrl || totalDuration <= 0) { console.warn("保存历史记录数据无效"); return; }
+
+    // Only save if duration is valid and progress is meaningful
+    if (totalDuration <= 0 || currentPos <= 0) {
+        // console.log("不保存历史记录: 时长或进度无效。");
+        return;
+    }
+
+    // Avoid saving if video barely started or finished (adjust threshold as needed)
+    if (currentPos < 2 || currentPos > totalDuration - 5) {
+        // console.log("不保存历史记录: 接近开头或结尾。");
+        // If ended, we save in the 'ended' event handler
+        if (dplayer.video.ended) return;
+    }
+
+
+    const currentUrl = episodes[episodeIndex]; // Get URL from the original list
+    if (!currentUrl) {
+        console.warn("无法保存历史记录: 无法获取当前剧集 URL。");
+        return;
+    }
 
     const historyItem = {
-        title: currentTitle, episodeIndex: episodeIndex, sourceName: '播放页',
+        title: currentTitle, episodeIndex: episodeIndex, sourceName: '播放页', // Or dynamically determine source?
         playbackPosition: Math.floor(currentPos), duration: Math.floor(totalDuration),
-        url: currentUrl, episodes: episodes, timestamp: Date.now()
+        url: currentUrl, // Store the original URL for identification
+        episodes: episodes, // Store the context
+        timestamp: Date.now()
     };
     console.log(`准备保存观看历史: Ep=${historyItem.episodeIndex + 1}, Pos=${historyItem.playbackPosition}/${historyItem.duration}`);
-    try { addViewingHistoryItem(historyItem); } catch (e) { console.error("保存观看历史时出错:", e); }
+    try {
+        addViewingHistoryItem(historyItem);
+    } catch (e) {
+        console.error("保存观看历史时出错:", e);
+    }
 }
 
 function playEpisodeByIndex(newIndex) {
     if (newIndex >= 0 && newIndex < episodes.length && newIndex !== episodeIndex) {
         console.log(`切换剧集: 从 ${episodeIndex + 1} 到 ${newIndex + 1}`);
-        saveViewingHistory();
+        saveViewingHistory(); // Save progress before switching
         episodeIndex = newIndex;
         try {
+            // Update URL without reload for better navigation feel
             const newUrl = new URL(window.location.href);
             newUrl.searchParams.set('index', episodeIndex.toString());
+            newUrl.searchParams.delete('position'); // Remove old position
             history.pushState({ index: episodeIndex }, '', newUrl.toString());
         } catch (e) { console.warn("更新 URL 状态失败:", e); }
-        initPlayer(); // 重新初始化播放器
+        initPlayer(); // Re-initialize the player for the new episode
     } else if (newIndex === episodeIndex) {
          dplayer?.notice("正在播放当前集", 1500);
     } else {
         console.warn(`尝试切换到无效的剧集索引: ${newIndex}`);
+        dplayer?.notice("无效的剧集索引", 1500);
     }
 }
 
 function playNextEpisode() {
-    if (episodeIndex < episodes.length - 1) playEpisodeByIndex(episodeIndex + 1);
-    else { console.log("已经是最后一集"); dplayer?.notice("已经是最后一集", 2000); }
+    if (episodeIndex < episodes.length - 1) {
+        playEpisodeByIndex(episodeIndex + 1);
+    } else {
+        console.log("已经是最后一集");
+        dplayer?.notice("已经是最后一集", 2000);
+        // Optionally: Stop playback, loop, or suggest other content
+    }
 }
 
 function playPreviousEpisode() {
-    if (episodeIndex > 0) playEpisodeByIndex(episodeIndex - 1);
-    else { console.log("已经是第一集"); dplayer?.notice("已经是第一集", 2000); }
+    if (episodeIndex > 0) {
+        playEpisodeByIndex(episodeIndex - 1);
+    } else {
+        console.log("已经是第一集");
+        dplayer?.notice("已经是第一集", 2000);
+    }
 }
 
 function toggleEpisodeOrder() {
     episodesReversed = !episodesReversed;
     console.log(`切换剧集排序为: ${episodesReversed ? '倒序' : '正序'}`);
-    renderEpisodesGrid();
-    updateOrderBtn();
+    renderEpisodesGrid(); // Re-render the list with the new order
+    updateOrderBtn();     // Update the button text/icon
 }
 
 // ================= 更改设置 ====================
 function onAutoplayToggleChange(e) {
     autoPlayNext = e.target.checked;
     console.log(`设置自动连播: ${autoPlayNext}`);
-    setSetting('autoplayEnabled', autoPlayNext);
+    setSetting('autoplayEnabled', autoPlayNext); // Persist setting using store.js
     dplayer?.notice(`自动连播已${autoPlayNext ? '开启' : '关闭'}`, 1500);
 }
 
-// ====== 预加载补丁 ======
+// ====== 预加载补丁 (Keep as is, seems okay) ======
 const PRELOAD_EPISODE_COUNT = 2;
 const SUPPORTS_CACHE_STORAGE = 'caches' in window && window.caches.open;
 const PRELOAD_CACHE_NAME = 'libretv-preload1';
@@ -498,25 +680,22 @@ function isSlowNetwork() {
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     if (!connection || !connection.effectiveType) return false;
     const isSlow = /^(slow-)?2g$/.test(connection.effectiveType);
-    // if (isSlow) console.log("检测到慢速网络，禁用预加载。"); // 减少干扰日志
     return isSlow;
 }
 
 async function preloadNextEpisodeParts(preloadCount = PRELOAD_EPISODE_COUNT) {
     if (!PLAYER_CONFIG.enablePreloading || isSlowNetwork() || !episodes || episodes.length === 0 || typeof episodeIndex !== 'number') return;
-    // console.log(`开始预加载接下来的 ${preloadCount} 集... 当前集: ${episodeIndex + 1}`); // 减少日志
     const currentIdx = episodeIndex, maxIndex = episodes.length - 1;
     for (let offset = 1; offset <= preloadCount; offset++) {
         const targetEpisodeIdx = currentIdx + offset;
         if (targetEpisodeIdx > maxIndex) break;
         const nextUrl = episodes[targetEpisodeIdx];
         if (!nextUrl || typeof nextUrl !== 'string' || !nextUrl.includes('.m3u8')) continue;
-        // console.log(`准备预加载第 ${targetEpisodeIdx + 1} 集: ${nextUrl}`); // 减少日志
         try {
             const m3u8Resp = await fetch(nextUrl, { method: "GET", credentials: "omit", mode: 'cors' });
             if (!m3u8Resp.ok) continue;
             const m3u8Text = await m3u8Resp.text();
-            if (SUPPORTS_CACHE_STORAGE) { /* 缓存 M3U8 */ }
+            if (SUPPORTS_CACHE_STORAGE) { /* Cache M3U8 logic */ }
             const tsUrlsToPreload = []; const lines = m3u8Text.split('\n');
             const baseUrl = nextUrl.substring(0, nextUrl.lastIndexOf('/') + 1);
             let tsCount = 0; const MAX_TS_PRELOAD = 3;
@@ -528,8 +707,7 @@ async function preloadNextEpisodeParts(preloadCount = PRELOAD_EPISODE_COUNT) {
                 }
             }
             if (tsUrlsToPreload.length > 0) {
-                // console.log(`为第 ${targetEpisodeIdx + 1} 集预加载 ${tsUrlsToPreload.length} 个 TS 分片...`); // 减少日志
-                tsUrlsToPreload.forEach(async (tsUrl) => { /* 异步发起 TS 请求并缓存 */ });
+                tsUrlsToPreload.forEach(async (tsUrl) => { /* Fetch and cache TS logic */ });
             }
         } catch (e) { console.error(`预加载第 ${targetEpisodeIdx + 1} 集 (${nextUrl}) 时发生错误:`, e); }
     }
@@ -555,58 +733,79 @@ function setupDPlayerTimeupdatePreload() {
         const currentTime = videoElement.currentTime, duration = videoElement.duration;
         const timeRemaining = duration - currentTime;
         if (timeRemaining < 15 && !preloadTriggeredForThisSegment) {
-            // console.log(`视频接近结尾 (剩余 ${timeRemaining.toFixed(1)}s)，触发预加载`); // 减少日志
             preloadNextEpisodeParts(PRELOAD_EPISODE_COUNT); preloadTriggeredForThisSegment = true;
         } else if (timeRemaining >= 15 && preloadTriggeredForThisSegment) preloadTriggeredForThisSegment = false;
     };
     videoElement.removeEventListener('timeupdate', timeUpdateHandler);
     videoElement.addEventListener('timeupdate', timeUpdateHandler);
     preloadTriggeredForThisSegment = false;
-    // console.log("为当前视频设置了时间更新预加载监听器。"); // 减少日志
 }
 
 // ========== 事件绑定 ==========
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DOM 已加载，开始初始化播放页面...");
-    loadPlayerData();
+
+    loadPlayerData();           // Load title, episodes, index from URL/sessionStorage
+    loadInitialAdFilterSetting(); // <<<< NEW: Load user's ad filter preference
+
     setVideoTitleText();
     setEpisodeInfoText();
     renderEpisodesGrid();
     updateAutoplayToggle();
     updateOrderBtn();
+    updateLockIcon(isLocked); // Initialize lock icon based on default state
 
+    // --- Bind Buttons ---
     document.getElementById('prevButton')?.addEventListener('click', playPreviousEpisode);
     document.getElementById('nextButton')?.addEventListener('click', playNextEpisode);
     document.getElementById('toggleEpisodeOrderBtn')?.addEventListener('click', toggleEpisodeOrder);
     document.getElementById('autoplayToggle')?.addEventListener('change', onAutoplayToggleChange);
     document.getElementById('lockToggle')?.addEventListener('click', toggleControlsLock);
-    updateLockIcon(isLocked); // 初始化锁定图标
+    document.getElementById('adFilterToggle')?.addEventListener('click', toggleAdFiltering); // <<<< NEW: Bind ad filter toggle
 
+    // --- Bind Episode List Clicks ---
     document.getElementById('episodesList')?.addEventListener('click', e => {
         const btn = e.target.closest('button[id^="episode-"]');
         if (btn && !btn.disabled) {
             const idx = Number(btn.dataset.index);
-            if (!isNaN(idx)) playEpisodeByIndex(idx);
-            else console.warn("无法从按钮 data-index 获取有效的剧集索引:", btn.dataset.index);
+            if (!isNaN(idx)) {
+                playEpisodeByIndex(idx);
+            } else {
+                console.warn("无法从按钮 data-index 获取有效的剧集索引:", btn.dataset.index);
+            }
         }
     });
 
-    document.addEventListener('keydown', handleKeydown); // 绑定键盘事件
+    // --- Bind Keyboard Shortcuts ---
+    document.addEventListener('keydown', handleKeydown);
 
-    if (episodes.length > 0 || getCurrentVideoUrl()) initPlayer();
-    else { showError("没有找到可播放的视频内容"); showLoading(false); }
+    // --- Initialize Player ---
+    if (episodes.length > 0 || getCurrentVideoUrl()) {
+        initPlayer(); // initPlayer now uses the potentially filtered URL
+    } else {
+        showError("没有找到可播放的视频内容");
+        showLoading(false);
+    }
 
-    setupPreloadEvents(); // 设置预加载事件
+    // --- Setup Preloading ---
+    setupPreloadEvents();
 
     console.log("播放页面初始化完成。");
 });
 
 
-// ========== 键盘快捷键处理 ==========
+// ========== 键盘快捷键处理 (Keep as is, seems okay) ==========
 function handleKeydown(e) {
+    // Allow input fields, textareas, etc. to capture keys
     if (e.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+    // Ignore keypresses with modifiers (Ctrl, Alt, Meta) to avoid conflicts
     if (e.ctrlKey || e.altKey || e.metaKey) return;
-    let preventDefault = true;
+
+    let preventDefault = true; // Assume we'll handle the key
+
+    // Handle only if player exists for most actions
+    if (!dplayer && !['KeyO', 'KeyA'].includes(e.code)) return; // Allow order/autoplay toggle even if player errored
+
     switch (e.code) {
         case 'Space': case 'KeyK': dplayer?.toggle(); showShortcutHint(dplayer?.video.paused ? 'pause' : 'play', dplayer?.video.paused ? '已暂停' : '播放'); break;
         case 'ArrowLeft': dplayer?.seek(dplayer.video.currentTime - 5); showShortcutHint('rewind', '后退 5 秒'); break;
@@ -615,10 +814,18 @@ function handleKeydown(e) {
         case 'ArrowDown': if (dplayer) { let vol = Math.max(dplayer.volume() - 0.1, 0); dplayer.volume(vol, true, false); showShortcutHint('volume-down', `音量 ${Math.round(vol * 100)}%`); } break;
         case 'KeyM': if (dplayer) { if (dplayer.volume() > 0) { dplayer.volume(0, true, false); showShortcutHint('volume-mute', '静音'); } else { dplayer.volume(0.7, true, false); showShortcutHint('volume-up', '取消静音'); } } break;
         case 'KeyF': dplayer?.fullScreen.toggle(); showShortcutHint('fullscreen', dplayer?.fullScreen.isFullScreen ? '进入全屏' : '退出全屏'); break;
-        case 'KeyL': if (episodes.length > 1) { playNextEpisode(); showShortcutHint('next', '下一集'); } break;
-        case 'KeyJ': if (episodes.length > 1) { playPreviousEpisode(); showShortcutHint('previous', '上一集'); } break;
+        case 'KeyL': if (episodes.length > 1) { playNextEpisode(); showShortcutHint('next', '下一集'); } else { preventDefault = false; } break;
+        case 'KeyJ': if (episodes.length > 1) { playPreviousEpisode(); showShortcutHint('previous', '上一集'); } else { preventDefault = false; } break;
         case 'KeyO': toggleEpisodeOrder(); showShortcutHint('sort', `切换为${episodesReversed ? '正序' : '倒序'}`); break;
-        case 'KeyA': autoPlayNext = !autoPlayNext; setSetting('autoplayEnabled', autoPlayNext); updateAutoplayToggle(); showShortcutHint('autoplay', `自动连播 ${autoPlayNext ? '开启' : '关闭'}`); break;
+        case 'KeyA':
+             const toggle = document.getElementById('autoplayToggle');
+             if (toggle) {
+                 autoPlayNext = !autoPlayNext;
+                 toggle.checked = autoPlayNext; // Update checkbox UI
+                 onAutoplayToggleChange({ target: { checked: autoPlayNext } }); // Trigger the change handler
+                 showShortcutHint('autoplay', `自动连播 ${autoPlayNext ? '开启' : '关闭'}`);
+             } else { preventDefault = false; }
+             break;
         case 'Digit0': dplayer?.seek(0); showShortcutHint('seek', '跳转到开头'); break;
         case 'Digit1': dplayer?.seek(duration * 0.1); showShortcutHint('seek', '跳转到 10%'); break;
         case 'Digit2': dplayer?.seek(duration * 0.2); showShortcutHint('seek', '跳转到 20%'); break;
@@ -629,7 +836,7 @@ function handleKeydown(e) {
         case 'Digit7': dplayer?.seek(duration * 0.7); showShortcutHint('seek', '跳转到 70%'); break;
         case 'Digit8': dplayer?.seek(duration * 0.8); showShortcutHint('seek', '跳转到 80%'); break;
         case 'Digit9': dplayer?.seek(duration * 0.9); showShortcutHint('seek', '跳转到 90%'); break;
-        default: preventDefault = false; break;
+        default: preventDefault = false; break; // Don't prevent default for unhandled keys
     }
     if (preventDefault) e.preventDefault();
 }
@@ -640,48 +847,59 @@ function showShortcutHint(iconType, text) {
     const hintEl = document.getElementById('shortcutHint');
     const iconEl = document.getElementById('shortcutIcon');
     const textEl = document.getElementById('shortcutText');
-    if (!hintEl || !iconEl || !textEl || !text) return; // 增加对 text 的检查
-    iconEl.innerHTML = getIconSvg(iconType);
+    if (!hintEl || !iconEl || !textEl || !text) return;
+    const svgContent = getIconSvg(iconType);
+    if (!svgContent) return; // Don't show hint if icon is missing
+
+    iconEl.innerHTML = svgContent;
     textEl.textContent = text;
-    hintEl.classList.add('show');
-    clearTimeout(hintTimer);
-    hintTimer = setTimeout(() => { hintEl.classList.remove('show'); }, 1500);
+    hintEl.classList.add('show'); // Add class to trigger CSS animation/transition
+
+    clearTimeout(hintTimer); // Clear previous timer if hint shown rapidly
+    hintTimer = setTimeout(() => {
+        hintEl.classList.remove('show'); // Remove class to hide
+    }, 1500); // Hide after 1.5 seconds
 }
 
 function getIconSvg(type) {
-    // 返回对应类型的 SVG 字符串 (需要根据你的 HTML 结构调整)
+    // Ensure these match the icons used elsewhere or provide appropriate ones
     switch (type) {
-        case 'play': return `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>`;
-        case 'pause': return `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>`;
-        case 'forward': return `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>`;
-        case 'rewind': return `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>`;
-        case 'volume-up': return `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>`;
-        case 'volume-down': return `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>`;
-        case 'volume-mute': return `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M17 14l4-4m0 4l-4-4"></path>`;
-        case 'fullscreen': return `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m7 0l5-5m0 4v4m0 0h-4m-5 5l5 5m-5-5v-4m0 0h-4"></path>`;
-        case 'next': return `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>`;
-        case 'previous': return `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>`;
-        case 'sort': return `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path>`;
-        case 'autoplay': return `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664zM21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>`;
-        case 'seek': return `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>`;
-        default: return '';
+        case 'play': return `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+        case 'pause': return `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+        case 'forward': return `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>`; // Double arrow right
+        case 'rewind': return `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>`; // Double arrow left
+        case 'volume-up': return `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>`;
+        case 'volume-down': return `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>`; // Volume down (speaker with minus often used)
+        case 'volume-mute': return `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M17 14l4-4m0 4l-4-4"></path></svg>`; // Speaker with X
+        case 'fullscreen': return `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m7 0l5-5m0 4v4m0 0h-4m-5 5l5 5m-5-5v-4m0 0h-4"></path></svg>`; // Expand arrows
+        case 'next': return `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>`; // Same as forward for simplicity
+        case 'previous': return `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>`; // Same as rewind for simplicity
+        case 'sort': return `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path></svg>`; // Sort icon
+        case 'autoplay': return `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664zM21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`; // Play inside circle
+        case 'seek': return `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>`; // Map pin often used for location/seek
+        default: return ''; // Return empty string for unknown types
     }
 }
 
 // ----- 触发 DPlayerInited 事件 -----
 function triggerDPlayerInitedEvent() {
     console.log("触发 DPlayerInited 自定义事件");
-    document.dispatchEvent(new CustomEvent('DPlayerInited', { detail: { player: dplayer } }));
+    try {
+        document.dispatchEvent(new CustomEvent('DPlayerInited', { detail: { player: dplayer } }));
+    } catch (e) {
+        console.error("触发 DPlayerInited 事件时出错:", e);
+    }
 }
 
-// ========== 播放控制区锁定 ==========
+// ========== 播放控制区锁定 (Keep as is, seems okay) ==========
 function toggleControlsLock() {
     isLocked = !isLocked;
     console.log(`切换控制区锁定状态: ${isLocked ? '锁定' : '解锁'}`);
-    const playerContainer = document.querySelector('.player-container'); // 调整选择器以匹配你的 HTML
+    const playerContainer = document.querySelector('.player-container'); // Adjust selector if needed
     if (playerContainer) {
-        // 使用类名控制锁定样式，CSS 中定义 .locked
-        playerContainer.classList.toggle('controls-locked', isLocked); // 使用更明确的类名
+        playerContainer.classList.toggle('controls-locked', isLocked);
+    } else {
+        console.warn("Player container element not found for locking.");
     }
     updateLockIcon(isLocked);
     dplayer?.notice(`控制区已${isLocked ? '锁定' : '解锁'}`, 1500);
@@ -692,18 +910,26 @@ function updateLockIcon(locked) {
     const lockButton = document.getElementById('lockToggle');
     if (!lockIcon || !lockButton) return;
     if (locked) {
-        lockIcon.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0-6v2m-6.707 5.207a1 1 0 001.414 0l.793-.793V12a8 8 0 1116 0v3l.793.793a1 1 0 001.414 0z"/></svg>`; // 锁定图标
+        lockIcon.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6.707 5.207l.707-.707a1 1 0 011.414 0l.707.707a1 1 0 010 1.414l-.707.707a1 1 0 01-1.414 0l-1.414-1.414a1 1 0 010-1.414zm7.07-8.485a8 8 0 11-11.314 0 8 8 0 0111.314 0z M12 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`; // Example Locked Icon
         lockButton.setAttribute('aria-label', '解锁控制区');
-        lockButton.setAttribute('title', '解锁控制');
+        lockButton.setAttribute('title', '点击解锁控制区');
     } else {
-        lockIcon.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 17a2 2 0 002-2v-4a2 2 0 10-4 0v4a2 2 0 002 2z"/></svg>`; // 解锁图标 (使用了不同的示例图标)
+        lockIcon.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0v4M5 9h14l1 12H4L5 9z"/></svg>`; // Example Unlocked Icon
         lockButton.setAttribute('aria-label', '锁定控制区');
-        lockButton.setAttribute('title', '锁定控制');
+        lockButton.setAttribute('title', '点击锁定控制区');
     }
 }
 
 // ========== 关闭/离开时保存进度 ==========
+// Use 'visibilitychange' for better reliability on mobile/tabs
+window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        saveViewingHistory();
+    }
+});
+// Keep beforeunload as a fallback
 window.addEventListener('beforeunload', saveViewingHistory);
+// 'pagehide' is also good practice
 window.addEventListener('pagehide', saveViewingHistory);
 
 // --- 文件结束 ---
