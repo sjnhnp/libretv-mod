@@ -11,9 +11,10 @@ import {
     deleteViewingHistoryItem,
     getSelectedAPIs,
     updateSelectedAPIs,
-    setSetting // <-- Make sure setSetting is correctly imported and working
+    setSetting // Make sure setSetting is correctly imported/available
 } from './store.js';
 import { createHistoryItemElement } from "./components/HistoryItem.js";
+//import { showToast as globalShowToast } from './utils.js';
 
 // ----------- Toast/Modal 控件 ------------
 
@@ -23,7 +24,7 @@ export function showToast(message, type = 'error') {
     toastQueue.push({ message, type });
     if (!isShowingToast) showNextToast();
 }
-window.showToast = showToast;
+window.showToast = showToast; // For compatibility
 
 function showNextToast() {
     if (!toastQueue.length) { isShowingToast = false; return; }
@@ -32,7 +33,10 @@ function showNextToast() {
     const toast = document.getElementById('toast');
     const toastMsg = document.getElementById('toastMessage');
     if (!toast || !toastMsg) {
-        isShowingToast = false; // Reset if elements aren't found
+        // Attempt to recreate toast if missing? Or just exit.
+        console.error("Toast element not found!");
+        isShowingToast = false; // Prevent queue lock
+        setTimeout(showNextToast, 50); // Try next one shortly
         return;
     }
     toastMsg.textContent = message;
@@ -42,23 +46,25 @@ function showNextToast() {
         info:    'bg-blue-500',
         warning: 'bg-yellow-500'
     };
-    toast.className = `fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${bgColors[type] || bgColors.error} text-white z-[9999]`; // Added high z-index
+    // Reset classes before applying new ones
+    toast.className = `fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 text-white z-[100]`; // High z-index
+    toast.classList.add(bgColors[type] || bgColors.error);
+
     toast.style.opacity = '1';
     toast.style.transform = 'translateX(-50%) translateY(0)';
+    toast.style.visibility = 'visible'; // Ensure visibility
+
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateX(-50%) translateY(-100%)';
-        // Wait for fade out animation before processing next toast
+        // Hide completely after transition
         setTimeout(() => {
-            // Check if toast element still exists before proceeding
-             if (document.getElementById('toast')) {
-               showNextToast();
-            } else {
-               isShowingToast = false; // Reset if element gone
-            }
-        }, 300); // Match CSS transition duration
-    }, 3000); // Toast visible duration
+           toast.style.visibility = 'hidden';
+           showNextToast();
+        }, 300); // Match transition duration
+    }, 3000); // Toast display duration
 }
+
 
 // ----------- Loading 遮罩 -----------
 let loadingTimeoutId = null;
@@ -66,7 +72,10 @@ let loadingTimeoutId = null;
 export function showLoading(message = '加载中...') {
     if (loadingTimeoutId) clearTimeout(loadingTimeoutId);
     const loading = document.getElementById('loading');
-    if (!loading) return;
+    if (!loading) {
+        console.error("Loading element not found!");
+        return;
+    }
     const msgEl = loading.querySelector('p');
     if (msgEl) msgEl.textContent = message;
     loading.style.display = 'flex';
@@ -106,8 +115,7 @@ export function updateSiteStatus(isAvailable) {
 }
 window.updateSiteStatus = updateSiteStatus;
 
-// ================== 数据源API复选框渲染和勾选 ==================
-
+// ================== 数据源API复选框 ==================
 function _getApiArr() {
     return Object.entries(API_SITES).map(([id, val]) => ({
         id, name: val.name || id, ...val
@@ -124,15 +132,12 @@ export function renderAPICheckboxes() {
     apis.forEach(api => {
         const id = api.id;
         const label = api.name;
-        const wrapper = document.createElement('div');
-        wrapper.className = 'flex items-center';
-
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.id = `api-checkbox-${id}`;
         checkbox.value = id;
         checkbox.checked = selectedAPIs.includes(id);
-        checkbox.className = 'form-checkbox h-4 w-4 text-indigo-600 bg-[#222] border-[#444] rounded focus:ring-indigo-500 cursor-pointer'; // Added rounded, focus, cursor
+        checkbox.className = 'form-checkbox h-4 w-4 text-indigo-600 bg-[#222] border-[#444] mr-2 cursor-pointer'; // Added cursor-pointer
 
         checkbox.addEventListener('change', function() {
             let currentSelected = getSelectedAPIs().slice();
@@ -141,7 +146,7 @@ export function renderAPICheckboxes() {
             } else {
                 // Prevent unchecking the last one
                 if (currentSelected.length <= 1 && currentSelected.includes(id)) {
-                    checkbox.checked = true; // Revert the check
+                    checkbox.checked = true; // Revert the change
                     showToast('至少保留一个数据源', 'warning');
                     return;
                 }
@@ -154,14 +159,18 @@ export function renderAPICheckboxes() {
         const labelEl = document.createElement('label');
         labelEl.htmlFor = checkbox.id;
         labelEl.textContent = label;
-        labelEl.className = 'ml-2 text-xs text-gray-300 cursor-pointer'; // Use ml-2 for spacing
+        labelEl.className = 'text-xs text-gray-300 flex-grow cursor-pointer'; // Added cursor-pointer, flex-grow
 
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex items-center p-1 hover:bg-[#2a2a2a] rounded'; // Added hover effect and padding
         wrapper.appendChild(checkbox);
         wrapper.appendChild(labelEl);
+
         container.appendChild(wrapper);
     });
     updateSelectedApiCount();
 }
+
 
 function updateSelectedApiCount() {
     const el = document.getElementById('selectedApiCount');
@@ -173,14 +182,15 @@ function updateSelectedApiCount() {
 export function renderSearchHistory() {
     const container = document.getElementById('recentSearches');
     if (!container) return;
-    const history = getState().searchHistory || []; // Ensure history is an array
+    const history = getState().searchHistory;
 
-    // Clear previous content except potentially the header/clear button if managed differently
-    container.innerHTML = ''; // Simple clear for now
+    // Clear previous content except potential header/clear button if managed separately
+    // A safer approach is to always clear and rebuild
+    container.innerHTML = '';
 
     if (!history.length) {
-        // Optional: display a message or leave empty
-        // container.innerHTML = '<div class="text-gray-500 text-sm">无搜索记录</div>';
+        // Optionally display a message or leave it empty
+        // container.innerHTML = '<span class="text-xs text-gray-500">无最近搜索</span>';
         return;
     }
 
@@ -189,124 +199,160 @@ export function renderSearchHistory() {
     headerDiv.className = 'flex justify-between items-center w-full mb-2';
     headerDiv.innerHTML = `
         <div class="text-xs text-gray-500">最近搜索:</div>
-        <button id="clearHistoryBtn" class="text-xs text-gray-500 hover:text-white transition-colors" aria-label="清除搜索历史">清除</button>
-    `;
+        <button id="clearHistoryBtn" class="text-xs text-gray-500 hover:text-white transition-colors px-2 py-1 rounded hover:bg-[#333]" aria-label="清除搜索历史">清除</button>
+      `;
     container.appendChild(headerDiv);
 
     // Add History Tags
-    const tagsWrapper = document.createElement('div'); // Wrap tags for better layout control if needed
-    tagsWrapper.className = 'flex flex-wrap gap-2'; // Use flex-wrap and gap
+    const tagsWrapper = document.createElement('div');
+    tagsWrapper.className = 'flex flex-wrap gap-2'; // Ensure tags wrap
+
     history.forEach(item => {
         const btn = document.createElement('button');
-        // Use classes consistent with index.html search tags if any, or define new ones
-        btn.className = 'search-tag px-2 py-1 bg-[#333] hover:bg-[#444] text-gray-300 text-xs rounded transition-colors';
+        btn.className = 'search-tag bg-[#333] hover:bg-[#444] text-gray-300 text-xs px-3 py-1 rounded-full transition-colors'; // Example styling
         btn.textContent = item.text;
         btn.title = item.timestamp ? `搜索于: ${formatTimestamp(item.timestamp)}` : ''; // Use formatTimestamp
-        btn.type = 'button'; // Prevent form submission if inside a form implicitly
+        // Add data attribute for easier retrieval if needed
+        btn.dataset.searchText = item.text;
         tagsWrapper.appendChild(btn);
     });
     container.appendChild(tagsWrapper);
+
+    // Add clear button listener dynamically (if not using event delegation below)
+    const clearBtn = document.getElementById('clearHistoryBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+             if (confirm('确定要清除所有搜索历史吗？')) {
+                clearSearchHistoryStore();
+                showToast('搜索历史已清除', 'success');
+                renderSearchHistory(); // Re-render to show empty state
+            }
+        });
+    }
 }
+
+
+// Event delegation for search history clicks
+document.addEventListener('click', function(e) {
+    // Handle clicks on search tags
+    if (e.target.classList.contains('search-tag')) {
+        const input = document.getElementById('searchInput');
+        const searchText = e.target.dataset.searchText || e.target.textContent; // Prefer data attribute
+        if (input) {
+            input.value = searchText;
+            input.focus(); // Optional: focus the input
+            // Trigger search programmatically if needed (assuming search() is global or accessible)
+            if (typeof window.performSearch === 'function') {
+                 window.performSearch(searchText);
+            } else if (document.getElementById('searchForm')) {
+                 // Or submit the form
+                 document.getElementById('searchForm').requestSubmit();
+            }
+        }
+    }
+     // Note: Clear button listener added directly in renderSearchHistory now
+    // else if (e.target && e.target.id === 'clearHistoryBtn') {
+    //    // ... handled above ...
+    // }
+});
 
 
 // =================== 观看历史相关 ===================
 export function loadViewingHistory() {
     const list = document.getElementById('historyList');
     if (!list) return;
-    const history = getState().viewingHistory || []; // Ensure history is an array
+    const history = getState().viewingHistory;
     list.innerHTML = ''; // Clear previous items
-
-    if (!history.length) {
+    if (!history || !history.length) {
         list.innerHTML = '<div class="text-center text-gray-500 py-8">暂无观看记录</div>';
         return;
     }
-
     const frag = document.createDocumentFragment();
     // Sort history by timestamp descending (most recent first)
     history.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
     history.forEach(item => {
-        const elem = createHistoryItemElement(item, "viewing", playFromHistory, () => { // Simplified delete callback
-            deleteViewingHistoryItem(item.id || item.title); // Use item.id if available, fallback to title
-            loadViewingHistory(); // Reload list after deletion
-            showToast('已删除该记录', 'success');
+        const elem = createHistoryItemElement(item, "viewing", playFromHistory, () => { // Pass delete callback directly
+            if (confirm(`确定要删除观看记录 "${item.title}" 吗？`)) {
+                deleteViewingHistoryItem(item.title); // Pass title for deletion
+                loadViewingHistory(); // Refresh the list
+                showToast(`已删除 "${item.title}"`, 'success');
+            }
         });
-        if (elem) frag.appendChild(elem); // Ensure elem was created
+        if (elem) { // Ensure element was created
+           frag.appendChild(elem);
+        }
     });
     list.appendChild(frag);
 }
+
+// Clear Viewing History Button Listener (should be attached once)
+document.addEventListener('DOMContentLoaded', () => {
+    const clearBtn = document.getElementById('clearViewingHistoryBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            if (confirm('确定要清空所有观看历史记录吗？此操作不可恢复。')) {
+                clearViewingHistory(); // Call the function below
+            }
+        });
+    }
+});
 
 
 export function clearViewingHistory() {
     clearViewingHistoryStore();
     showToast('观看历史已清空', 'success');
-    loadViewingHistory(); // Reload to show empty state
+    loadViewingHistory(); // Refresh the list immediately
 }
-// No need to attach clearViewingHistory to window if button calls it via module import/event listener
+// No need for window.clearViewingHistory = clearViewingHistory; if called internally
 
-// Modified playFromHistory (assuming structure from previous interactions)
-export function playFromHistory(url, title, episodeIndex, playbackPosition = 0, passedEpisodes = null) {
+
+export function playFromHistory(url, title, episodeIndex = 0, playbackPosition = 0, passedEpisodes = null) {
     try {
         let episodesList = [];
+        // Prioritize passedEpisodes if available
         if (Array.isArray(passedEpisodes) && passedEpisodes.length > 0) {
             episodesList = passedEpisodes;
         } else {
+            // Fallback to fetching from state/history
             const history = getState().viewingHistory;
-            // Prefer finding by ID if available, fallback to title
-            const historyItem = history.find(h => (h.id && h.id === (passedEpisodes?.id || title)) || h.title === title);
-            if (historyItem?.episodes?.length) {
-                episodesList = historyItem.episodes;
+            const item = history.find(h => h.title === title);
+            if (item?.episodes?.length) {
+                episodesList = item.episodes;
             }
-             // Optional: Fallback to localStorage if needed, but history should be primary
-             /* else {
-                try {
-                    const cand = JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
-                    if (cand.length) episodesList = cand;
-                } catch (error) { console.warn("Error parsing currentEpisodes from localStorage", error); }
-            } */
+            // Maybe remove the localStorage fallback unless it's essential
+            // else { try { const cand = JSON.parse(localStorage.getItem('currentEpisodes') || '[]'); if (cand.length) episodesList = cand; } catch {} }
         }
 
-        // Store episodes for the player page
+        // --- Save episodes to sessionStorage for the player page ---
         try {
             if (episodesList.length > 0) {
-                // Use a more specific key including the title/id to avoid conflicts
-                const storageKey = `playerEpisodes_${title}`; // Or use a unique ID if available
-                sessionStorage.setItem(storageKey, JSON.stringify(episodesList));
+                sessionStorage.setItem('playerEpisodeList', JSON.stringify(episodesList));
             } else {
-                 // Consider if removing is necessary or if player should handle empty list
-                // sessionStorage.removeItem(`playerEpisodes_${title}`);
+                sessionStorage.removeItem('playerEpisodeList'); // Clear if no episodes
             }
         } catch (e) {
             console.error("Failed to save episodes to sessionStorage:", e);
+            showToast('无法暂存剧集列表', 'error'); // Inform user
         }
 
-        // Construct player URL
-        const playerUrl = new URL('player.html', window.location.origin); // Base URL
-        playerUrl.searchParams.set('url', url); // Original video source URL
-        playerUrl.searchParams.set('title', title);
-        if (episodeIndex !== undefined && episodeIndex !== null && episodeIndex >= 0) {
-            playerUrl.searchParams.set('index', episodeIndex);
-        }
-        if (playbackPosition > 5) { // Set position only if significant
-            playerUrl.searchParams.set('position', Math.floor(playbackPosition));
-        }
-        // Pass the sessionStorage key for episodes
-        if (episodesList.length > 0) {
-           playerUrl.searchParams.set('episodesKey', `playerEpisodes_${title}`);
-        }
+        const posParam = playbackPosition > 5 ? `&position=${Math.floor(playbackPosition)}` : ''; // Only add if significant position
+        const indexParam = episodeIndex >= 0 ? `&index=${episodeIndex}` : ''; // Always add index if >= 0
 
+        // Construct the player URL
+        let targetUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}${indexParam}${posParam}`;
 
-        window.open(playerUrl.toString(), '_blank');
+        console.log("Opening player:", targetUrl); // Debugging
+        window.open(targetUrl, '_blank');
 
     } catch (e) {
         console.error("Error in playFromHistory:", e);
-        showToast('无法打开播放器', 'error');
-        // Fallback to simpler URL if construction fails
-        window.open(`player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}`, '_blank');
+        showToast(`播放时出错: ${e.message}`, 'error');
+        // Fallback to basic URL if construction fails
+        window.open(`player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=0`, '_blank');
     }
 }
-// Keep window attachment if legacy code might rely on it
-window.playFromHistory = playFromHistory;
+window.playFromHistory = playFromHistory; // Keep global if needed by HTML inline handlers
 
 
 // ============== 友好格式化 ==============
@@ -314,162 +360,172 @@ export function formatTimestamp(timestamp) {
     if (!timestamp) return '';
     const date = new Date(timestamp);
     const now = new Date();
-    const diffSeconds = Math.round((now - date) / 1000);
-    const diffMinutes = Math.round(diffSeconds / 60);
-    const diffHours = Math.round(diffMinutes / 60);
-    const diffDays = Math.round(diffHours / 24);
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.round(diffMs / 1000);
+    const diffMin = Math.round(diffSec / 60);
+    const diffHour = Math.round(diffMin / 60);
+    const diffDay = Math.round(diffHour / 24);
 
-    if (diffSeconds < 60) return '刚刚';
-    if (diffMinutes < 60) return `${diffMinutes}分钟前`;
-    if (diffHours < 24) return `${diffHours}小时前`;
-    if (diffDays < 7) return `${diffDays}天前`;
-    // Optional: More detailed date for older entries
-    // return date.toLocaleDateString('zh-CN');
-    return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}`;
+    if (diffSec < 60) return '刚刚';
+    if (diffMin < 60) return `${diffMin}分钟前`;
+    if (diffHour < 24) return `${diffHour}小时前`;
+    if (diffDay < 7) return `${diffDay}天前`;
+    // Older than a week, show date
+    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
 }
 window.formatTimestamp = formatTimestamp;
 
+
 export function formatPlaybackTime(seconds) {
-    if (!seconds || isNaN(seconds) || seconds < 0) return '00:00';
-    seconds = Math.floor(seconds);
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    if (h > 0) {
-      return `${h.toString()}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    }
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    if (seconds === null || seconds === undefined || isNaN(seconds) || seconds < 0) return '00:00';
+    const totalSeconds = Math.floor(seconds);
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+
+    const mStr = m.toString().padStart(2, '0');
+    const sStr = s.toString().padStart(2, '0');
+
+    return h > 0 ? `${h}:${mStr}:${sStr}` : `${mStr}:${sStr}`;
 }
 window.formatPlaybackTime = formatPlaybackTime;
 
-// ===================== 面板可见性控制 =====================
+// ===================== 面板可见性 =====================
 
-function setPanelVisibility(panelId, isVisible) {
-    const panel = document.getElementById(panelId);
-    if (!panel) return;
-    const currentlyVisible = panel.classList.contains('show'); // Or check transform/opacity
-
-    if (isVisible && !currentlyVisible) {
-        panel.classList.remove('hidden'); // Ensure not hidden if using display:none
-        // Force reflow before adding transition class if needed
-        // void panel.offsetWidth;
-        panel.classList.add('show'); // Add class that triggers transition (e.g., transform, opacity)
-        panel.setAttribute('aria-hidden', 'false');
-        // Focus management: maybe focus the first focusable element inside
-        // const firstFocusable = panel.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-        // if (firstFocusable) firstFocusable.focus();
-    } else if (!isVisible && currentlyVisible) {
-        panel.classList.remove('show');
-        panel.setAttribute('aria-hidden', 'true');
-         // Optional: Add hidden class after transition ends if using display: none/flex
-        /* panel.addEventListener('transitionend', () => {
-            if (!panel.classList.contains('show')) { // Check again in case it was reopened quickly
-               panel.classList.add('hidden');
-            }
-        }, { once: true }); */
+// Toggle Settings Panel
+export function toggleSettings(e) {
+    e?.stopPropagation(); // Use optional chaining
+    const isVisible = getState().uiState.settingsPanelVisible;
+    setUIState('settingsPanelVisible', !isVisible);
+    if (!isVisible) { // If opening settings
+        setUIState('historyPanelVisible', false); // Close history
     }
 }
+window.toggleSettings = toggleSettings;
 
-
-// 监听全局状态变化来更新面板显隐
-document.addEventListener('stateChange', (e) => {
-    const keys = e.detail.changedKeys || [];
-    if (keys.includes('uiState')) {
-        const uiState = getState().uiState;
-        setPanelVisibility('settingsPanel', uiState.settingsPanelVisible);
-        setPanelVisibility('historyPanel', uiState.historyPanelVisible);
+// Toggle History Panel
+export function toggleHistory(e) {
+    e?.stopPropagation();
+    const isVisible = getState().uiState.historyPanelVisible;
+    setUIState('historyPanelVisible', !isVisible);
+    if (!isVisible) { // If opening history
+        setUIState('settingsPanelVisible', false); // Close settings
+        loadViewingHistory(); // Load history content when opening
     }
-    // Reload viewing history if history panel becomes visible
-    if (keys.includes('uiState') && getState().uiState.historyPanelVisible) {
-       // Maybe debounce this if state changes rapidly
-       loadViewingHistory();
+}
+window.toggleHistory = toggleHistory;
+
+
+// Panel Visibility State Change Listener
+document.addEventListener('stateChange', (e) => {
+    if (!e.detail?.changedKeys?.includes('uiState')) return;
+
+    const uiState = getState().uiState;
+    const settingsPanel = document.getElementById('settingsPanel');
+    const historyPanel = document.getElementById('historyPanel');
+
+    if (settingsPanel) {
+        settingsPanel.classList.toggle('show', uiState.settingsPanelVisible);
+        settingsPanel.setAttribute('aria-hidden', !uiState.settingsPanelVisible);
+    }
+    if (historyPanel) {
+        historyPanel.classList.toggle('show', uiState.historyPanelVisible);
+        historyPanel.setAttribute('aria-hidden', !uiState.historyPanelVisible);
     }
 });
 
-
-// 按钮点击事件 (Setup in DOMContentLoaded)
-function setupPanelToggleButtons() {
-    const settingsBtn = document.getElementById('settingsBtn');
+// Click Outside Panels to Close Listener
+document.addEventListener('click', function(e) {
+    const historyPanel = document.getElementById('historyPanel');
     const historyBtn = document.getElementById('historyBtn');
-    const settingsPanelClose = document.getElementById('settingsPanelClose');
-    const historyPanelClose = document.getElementById('historyPanelClose');
-    const clearViewingHistoryBtn = document.getElementById('clearViewingHistoryBtn'); // Clear viewing history button
+    const settingsPanel = document.getElementById('settingsPanel');
+    const settingsBtn = document.getElementById('settingsBtn');
 
-    if (settingsBtn) {
-        settingsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isVisible = getState().uiState.settingsPanelVisible;
-            setUIState('settingsPanelVisible', !isVisible);
-            if (!isVisible) setUIState('historyPanelVisible', false); // Close other panel
-        });
+    // Close history if click is outside panel and button
+    if (historyPanel?.classList.contains('show') &&
+        !historyPanel.contains(e.target) &&
+        !historyBtn?.contains(e.target)) {
+        setUIState('historyPanelVisible', false);
     }
 
-    if (historyBtn) {
-        historyBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isVisible = getState().uiState.historyPanelVisible;
-            setUIState('historyPanelVisible', !isVisible);
-            if (!isVisible) {
-                setUIState('settingsPanelVisible', false); // Close other panel
-                // loadViewingHistory(); // Load history when opening (also handled by stateChange listener)
-            }
-        });
+    // Close settings if click is outside panel and button
+    if (settingsPanel?.classList.contains('show') &&
+        !settingsPanel.contains(e.target) &&
+        !settingsBtn?.contains(e.target)) {
+        setUIState('settingsPanelVisible', false);
+    }
+});
+
+// Close buttons inside panels
+document.addEventListener('DOMContentLoaded', () => {
+    const historyCloseBtn = document.getElementById('historyPanelClose');
+    const settingsCloseBtn = document.getElementById('settingsPanelClose');
+
+    historyCloseBtn?.addEventListener('click', () => setUIState('historyPanelVisible', false));
+    settingsCloseBtn?.addEventListener('click', () => setUIState('settingsPanelVisible', false));
+});
+
+
+// ===================== ★★★ 过滤/设置开关控制 (新增/修改) ★★★ =====================
+
+/**
+ * Updates the visual appearance of a toggle switch.
+ * ADAPT THIS FUNCTION based on your specific HTML structure and CSS classes/styles.
+ */
+function updateToggleVisuals(toggleElement, isChecked) {
+    if (!toggleElement) return;
+    // Find the related visual elements (assuming structure from index.html)
+    const container = toggleElement.parentElement; // The div with relative positioning
+    const toggleBg = container?.querySelector('.toggle-bg');
+    const toggleDot = container?.querySelector('.toggle-dot');
+
+    if (!toggleBg || !toggleDot) {
+        // console.warn("Could not find toggle visual elements for:", toggleElement.id);
+        return;
     }
 
-    if (settingsPanelClose) {
-        settingsPanelClose.addEventListener('click', () => setUIState('settingsPanelVisible', false));
+    if (isChecked) {
+        // --- Styles for ON state ---
+        // Example: Change background color and move the dot
+        toggleBg.style.backgroundColor = '#4F46E5'; // Example: Indigo-600
+        // Make sure the translate value matches your Tailwind config or CSS (e.g., w-5 dot needs translateX(calc(w-12 - w-5 - 2*left-0.5)) approx)
+        // Inspect element in browser to find the right translate value for the 'on' position
+        toggleDot.style.transform = 'translateX(1.75rem)'; // Adjust based on your sizes (w-12 bg, w-5 dot, left-0.5 => 3rem - 1.25rem - 0.25rem*2 = 1.25rem? No, seems like 1.75rem works for default TW)
+        container.classList.add('toggle-on'); // Optional: Add a class for easier targeting
+        container.classList.remove('toggle-off');
+    } else {
+        // --- Styles for OFF state ---
+        toggleBg.style.backgroundColor = '#333'; // Example: Gray background
+        toggleDot.style.transform = 'translateX(0)';
+        container.classList.remove('toggle-on');
+        container.classList.add('toggle-off'); // Optional
     }
-
-    if (historyPanelClose) {
-        historyPanelClose.addEventListener('click', () => setUIState('historyPanelVisible', false));
-    }
-
-    // Clear viewing history button listener
-     if (clearViewingHistoryBtn) {
-        clearViewingHistoryBtn.addEventListener('click', clearViewingHistory);
-    }
-
-
-    // Panel外点击自动关闭
-    document.addEventListener('click', function(e) {
-        const historyPanel = document.getElementById('historyPanel');
-        const settingsPanel = document.getElementById('settingsPanel');
-
-        // Close history panel if click is outside history panel and its toggle button
-        if (historyPanel?.classList.contains('show') && historyBtn && !historyPanel.contains(e.target) && !historyBtn.contains(e.target)) {
-            setUIState('historyPanelVisible', false);
-        }
-        // Close settings panel if click is outside settings panel and its toggle button
-        if (settingsPanel?.classList.contains('show') && settingsBtn && !settingsPanel.contains(e.target) && !settingsBtn.contains(e.target)) {
-            setUIState('settingsPanelVisible', false);
-        }
-    });
 }
 
 
-// ===================== 过滤/设置开关控制 (新逻辑) =====================
-
 /**
- * Attaches a change listener to a toggle switch to save its state.
- * Also triggers a visual update if necessary.
- * @param {string} id - The ID of the input checkbox element.
- * @param {string} settingKey - The key to use for saving the setting in the store.
+ * Adds event listener to a toggle switch and ensures visual consistency.
  */
-function addToggleListener(id, settingKey) {
+export function addToggleListener(id, settingKey) {
     const el = document.getElementById(id);
-    if (el && !el.dataset.listenerAttached) { // Prevent adding multiple listeners
+    if (el) {
+         // Prevent adding multiple listeners if this runs again
+         if (el.dataset.listenerAdded === 'true') return;
+
         el.addEventListener('change', e => {
             const isEnabled = e.target.checked;
-            setSetting(settingKey, isEnabled);
-            // updateToggleVisuals(el, isEnabled); // <-- UNCOMMENT if visual update function is needed
+            setSetting(settingKey, isEnabled); // Save the setting state
+            updateToggleVisuals(el, isEnabled); // ★ Update visuals on change
         });
-        el.dataset.listenerAttached = 'true'; // Mark listener as attached
+         el.dataset.listenerAdded = 'true'; // Mark as added
+    } else {
+        // console.warn(`Toggle element with id "${id}" not found.`);
     }
 }
 
+
 /**
- * Initializes the state of filter toggles based on stored settings,
- * defaulting to ON if no setting is found.
+ * ★★★ Initializes the state and visuals of filter toggles on load. ★★★
  */
 function initializeFilterToggles() {
     const yellowFilterToggle = document.getElementById('yellowFilterToggle');
@@ -477,258 +533,80 @@ function initializeFilterToggles() {
 
     // --- Yellow Filter ---
     if (yellowFilterToggle) {
-        const yellowSettingKey = 'yellowFilterEnabled'; // ADJUST KEY IF NEEDED
-        // Safely access settings, assuming it might be undefined initially
-        const currentYellowValue = getState().settings?.[yellowSettingKey];
+        const settingKey = 'yellowFilterEnabled'; // CONFIRM this key is correct in your store.js
+        // Read from store. Adjust path if necessary (e.g., getState().userSettings)
+        const currentStoredValue = getState().settings?.[settingKey];
 
-        // Default to true (ON) unless explicitly set to false
-        const shouldBeEnabled = currentYellowValue !== false;
+        // Default to TRUE if not explicitly set to false
+        const shouldBeEnabled = currentStoredValue !== false;
 
         yellowFilterToggle.checked = shouldBeEnabled;
+        updateToggleVisuals(yellowFilterToggle, shouldBeEnabled); // ★ Set initial visual state
 
-        // Optional: Save the default 'true' back if it was initially undefined/null
-        if (currentYellowValue === undefined || currentYellowValue === null) {
-            setSetting(yellowSettingKey, true);
+        // Optional: Save the default 'true' back if it was previously undefined/null
+        if (currentStoredValue === undefined || currentStoredValue === null) {
+            setSetting(settingKey, true);
         }
 
-        // Add listener for future changes
-        addToggleListener('yellowFilterToggle', yellowSettingKey);
-
-        // Trigger initial visual state update
-        // updateToggleVisuals(yellowFilterToggle, shouldBeEnabled); // <-- UNCOMMENT if needed
+        // Add listener for future changes (listener checks if already added)
+        addToggleListener('yellowFilterToggle', settingKey);
     }
 
     // --- Ad Filter ---
     if (adFilterToggle) {
-        const adSettingKey = 'adFilterEnabled'; // ADJUST KEY IF NEEDED
-        const currentAdValue = getState().settings?.[adSettingKey];
+        const settingKey = 'adFilterEnabled'; // CONFIRM this key is correct in your store.js
+        const currentStoredValue = getState().settings?.[settingKey];
 
-        // Default to true (ON) unless explicitly set to false
-        const shouldBeEnabled = currentAdValue !== false;
+        // Default to TRUE if not explicitly set to false
+        const shouldBeEnabled = currentStoredValue !== false;
 
         adFilterToggle.checked = shouldBeEnabled;
+        updateToggleVisuals(adFilterToggle, shouldBeEnabled); // ★ Set initial visual state
 
-        // Optional: Save the default 'true' back if it was initially undefined/null
-        if (currentAdValue === undefined || currentAdValue === null) {
-            setSetting(adSettingKey, true);
+        // Optional: Save the default 'true' back if it was previously undefined/null
+        if (currentStoredValue === undefined || currentStoredValue === null) {
+            setSetting(settingKey, true);
         }
 
         // Add listener for future changes
-        addToggleListener('adFilterToggle', adSettingKey);
-
-        // Trigger initial visual state update
-        // updateToggleVisuals(adFilterToggle, shouldBeEnabled); // <-- UNCOMMENT if needed
+        addToggleListener('adFilterToggle', settingKey);
     }
 }
-
-
-/* --- Visual Update Function Example --- */
-/*
-   Uncomment and implement this function IF your toggle switch's appearance
-   (background color, dot position) is controlled by CSS classes or inline styles
-   that need to be updated by JavaScript, IN ADDITION TO the input's :checked state.
-   If your CSS relies *only* on selectors like:
-   input:checked + .toggle-bg { ... }
-   input:checked + .toggle-bg + .toggle-dot { ... }
-   then you likely DON'T need this function. Inspect your styles.css.
-*/
-/*
-function updateToggleVisuals(toggleElement, isChecked) {
-    const parent = toggleElement.closest('.relative'); // Find the container holding visual parts
-    if (!parent) return;
-
-    const toggleBg = parent.querySelector('.toggle-bg');
-    const toggleDot = parent.querySelector('.toggle-dot');
-
-    if (!toggleBg || !toggleDot) return; // Ensure visual elements exist
-
-    if (isChecked) {
-        // Example: Apply 'ON' styles
-        toggleBg.classList.remove('bg-[#333]'); // Remove OFF background
-        toggleBg.classList.add('bg-indigo-600');   // Add ON background (Tailwind example)
-        toggleDot.style.transform = 'translateX(1.25rem)'; // Move dot (Adjust value based on your CSS)
-        // Or add an active class: parent.classList.add('toggle-active');
-    } else {
-        // Example: Apply 'OFF' styles
-        toggleBg.classList.remove('bg-indigo-600'); // Remove ON background
-        toggleBg.classList.add('bg-[#333]');   // Add OFF background
-        toggleDot.style.transform = 'translateX(0)';      // Reset dot position
-        // Or remove active class: parent.classList.remove('toggle-active');
-    }
-}
-*/
-/* --- End Visual Update Function Example --- */
-
 
 // ===================== Initialization on DOM Ready =====================
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Render dynamic content
+    // Render dynamic elements
     renderAPICheckboxes();
-    renderSearchHistory(); // Render initial search history if needed on load
-    // loadViewingHistory(); // Load initial view history (now handled by stateChange or panel open)
+    renderSearchHistory(); // Initial render of search history
 
-    // Initialize filter toggle states (NEW)
+    // ★★★ Initialize filter toggles to default state ★★★
     initializeFilterToggles();
 
-    // Setup button listeners
-    setupPanelToggleButtons();
-
-    // Search History interaction logic (using event delegation on the container)
-    const searchHistoryContainer = document.getElementById('recentSearches');
-    if (searchHistoryContainer) {
-        searchHistoryContainer.addEventListener('click', function(e){
-            if (e.target.classList.contains('search-tag')) {
-                const input = document.getElementById('searchInput');
-                if (input) {
-                    input.value = e.target.textContent;
-                    // Optionally trigger search immediately
-                    const searchForm = document.getElementById('searchForm');
-                    if (searchForm) searchForm.requestSubmit(); // Modern way to submit form
-                    // Or call a global search function if you have one: window.search();
-                }
-            } else if (e.target && e.target.id === 'clearHistoryBtn') {
-                clearSearchHistoryStore();
-                // renderSearchHistory(); // Re-render to show empty state
-                showToast('搜索历史已清除', 'success');
-            }
-        });
+    // Load viewing history if panel happens to be open on load (though usually starts closed)
+    if (getState().uiState.historyPanelVisible) {
+        loadViewingHistory();
     }
 
-    // Add listener for clearing viewing history (moved to setupPanelToggleButtons)
-    // const clearViewingHistoryBtn = document.getElementById('clearViewingHistoryBtn');
-    // if (clearViewingHistoryBtn) {
-    //    clearViewingHistoryBtn.addEventListener('click', clearViewingHistory);
-    // }
+    // Attach listeners for panel buttons (if not handled by inline onclick)
+    const historyBtn = document.getElementById('historyBtn');
+    const settingsBtn = document.getElementById('settingsBtn');
+    historyBtn?.addEventListener('click', toggleHistory);
+    settingsBtn?.addEventListener('click', toggleSettings);
 
+    // ... other initialization ...
 });
 
 
-// ===================== Ensure essential functions are globally accessible if needed =====================
-// Already done via `window.someFunction = someFunction` or `export` for modules.
-// Keep `window.` attachments if non-module scripts might need them.
-// Remove `window.` if everything is module-based and you import where needed.
+// ===================== 兼容旧逻辑 (保留需要的) =====================
+// window.showToast = showToast; // Already done
+// window.showLoading = showLoading; // Already done
+// window.hideLoading = hideLoading; // Already done
+// window.clearViewingHistory = clearViewingHistory; // Called internally now, maybe remove global
+// window.playFromHistory = playFromHistory; // Kept for now
+// window.formatTimestamp = formatTimestamp; // Kept
+// window.formatPlaybackTime = formatPlaybackTime; // Kept
+// window.toggleSettings = toggleSettings; // Already done
+// window.toggleHistory = toggleHistory; // Already done
 
-// /js/ui.js
-// (Previous code from the last response goes here...)
-// ... imports, toast, loading, modal, site status, api checkboxes, search history, viewing history, playFromHistory, formatters, panel visibility, filter toggles, initializeFilterToggles, addToggleListener, updateToggleVisuals (commented) ...
-
-// ===================== Initialization on DOM Ready =====================
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Render dynamic content
-    renderAPICheckboxes(); // Render API source selection checkboxes
-    renderSearchHistory(); // Render initial search history tags (if any)
-    // loadViewingHistory(); // Load initial view history (now handled by stateChange or panel open for better performance)
-
-    // Initialize filter toggle states (Default ON logic)
-    initializeFilterToggles();
-
-    // Setup button listeners for panels and other actions
-    setupPanelToggleButtons(); // Sets up settings/history toggles, close buttons, etc.
-
-    // Search History interaction logic (using event delegation on the container)
-    const searchHistoryContainer = document.getElementById('recentSearches');
-    if (searchHistoryContainer) {
-        searchHistoryContainer.addEventListener('click', function(e){
-            const target = e.target;
-            // Handle click on a search tag
-            if (target.classList.contains('search-tag')) {
-                const searchInput = document.getElementById('searchInput');
-                if (searchInput) {
-                    searchInput.value = target.textContent; // Fill input with tag text
-                    // Optionally trigger search immediately after clicking a tag
-                    const searchForm = document.getElementById('searchForm'); // Assuming your form has this ID
-                    if (searchForm && typeof searchForm.requestSubmit === 'function') {
-                        searchForm.requestSubmit(); // Modern way to submit programmatically
-                    } else if (typeof window.search === 'function') {
-                        // Fallback if you have a global search function
-                        window.search();
-                    }
-                     // Maybe close settings/history panels after clicking a tag
-                     // setUIState('settingsPanelVisible', false);
-                     // setUIState('historyPanelVisible', false);
-                }
-            }
-            // Handle click on the "Clear" history button
-            else if (target.id === 'clearHistoryBtn') {
-                clearSearchHistoryStore(); // Clear the history in the store
-                renderSearchHistory(); // Re-render the section (will show empty state)
-                showToast('搜索历史已清除', 'success');
-            }
-        });
-    }
-
-    // Viewing History List interaction (using event delegation on the list)
-    const historyList = document.getElementById('historyList');
-    if (historyList) {
-        historyList.addEventListener('click', (e) => {
-            const itemElement = e.target.closest('.history-item'); // Find the parent history item element
-            if (!itemElement) return; // Click wasn't inside a history item
-
-            // Handle clicks on the play button within a history item
-            if (e.target.closest('.play-history-button')) { // Use a specific class for the play button
-                const { url, title, index, position, episodes } = itemElement.dataset; // Get data from data-* attributes
-                 if (url && title) {
-                    playFromHistory(
-                        url,
-                        title,
-                        index ? parseInt(index, 10) : 0, // Ensure index is a number
-                        position ? parseFloat(position) : 0, // Ensure position is a number
-                        episodes ? JSON.parse(episodes) : null // Parse episodes if stored as JSON string
-                    );
-                 } else {
-                     console.warn("Missing data attributes on history item for playback", itemElement.dataset);
-                     showToast("无法播放，数据不完整", "error");
-                 }
-            }
-
-            // Handle clicks on the delete button within a history item
-            else if (e.target.closest('.delete-history-button')) { // Use a specific class for the delete button
-                const { id, title } = itemElement.dataset; // Get id or title for deletion
-                if (id || title) {
-                    deleteViewingHistoryItem(id || title); // Use ID if available, otherwise title
-                    loadViewingHistory(); // Reload list to reflect deletion
-                    showToast('已删除该记录', 'success');
-                } else {
-                     console.warn("Missing id/title data attribute on history item for deletion", itemElement.dataset);
-                     showToast("无法删除，数据不完整", "error");
-                }
-            }
-        });
-    }
-
-    // --- Add any other specific UI element initializations or event listeners needed ---
-    // Example: If you have a theme toggle
-    // const themeToggle = document.getElementById('themeToggle');
-    // if (themeToggle) {
-    //     themeToggle.addEventListener('change', handleThemeChange);
-    //     initializeTheme(); // Function to load and apply saved theme
-    // }
-
-});
-
-// ===================== Global Exports / Window Attachments =====================
-// Ensure functions needed by inline event handlers (onclick="") or other scripts are accessible.
-// Using `export` is preferred for module-based projects.
-// Using `window.` provides global access but pollutes the global scope.
-
-// Functions already exported: showToast, showLoading, hideLoading, updateSiteStatus, renderAPICheckboxes, renderSearchHistory, loadViewingHistory, playFromHistory, formatTimestamp, formatPlaybackTime
-// Functions potentially needed globally (or ensure they are called via module imports/event listeners):
-window.closeModal = closeModal; // If called by inline onclick="closeModal()"
-window.toggleSettings = toggleSettings; // If settings button uses onclick
-window.toggleHistory = toggleHistory; // If history button uses onclick
-window.clearViewingHistory = clearViewingHistory; // If clear button uses onclick
-
-// Functions likely internal to ui.js and don't need global exposure if setup correctly:
-// _getApiArr, updateSelectedApiCount, addToggleListener, initializeFilterToggles, setupPanelToggleButtons, setPanelVisibility, updateToggleVisuals
-
-// Final check: Review your HTML (index.html, player.html) for any `onclick="..."` attributes.
-// If they call functions defined here (like toggleSettings, toggleHistory, clearViewingHistory),
-// they MUST be attached to the `window` object as shown above, OR you should refactor
-// the HTML to remove the inline handlers and add listeners purely via JavaScript
-// within the `DOMContentLoaded` or `setupPanelToggleButtons` functions. The latter (pure JS listeners) is generally preferred.
-
-
-// End of /js/ui.js
 
