@@ -1,10 +1,12 @@
+/* /css/styles.css */
+
 :root {
     /* 赛博影视主题配色方案 - 柔和版 */
     --primary-color: #00ccff;
     --primary-light: #33d6ff;
-    --secondary-color: #0f1622;
+    --secondary-color: #0f1622; /* Used for player background */
     --accent-color: #ff3c78;
-    --text-color: #e6f2ff;
+    --text-color: #e6f2ff;      /* Used for player text */
     --text-muted: #8599b2;
     --border-color: rgba(0, 204, 255, 0.15);
     --page-gradient-start: #0f1622;
@@ -13,6 +15,12 @@
     --card-gradient-end: #1c2939;
     --card-accent: rgba(0, 204, 255, 0.12);
     --card-hover-border: rgba(0, 204, 255, 0.5);
+    /* Add specific button colors used in player for consistency if needed */
+    --button-bg: #222;
+    --button-hover-bg: #333;
+    --button-border: #333;
+    --button-active-bg: #3b82f6;
+    --button-active-border: #60a5fa;
 }
 
 /* 通用样式 */
@@ -20,16 +28,21 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    /* Default background for non-player pages, player specific below */
+    background-color: var(--page-gradient-start, #1a1a1a);
+    color: var(--text-color, white);
+    font-family: sans-serif; /* Add a sensible default font */
 }
 
 .container {
     flex: 1;
 }
 
+/* Styles for pages using the general background gradient */
 .page-bg {
     background: linear-gradient(180deg, var(--page-gradient-start), var(--page-gradient-end));
     min-height: 100vh;
-    background-image: 
+    background-image:
         linear-gradient(180deg, var(--page-gradient-start), var(--page-gradient-end)),
         radial-gradient(circle at 25px 25px, rgba(0, 204, 255, 0.04) 2px, transparent 3px),
         radial-gradient(circle at 75px 75px, rgba(255, 60, 120, 0.02) 1px, transparent 2px),
@@ -38,7 +51,7 @@ body {
     background-size: cover, 100px 100px, 50px 50px, 75px 75px;
 }
 
-/* 卡片样式 */
+/* 卡片样式 (Keep as is) */
 .card-hover {
     border: 1px solid var(--border-color);
     background: linear-gradient(135deg, var(--card-gradient-start), var(--card-gradient-end));
@@ -90,7 +103,7 @@ body {
     -webkit-line-clamp: 2;
 }
 
-/* 按钮样式 */
+/* 按钮样式 (Keep general, player specific added below) */
 button, .search-button {
     transition: all 0.3s ease;
 }
@@ -104,7 +117,7 @@ button, .search-button {
     background: var(--primary-light);
 }
 
-/* 滚动条样式 */
+/* 滚动条样式 (Keep as is) */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -130,7 +143,7 @@ button, .search-button {
     scrollbar-color: #333 #111;
 }
 
-/* 设置面板和历史记录面板共用样式 */
+/* 设置面板和历史记录面板共用样式 (Keep as is) */
 .settings-panel, .history-panel {
     scrollbar-width: thin;
     scrollbar-color: #444 #222;
@@ -159,7 +172,7 @@ button, .search-button {
     border-radius: 4px;
 }
 
-/* 设置面板特定样式 */
+/* 设置面板特定样式 (Keep as is) */
 .settings-panel {
     transform: translateX(100%);
     background: linear-gradient(135deg, var(--page-gradient-end), var(--page-gradient-start));
@@ -170,7 +183,7 @@ button, .search-button {
     transform: translateX(0);
 }
 
-/* 历史记录面板特定样式 */
+/* 历史记录面板特定样式 (Keep as is) */
 .history-panel {
     box-shadow: 2px 0 10px rgba(0,0,0,0.5);
     overflow-y: scroll;
@@ -188,7 +201,7 @@ button, .search-button {
     padding-right: 6px;
 }
 
-/* 搜索标签样式 */
+/* 搜索标签样式 (Keep as is) */
 .search-tag {
     background: linear-gradient(135deg, var(--card-gradient-start), var(--card-gradient-end));
     color: var(--text-color);
@@ -205,7 +218,7 @@ button, .search-button {
     border-color: var(--primary-color);
 }
 
-/* 页脚样式 */
+/* 页脚样式 (Keep as is) */
 .footer {
     width: 100%;
     transition: all 0.3s ease;
@@ -218,7 +231,7 @@ button, .search-button {
     text-decoration: underline;
 }
 
-/* 模态框样式 */
+/* 模态框样式 (Keep as is) */
 #modal > div {
     background: linear-gradient(135deg, var(--card-gradient-start), var(--card-gradient-end));
     border: 1px solid var(--primary-color);
@@ -238,7 +251,7 @@ button, .search-button {
     box-shadow: 0 0 8px rgba(0, 204, 255, 0.3);
 }
 
-/* 开关样式 */
+/* 开关样式 (Keep existing, player might use .switch/.slider added below) */
 .toggle-dot {
     transition: transform 0.3s ease-in-out;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
@@ -249,24 +262,24 @@ button, .search-button {
 }
 
 #yellowFilterToggle:checked + .toggle-bg,
-#adFilterToggle:checked + .toggle-bg {
+#adFilterToggle:checked + .toggle-bg { /* This targets the ad filter in settings */
     background-color: var(--primary-color);
 }
 
 #yellowFilterToggle:checked ~ .toggle-dot,
-#adFilterToggle:checked ~ .toggle-dot {
+#adFilterToggle:checked ~ .toggle-dot { /* This targets the ad filter in settings */
     transform: translateX(1.5rem);
     box-shadow: 0 2px 4px rgba(0, 204, 255, 0.3);
 }
 
 #yellowFilterToggle:focus + .toggle-bg,
 #yellowFilterToggle:hover + .toggle-bg,
-#adFilterToggle:focus + .toggle-bg,
-#adFilterToggle:hover + .toggle-bg {
+#adFilterToggle:focus + .toggle-bg, /* This targets the ad filter in settings */
+#adFilterToggle:hover + .toggle-bg { /* This targets the ad filter in settings */
     box-shadow: 0 0 0 2px rgba(0, 204, 255, 0.3);
 }
 
-/* 复选框样式 */
+/* 复选框样式 (Keep as is) */
 .form-checkbox {
     appearance: none;
     -webkit-appearance: none;
@@ -298,7 +311,7 @@ button, .search-button {
     transform: rotate(45deg);
 }
 
-/* API组和自定义API样式 */
+/* API组和自定义API样式 (Keep as is) */
 .api-group-title {
     grid-column: span 2;
     padding: 0.25rem 0;
@@ -332,7 +345,7 @@ button, .search-button {
     opacity: 1;
 }
 
-/* 过滤器禁用样式 */
+/* 过滤器禁用样式 (Keep as is) */
 .filter-disabled {
     position: relative;
 }
@@ -373,7 +386,7 @@ button, .search-button {
     opacity: 0.9;
 }
 
-/* 警告提示样式 */
+/* 警告提示样式 (Keep as is) */
 .filter-tooltip {
     background-color: rgba(255, 61, 87, 0.1);
     border: 1px solid rgba(255, 61, 87, 0.2);
@@ -395,7 +408,7 @@ button, .search-button {
     margin-right: 0.35rem;
 }
 
-/* 历史记录项样式 */
+/* 历史记录项样式 (Keep as is) */
 .history-item {
     background: #1a1a1a;
     border-radius: 6px;
@@ -463,7 +476,7 @@ button, .search-button {
     color: #666;
 }
 
-/* 播放进度条样式 */
+/* 播放进度条样式 (Keep as is) */
 .history-progress {
     margin: 5px 0;
 }
@@ -488,10 +501,148 @@ button, .search-button {
     text-align: right;
 }
 
-/* 恢复播放提示样式 */
+/* --- Player Specific Styles Start --- */
+
+/* Apply dark background specifically to player pages if possible */
+/* Consider adding class="player-page" to player.html's body tag */
+/* body.player-page { ... } */
+/* For now, applying directly, assuming this CSS is mainly for player or scoping is handled elsewhere */
+body {
+    background-color: var(--secondary-color, #0f1622) !important; /* Override default body bg */
+    color: var(--text-color, #e6f2ff) !important; /* Override default body text color */
+}
+
+/* Player container base */
+.player-container {
+    width: 100%;
+    max-width: 1200px; /* Adjust as needed */
+    margin: 0 auto;
+}
+
+/* Player Element (#player) */
+#player {
+    width: 100%;
+    aspect-ratio: 16 / 9; /* Modern way to set height based on width */
+    background-color: #000; /* Black background for player area */
+    margin-bottom: 1rem; /* Add some space below the player */
+}
+
+/* Loading & Error Overlays */
+.loading-container {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; justify-content: center;
+    background-color: rgba(0, 0, 0, 0.7); color: var(--text-color, white); z-index: 100;
+    flex-direction: column;
+}
+.loading-spinner {
+    width: 50px; height: 50px; border: 4px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%; border-top-color: var(--text-color, white);
+    animation: spin 1s ease-in-out infinite; margin-bottom: 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-container {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    display: none; /* Initially hidden */
+    align-items: center; justify-content: center;
+    background-color: rgba(0, 0, 0, 0.7); color: var(--text-color, white); z-index: 100;
+    flex-direction: column; text-align: center; padding: 1rem;
+}
+.error-icon { font-size: 48px; margin-bottom: 10px; }
+
+/* Episode Grid */
+.episode-grid {
+    max-height: 30vh; /* Adjust height as needed */
+    overflow-y: auto;
+    padding: 1rem 0;
+    /* Use existing scrollbar styles where possible */
+    scrollbar-width: thin;
+    scrollbar-color: #444 #1f2937; /* Darker track for player context */
+}
+.episode-grid::-webkit-scrollbar { width: 8px; }
+.episode-grid::-webkit-scrollbar-track { background: #1f2937; border-radius: 4px; }
+.episode-grid::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+.episode-grid::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* Ensure episode buttons inside grid use correct base colors if not overridden by JS */
+.episode-grid button:not(.episode-active) {
+    background-color: var(--button-bg, #222);
+    border-color: var(--button-border, #333);
+    color: var(--text-color, white);
+}
+.episode-grid button:not(.episode-active):hover {
+    background-color: var(--button-hover-bg, #333);
+}
+
+/* Active Episode Button Style */
+.episode-active {
+    background-color: var(--button-active-bg, #3b82f6) !important;
+    border-color: var(--button-active-border, #60a5fa) !important;
+    color: white !important;
+    /* Override JS-applied Tailwind gradient if you want the solid blue */
+    background-image: none !important;
+    font-weight: bold; /* Make active button stand out more */
+}
+/* Helper to ensure JS gradient doesn't apply when .episode-active is present */
+#episodesList button.bg-gradient-to-r.episode-active {
+     background-image: none !important;
+}
+
+
+/* Toggle Switch (Using old player's structure .switch/.slider) */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 24px;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #333; /* Dark background for slider */
+    transition: .4s;
+    border-radius: 24px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: var(--primary-color, #00ccff); /* Use primary color when checked */
+}
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+/* Hints */
+.shortcut-hint {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.8); color: var(--text-color, white); padding: 1rem 2rem;
+    border-radius: 0.5rem; font-size: 1.5rem; display: flex; align-items: center;
+    gap: 0.5rem; z-index: 1000; opacity: 0; transition: opacity 0.3s ease; pointer-events: none;
+}
+.shortcut-hint.show { opacity: 1; }
+
+/* Re-add position restore hint style from old player */
 .position-restore-hint {
     position: absolute;
-    bottom: 60px;
+    bottom: 60px; /* Position relative to player container */
     left: 50%;
     transform: translateX(-50%) translateY(20px);
     background-color: rgba(0, 0, 0, 0.7);
@@ -499,9 +650,10 @@ button, .search-button {
     padding: 8px 16px;
     border-radius: 4px;
     font-size: 14px;
-    z-index: 100;
+    z-index: 100; /* Ensure it's above player controls maybe */
     opacity: 0;
     transition: all 0.3s ease;
+    pointer-events: none; /* Prevent clicks */
 }
 
 .position-restore-hint.show {
@@ -509,75 +661,76 @@ button, .search-button {
     transform: translateX(-50%) translateY(0);
 }
 
-/* 锁定控制时屏蔽交互 */
+
+/* Native Fullscreen Styles */
+.player-container:-webkit-full-screen,
+.player-container:fullscreen {
+    position: fixed; top: 0; left: 0;
+    width: 100vw !important; height: 100vh !important; /* Use !important to override other styles */
+    z-index: 10000; /* High z-index */
+    background-color: #000; /* Black background */
+    max-width: none !important; /* Remove max-width limit */
+    padding: 0 !important; /* Remove padding */
+    margin: 0 !important; /* Remove margin */
+}
+.player-container:-webkit-full-screen #player,
+.player-container:fullscreen #player {
+    width: 100%; height: 100%;
+    aspect-ratio: auto; /* Allow player to fill screen */
+    max-width: none !important;
+    margin: 0 !important;
+}
+
+/* Controls Lock */
 .player-container.controls-locked .dplayer-controller,
 .player-container.controls-locked .dplayer-mask,
 .player-container.controls-locked .dplayer-bar-wrap,
-.player-container.controls-locked .dplayer-statusbar,
-.player-container.controls-locked .shortcut-hint {
+.player-container.controls-locked .dplayer-notice, /* Hide notices too */
+.player-container.controls-locked .dplayer-statusbar { /* Add more DPlayer elements if needed */
     opacity: 0 !important;
+    visibility: hidden !important; /* Use visibility for better hiding */
     pointer-events: none !important;
 }
-
-/* 保留锁按钮可见可点 */
+/* Keep lock button accessible */
 .player-container.controls-locked #lockToggle {
     opacity: 1 !important;
+    visibility: visible !important;
     pointer-events: auto !important;
+    z-index: 10001; /* Ensure it's above the hidden elements */
 }
 
-/* 媒体查询 */
+/* --- Player Specific Styles End --- */
+
+
+/* 媒体查询 (Keep as is) */
 @media screen and (min-height: 800px) {
     body {
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
+        /* Body styles might be overridden by player-specific above */
     }
-    
-    .container {
-        flex: 1;
-    }
-    
-    .footer {
-        margin-top: auto;
-    }
+    .container { /* Keep */ flex: 1; }
+    .footer { /* Keep */ margin-top: auto; }
 }
 
 @media screen and (max-width: 640px) {
-    .footer {
-        padding-bottom: 2rem;
-    }
+    .footer { /* Keep */ padding-bottom: 2rem; }
+    /* Add player specific mobile adjustments if needed */
+    .episode-grid { max-height: 25vh; } /* Maybe smaller grid height on mobile */
+    .player-container { padding: 0 0.5rem; } /* Reduce side padding */
 }
 
 @media screen and (max-width: 768px) {
-    .card-hover h3 {
-        min-height: 2.5rem;
-    }
-    
-    .card-hover .flex-grow {
-        min-height: 80px;
-    }
+    .card-hover h3 { min-height: 2.5rem; }
+    .card-hover .flex-grow { min-height: 80px; }
+    /* Add player specific tablet adjustments if needed */
 }
 
-/* 动画 */
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
+/* 动画 (Keep as is) */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+#modal.show { animation: fadeIn 0.3s forwards; }
+#modal.hide { animation: fadeOut 0.3s forwards; }
 
-@keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
-}
-
-#modal.show {
-    animation: fadeIn 0.3s forwards;
-}
-
-#modal.hide {
-    animation: fadeOut 0.3s forwards;
-}
-
-/* 其他样式 */
+/* 其他样式 (Keep as is) */
 .gradient-text {
     background: linear-gradient(to right, var(--primary-color), var(--accent-color));
     -webkit-background-clip: text;
@@ -585,34 +738,10 @@ button, .search-button {
 }
 
 .adult-tag {
-    display: inline-flex;
-    align-items: center;
-    color: #ff6b8b;
-    font-size: 0.7rem;
-    font-weight: 500;
-    margin-right: 0.35rem;
+    display: inline-flex; align-items: center; color: #ff6b8b; font-size: 0.7rem; font-weight: 500; margin-right: 0.35rem;
 }
 
-.custom-api-edit {
-    color: #3b82f6;
-    transition: color 0.2s ease;
-}
-
-.custom-api-edit:hover {
-    color: #2563eb;
-}
-
-#customApisList .api-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.25rem 0.5rem;
-    margin-bottom: 0.25rem;
-    background-color: #222;
-    border-radius: 0.25rem;
-    transition: background-color 0.2s ease;
-}
-
-#customApisList .api-item:hover {
-    background-color: #2a2a2a;
-}
+.custom-api-edit { color: #3b82f6; transition: color 0.2s ease; }
+.custom-api-edit:hover { color: #2563eb; }
+#customApisList .api-item { display: flex; align-items: center; justify-content: space-between; padding: 0.25rem 0.5rem; margin-bottom: 0.25rem; background-color: #222; border-radius: 0.25rem; transition: background-color 0.2s ease; }
+#customApisList .api-item:hover { background-color: #2a2a2a; }
