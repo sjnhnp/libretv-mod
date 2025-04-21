@@ -445,7 +445,7 @@ function toggleEpisodeOrder() {
 }
 function playEpisodeFromModal(idx) {
     const url = currentEpisodes[idx];
-    window.playFromHistory(url, currentVideoTitle, idx, 0);
+    window.playFromHistory(url, currentVideoTitle, idx, 0, currentEpisodes); 
 }
 
 // ========== 响应全局状态变化 ==========
