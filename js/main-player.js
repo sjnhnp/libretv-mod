@@ -17,12 +17,170 @@ let lastBlobUrl = null; // 用于 Blob URL 的清理
 let isLocked = false; // 控制区锁定状态
 
 // ============ 广告过滤 (当前为临时跳过状态) =============
+
+
 async function getFilteredM3u8UrlIfNeeded(url) {
-    console.log("广告过滤功能当前配置为: 跳过过滤，直接使用原始 URL:", url);
-    // 如果需要启用广告过滤，需要修改这里的逻辑
-    return url;
-    // 实际的过滤逻辑（如果需要）可以放在这里
+    // 1. Check if filtering is enabled and if the URL is potentially filterable
+    if (!PLAYER_CONFIG.enableAdFiltering) {
+        console.log("Ad filtering disabled in config.");
+        return url;
+    }
+    if (!url || !(url.includes('.m3u8') || url.includes('format=m3u8'))) { // Check for .m3u8 or common query param
+        console.log("URL is not M3U8, skipping filtering:", url);
+        return url;
+    }
+     // Skip non-http(s) URLs (like blob: or data:)
+     if (!url.startsWith('http')) {
+         console.log("URL is not HTTP(S), skipping filtering:", url);
+         return url;
+     }
+
+
+    console.log("Attempting to filter ads for:", url);
+
+    try {
+        // 2. Fetch the M3U8 content
+        // Use 'cors' mode and 'omit' credentials for better compatibility with public M3U8s
+        // If the server requires credentials, you might need 'include', but 'omit' is safer first.
+        const response = await fetch(url, {
+            method: 'GET',
+            mode: 'cors',         // Crucial for cross-origin requests
+            credentials: 'omit',  // Usually 'omit' for public M3U8s
+            redirect: 'follow'    // Follow redirects if any
+        });
+
+        // 3. Check if the fetch was successful
+        if (!response.ok) {
+            // Log specific HTTP status if available
+            console.warn(`Failed to fetch M3U8 (HTTP ${response.status}), using original URL:`, url);
+            return url; // Fallback to original URL on fetch error
+        }
+
+        // Optional: Check content type if needed (can be unreliable)
+        // const contentType = response.headers.get('content-type');
+        // if (contentType && !contentType.includes('mpegurl') && !contentType.includes('text/plain')) {
+        //     console.warn(`Unexpected M3U8 Content-Type (${contentType}), using original URL:`, url);
+        //     return url;
+        // }
+
+        // 4. Read the M3U8 text content
+        const m3u8Text = await response.text();
+
+        // Basic check if content looks like M3U8
+        if (!m3u8Text || !m3u8Text.trim().startsWith('#EXTM3U')) {
+             console.warn("Fetched content doesn't look like a valid M3U8 playlist, using original URL.");
+             return url;
+        }
+
+
+        // 5. Filter the M3U8 string
+        const filteredM3u8 = filterAdInM3U8String(m3u8Text); // Use the existing filter function
+
+        // 6. Validate the filtered result
+        if (!filteredM3u8 || filteredM3u8.length < m3u8Text.length * 0.1 || !filteredM3u8.trim().startsWith('#EXTM3U')) {
+            // If filtering resulted in empty or drastically smaller content, or lost the header, assume it failed.
+            console.warn("Ad filtering resulted in invalid or empty content, using original URL.");
+            return url; // Fallback
+        }
+
+        // 7. Create a Blob URL from the filtered content
+        const blob = new Blob([filteredM3u8], { type: 'application/vnd.apple.mpegurl' });
+
+        // 8. Clean up the previous Blob URL if it exists
+        if (lastBlobUrl) {
+            console.log("Revoking previous Blob URL:", lastBlobUrl);
+            URL.revokeObjectURL(lastBlobUrl);
+            lastBlobUrl = null; // Reset the variable
+        }
+
+        // 9. Create the new Blob URL
+        lastBlobUrl = URL.createObjectURL(blob);
+        console.log("Ad filtering successful. Using Blob URL:", lastBlobUrl);
+        return lastBlobUrl; // Return the Blob URL for the player
+
+    } catch (error) {
+        // 10. Catch ANY error during the process (fetch, text, filter, blob creation)
+        console.error("Error during M3U8 ad filtering process, falling back to original URL:", error);
+        // Ensure any partially created blob URL is cleaned up if an error happened after its creation
+        if (lastBlobUrl && !lastBlobUrl.startsWith('blob:')) { // Check if it was assigned but maybe not a blob url due to error
+             lastBlobUrl = null;
+        } else if (lastBlobUrl && error) {
+             // If an error happened *after* blob creation but before return
+             // It's tricky, maybe revoke it just in case, but often unnecessary as it wasn't returned
+             // Let's keep it simple: the main cleanup happens before creating a *new* one.
+        }
+
+        return url; // Fallback to the original URL on any error
+    }
 }
+
+// Your existing filterAdInM3U8String function (ensure it preserves necessary tags)
+function filterAdInM3U8String(m3u8Str) {
+    const adPatterns = [
+        /ad/i, /ads/i, /广告/, /tvc/i, /ssp/i, /\.jpg/, /logo/i, /watermark/i,
+        /pause/i, /广编/, /guanggao/i, /tracker/, /promo/, /\bpreroll\b/i,
+        /interstitial/i, /sponsor/i
+        // Add more specific patterns if you identify them
+    ];
+    const lines = m3u8Str.split('\n');
+    const filtered = [];
+    let skipNextLine = false; // Flag to skip the media segment line after a matching #EXTINF
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        // Preserve essential playlist-wide tags unconditionally
+        if (line.startsWith('#EXTM3U') ||
+            line.startsWith('#EXT-X-VERSION') ||
+            line.startsWith('#EXT-X-TARGETDURATION') ||
+            line.startsWith('#EXT-X-MEDIA-SEQUENCE') ||
+            line.startsWith('#EXT-X-PLAYLIST-TYPE') ||
+            line.startsWith('#EXT-X-KEY') ||         // Preserve encryption keys
+            line.startsWith('#EXT-X-MAP') ||          // Preserve initialization segments
+            line.startsWith('#EXT-X-PROGRAM-DATE-TIME') || // Preserve date markers
+            line.startsWith('#EXT-X-DISCONTINUITY') || // Preserve discontinuity tags
+            line.startsWith('#EXT-X-ENDLIST')) {      // Preserve endlist tag
+            filtered.push(lines[i]); // Push original line with potential whitespace
+            skipNextLine = false; // Reset flag for these lines
+            continue;
+        }
+
+        // Handle the previous skip flag first
+        if (skipNextLine) {
+            // This line is a media segment following a matched #EXTINF, skip it
+            skipNextLine = false; // Reset flag
+            console.log("Filtering media segment:", line);
+            continue; // Skip this line
+        }
+
+        // Check if the current line is an #EXTINF line matching ad patterns
+        if (line.startsWith('#EXTINF')) {
+            let isAdInf = false;
+            for (const pat of adPatterns) {
+                if (pat.test(line)) { // Check the #EXTINF line itself (e.g., for ad titles)
+                    isAdInf = true;
+                    break;
+                }
+            }
+            if (isAdInf) {
+                console.log("Filtering #EXTINF line:", line);
+                skipNextLine = true; // Set flag to skip the *next* line (the media segment)
+                continue; // Skip this #EXTINF line
+            }
+        }
+
+        // If the line is not skipped and not an ad #EXTINF, keep it
+        filtered.push(lines[i]);
+    }
+
+    return filtered.join('\n');
+}
+
+
+// --- Make sure PLAYER_CONFIG is defined or imported ---
+// Example: Assuming it's imported or defined globally/in scope
+// const PLAYER_CONFIG = { enableAdFiltering: true }; // Set to true to enable
+
 
 // ========== 数据加载与参数处理 ==========
 function loadPlayerData() {
