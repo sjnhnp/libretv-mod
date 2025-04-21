@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+"build": "vite build && echo '--- player.html content START ---' && cat dist/player.html && echo '--- player.html content END ---'"
   },
   "devDependencies": {
     "vite": "^5.0.0"
