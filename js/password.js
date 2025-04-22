@@ -12,18 +12,29 @@ function isPasswordProtected() {
 }
 
 /**
- * 检查当前用户密码验证是否仍然有效
- * - 如果未开密码保护，则恒true
- * - 否则检查localStorage的标志和TTL是否在有效期
+
+ * 检查用户是否已通过密码验证
+ * 检查localStorage中的验证状态和时间戳是否有效，并确认密码哈希未更改
  */
 function isPasswordVerified() {
     try {
-        if (!isPasswordProtected()) return true;
-        const raw = localStorage.getItem(PASSWORD_CONFIG.localStorageKey);
-        if (!raw) return false;
-        const { verified, timestamp } = JSON.parse(raw);
-        if (verified && typeof timestamp === 'number') {
-            return Date.now() < timestamp + PASSWORD_CONFIG.verificationTTL;
+        // 如果没有设置密码保护，则视为已验证
+        if (!isPasswordProtected()) {
+            return true;
+        }
+
+        const verificationData = JSON.parse(localStorage.getItem(PASSWORD_CONFIG.localStorageKey) || '{}');
+        const { verified, timestamp, passwordHash } = verificationData;
+        
+        // 获取当前环境中的密码哈希
+        const currentHash = window.__ENV__ && window.__ENV__.PASSWORD;
+        
+        // 验证是否已验证、未过期，且密码哈希未更改
+        if (verified && timestamp && passwordHash === currentHash) {
+            const now = Date.now();
+            const expiry = timestamp + PASSWORD_CONFIG.verificationTTL;
+            return now < expiry;
+
         }
         return false;
     } catch (e) {
@@ -44,19 +55,19 @@ window.isPasswordVerified = isPasswordVerified;
  * @returns {Promise<boolean>} 是否验证成功
  */
 async function verifyPassword(password) {
-    const storedHash = window.__ENV__ && window.__ENV__.PASSWORD;
-    if (!storedHash) return false;
-    try {
-        const inputHash = await sha256(password);
-        const match = inputHash === storedHash;
-        if (match) {
-            const checkObj = { verified: true, timestamp: Date.now() };
-            localStorage.setItem(PASSWORD_CONFIG.localStorageKey, JSON.stringify(checkObj));
-        }
-        return match;
-    } catch {
-        // 不应将异常信息显示或回流给用户
-        return false;
+
+    const correctHash = window.__ENV__ && window.__ENV__.PASSWORD;
+    if (!correctHash) return false;
+    const inputHash = await sha256(password);
+    const isValid = inputHash === correctHash;
+    if (isValid) {
+        const verificationData = {
+            verified: true,
+            timestamp: Date.now(),
+            passwordHash: correctHash // 保存当前密码的哈希值
+        };
+        localStorage.setItem(PASSWORD_CONFIG.localStorageKey, JSON.stringify(verificationData));
+
     }
 }
 

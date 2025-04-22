@@ -46,6 +46,7 @@ window.SITE_CONFIG = {
     version:     '1.0.3'
 };
 
+
 /* -------------------------------------
    5. API数据源（多站聚合，含成人源标注）
 -------------------------------------- */
@@ -66,6 +67,7 @@ window.API_SITES = {
     ruyi:     { api: 'https://cj.rycjapi.com',        name: '如意资源'                          },
     zuid:     { api: 'https://api.zuidapi.com',       name: '最大资源'                       },
     suoni:    { api: 'https://suoniapi.com',          name: '索尼资源'                    }
+
 };
 
 /* -----------------------------------
