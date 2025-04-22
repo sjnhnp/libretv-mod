@@ -1,37 +1,48 @@
-import { sha256 } from '../js/sha256.js'; // 需新建或引入SHA-256实现
+import { sha256 } from '../js/sha256.js';
 
-// Cloudflare Pages Middleware to inject environment variables
+/**
+ * Cloudflare Pages Middleware:
+ * - For HTML responses only,
+ *   replaces `window.__ENV__.PASSWORD = "{{PASSWORD}}";`
+ *   with `window.__ENV__.PASSWORD = "<sha256>"` (env.PASSWORD hash, or empty string).
+ */
 export async function onRequest(context) {
-  const { request, env, next } = context;
-  
-  // Proceed to the next middleware or route handler
-  const response = await next();
-  
-  // Check if the response is HTML
-  const contentType = response.headers.get("content-type") || "";
-  
-  if (contentType.includes("text/html")) {
-    // Get the original HTML content
-    let html = await response.text();
-    
-    // Replace the placeholder with actual environment variable value
-    // If PASSWORD is not set, replace with empty string
-    const password = env.PASSWORD || "";
+  const { next, env } = context;
+
+  try {
+    // Let other middlewares/route run first, get resulting response
+    const response = await next();
+
+    // Only process for text/html content-type
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("text/html")) return response;
+
+    const html = await response.text();
+    // env.PASSWORD may be undefined/null/empty; result is "" (as-is)
     let passwordHash = "";
-    if (password) {
-      passwordHash = await sha256(password);
+    if (typeof env.PASSWORD === "string" && env.PASSWORD) {
+      try {
+        passwordHash = await sha256(env.PASSWORD);
+      } catch (e) {
+        // Failsafe: treat as blank hash
+        passwordHash = "";
+      }
     }
-    html = html.replace('window.__ENV__.PASSWORD = "{{PASSWORD}}";', 
-                        `window.__ENV__.PASSWORD = "${passwordHash}"; // SHA-256 hash`);
-    
-    // Create a new response with the modified HTML
-    return new Response(html, {
+
+    // Only replace the first occurrence (template guarantees only one)
+    const replacedHtml = html.replace(
+      'window.__ENV__.PASSWORD = "{{PASSWORD}}";',
+      `window.__ENV__.PASSWORD = "${passwordHash}"; // SHA-256 hash`
+    );
+
+    return new Response(replacedHtml, {
       headers: response.headers,
       status: response.status,
       statusText: response.statusText,
     });
+  } catch (e) {
+    // In case of error, log and return the original (unmodified) response (re-running next() could repeat downstream logic)
+    console.error("Cloudflare Middleware error:", e);
+    return await context.next();
   }
-  
-  // Return the original response for non-HTML content
-  return response;
 }
