@@ -1,239 +1,183 @@
-// UI相关函数
+// =================== 全局常量、工具 =====================
+
+// 搜索与历史相关常量
+window.MAX_HISTORY_ITEMS = window.MAX_HISTORY_ITEMS || 30;
+window.SEARCH_HISTORY_KEY = window.SEARCH_HISTORY_KEY || 'searchHistory';
+
+// UI样式类型
+const TOAST_BG_COLORS = {
+    'error': 'bg-red-500',
+    'success': 'bg-green-500',
+    'info': 'bg-blue-500',
+    'warning': 'bg-yellow-500'
+};
+const HISTORY_MAX_ITEMS = 50;           // 观看历史最大数量
+
+// =============== UI相关函数 =============================
+
+// 设置面板开关
 function toggleSettings(e) {
-    // 密码保护校验
+    // 密码校验（仅当接口提供时才检查）
     if (window.isPasswordProtected && window.isPasswordVerified) {
         if (window.isPasswordProtected() && !window.isPasswordVerified()) {
-            showPasswordModal && showPasswordModal();
+            if (typeof showPasswordModal === 'function') showPasswordModal();
             return;
         }
     }
-    // 阻止事件冒泡，防止触发document的点击事件
-    e && e.stopPropagation();
+    e?.stopPropagation();
     const panel = document.getElementById('settingsPanel');
-    panel.classList.toggle('show');
+    if (panel) panel.classList.toggle('show');
 }
 
-// 改进的Toast显示函数 - 支持队列显示多个Toast
+// ------------- Toast功能（支持队列） -------------
 const toastQueue = [];
 let isShowingToast = false;
 
+/** 显示消息Toast（支持消息队列，背景色可变更） */
 function showToast(message, type = 'error') {
-    // 将新的toast添加到队列
     toastQueue.push({ message, type });
-    
-    // 如果当前没有显示中的toast，则开始显示
-    if (!isShowingToast) {
-        showNextToast();
-    }
+    if (!isShowingToast) showNextToast();
 }
-
 function showNextToast() {
-    if (toastQueue.length === 0) {
-        isShowingToast = false;
-        return;
-    }
-    
+    if (!toastQueue.length) return isShowingToast = false;
     isShowingToast = true;
     const { message, type } = toastQueue.shift();
-    
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toastMessage');
-    
-    const bgColors = {
-        'error': 'bg-red-500',
-        'success': 'bg-green-500',
-        'info': 'bg-blue-500',
-        'warning': 'bg-yellow-500'
-    };
-    
-    const bgColor = bgColors[type] || bgColors.error;
-    toast.className = `fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${bgColor} text-white`;
+    if (!toast || !toastMessage) return;
+
+    // 设置样式
+    const bg = TOAST_BG_COLORS[type] || TOAST_BG_COLORS.error;
+    toast.className = `fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${bg} text-white`;
     toastMessage.textContent = message;
-    
-    // 显示提示
+
     toast.style.opacity = '1';
     toast.style.transform = 'translateX(-50%) translateY(0)';
-    
-    // 3秒后自动隐藏
+
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateX(-50%) translateY(-100%)';
-        
-        // 等待动画完成后显示下一个toast
-        setTimeout(() => {
-            showNextToast();
-        }, 300);
+        setTimeout(showNextToast, 300);
     }, 3000);
 }
 
-// 添加显示/隐藏 loading 的函数
+// ----------- Loading区域 --------------
 let loadingTimeoutId = null;
-
+/** 显示Loading */
 function showLoading(message = '加载中...') {
-    // 清除任何现有的超时
-    if (loadingTimeoutId) {
-        clearTimeout(loadingTimeoutId);
-    }
-    
+    if (loadingTimeoutId) { clearTimeout(loadingTimeoutId); loadingTimeoutId = null; }
     const loading = document.getElementById('loading');
-    const messageEl = loading.querySelector('p');
-    messageEl.textContent = message;
+    if (!loading) return;
+    const p = loading.querySelector('p');
+    if (p) p.textContent = message;
     loading.style.display = 'flex';
-    
-    // 设置30秒后自动关闭loading，防止无限loading
     loadingTimeoutId = setTimeout(() => {
         hideLoading();
         showToast('操作超时，请稍后重试', 'warning');
     }, 30000);
 }
-
+/** 隐藏Loading */
 function hideLoading() {
-    // 清除超时
-    if (loadingTimeoutId) {
-        clearTimeout(loadingTimeoutId);
-        loadingTimeoutId = null;
-    }
-    
+    if (loadingTimeoutId) { clearTimeout(loadingTimeoutId); loadingTimeoutId = null; }
     const loading = document.getElementById('loading');
-    loading.style.display = 'none';
+    if (loading) loading.style.display = 'none';
 }
 
-function updateSiteStatus(isAvailable) {
-    const statusEl = document.getElementById('siteStatus');
-    if (isAvailable) {
-        statusEl.innerHTML = '<span class="text-green-500">●</span> 可用';
-    } else {
-        statusEl.innerHTML = '<span class="text-red-500">●</span> 不可用';
-    }
-}
-
+/** 关闭详情弹窗 */
 function closeModal() {
-    document.getElementById('modal').classList.add('hidden');
-    // 清除 iframe 内容
-    document.getElementById('modalContent').innerHTML = '';
+    const modal = document.getElementById('modal');
+    const modalContent = document.getElementById('modalContent');
+    if (modal) modal.classList.add('hidden');
+    if (modalContent) modalContent.innerHTML = '';
 }
 
-// 获取搜索历史的增强版本 - 支持新旧格式
+// ========== 搜索历史相关 ================
+
+/** 获取历史（兼容老新格式） */
 function getSearchHistory() {
     try {
         const data = localStorage.getItem(SEARCH_HISTORY_KEY);
         if (!data) return [];
-        
         const parsed = JSON.parse(data);
-        
-        // 检查是否是数组
         if (!Array.isArray(parsed)) return [];
-        
-        // 支持旧格式（字符串数组）和新格式（对象数组）
-        return parsed.map(item => {
-            if (typeof item === 'string') {
-                return { text: item, timestamp: 0 };
-            }
-            return item;
-        }).filter(item => item && item.text);
+        return parsed
+            .map(item => typeof item === 'string' ? { text: item, timestamp: 0 } : item)
+            .filter(item => item && item.text);
     } catch (e) {
         console.error('获取搜索历史出错:', e);
         return [];
     }
 }
 
-// 保存搜索历史的增强版本 - 添加时间戳和最大数量限制，现在缓存2个月
+/** 保存搜索历史，记录时间戳，去重，控量，防止XSS */
 function saveSearchHistory(query) {
     if (!query || !query.trim()) return;
-    
-    // 清理输入，防止XSS
-    query = query.trim().substring(0, 50).replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    
+    query = query.trim().slice(0, 50).replace(/[<>"]/g, c => ({
+        '<': '&lt;', '>': '&gt;', '"': '&quot;'
+    })[c]);
     let history = getSearchHistory();
-    
-    // 获取当前时间
     const now = Date.now();
-    
-    // 过滤掉超过2个月的记录（约60天，60*24*60*60*1000 = 5184000000毫秒）
-    history = history.filter(item => 
-        typeof item === 'object' && item.timestamp && (now - item.timestamp < 5184000000)
+    // 2个月有效、去重
+    history = history.filter(item =>
+        typeof item === 'object' && item.timestamp && (now - item.timestamp < 5184000000) &&
+        item.text !== query
     );
-    
-    // 删除已存在的相同项
-    history = history.filter(item => 
-        typeof item === 'object' ? item.text !== query : item !== query
-    );
-    
-    // 新项添加到开头，包含时间戳
-    history.unshift({
-        text: query,
-        timestamp: now
-    });
-    
-    // 限制历史记录数量
-    if (history.length > MAX_HISTORY_ITEMS) {
-        history = history.slice(0, MAX_HISTORY_ITEMS);
-    }
-    
+    // 新项在最前
+    history.unshift({ text: query, timestamp: now });
+    if (history.length > MAX_HISTORY_ITEMS) history = history.slice(0, MAX_HISTORY_ITEMS);
     try {
         localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
     } catch (e) {
-        console.error('保存搜索历史失败:', e);
-        // 如果存储失败（可能是localStorage已满），尝试清理旧数据
+        // 空间不足时清理
+        localStorage.removeItem(SEARCH_HISTORY_KEY);
         try {
-            localStorage.removeItem(SEARCH_HISTORY_KEY);
             localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history.slice(0, 3)));
         } catch (e2) {
-            console.error('再次保存搜索历史失败:', e2);
+            // 两次都失败则放弃
         }
     }
-    
     renderSearchHistory();
 }
 
-// 渲染最近搜索历史的增强版本
 function renderSearchHistory() {
     const historyContainer = document.getElementById('recentSearches');
     if (!historyContainer) return;
-    
     const history = getSearchHistory();
-    
-    if (history.length === 0) {
-        historyContainer.innerHTML = '';
-        return;
-    }
-    
-    // 创建一个包含标题和清除按钮的行
-    historyContainer.innerHTML = `
-        <div class="flex justify-between items-center w-full mb-2">
-            <div class="text-gray-500">最近搜索:</div>
-            <button id="clearHistoryBtn" class="text-gray-500 hover:text-white transition-colors" 
-                    onclick="clearSearchHistory()" aria-label="清除搜索历史">
-                清除搜索历史
-            </button>
-        </div>
-    `;
-    
+    if (!history.length) { historyContainer.innerHTML = ''; return; }
+
+    const frag = document.createDocumentFragment();
+
+    // 标题与清空按钮
+    const header = document.createElement('div');
+    header.className = "flex justify-between items-center w-full mb-2";
+    header.innerHTML = `<div class="text-gray-500">最近搜索:</div>
+        <button id="clearHistoryBtn" class="text-gray-500 hover:text-white transition-colors"
+            onclick="clearSearchHistory()" aria-label="清除搜索历史">清除搜索历史</button>`;
+    frag.appendChild(header);
+
+    // 添加标签
     history.forEach(item => {
         const tag = document.createElement('button');
         tag.className = 'search-tag';
         tag.textContent = item.text;
-        
-        // 添加时间提示（如果有时间戳）
-        if (item.timestamp) {
-            const date = new Date(item.timestamp);
-            tag.title = `搜索于: ${date.toLocaleString()}`;
-        }
-        
+        if (item.timestamp) tag.title = `搜索于: ${new Date(item.timestamp).toLocaleString()}`;
         tag.onclick = function() {
-            document.getElementById('searchInput').value = item.text;
-            search();
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.value = item.text;
+                search();
+            }
         };
-        historyContainer.appendChild(tag);
+        frag.appendChild(tag);
     });
+    historyContainer.innerHTML = '';
+    historyContainer.appendChild(frag);
 }
-
-// 增加清除搜索历史功能
 function clearSearchHistory() {
-    // 密码保护校验
+    // 校验密码
     if (window.isPasswordProtected && window.isPasswordVerified) {
         if (window.isPasswordProtected() && !window.isPasswordVerified()) {
-            showPasswordModal && showPasswordModal();
+            if (typeof showPasswordModal === 'function') showPasswordModal();
             return;
         }
     }
@@ -243,9 +187,11 @@ function clearSearchHistory() {
         showToast('搜索历史已清除', 'success');
     } catch (e) {
         console.error('清除搜索历史失败:', e);
-        showToast('清除搜索历史失败:', 'error');
+        showToast('清除搜索历史失败', 'error');
     }
 }
+
+// ========== 观看历史相关 ================
 
 // 历史面板相关函数
 function toggleHistory(e) {
@@ -275,41 +221,16 @@ function toggleHistory(e) {
     }
 }
 
-// 格式化时间戳为友好的日期时间格式
+/** 时间戳人性化显示 */
 function formatTimestamp(timestamp) {
-    const date = new Date(timestamp);
-    const now = new Date();
+    const date = new Date(timestamp), now = new Date();
     const diff = now - date;
-    
-    // 小于1小时，显示"X分钟前"
-    if (diff < 3600000) {
-        const minutes = Math.floor(diff / 60000);
-        return minutes <= 0 ? '刚刚' : `${minutes}分钟前`;
-    }
-    
-    // 小于24小时，显示"X小时前"
-    if (diff < 86400000) {
-        const hours = Math.floor(diff / 3600000);
-        return `${hours}小时前`;
-    }
-    
-    // 小于7天，显示"X天前"
-    if (diff < 604800000) {
-        const days = Math.floor(diff / 86400000);
-        return `${days}天前`;
-    }
-    
-    // 其他情况，显示完整日期
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const hour = date.getHours().toString().padStart(2, '0');
-    const minute = date.getMinutes().toString().padStart(2, '0');
-    
-    return `${year}-${month}-${day} ${hour}:${minute}`;
+    if (diff < 3600000) return `${Math.max(0, Math.floor(diff / 60000)) || '刚刚'}分钟前`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
+    if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
+    return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}
+        ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
 }
-
-// 获取观看历史记录
 function getViewingHistory() {
     try {
         const data = localStorage.getItem('viewingHistory');
@@ -320,112 +241,76 @@ function getViewingHistory() {
     }
 }
 
-// 加载观看历史并渲染
+/** 渲染历史面板 */
 function loadViewingHistory() {
     const historyList = document.getElementById('historyList');
     if (!historyList) return;
-    
     const history = getViewingHistory();
-    
-    if (history.length === 0) {
+    if (!history.length) {
         historyList.innerHTML = `<div class="text-center text-gray-500 py-8">暂无观看记录</div>`;
         return;
     }
-    
-    // 渲染历史记录
-    historyList.innerHTML = history.map(item => {
-        // 防止XSS
-        const safeTitle = item.title
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-        
-        const safeSource = item.sourceName ? 
-            item.sourceName.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') : 
-            '未知来源';
-            
-        const episodeText = item.episodeIndex !== undefined ? 
-            `第${item.episodeIndex + 1}集` : '';
-        
-        // 格式化进度信息
+    const frag = document.createDocumentFragment();
+    history.forEach(item => {
+        // 防XSS
+        const safeTitle = (item.title||'').replace(/[<>"']/g, c=>({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+        const safeSource = (item.sourceName || '未知来源').replace(/[<>"']/g, c=>({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+        const episodeText = item.episodeIndex!==undefined ? `第${item.episodeIndex+1}集` : '';
         let progressHtml = '';
-        if (item.playbackPosition && item.duration && item.playbackPosition > 10 && item.playbackPosition < item.duration * 0.95) {
-            const percent = Math.round((item.playbackPosition / item.duration) * 100);
+        // 进度条
+        if (item.playbackPosition && item.duration && item.playbackPosition>10 && item.playbackPosition<item.duration*0.95) {
+            const percent = Math.round(item.playbackPosition/item.duration*100);
             const formattedTime = formatPlaybackTime(item.playbackPosition);
             const formattedDuration = formatPlaybackTime(item.duration);
-            
-            progressHtml = `
-                <div class="history-progress">
-                    <div class="progress-bar">
-                        <div class="progress-filled" style="width:${percent}%"></div>
-                    </div>
-                    <div class="progress-text">${formattedTime} / ${formattedDuration}</div>
-                </div>
-            `;
+            progressHtml = `<div class="history-progress"><div class="progress-bar">
+                <div class="progress-filled" style="width:${percent}%"></div></div>
+                <div class="progress-text">${formattedTime} / ${formattedDuration}</div></div>`;
         }
-        
-        // 为防止XSS，使用encodeURIComponent编码URL
         const safeURL = encodeURIComponent(item.url);
+        const historyItem = document.createElement('div');
+        historyItem.className = 'history-item cursor-pointer relative group';
         
-        // 构建历史记录项HTML，添加删除按钮，需要放在position:relative的容器中
-        return `
-            <div class="history-item cursor-pointer relative group" onclick="playFromHistory('${item.url}', '${safeTitle}', ${item.episodeIndex || 0}, ${item.playbackPosition || 0})">
-                <button onclick="event.stopPropagation(); deleteHistoryItem('${safeURL}')" 
-                        class="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-gray-400 hover:text-red-400 p-1 rounded-full hover:bg-gray-800 z-10"
-                        title="删除记录">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-                <div class="history-info">
-                    <div class="history-title">${safeTitle}</div>
-                    <div class="history-meta">
-                        <span class="history-episode">${episodeText}</span>
-                        ${episodeText ? '<span class="history-separator mx-1">·</span>' : ''}
-                        <span class="history-source">${safeSource}</span>
-                    </div>
-                    ${progressHtml}
-                    <div class="history-time">${formatTimestamp(item.timestamp)}</div>
+        //观看历史正常播放
+        historyItem.setAttribute('onclick', `playFromHistory('${item.url}', '${safeTitle}', ${item.episodeIndex||0}, ${item.playbackPosition||0})`);        
+        
+        historyItem.innerHTML = `
+            <div class="history-info">
+                <div class="history-title">${safeTitle}</div>
+                <div class="history-meta">
+                    <span class="history-episode">${episodeText}</span>
+                    ${episodeText ? '<span class="history-separator mx-1">·</span>' : ''}
+                    <span class="history-source">${safeSource}</span>
                 </div>
+                ${progressHtml}
+                <div class="history-time">${formatTimestamp(item.timestamp)}</div>
             </div>
-        `;
-    }).join('');
-    
-    // 检查是否存在较多历史记录，添加底部边距确保底部按钮不会挡住内容
-    if (history.length > 5) {
-        historyList.classList.add('pb-4');
-    }
+            <button onclick="event.stopPropagation(); deleteHistoryItem('${safeURL}')" 
+                class="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-gray-400 hover:text-red-400 p-1 rounded-full hover:bg-gray-800 z-10"
+                title="删除记录">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>`;
+        frag.appendChild(historyItem);
+    });
+    historyList.innerHTML = '';
+    historyList.appendChild(frag);
+    if (history.length > 5) historyList.classList.add('pb-4');
 }
 
-// 格式化播放时间为 mm:ss 格式
+/** mm:ss时间格式 */
 function formatPlaybackTime(seconds) {
     if (!seconds || isNaN(seconds)) return '00:00';
-    
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
-    
-    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    const m = Math.floor(seconds/60), s = Math.floor(seconds%60);
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
-
-// 删除单个历史记录项
+// 删除历史
 function deleteHistoryItem(encodedUrl) {
     try {
-        // 解码URL
-        const url = decodeURIComponent(encodedUrl);
-        
-        // 获取当前历史记录
-        const history = getViewingHistory();
-        
-        // 过滤掉要删除的项
+        const url = decodeURIComponent(encodedUrl), history = getViewingHistory();
         const newHistory = history.filter(item => item.url !== url);
-        
-        // 保存回localStorage
         localStorage.setItem('viewingHistory', JSON.stringify(newHistory));
-        
-        // 重新加载历史记录显示
         loadViewingHistory();
-        
-        // 显示成功提示
         showToast('已删除该记录', 'success');
     } catch (e) {
         console.error('删除历史记录项失败:', e);
@@ -433,156 +318,100 @@ function deleteHistoryItem(encodedUrl) {
     }
 }
 
-// 从历史记录播放
+// 从观看历史记录打开播放页面（在当前标签页）- 基于原始逻辑修改
+
 function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     try {
-        // 尝试从localStorage获取当前视频的集数信息
         let episodesList = [];
-        
-        // 检查viewingHistory，查找匹配的项以获取其集数数据
         const historyRaw = localStorage.getItem('viewingHistory');
         if (historyRaw) {
-            const history = JSON.parse(historyRaw);
-            // 根据标题查找匹配的历史记录
-            const historyItem = history.find(item => item.title === title);
-            
-            // 如果找到了匹配的历史记录，尝试获取该条目的集数数据
-            if (historyItem && historyItem.episodes && Array.isArray(historyItem.episodes)) {
-                episodesList = historyItem.episodes;
-                console.log(`从历史记录找到视频 ${title} 的集数数据:`, episodesList.length);
+            try { 
+                const history = JSON.parse(historyRaw);
+                const historyItem = history.find(item => item.title === title);
+                if (historyItem && Array.isArray(historyItem.episodes)) {
+                    episodesList = historyItem.episodes;
+                }
+            } catch (parseError) {
+                console.error("解析 viewingHistory 出错:", parseError);
             }
         }
-        
-        // 如果在历史记录中没找到，尝试使用上一个会话的集数数据
-        if (episodesList.length === 0) {
+        if (!episodesList.length) {
             try {
-                const storedEpisodes = JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
-                if (storedEpisodes.length > 0) {
-                    episodesList = storedEpisodes;
-                    console.log(`使用localStorage中的集数数据:`, episodesList.length);
+                const stored = JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
+                if (Array.isArray(stored) && stored.length) { 
+                    episodesList = stored;
                 }
             } catch (e) {
-                console.error('解析currentEpisodes失败:', e);
+                 console.error("解析 currentEpisodes 失败:", e);
             }
         }
-        
-        // 将剧集列表保存到localStorage，避免过长的URL
-        if (episodesList.length > 0) {
+        if (episodesList.length) { 
             localStorage.setItem('currentEpisodes', JSON.stringify(episodesList));
-            console.log(`已将剧集列表保存到localStorage，共 ${episodesList.length} 集`);
         }
-        // 构造带播放进度参数的URL
         const positionParam = playbackPosition > 10 ? `&position=${Math.floor(playbackPosition)}` : '';
-        
+
         if (url.includes('?')) {
-            // URL已有参数，添加索引和位置参数
             const playUrl = new URL(url);
             if (!playUrl.searchParams.has('index') && episodeIndex > 0) {
                 playUrl.searchParams.set('index', episodeIndex);
             }
-            if (playbackPosition > 10) {
-                playUrl.searchParams.set('position', Math.floor(playbackPosition).toString());
+            if (playbackPosition > 10 && !playUrl.searchParams.has('position')) { 
+                 playUrl.searchParams.set('position', Math.floor(playbackPosition));
             }
-            window.open(playUrl.toString(), '_blank');
+            window.location.href = playUrl.toString();
         } else {
-            // 原始URL，构造player页面链接
             const playerUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}${positionParam}`;
-            window.open(playerUrl, '_blank');
+            window.location.href = playerUrl;
         }
+
     } catch (e) {
         console.error('从历史记录播放失败:', e);
-        // 回退到原始简单URL
-        const simpleUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}`;
-        window.open(simpleUrl, '_blank');
+        const fallbackUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}`;
+        window.location.href = fallbackUrl;
     }
 }
 
-// 添加观看历史 - 确保每个视频标题只有一条记录
+/** 增加/更新历史（同标题合并，每标题仅一条记录） */
 function addToViewingHistory(videoInfo) {
-    // 密码保护校验
     if (window.isPasswordProtected && window.isPasswordVerified) {
         if (window.isPasswordProtected() && !window.isPasswordVerified()) {
-            showPasswordModal && showPasswordModal();
+            if (typeof showPasswordModal === 'function') showPasswordModal();
             return;
         }
     }
     try {
         const history = getViewingHistory();
-        
-        // 检查是否已经存在相同标题的记录（同一视频的不同集数）
-        const existingIndex = history.findIndex(item => item.title === videoInfo.title);
-        if (existingIndex !== -1) {
-            // 存在则更新现有记录的集数和时间戳
-            const existingItem = history[existingIndex];
-            existingItem.episodeIndex = videoInfo.episodeIndex;
-            existingItem.timestamp = Date.now();
-            
-            // 确保来源信息保留
-            if (videoInfo.sourceName && !existingItem.sourceName) {
-                existingItem.sourceName = videoInfo.sourceName;
+        const idx = history.findIndex(item => item.title === videoInfo.title);
+        if (idx !== -1) {
+            const item = history[idx];
+            item.episodeIndex = videoInfo.episodeIndex;
+            item.timestamp = Date.now();
+            if (videoInfo.sourceName && !item.sourceName) item.sourceName = videoInfo.sourceName;
+            if (videoInfo.playbackPosition && videoInfo.playbackPosition>10) {
+                item.playbackPosition = videoInfo.playbackPosition;
+                item.duration = videoInfo.duration || item.duration;
             }
-            
-            // 更新播放进度信息，仅当新进度有效且大于10秒时
-            if (videoInfo.playbackPosition && videoInfo.playbackPosition > 10) {
-                existingItem.playbackPosition = videoInfo.playbackPosition;
-                existingItem.duration = videoInfo.duration || existingItem.duration;
-            }
-            
-            // 更新URL，确保能够跳转到正确的集数
-            existingItem.url = videoInfo.url;
-            
-            // 重要：确保episodes数据与当前视频匹配
-            // 只有当videoInfo中包含有效的episodes数据时才更新
-            if (videoInfo.episodes && Array.isArray(videoInfo.episodes) && videoInfo.episodes.length > 0) {
-                // 如果传入的集数数据与当前保存的不同，则更新
-                if (!existingItem.episodes || 
-                    !Array.isArray(existingItem.episodes) || 
-                    existingItem.episodes.length !== videoInfo.episodes.length) {
-                    console.log(`更新 "${videoInfo.title}" 的剧集数据: ${videoInfo.episodes.length}集`);
-                    existingItem.episodes = [...videoInfo.episodes]; // 使用深拷贝
+            item.url = videoInfo.url;
+            if (videoInfo.episodes && Array.isArray(videoInfo.episodes) && videoInfo.episodes.length) {
+                if (!item.episodes || item.episodes.length !== videoInfo.episodes.length) {
+                    item.episodes = [...videoInfo.episodes];
                 }
             }
-            
-            // 移到最前面
-            history.splice(existingIndex, 1);
-            history.unshift(existingItem);
+            // 放到最前
+            history.splice(idx, 1);
+            history.unshift(item);
         } else {
-            // 添加新记录到最前面，确保包含剧集数据
-            const newItem = {
-                ...videoInfo,
-                timestamp: Date.now()
-            };
-            
-            // 确保episodes字段是一个数组
-            if (videoInfo.episodes && Array.isArray(videoInfo.episodes)) {
-                newItem.episodes = [...videoInfo.episodes]; // 使用深拷贝
-                console.log(`保存新视频 "${videoInfo.title}" 的剧集数据: ${videoInfo.episodes.length}集`);
-            } else {
-                // 如果没有提供episodes，初始化为空数组
-                newItem.episodes = [];
-            }
-            
+            const newItem = { ...videoInfo, timestamp: Date.now(), episodes: Array.isArray(videoInfo.episodes)?[...videoInfo.episodes]:[] };
             history.unshift(newItem);
         }
-        
-        // 限制历史记录数量为50条
-        const maxHistoryItems = 50;
-        if (history.length > maxHistoryItems) {
-            history.splice(maxHistoryItems);
-        }
-        
-        // 保存到本地存储
+        if (history.length > HISTORY_MAX_ITEMS) history.splice(HISTORY_MAX_ITEMS);
         localStorage.setItem('viewingHistory', JSON.stringify(history));
-    } catch (e) {
-        console.error('保存观看历史失败:', e);
-    }
+    } catch (e) { console.error('保存观看历史失败:', e); }
 }
-
-// 清空观看历史
 function clearViewingHistory() {
     try {
         localStorage.removeItem('viewingHistory');
-        loadViewingHistory(); // 重新加载空的历史记录
+        loadViewingHistory();
         showToast('观看历史已清空', 'success');
     } catch (e) {
         console.error('清除观看历史失败:', e);
@@ -590,32 +419,38 @@ function clearViewingHistory() {
     }
 }
 
-// 更新toggleSettings函数以处理历史面板互动
+// ============= 面板相关互斥行为增强 =================
+
+// 覆写 toggleSettings，自动关闭历史面板
 const originalToggleSettings = toggleSettings;
 toggleSettings = function(e) {
-    if (e) e.stopPropagation();
-    
-    // 原始设置面板切换逻辑
+    e?.stopPropagation();
     originalToggleSettings(e);
-    
-    // 如果历史记录面板是打开的，则关闭它
+    // 自动关闭历史
     const historyPanel = document.getElementById('historyPanel');
     if (historyPanel && historyPanel.classList.contains('show')) {
         historyPanel.classList.remove('show');
     }
 };
 
-// 点击外部关闭历史面板
+// 点击页面空白时自动关闭历史侧边栏
 document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('click', function(e) {
         const historyPanel = document.getElementById('historyPanel');
         const historyButton = document.querySelector('button[onclick="toggleHistory(event)"]');
-        
-        if (historyPanel && historyButton && 
-            !historyPanel.contains(e.target) && 
-            !historyButton.contains(e.target) && 
+        if (historyPanel && historyButton &&
+            !historyPanel.contains(e.target) && !historyButton.contains(e.target) &&
             historyPanel.classList.contains('show')) {
             historyPanel.classList.remove('show');
         }
     });
 });
+window.renderSearchHistory = renderSearchHistory;
+window.showToast = showToast;
+window.showLoading = showLoading;
+window.hideLoading = hideLoading;
+window.toggleSettings = toggleSettings;
+window.toggleHistory = toggleHistory;
+
+
+// ============= END UI 相关优化 ================
