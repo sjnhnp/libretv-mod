@@ -175,7 +175,7 @@ function initDouban() {
 
   const doubanToggle = utils.getElement('doubanToggle');
   if (doubanToggle) {
-    const isEnabled = utils.storage.get(CONFIG.STORAGE_KEYS.ENABLED, false) === true;
+    const isEnabled = utils.storage.get(CONFIG.STORAGE_KEYS.ENABLED, true) === true;
     doubanToggle.checked = isEnabled;
 
     const toggleBg = doubanToggle.nextElementSibling;
