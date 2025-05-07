@@ -1,6 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /js/
-Disallow: /css/
-
-Sitemap: https://libretv.is-an.org/sitemap.xml

@@ -1,37 +1,23 @@
 // 全局变量
-let selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '["tyyszy", "bfzy", "ruyi"]'); // 默认选中天涯资源、暴风资源和如意资源
-let customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]'); // 存储自定义API列表
-
-// 添加当前播放的集数索引
+let selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '["heimuer", "wolong", "tyyszy"]');
+let customAPIs   = JSON.parse(localStorage.getItem('customAPIs') || '[]');
 let currentEpisodeIndex = 0;
-// 添加当前视频的所有集数
 let currentEpisodes = [];
-// 添加当前视频的标题
 let currentVideoTitle = '';
-// 全局变量用于倒序状态
 let episodesReversed = false;
 
-// 页面初始化
+// ===================== 页面初始化 ========================
 document.addEventListener('DOMContentLoaded', function() {
-    // 初始化API复选框
+    // API复选框、API自定义区、API计数渲染
     initAPICheckboxes();
-    
-    // 初始化自定义API列表
     renderCustomAPIsList();
-    
-    // 初始化显示选中的API数量
     updateSelectedApiCount();
-    
-    // 渲染搜索历史
     renderSearchHistory();
-    
-    // 设置默认API选择（如果是第一次加载）
+
+    // 初始化默认API（首开时）
     if (!localStorage.getItem('hasInitializedDefaults')) {
-        // 仅选择天涯资源、暴风资源和如意资源
-        selectedAPIs = ["tyyszy", "bfzy", "ruyi"];
+        selectedAPIs = ["heimuer", "wolong", "tyyszy"];
         localStorage.setItem('selectedAPIs', JSON.stringify(selectedAPIs));
-        
-        // 默认选中过滤开关
         localStorage.setItem('yellowFilterEnabled', 'true');
         localStorage.setItem(PLAYER_CONFIG.adFilteringStorage, 'true');
         
@@ -39,31 +25,58 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem('doubanEnabled', 'true');
 
         // 标记已初始化默认值
+
         localStorage.setItem('hasInitializedDefaults', 'true');
     }
-    
-    // 设置黄色内容过滤开关初始状态
+    // "黄色内容过滤" 初始状态
     const yellowFilterToggle = document.getElementById('yellowFilterToggle');
-    if (yellowFilterToggle) {
+    if (yellowFilterToggle)
         yellowFilterToggle.checked = localStorage.getItem('yellowFilterEnabled') === 'true';
-    }
-    
-    // 设置广告过滤开关初始状态
+    // 广告过滤开关初始
     const adFilterToggle = document.getElementById('adFilterToggle');
-    if (adFilterToggle) {
-        adFilterToggle.checked = localStorage.getItem(PLAYER_CONFIG.adFilteringStorage) !== 'false'; // 默认为true
-    }
-    
-    // 设置事件监听器
+    if (adFilterToggle)
+        adFilterToggle.checked = localStorage.getItem(PLAYER_CONFIG.adFilteringStorage) !== 'false';
+
+    // 事件绑定
     setupEventListeners();
-    
-    // 初始检查成人API选中状态
+
+    // 初步检查"成人API选中"
     setTimeout(checkAdultAPIsSelected, 100);
+
+    // 首页集数预加载功能开关和数字
+    const preloadingToggle = document.getElementById('preloadingToggle');
+    const preloadCountInput = document.getElementById('preloadCountInput');
+    if (preloadingToggle && preloadCountInput) {
+        preloadingToggle.checked = localStorage.getItem('enablePreloading') !== 'false' ||
+            (typeof PLAYER_CONFIG.enablePreloading==='undefined' ? true : PLAYER_CONFIG.enablePreloading);
+        const storedCount = parseInt(localStorage.getItem('preloadCount'));
+        preloadCountInput.value = (!isNaN(storedCount) && storedCount>=1 && storedCount<=10) ?
+            storedCount : (typeof PLAYER_CONFIG.preloadCount!=='undefined' ? PLAYER_CONFIG.preloadCount : 2);
+
+        // 状态保存函数
+        const applyPreloadingConfigChange = () => {
+            localStorage.setItem('enablePreloading', preloadingToggle.checked ? 'true' : 'false');
+            PLAYER_CONFIG.enablePreloading = preloadingToggle.checked;
+        };
+        const applyPreloadCountChange = () => {
+            let val = Math.min(Math.max(parseInt(preloadCountInput.value) || 2, 1), 10);
+            preloadCountInput.value = val;
+            localStorage.setItem('preloadCount', val);
+            PLAYER_CONFIG.preloadCount = val;
+        };
+        preloadingToggle.addEventListener('change', applyPreloadingConfigChange);
+        preloadCountInput.addEventListener('change', applyPreloadCountChange);
+       // preloadCountInput.addEventListener('input', applyPreloadCountChange);
+    }
 });
 
-// 初始化API复选框
+
+// ===================== API复选框与自定义API ========================
+
 function initAPICheckboxes() {
     const container = document.getElementById('apiCheckboxes');
+    if (!container) return;
+
     container.innerHTML = '';
 
     // 添加普通API组标题
@@ -155,102 +168,59 @@ function addAdultAPI() {
     }
 }
 
-// 检查是否有成人API被选中
+/** 检查是否有成人API被选中，自动控制黄色内容过滤器的禁用 */
 function checkAdultAPIsSelected() {
-    // 查找所有内置成人API复选框
-    const adultBuiltinCheckboxes = document.querySelectorAll('#apiCheckboxes .api-adult:checked');
-    
-    // 查找所有自定义成人API复选框
-    const customApiCheckboxes = document.querySelectorAll('#customApisList .api-adult:checked');
-    
-    const hasAdultSelected = adultBuiltinCheckboxes.length > 0 || customApiCheckboxes.length > 0;
-    
-    const yellowFilterToggle = document.getElementById('yellowFilterToggle');
-    const yellowFilterContainer = yellowFilterToggle.closest('div').parentNode;
-    const filterDescription = yellowFilterContainer.querySelector('p.filter-description');
-    
-    // 如果选择了成人API，禁用黄色内容过滤器
-    if (hasAdultSelected) {
-        yellowFilterToggle.checked = false;
-        yellowFilterToggle.disabled = true;
-        localStorage.setItem('yellowFilterEnabled', 'false');
-        
-        // 添加禁用样式
-        yellowFilterContainer.classList.add('filter-disabled');
-        
-        // 修改描述文字
-        if (filterDescription) {
-            filterDescription.innerHTML = '<strong class="text-pink-300">选中黄色资源站时无法启用此过滤</strong>';
-        }
-        
-        // 移除提示信息（如果存在）
-        const existingTooltip = yellowFilterContainer.querySelector('.filter-tooltip');
-        if (existingTooltip) {
-            existingTooltip.remove();
-        }
+    const adultBuiltin = document.querySelectorAll('#apiCheckboxes .api-adult:checked');
+    const customAdult  = document.querySelectorAll('#customApisList .api-adult:checked');
+    const hasAdult = adultBuiltin.length > 0 || customAdult.length > 0;
+    const yellowToggle = document.getElementById('yellowFilterToggle');
+    const row = yellowToggle?.closest('div')?.parentNode;
+    const desc = row?.querySelector('p.filter-description');
+    if (!yellowToggle) return;
+    if (hasAdult) {
+        yellowToggle.checked = false;
+        yellowToggle.disabled = true;
+        localStorage.setItem('yellowFilterEnabled','false');
+        row?.classList.add('filter-disabled');
+        if (desc) desc.innerHTML = '<strong class="text-pink-300">选中黄色资源站时无法启用此过滤</strong>';
+        // 去除提示信息
+        row?.querySelector('.filter-tooltip')?.remove();
     } else {
-        // 启用黄色内容过滤器
-        yellowFilterToggle.disabled = false;
-        yellowFilterContainer.classList.remove('filter-disabled');
-        
-        // 恢复原来的描述文字
-        if (filterDescription) {
-            filterDescription.innerHTML = '过滤"伦理片"等黄色内容';
-        }
-        
-        // 移除提示信息
-        const existingTooltip = yellowFilterContainer.querySelector('.filter-tooltip');
-        if (existingTooltip) {
-            existingTooltip.remove();
-        }
+        yellowToggle.disabled = false;
+        row?.classList.remove('filter-disabled');
+        if (desc) desc.textContent = '过滤"伦理片"等黄色内容';
+        row?.querySelector('.filter-tooltip')?.remove();
     }
 }
 
-// 渲染自定义API列表
+/** 渲染自定义API区域 */
 function renderCustomAPIsList() {
     const container = document.getElementById('customApisList');
     if (!container) return;
-    
-    if (customAPIs.length === 0) {
-        container.innerHTML = '<p class="text-xs text-gray-500 text-center my-2">未添加自定义API</p>';
-        return;
-    }
-    
-    container.innerHTML = '';
-    customAPIs.forEach((api, index) => {
-        const apiItem = document.createElement('div');
-        apiItem.className = 'flex items-center justify-between p-1 mb-1 bg-[#222] rounded';
-        
-        // 根据是否是成人内容设置不同的样式
+    container.innerHTML = customAPIs.length ?
+        '' : '<p class="text-xs text-gray-500 text-center my-2">未添加自定义API</p>';
+    customAPIs.forEach((api, idx) => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-1 mb-1 bg-[#222] rounded';
         const textColorClass = api.isAdult ? 'text-pink-400' : 'text-white';
-        
-        // 将(18+)标记移到最前面
         const adultTag = api.isAdult ? '<span class="text-xs text-pink-400 mr-1">(18+)</span>' : '';
-        
-        apiItem.innerHTML = `
+        item.innerHTML = `
             <div class="flex items-center flex-1 min-w-0">
-                <input type="checkbox" id="custom_api_${index}" 
-                       class="form-checkbox h-3 w-3 text-blue-600 mr-1 ${api.isAdult ? 'api-adult' : ''}" 
-                       ${selectedAPIs.includes('custom_' + index) ? 'checked' : ''} 
-                       data-custom-index="${index}">
+                <input type="checkbox" id="custom_api_${idx}" 
+                    class="form-checkbox h-3 w-3 text-blue-600 mr-1 ${api.isAdult ? 'api-adult' : ''}"
+                    ${selectedAPIs.includes('custom_'+idx)?'checked':''} data-custom-index="${idx}">
                 <div class="flex-1 min-w-0">
-                    <div class="text-xs font-medium ${textColorClass} truncate">
-                        ${adultTag}${api.name}
-                    </div>
+                    <div class="text-xs font-medium ${textColorClass} truncate">${adultTag}${api.name}</div>
                     <div class="text-xs text-gray-500 truncate">${api.url}</div>
                 </div>
             </div>
             <div class="flex items-center">
-                <button class="text-blue-500 hover:text-blue-700 text-xs px-1" onclick="editCustomApi(${index})">✎</button>
-                <button class="text-red-500 hover:text-red-700 text-xs px-1" onclick="removeCustomApi(${index})">✕</button>
-            </div>
-        `;
-        container.appendChild(apiItem);
-        
-        // 添加事件监听器
-        apiItem.querySelector('input').addEventListener('change', function() {
-            updateSelectedAPIs();
-            checkAdultAPIsSelected();
+                <button class="text-blue-500 hover:text-blue-700 text-xs px-1" onclick="editCustomApi(${idx})">✎</button>
+                <button class="text-red-500 hover:text-red-700 text-xs px-1" onclick="removeCustomApi(${idx})">✕</button>
+            </div>`;
+        container.appendChild(item);
+        item.querySelector('input').addEventListener('change',()=>{
+            updateSelectedAPIs();checkAdultAPIsSelected();
         });
     });
 }
@@ -260,15 +230,14 @@ function editCustomApi(index) {
     if (index < 0 || index >= customAPIs.length) return;
     
     const api = customAPIs[index];
-    
-    // 填充表单数据
     const nameInput = document.getElementById('customApiName');
     const urlInput = document.getElementById('customApiUrl');
     const isAdultInput = document.getElementById('customApiIsAdult');
     
+    // 填充表单数据
     nameInput.value = api.name;
     urlInput.value = api.url;
-    if (isAdultInput) isAdultInput.checked = api.isAdult || false;
+    if (isAdultInput) isAdultInput.checked = !!api.isAdult;
     
     // 显示表单
     const form = document.getElementById('addCustomApiForm');
@@ -308,9 +277,7 @@ function updateCustomApi(index) {
     }
     
     // 移除URL末尾的斜杠
-    if (url.endsWith('/')) {
-        url = url.slice(0, -1);
-    }
+    if (url.endsWith('/')) url = url.slice(0, -1);
     
     // 更新API信息
     customAPIs[index] = { name, url, isAdult };
@@ -352,6 +319,8 @@ function cancelEditCustomApi() {
 // 恢复自定义API添加按钮
 function restoreAddCustomApiButtons() {
     const form = document.getElementById('addCustomApiForm');
+    if (!form) return;
+    
     const buttonContainer = form.querySelector('div:last-child');
     buttonContainer.innerHTML = `
         <button onclick="addCustomApi()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">添加</button>
@@ -359,48 +328,28 @@ function restoreAddCustomApiButtons() {
     `;
 }
 
-// 更新选中的API列表
+/** 更新已选API状态，保存到localStorage并刷新数量 */
 function updateSelectedAPIs() {
-    // 获取所有内置API复选框
-    const builtInApiCheckboxes = document.querySelectorAll('#apiCheckboxes input:checked');
-    
-    // 获取选中的内置API
-    const builtInApis = Array.from(builtInApiCheckboxes).map(input => input.dataset.api);
-    
-    // 获取选中的自定义API
-    const customApiCheckboxes = document.querySelectorAll('#customApisList input:checked');
-    const customApiIndices = Array.from(customApiCheckboxes).map(input => 'custom_' + input.dataset.customIndex);
-    
-    // 合并内置和自定义API
-    selectedAPIs = [...builtInApis, ...customApiIndices];
-    
-    // 保存到localStorage
+    const builtIn = Array.from(document.querySelectorAll('#apiCheckboxes input:checked')).map(input=>input.dataset.api);
+    const custom  = Array.from(document.querySelectorAll('#customApisList input:checked')).map(input=>'custom_'+input.dataset.customIndex);
+    selectedAPIs = [...builtIn, ...custom];
     localStorage.setItem('selectedAPIs', JSON.stringify(selectedAPIs));
-    
-    // 更新显示选中的API数量
     updateSelectedApiCount();
 }
 
-// 更新选中的API数量显示
+/** 显示当前已选API数量 */
 function updateSelectedApiCount() {
-    const countEl = document.getElementById('selectedApiCount');
-    if (countEl) {
-        countEl.textContent = selectedAPIs.length;
-    }
+    const el = document.getElementById('selectedApiCount');
+    if (el) el.textContent = selectedAPIs.length;
 }
 
-// 全选或取消全选API
-function selectAllAPIs(selectAll = true, excludeAdult = false) {
+/** 批量选择API，一键全选/全取消/仅普通 */
+function selectAllAPIs(selectAll=true, excludeAdult=false) {
     const checkboxes = document.querySelectorAll('#apiCheckboxes input[type="checkbox"]');
-    
-    checkboxes.forEach(checkbox => {
-        if (excludeAdult && checkbox.classList.contains('api-adult')) {
-            checkbox.checked = false;
-        } else {
-            checkbox.checked = selectAll;
-        }
+    checkboxes.forEach(box=>{
+        if (excludeAdult && box.classList.contains('api-adult')) box.checked=false;
+        else box.checked = selectAll;
     });
-    
     updateSelectedAPIs();
     checkAdultAPIsSelected();
 }
@@ -408,12 +357,10 @@ function selectAllAPIs(selectAll = true, excludeAdult = false) {
 // 显示添加自定义API表单
 function showAddCustomApiForm() {
     const form = document.getElementById('addCustomApiForm');
-    if (form) {
-        form.classList.remove('hidden');
-    }
+    if (form) form.classList.remove('hidden');
 }
 
-// 取消添加自定义API - 修改函数来重用恢复按钮逻辑
+// 取消添加自定义API
 function cancelAddCustomApi() {
     const form = document.getElementById('addCustomApiForm');
     if (form) {
@@ -450,9 +397,7 @@ function addCustomApi() {
     }
     
     // 移除URL末尾的斜杠
-    if (url.endsWith('/')) {
-        url = url.slice(0, -1);
-    }
+    if (url.endsWith('/')) url = url.slice(0, -1);
     
     // 添加到自定义API列表 - 增加isAdult属性
     customAPIs.push({ name, url, isAdult });
@@ -492,8 +437,7 @@ function removeCustomApi(index) {
     localStorage.setItem('customAPIs', JSON.stringify(customAPIs));
     
     // 从选中列表中移除此API
-    const customApiId = 'custom_' + index;
-    selectedAPIs = selectedAPIs.filter(id => id !== customApiId);
+    selectedAPIs = selectedAPIs.filter(id => id !== 'custom_' + index);
     
     // 更新大于此索引的自定义API索引
     selectedAPIs = selectedAPIs.map(id => {
@@ -520,24 +464,22 @@ function removeCustomApi(index) {
     showToast('已移除自定义API: ' + apiName, 'info');
 }
 
-// 设置事件监听器
-function setupEventListeners() {
-    // 回车搜索
-    document.getElementById('searchInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            search();
-        }
-    });
+// ===================== 事件监听总线 ========================
 
-    // 点击外部关闭设置面板
-    document.addEventListener('click', function(e) {
+function setupEventListeners() {
+    // 输入框回车搜索
+    document.getElementById('searchInput')?.addEventListener('keypress', e => {
+        if (e.key === 'Enter') search();
+    });
+    // 点击外部关闭右侧设置
+    document.addEventListener('click', function(e){
         const panel = document.getElementById('settingsPanel');
-        const settingsButton = document.querySelector('button[onclick="toggleSettings(event)"]');
-        
-        if (!panel.contains(e.target) && !settingsButton.contains(e.target) && panel.classList.contains('show')) {
+        const btn   = document.querySelector('button[onclick="toggleSettings(event)"]');
+        if (!panel.contains(e.target) && !btn?.contains(e.target) && panel.classList.contains('show')){
             panel.classList.remove('show');
         }
     });
+
     
     // 黄色内容过滤开关事件绑定
     const yellowFilterToggle = document.getElementById('yellowFilterToggle');
@@ -567,49 +509,48 @@ function setupEventListeners() {
             localStorage.setItem(PLAYER_CONFIG.adFilteringStorage, e.target.checked);
         });
     }
+
+
 }
 
 // 重置搜索区域
 function resetSearchArea() {
-    // 清理搜索结果
     document.getElementById('results').innerHTML = '';
     document.getElementById('searchInput').value = '';
     
     // 恢复搜索区域的样式
-    document.getElementById('searchArea').classList.add('flex-1');
-    document.getElementById('searchArea').classList.remove('mb-8');
-    document.getElementById('resultsArea').classList.add('hidden');
+    const searchArea = document.getElementById('searchArea');
+    const resultsArea = document.getElementById('resultsArea');
+    if (searchArea) {
+        searchArea.classList.add('flex-1');
+        searchArea.classList.remove('mb-8');
+    }
+    if (resultsArea) resultsArea.classList.add('hidden');
     
     // 确保页脚正确显示，移除相对定位
     const footer = document.querySelector('.footer');
-    if (footer) {
-        footer.style.position = '';
-    }
+    if (footer) footer.style.position = '';
     
     // 如果有豆瓣功能，检查是否需要显示豆瓣推荐区域
-    if (typeof updateDoubanVisibility === 'function') {
-        updateDoubanVisibility();
-    }
+    if (typeof updateDoubanVisibility === 'function') updateDoubanVisibility();
 }
 
 // 获取自定义API信息
 function getCustomApiInfo(customApiIndex) {
     const index = parseInt(customApiIndex);
-    if (isNaN(index) || index < 0 || index >= customAPIs.length) {
-        return null;
-    }
-    return customAPIs[index];
+    return isNaN(index) || index < 0 || index >= customAPIs.length ? null : customAPIs[index];
 }
 
-// 搜索功能 - 修改为支持多选API
+// 搜索功能 - 支持多选API
 async function search() {
     // 密码保护校验
     if (window.isPasswordProtected && window.isPasswordVerified) {
         if (window.isPasswordProtected() && !window.isPasswordVerified()) {
-            showPasswordModal && showPasswordModal();
+            showPasswordModal?.();
             return;
         }
     }
+    
     const query = document.getElementById('searchInput').value.trim();
     
     if (!query) {
@@ -629,7 +570,6 @@ async function search() {
         saveSearchHistory(query);
         
         // 从所有选中的API源搜索
-        let allResults = [];
         const searchPromises = selectedAPIs.map(async (apiId) => {
             try {
                 let apiUrl, apiName;
@@ -645,40 +585,26 @@ async function search() {
                 } else {
                     // 内置API
                     if (!API_SITES[apiId]) return [];
+                    
                     apiUrl = API_SITES[apiId].api + API_CONFIG.search.path + encodeURIComponent(query);
                     apiName = API_SITES[apiId].name;
                 }
                 
-                // 添加超时处理
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
-                
-                const response = await fetch(PROXY_URL + encodeURIComponent(apiUrl), {
-                    headers: API_CONFIG.search.headers,
-                    signal: controller.signal
+                const result = await fetchWithTimeout(PROXY_URL + encodeURIComponent(apiUrl), {
+                    headers: API_CONFIG.search.headers
                 });
                 
-                clearTimeout(timeoutId);
-                
-                if (!response.ok) {
+                if (!result || !Array.isArray(result.list) || result.list.length === 0) {
                     return [];
                 }
                 
-                const data = await response.json();
-                
-                if (!data || !data.list || !Array.isArray(data.list) || data.list.length === 0) {
-                    return [];
-                }
-                
-                // 添加源信息到每个结果
-                const results = data.list.map(item => ({
+                // 添加源信息
+                return result.list.map(item => ({
                     ...item,
                     source_name: apiName,
                     source_code: apiId,
                     api_url: apiId.startsWith('custom_') ? getCustomApiInfo(apiId.replace('custom_', ''))?.url : undefined
                 }));
-                
-                return results;
             } catch (error) {
                 console.warn(`API ${apiId} 搜索失败:`, error);
                 return [];
@@ -689,33 +615,35 @@ async function search() {
         const resultsArray = await Promise.all(searchPromises);
         
         // 合并所有结果
+        let allResults = [];
         resultsArray.forEach(results => {
             if (Array.isArray(results) && results.length > 0) {
-                allResults = allResults.concat(results);
+                allResults = [...allResults, ...results];
             }
         });
         
         // 更新搜索结果计数
         const searchResultsCount = document.getElementById('searchResultsCount');
-        if (searchResultsCount) {
-            searchResultsCount.textContent = allResults.length;
-        }
+        if (searchResultsCount) searchResultsCount.textContent = allResults.length;
         
         // 显示结果区域，调整搜索区域
-        document.getElementById('searchArea').classList.remove('flex-1');
-        document.getElementById('searchArea').classList.add('mb-8');
-        document.getElementById('resultsArea').classList.remove('hidden');
+        const searchArea = document.getElementById('searchArea');
+        const resultsArea = document.getElementById('resultsArea');
+        if (searchArea) {
+            searchArea.classList.remove('flex-1');
+            searchArea.classList.add('mb-8');
+        }
+        if (resultsArea) resultsArea.classList.remove('hidden');
         
         // 隐藏豆瓣推荐区域（如果存在）
         const doubanArea = document.getElementById('doubanArea');
-        if (doubanArea) {
-            doubanArea.classList.add('hidden');
-        }
+        if (doubanArea) doubanArea.classList.add('hidden');
         
         const resultsDiv = document.getElementById('results');
+        if (!resultsDiv) return;
         
         // 如果没有结果
-        if (!allResults || allResults.length === 0) {
+        if (allResults.length === 0) {
             resultsDiv.innerHTML = `
                 <div class="col-span-full text-center py-16">
                     <svg class="mx-auto h-12 w-12 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -729,10 +657,12 @@ async function search() {
             hideLoading();
             return;
         }
-
-        // 处理搜索结果过滤：如果启用了黄色内容过滤，则过滤掉分类含有敏感内容的项目
+        
+        // 处理搜索结果过滤：如果启用了黄色内容过滤，过滤掉敏感分类
         const yellowFilterEnabled = localStorage.getItem('yellowFilterEnabled') === 'true';
         if (yellowFilterEnabled) {
+
+            // 用户要求将banned内容替换为数字123
             const banned = ['伦理片','福利','里番动漫','门事件','萝莉少女','制服诱惑','国产传媒','cosplay','黑丝诱惑','无码','日本无码','有码','日本有码','SWAG','网红主播', '色情片','同性片','福利视频','福利片'];
             allResults = allResults.filter(item => {
                 const typeName = item.type_name || '';
@@ -740,55 +670,41 @@ async function search() {
             });
         }
 
-        // 添加XSS保护，使用textContent和属性转义
-        resultsDiv.innerHTML = allResults.map(item => {
+        // 添加XSS保护
+        const safeResults = allResults.map(item => {
             const safeId = item.vod_id ? item.vod_id.toString().replace(/[^\w-]/g, '') : '';
             const safeName = (item.vod_name || '').toString()
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;');
-            const sourceInfo = item.source_name ? 
-                `<span class="bg-[#222] text-xs px-1.5 py-0.5 rounded-full">${item.source_name}</span>` : '';
-            const sourceCode = item.source_code || '';
             
-            // 添加API URL属性，用于详情获取
-            const apiUrlAttr = item.api_url ? 
-                `data-api-url="${item.api_url.replace(/"/g, '&quot;')}"` : '';
+            const sourceInfo = item.source_name 
+                ? `<span class="bg-[#222] text-xs px-1.5 py-0.5 rounded-full">${item.source_name}</span>` 
+                : '';
+            
+            const sourceCode = item.source_code || '';
             
             // 修改为水平卡片布局，图片在左侧，文本在右侧，并优化样式
             const hasCover = item.vod_pic && item.vod_pic.startsWith('http');
             
-            return `
-                <div class="card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full shadow-sm hover:shadow-md" 
-                     onclick="showDetails('${safeId}','${safeName}','${sourceCode}')" ${apiUrlAttr}>
-                    <div class="flex h-full">
-                        ${hasCover ? `
-                        <div class="relative flex-shrink-0 search-card-img-container">
-                            <img src="${item.vod_pic}" alt="${safeName}" 
-                                 class="h-full w-full object-cover transition-transform hover:scale-110" 
-                                 onerror="this.onerror=null; this.src='https://via.placeholder.com/300x450?text=无封面'; this.classList.add('object-contain');" 
-                                 loading="lazy">
-                            <div class="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent"></div>
-                        </div>` : ''}
-                        
-                        <div class="p-2 flex flex-col flex-grow">
-                            <div class="flex-grow">
-                                <h3 class="font-semibold mb-2 break-words line-clamp-2 ${hasCover ? '' : 'text-center'}" title="${safeName}">${safeName}</h3>
-                                
-                                <div class="flex flex-wrap ${hasCover ? '' : 'justify-center'} gap-1 mb-2">
-                                    ${(item.type_name || '').toString().replace(/</g, '&lt;') ? 
-                                      `<span class="text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-blue-500 text-blue-300">
-                                          ${(item.type_name || '').toString().replace(/</g, '&lt;')}
-                                      </span>` : ''}
-                                    ${(item.vod_year || '') ? 
-                                      `<span class="text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-purple-500 text-purple-300">
-                                          ${item.vod_year}
-                                      </span>` : ''}
-                                </div>
-                                <p class="text-gray-400 line-clamp-2 overflow-hidden ${hasCover ? '' : 'text-center'} mb-2">
-                                    ${(item.vod_remarks || '暂无介绍').toString().replace(/</g, '&lt;')}
-                                </p>
-                            </div>
+            return {
+                safeId,
+                safeName,
+                sourceInfo,
+                sourceCode,
+                hasCover,
+                html: `
+                    <div class="card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full" 
+                         onclick="showDetails('${safeId}','${safeName}','${sourceCode}')">
+                         <div class="flex h-full">
+                            ${hasCover ? `
+                            <div class="relative flex-shrink-0 search-card-img-container">
+                                <img src="${item.vod_pic}" alt="${safeName}" 
+                                     class="h-full w-full object-cover transition-transform hover:scale-110" 
+                                     onerror="this.onerror=null; this.src='https://via.placeholder.com/300x450?text=无封面'; this.classList.add('object-contain');"
+                                     loading="lazy">
+                                <div class="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent"></div>
+                            </div>` : ''}
                             
                             <div class="flex justify-between items-center mt-1 pt-1 border-t border-gray-800">
                                 ${sourceInfo ? `<div>${sourceInfo}</div>` : '<div></div>'}
@@ -805,9 +721,12 @@ async function search() {
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
-        }).join('');
+                `
+            };
+        });
+        
+        // 添加到DOM
+        resultsDiv.innerHTML = safeResults.map(result => result.html).join('');
     } catch (error) {
         console.error('搜索错误:', error);
         if (error.name === 'AbortError') {
@@ -820,21 +739,23 @@ async function search() {
     }
 }
 
-// 显示详情 - 修改为支持自定义API
+// 显示详情 - 支持自定义API
 async function showDetails(id, vod_name, sourceCode) {
     // 密码保护校验
     if (window.isPasswordProtected && window.isPasswordVerified) {
         if (window.isPasswordProtected() && !window.isPasswordVerified()) {
-            showPasswordModal && showPasswordModal();
+            showPasswordModal?.();
             return;
         }
     }
+    
     if (!id) {
         showToast('视频ID无效', 'error');
         return;
     }
     
     showLoading();
+    
     try {
         // 构建API参数
         let apiParams = '';
@@ -856,7 +777,6 @@ async function showDetails(id, vod_name, sourceCode) {
         }
         
         const response = await fetch('/api/detail?id=' + encodeURIComponent(id) + apiParams);
-        
         const data = await response.json();
         
         const modal = document.getElementById('modal');
@@ -864,10 +784,9 @@ async function showDetails(id, vod_name, sourceCode) {
         const modalContent = document.getElementById('modalContent');
         
         // 显示来源信息
-        const sourceName = data.videoInfo && data.videoInfo.source_name ? 
+        const sourceName = data.videoInfo?.source_name ? 
             ` <span class="text-sm font-normal text-gray-400">(${data.videoInfo.source_name})</span>` : '';
         
-        // 不对标题进行截断处理，允许完整显示
         modalTitle.innerHTML = `<span class="break-words">${vod_name || '未知视频'}</span>${sourceName}`;
         currentVideoTitle = vod_name || '未知视频';
         
@@ -875,18 +794,18 @@ async function showDetails(id, vod_name, sourceCode) {
             // 安全处理集数URL
             const safeEpisodes = data.episodes.map(url => {
                 try {
-                    // 确保URL是有效的并且是http或https开头
-                    return url && (url.startsWith('http://') || url.startsWith('https://'))
-                        ? url.replace(/"/g, '&quot;')
+                    return url && (url.startsWith('http://') || url.startsWith('https://')) 
+                        ? url.replace(/"/g, '&quot;') 
                         : '';
                 } catch (e) {
                     return '';
                 }
-            }).filter(url => url); // 过滤掉空URL
+            }).filter(url => url);
             
             // 保存当前视频的所有集数
             currentEpisodes = safeEpisodes;
             episodesReversed = false; // 默认正序
+            
             modalContent.innerHTML = `
                 <div class="flex justify-end mb-2">
                     <button onclick="toggleEpisodeOrder('${sourceCode}')" class="px-4 py-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center space-x-2">
@@ -918,22 +837,23 @@ function playVideo(url, vod_name, sourceCode, episodeIndex = 0) {
     // 密码保护校验
     if (window.isPasswordProtected && window.isPasswordVerified) {
         if (window.isPasswordProtected() && !window.isPasswordVerified()) {
-            showPasswordModal && showPasswordModal();
+            showPasswordModal?.();
             return;
         }
     }
+    
     if (!url) {
         showToast('无效的视频链接', 'error');
         return;
     }
     
-    // 获取当前视频来源名称（从模态框标题中提取）
+    // 获取当前视频来源名称
     let sourceName = '';
     const modalTitle = document.getElementById('modalTitle');
     if (modalTitle) {
         const sourceSpan = modalTitle.querySelector('span.text-gray-400');
         if (sourceSpan) {
-            // 提取括号内的来源名称, 例如从 "(黑木耳)" 提取 "黑木耳"
+            // 提取括号内的来源名称
             const sourceText = sourceSpan.textContent;
             const match = sourceText.match(/\(([^)]+)\)/);
             if (match && match[1]) {
@@ -949,28 +869,26 @@ function playVideo(url, vod_name, sourceCode, episodeIndex = 0) {
     localStorage.setItem('currentEpisodes', JSON.stringify(currentEpisodes));
     localStorage.setItem('episodesReversed', episodesReversed);
     
-    // 构建视频信息对象，使用标题作为唯一标识
-    const videoTitle = vod_name || currentVideoTitle;
+    // 构建视频信息对象
     const videoInfo = {
-        title: videoTitle,
+        title: currentVideoTitle,
         url: url,
         episodeIndex: episodeIndex,
         sourceName: sourceName,
         timestamp: Date.now(),
-        // 重要：将完整的剧集信息也添加到历史记录中
         episodes: currentEpisodes && currentEpisodes.length > 0 ? [...currentEpisodes] : []
     };
     
-    // 保存到观看历史，添加sourceName
+    // 保存到观看历史
     if (typeof addToViewingHistory === 'function') {
         addToViewingHistory(videoInfo);
     }
     
-    // 构建播放页面URL，传递必要参数
-    const playerUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(videoTitle)}&index=${episodeIndex}&source=${encodeURIComponent(sourceName)}&source_code=${encodeURIComponent(sourceCode)}`;
+    // 构建播放页面URL
+    const playerUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(currentVideoTitle)}&index=${episodeIndex}&source=${encodeURIComponent(sourceName)}&source_code=${encodeURIComponent(sourceCode)}`;
     
     // 在新标签页中打开播放页面
-    window.open(playerUrl, '_blank');
+    window.location.href = playerUrl;
 }
 
 // 播放上一集
@@ -1015,7 +933,8 @@ function renderEpisodes(vodName, sourceCode) {
 // 切换排序状态的函数
 function toggleEpisodeOrder(sourceCode) {
     episodesReversed = !episodesReversed;
-    // 重新渲染剧集区域，使用 currentVideoTitle 作为视频标题
+    
+    // 重新渲染剧集区域
     const episodesGrid = document.getElementById('episodesGrid');
     if (episodesGrid) {
         episodesGrid.innerHTML = renderEpisodes(currentVideoTitle, sourceCode);
@@ -1024,22 +943,10 @@ function toggleEpisodeOrder(sourceCode) {
     // 更新按钮文本和箭头方向
     const toggleBtn = document.querySelector(`button[onclick="toggleEpisodeOrder('${sourceCode}')"]`);
     if (toggleBtn) {
-        toggleBtn.querySelector('span').textContent = episodesReversed ? '正序排列' : '倒序排列';
-        const arrowIcon = toggleBtn.querySelector('svg');
-        if (arrowIcon) {
-            arrowIcon.style.transform = episodesReversed ? 'rotate(180deg)' : 'rotate(0deg)';
-        }
+        const span = toggleBtn.querySelector('span');
+        const svg = toggleBtn.querySelector('svg');
+        if (span) span.textContent = episodesReversed ? '正序排列' : '倒序排列';
+        if (svg) svg.style.transform = episodesReversed ? 'rotate(180deg)' : 'rotate(0deg)';
     }
 }
 
-// app.js 或路由文件中
-const authMiddleware = require('./middleware/auth');
-const config = require('./config');
-
-// 对所有请求启用鉴权（按需调整作用范围）
-if (config.auth.enabled) {
-  app.use(authMiddleware);
-}
-
-// 或者针对特定路由
-app.use('/api', authMiddleware);

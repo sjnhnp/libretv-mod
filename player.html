@@ -3,166 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LibreTV 播放器</title>
+    <title>播放器</title>
+    <!-- Tailwind: 若为js而非css仅作原样挂载，不做类型过滤 -->
     <script src="libs/tailwindcss.min.js"></script>
+    <!-- 主样式表 -->
     <link rel="stylesheet" href="css/styles.css">
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #0f1622;
-            color: white;
-        }
-        .player-container {
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        #player {
-            width: 100%;
-            height: 60vh; /* 视频播放器高度 */
-        }
-        .loading-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
-            z-index: 100;
-            flex-direction: column;
+        /* 基础布局与播放器相关样式 */
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #0f1622; color: #fff; }
+        .player-container { width: 100%; max-width: 1200px; margin: 0 auto; }
+
+        /* 播放器区域 */
+        #player { width: 100%; height: 60vh; }
+
+        /* 加载中与错误弹层 */
+        .loading-container, .error-container {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            display: flex; align-items: center; justify-content: center;
+            background-color: rgba(0,0,0,0.7); color: #fff; z-index: 100; flex-direction: column;
         }
         .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-            margin-bottom: 10px;
+            width: 50px; height: 50px; border: 4px solid rgba(255,255,255,.3);
+            border-radius: 50%; border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite; margin-bottom: 10px;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .error-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
-            z-index: 100;
-            flex-direction: column;
-            text-align: center;
-            padding: 1rem;
-        }
-        .error-icon {
-            font-size: 48px;
-            margin-bottom: 10px;
-        }
-        .episode-active {
-            background-color: #3b82f6 !important;
-            border-color: #60a5fa !important;
-        }
-        .episode-grid {
-            max-height: 30vh;
-            overflow-y: auto;
-            padding: 1rem 0;
-        }
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 46px;
-            height: 24px;
-        }
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #333;
-            transition: .4s;
-            border-radius: 24px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider {
-            background-color: #00ccff;
-        }
-        input:checked + .slider:before {
-            transform: translateX(22px);
-        }
-        /* 添加快捷键提示样式 */
+        @keyframes spin { to{transform:rotate(360deg);} }
+        .error-container { display: none; text-align: center; padding: 1rem; }
+        .error-icon { font-size: 48px; margin-bottom: 10px; }
+        .episode-active { background: #3b82f6 !important; border-color: #60a5fa !important; }
+        .episode-grid { max-height: 30vh; overflow-y: auto; padding: 1rem 0; }
+        /* 简易自定义开关样式 */
+        .switch { position: relative; display: inline-block; width: 46px; height: 24px;}
+        .switch input { opacity: 0; width: 0; height: 0;}
+        .slider { position: absolute; cursor: pointer; top:0; left:0; right:0; bottom:0; background:#333; border-radius: 24px; transition:.4s;}
+        .slider:before { position: absolute; content: ""; height:18px; width:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.4s;}
+        input:checked + .slider { background: #00ccff;}
+        input:checked + .slider:before { transform: translateX(22px);}
+        /* 快捷键提示样式 */
         .shortcut-hint {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 1rem 2rem;
-            border-radius: 0.5rem;
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.3s ease;
+            position: fixed; top:50%; left:50%; transform: translate(-50%,-50%);
+            background: rgba(0,0,0,.8); color: #fff; padding: 1rem 2rem;
+            border-radius: .5rem; font-size: 1.5rem; display:flex; align-items:center; gap:.5rem; z-index:1000;
+            opacity: 0; transition: opacity .3s;
         }
-        .shortcut-hint.show {
-            opacity: 1;
-        }
-
-        /* 原生全屏时，播放器容器铺满 */
+        .shortcut-hint.show { opacity:1; }
+        /* 全屏适配 */
         .player-container:-webkit-full-screen,
         .player-container:fullscreen {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            z-index: 10000;
-            background-color: #000;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10000; background: #000;
         }
         .player-container:-webkit-full-screen #player,
-        .player-container:fullscreen #player {
-            width: 100%; height: 100%;
-        }
+        .player-container:fullscreen #player { width:100%; height:100%; }
     </style>
 </head>
 <body>
+
+    <!-- 顶部区域：站点返回与标题 -->
     <header class="bg-[#111] p-4 flex items-center border-b border-[#333] gap-2 player-header">
         <div class="flex items-center min-w-0">
             <a href="index.html" class="flex items-center min-w-0">
                 <svg class="w-8 h-8 mr-2 text-[#00ccff] logo-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                 </svg>
-                <h1 class="text-xl font-bold gradient-text logo-text">LibreTV</h1>
+
+                <h1 class="text-xl font-bold gradient-text logo-text">X</h1>
             </a>
         </div>
         <h2 id="videoTitle" class="text-xl font-semibold flex-1 text-center overflow-x-auto whitespace-nowrap truncate custom-title-scroll"></h2>
@@ -175,7 +79,7 @@
         </a>
     </header>
 
-    <!-- 密码验证弹窗 -->
+    <!-- 密码验证弹窗（保持结构） -->
     <div id="passwordModal" class="fixed inset-0 bg-black/95 hidden items-center justify-center z-[65] transition-opacity duration-300">
         <div class="bg-[#111] p-8 rounded-lg w-11/12 max-w-md border border-[#333] max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center mb-6 flex-none">
@@ -194,7 +98,7 @@
     </div>
 
     <main class="container mx-auto px-4 py-4">
-        <!-- 视频播放区 -->
+        <!-- 视频播放区域 -->
         <div id="playerContainer" class="player-container">
             <div class="relative">
                 <div id="player"></div>
@@ -210,7 +114,7 @@
             </div>
         </div>
 
-        <!-- 集数导航 -->
+        <!-- 集数导航与控制 -->
         <div class="player-container">
             <div class="flex justify-between items-center my-4">
                 <button onclick="playPreviousEpisode()" id="prevButton" class="px-4 py-2 bg-[#222] hover:bg-[#333] border border-[#333] rounded-lg transition-colors">
@@ -229,7 +133,6 @@
             </div>
         </div>
 
-        <!-- 添加自动播放开关和排序按钮 -->
         <div class="player-container">
             <div class="flex justify-end items-center mb-4 gap-2">
                 <span class="text-gray-400 text-sm">自动连播</span>
@@ -254,18 +157,17 @@
             </div>
         </div>
 
-        <!-- 集数网格 -->
+        <!-- 集数网格区 -->
         <div class="player-container">
             <div class="episode-grid" id="episodesGrid">
                 <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2" id="episodesList">
-                    <!-- 集数将在这里动态加载 -->
                     <div class="col-span-full text-center text-gray-400 py-8">加载中...</div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- 添加快捷键提示元素 -->
+    <!-- 快捷键提示 -->
     <div class="shortcut-hint" id="shortcutHint">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="shortcutIcon">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
@@ -399,7 +301,7 @@
             }
 
             // 设置页面标题
-            document.title = currentVideoTitle + ' - LibreTV播放器';
+            document.title = currentVideoTitle + ' - 播放器';
             document.getElementById('videoTitle').textContent = currentVideoTitle;
 
             // 初始化播放器
@@ -575,18 +477,18 @@
                 preventClickToggle: false,       // 允许点击视频切换播放/暂停
                 airplay: true,                   // 在Safari中启用AirPlay功能
                 chromecast: true,                // 启用Chromecast投屏功能
-                contextmenu: [                   // 自定义右键菜单
-                    {
-                        text: '关于 LibreTV',
-                        link: 'https://github.com/bestzwei/LibreTV'
-                    },
-                    {
-                        text: '问题反馈',
-                        click: (player) => {
-                            window.open('https://github.com/bestzwei/LibreTV/issues', '_blank');
-                        }
-                    }
-                ],
+             //   contextmenu: [                   // 自定义右键菜单
+              //      {
+             //           text: '关于 LibreTV',
+           //             link: 'https://github.com/bestzwei/LibreTV'
+           //         },
+             //       {
+            //            text: '问题反馈',
+            //            click: (player) => {
+            //                window.open('https://github.com/bestzwei/LibreTV/issues', '_blank');
+            //            }
+           //         }
+           //     ],
                 video: {
                     url: videoUrl,
                     type: 'hls',
@@ -1392,7 +1294,7 @@
             playerElement.oncontextmenu =  () => {
                 // 检测是否为移动设备
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                
+              
                 // 只在移动设备上禁用右键
                 if (isMobile) {
                     document.querySelector(".dplayer-menu").style.display = "none";
@@ -1564,5 +1466,227 @@
                 : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d=\"M15 11V7a3 3 0 00-6 0v4m-3 4h12v6H6v-6z\"/>';
         }
     </script>
+
+<script>
+/**
+ * 集数预加载功能
+ * 依赖：window.PLAYER_CONFIG.currentEpisodes, currentEpisodeIndex
+ * config.js 已保证 window.PLAYER_CONFIG.preloadCount/enablePreloading/debugMode 是最终正确值
+ */
+(function(){
+    // 只需返回全局配置的预加载集数
+    function getPreloadCount() {
+        return window.PLAYER_CONFIG && typeof window.PLAYER_CONFIG.preloadCount !== 'undefined'
+            ? window.PLAYER_CONFIG.preloadCount
+            : 2;
+    }
+
+    // 简易的缓存支持判断
+    function supportsCacheStorage() {
+        return 'caches' in window && typeof window.caches.open === 'function';
+    }
+
+    // 网络慢时可跳过预加载
+    function isSlowNetwork() {
+        try {
+            const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            return conn && conn.effectiveType && /2g|slow-2g/i.test(conn.effectiveType);
+        } catch {
+            return false;
+        }
+    }
+
+    // 同步全局变量（用于外部调用兼容）
+    function syncGlobalEpisodes() {
+        if (typeof currentEpisodes !== "undefined") window.currentEpisodes = currentEpisodes;
+        if (typeof currentEpisodeIndex !== "undefined") window.currentEpisodeIndex = currentEpisodeIndex;
+    }
+
+    /**
+     * 预加载下N集的m3u8和前几个ts分片
+     */
+    async function preloadNextEpisodeParts(preloadCount) {
+        preloadCount = typeof preloadCount === 'undefined' ? getPreloadCount() : preloadCount;
+        if (!(window.PLAYER_CONFIG && PLAYER_CONFIG.enablePreloading)) return;
+        if (isSlowNetwork()) {
+            if (PLAYER_CONFIG.debugMode) console.log('[Preload] 跳过，网络过慢');
+            return;
+        }
+        syncGlobalEpisodes();
+        if (!window.currentEpisodes || !Array.isArray(window.currentEpisodes) || typeof window.currentEpisodeIndex !== 'number') {
+            if (PLAYER_CONFIG.debugMode) console.log('[Preload] 跳过，集数或索引缺失');
+            return;
+        }
+        const idx = window.currentEpisodeIndex, maxIndex = window.currentEpisodes.length - 1;
+       
+        // 修正日志输出，仅显示实际要预加载的下一集区域
+        const from = idx + 2;
+        const to = Math.min(idx + preloadCount, maxIndex) + 1;
+        if (PLAYER_CONFIG.debugMode) {
+            if (from <= to) {
+                console.log(`[Preload] 预加载第${from}${from!==to?`-${to}`:''}集`);
+            } else {
+                console.log(`[Preload] 无需预加载`);
+            }
+        }
+
+        for (let offset = 1; offset <= preloadCount; offset++) {
+            const episodeIdx = idx + offset;
+            if (episodeIdx > maxIndex) break;
+            const nextUrl = window.currentEpisodes[episodeIdx];
+            if (!nextUrl) {
+                if (PLAYER_CONFIG.debugMode) console.log(`[Preload] 略过空URL@${episodeIdx}`);
+                continue;
+            }
+            try {
+                const m3u8Resp = await fetch(nextUrl, { method: "GET" });
+                if (!m3u8Resp.ok) {
+                    if (PLAYER_CONFIG.debugMode) console.log(`[Preload] m3u8请求失败: ${nextUrl}`);
+                    continue;
+                }
+                const m3u8Text = await m3u8Resp.text();
+                const tsUrls = [];
+                const base = nextUrl.substring(0, nextUrl.lastIndexOf('/') + 1);
+                m3u8Text.split('\n').forEach(line => {
+                    const t = line.trim();
+                    if (t && !t.startsWith("#") && /\.ts(\?|$)/i.test(t) && tsUrls.length < 3) {
+                        tsUrls.push(/^https?:\/\//i.test(t) ? t : base + t);
+                    }
+                });
+                if (PLAYER_CONFIG.debugMode)
+                    console.log(`[Preload] m3u8分片: ts数=${tsUrls.length}, ep${episodeIdx+1} ${nextUrl}`);
+
+                for (const tsUrl of tsUrls) {
+                    if (supportsCacheStorage()) {
+                        try {
+                            const cache = await caches.open('libretv-preload1');
+                            const cachedResp = await cache.match(tsUrl);
+                            if (!cachedResp) {
+                                const resp = await fetch(tsUrl, { method: "GET" });
+                                if (resp.ok) {
+                                    await cache.put(tsUrl, resp.clone());
+                                    if (PLAYER_CONFIG.debugMode)
+                                        console.log(`[Preload] ts已缓存: ${tsUrl}`);
+                                } else if (PLAYER_CONFIG.debugMode) {
+                                    console.log(`[Preload] ts拉取失败: ${tsUrl}`);
+                                }
+                            } else {
+                                if (PLAYER_CONFIG.debugMode)
+                                    console.log(`[Preload] ts已存在缓存: ${tsUrl}`);
+                            }
+                        } catch (ex) {
+                            if (PLAYER_CONFIG.debugMode)
+                                console.log(`[Preload] ts缓存失败: ${tsUrl}, e=${ex}`);
+                        }
+                    } else {
+                        try {
+                            const resp = await fetch(tsUrl, { method: "GET" });
+                            if (PLAYER_CONFIG.debugMode) {
+                                if (resp.ok) console.log(`[Preload] ts已拉取(非缓存): ${tsUrl}`);
+                                else console.log(`[Preload] ts拉取失败: ${tsUrl}`);
+                            }
+                        } catch (ex) {
+                            if (PLAYER_CONFIG.debugMode)
+                                console.log(`[Preload] ts拉取异常(非缓存): ${tsUrl} e=${ex}`);
+                        }
+                    }
+                }
+            } catch (e) {
+                if (PLAYER_CONFIG.debugMode)
+                    console.log(`[Preload] m3u8拉取异常: ${nextUrl}; e=${e}`);
+            }
+        }
+    }
+    window.preloadNextEpisodeParts = preloadNextEpisodeParts;
+
+    /** 自动注册相关事件 **/
+    function safeRegisterPreloadEvents() {
+        syncGlobalEpisodes();
+        if (!(window.PLAYER_CONFIG && window.PLAYER_CONFIG.enablePreloading)) return;
+        if (!window.currentEpisodes || !Array.isArray(window.currentEpisodes) || typeof window.currentEpisodeIndex !== 'number') {
+            setTimeout(safeRegisterPreloadEvents, 300);
+            return;
+        }
+
+        // 下一集按钮悬停、触摸
+        const nextBtn = document.getElementById('nextButton');
+        if (nextBtn && !nextBtn._preloadHooked) {
+            nextBtn._preloadHooked = true;
+            nextBtn.addEventListener('mouseenter', () => preloadNextEpisodeParts(getPreloadCount()), {passive:true});
+            nextBtn.addEventListener('touchstart', () => preloadNextEpisodeParts(getPreloadCount()), {passive:true});
+        }
+        // 视频时间靠近结尾时自动预加载
+        function setupTimeupdatePreload() {
+            if (window.dp && window.dp.video && typeof window.dp.video.addEventListener === 'function' && !window.dp._preloadHooked) {
+                window.dp._preloadHooked = true;
+                window.dp.video.addEventListener('timeupdate', function() {
+                    if (window.dp.video.duration &&
+                        window.dp.video.currentTime > window.dp.video.duration - 12) {
+                        preloadNextEpisodeParts(getPreloadCount());
+                    }
+                });
+            }
+        }
+        if (window.dp && window.dp.video) setupTimeupdatePreload();
+        else {
+            let tries = 0;
+            const timer = setInterval(() => {
+                if (window.dp && window.dp.video) {
+                    setupTimeupdatePreload();
+                    clearInterval(timer);
+                }
+                if (++tries > 50) clearInterval(timer);
+            }, 200);
+        }
+        // 点任意集数列表，也可预加载
+        const episodesList = document.getElementById('episodesList');
+        if (episodesList && !episodesList._preloadHooked) {
+            episodesList._preloadHooked = true;
+            episodesList.addEventListener('click', function(e){
+                const btn = e.target.closest('button[id^="episode-"]');
+                if (btn) setTimeout(() => preloadNextEpisodeParts(getPreloadCount()), 200);
+            });
+        }
+    }
+
+    // 加入页面打开后自动预加载下一集
+    function triggerFirstPreload(tryCount) {
+        syncGlobalEpisodes();
+        if (
+            window.PLAYER_CONFIG && window.PLAYER_CONFIG.enablePreloading &&
+            window.currentEpisodes && Array.isArray(window.currentEpisodes) &&
+            typeof window.currentEpisodeIndex === 'number'
+        ) {
+            preloadNextEpisodeParts();
+            if (window.PLAYER_CONFIG.debugMode)
+                console.log('[Preload] 首次自动预加载已触发');
+        } else if ((tryCount||0) < 10) {
+            setTimeout(function() {
+                triggerFirstPreload((tryCount||0)+1);
+            }, 150);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+        syncGlobalEpisodes();
+        safeRegisterPreloadEvents();
+
+        // 首次自动预加载调用
+        triggerFirstPreload(0);
+
+        // 集数切换后也预加载
+        const origPlayEpisode = window.playEpisode;
+        if (typeof origPlayEpisode === 'function') {
+            window.playEpisode = function(idx){
+                if (typeof currentEpisodes !== "undefined") window.currentEpisodes = currentEpisodes;
+                if (typeof currentEpisodeIndex !== "undefined") window.currentEpisodeIndex = currentEpisodeIndex;
+                origPlayEpisode(idx);
+                setTimeout(()=>preloadNextEpisodeParts(getPreloadCount()), 250);
+            }
+        }
+    });
+})();
+</script>
+    
 </body>
 </html>
