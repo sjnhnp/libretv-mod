@@ -410,9 +410,14 @@ class EnhancedAdFilterLoader extends Hls.DefaultConfig.loader {
 
         for (const l of lines) {
             if (!inAd && this.cueStart.some(re => re.test(l))) { inAd = true; continue; }
-            if (inAd && this.cueEnd.some(re => re.test(l))) { inAd = false; continue; }
-            /* 保留 DISCONTINUITY，避免时间轴错位导致回退卡顿 */
-            if (!inAd) out.push(l);
+            if (inAd && this.cueEnd.some(re => re.test(l))) {
+                inAd = false;
+                out.push('#EXT-X-DISCONTINUITY');   // **只在这里补一条**
+                continue;
+            }
+
+            // 跳过原始 DISCONTINUITY，避免重复
+            if (!inAd && !/^#EXT-X-DISCONTINUITY/i.test(l)) out.push(l);
         }
         return out.join('\n');
     }

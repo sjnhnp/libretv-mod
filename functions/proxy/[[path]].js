@@ -315,9 +315,7 @@ const stripAdSections = (lines) => {
     if (!inAd && AD_START_PATTERNS.some((re) => re.test(l))) { inAd = true; continue; }
     if (inAd && AD_END_PATTERNS.some((re) => re.test(l))) {
       inAd = false;
-      /* 关键：在剥离段落处插入 DISCONTINUITY，防止回退 seek 卡住 */
-      out.push('#EXT-X-DISCONTINUITY');
-      continue;
+      continue;                   // 结束广告但 **不** 插入额外标记
     }
     if (!inAd) out.push(raw);
   }
