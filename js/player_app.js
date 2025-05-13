@@ -611,29 +611,46 @@ function addDPlayerEventListeners() {
            1. seeked 之后，给 1.2s 观察窗口；
            2. 若 currentTime 基本没动 → 认为卡住；
            3. 自动调用 hls.recoverMediaError() 并微调时间戳，强制唤醒。 */
-        if (seekStallChecker) { clearTimeout(seekStallChecker); }
+        if (seekStallChecker) clearTimeout(seekStallChecker);
         const startPos = dp.video.currentTime;
         seekStallChecker = setTimeout(() => {
             if (!dp || !dp.video) return;
             const advanced = dp.video.currentTime - startPos;
             // 若 <0.05 秒，则认为几乎没动，处于卡顿
             if (advanced < 0.05) {
-                if (debugMode) console.warn('[PlayerApp] Seek-stall detected → recoverMediaError()');
-                if (currentHls) {
-                    /* 1) 交替 swapAudioCodec() 重置 A/V 同步参考 */
-                    if (needSwapCodecNext && typeof currentHls.swapAudioCodec === 'function') {
-                        try { currentHls.swapAudioCodec(); } catch (e) { console.warn(e); }
-                    }
-                    needSwapCodecNext = !needSwapCodecNext;  // 每次交替
+                if (debugMode) console.warn('[PlayerApp] Seek-stall detected → full reload');
 
-                    /* 2) recoverMediaError() */
-                    if (typeof currentHls.recoverMediaError === 'function') {
-                        try { currentHls.recoverMediaError(); } catch (e) { console.error(e); }
+                if (currentHls) {
+                    /* 1️⃣ 先完全停止拉流 */
+                    try { currentHls.stopLoad(); } catch (e) { /* noop */ }
+
+                    /* 2️⃣ 清空 SourceBuffer，重置基线 */
+                    try {
+                        const media = dp.video;
+                        const sb = media && media.buffered && media.buffered.length ? media : null;
+                        if (sb && media.readyState >= 2) {
+                            // 遍历并删除全部已缓冲范围
+                            for (let i = sb.buffered.length - 1; i >= 0; i--) {
+                                media.removeSourceBuffer ?
+                                    media.removeSourceBuffer(sb.buffered[i]) : null;
+                            }
+                        }
+                    } catch (_) { /* 容错 */ }
+
+                    /* 3️⃣ swapAudioCodec()（偶发对 HE-AAC 必要） */
+                    if (typeof currentHls.swapAudioCodec === 'function') {
+                        try { currentHls.swapAudioCodec(); } catch (_) { }
                     }
+
+                    /* 4️⃣ 重新开始拉流，从当前位置 */
+                    try { currentHls.startLoad(startPos); } catch (_) { }
                 }
 
-                /* 3) 轻微快进 0.08s → 触发重新缓冲并强制 A/V 对齐 */
-                try { dp.video.currentTime = Math.min(dp.video.duration - 0.01, startPos + 0.08); } catch (_) { }
+                /* 5️⃣ 最后小步 seek(+0.05s) 触发新的 buffer 构建 */
+                try {
+                    const newPos = Math.min(dp.video.duration - 0.02, startPos + 0.05);
+                    dp.video.currentTime = newPos;
+                } catch (_) { }
             }
         }, 1200);   // 1.2 秒窗口
     });
