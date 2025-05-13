@@ -63,6 +63,29 @@ const AD_END_PATTERNS = [
 // ==== 全局开关：是否去广告（缺省 true，可被 config.js 覆盖） ====
 let adFilteringEnabled = window.PLAYER_CONFIG?.adFilteringEnabled ?? true;
 
+// ====== 1. 工具函数：判断是否为移动端 ======
+function isMobileDevice() {
+    // 只要 userAgent 里有以下关键字，就认为是手机/平板
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
+        .test(navigator.userAgent);
+}
+
+// ====== 2. 禁止移动端长按弹菜单的函数 ======
+function disableMobileContextMenu(containerEl) {
+    if (!containerEl) return;
+    containerEl.addEventListener('contextmenu', function (e) {
+        if (isMobileDevice()) {
+            // 在移动端阻止原生长按菜单
+            e.preventDefault();
+            // 可选：开启调试时打印日志
+            if (window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode) {
+                console.log('[PlayerApp] 已阻止移动端长按弹出右键菜单');
+            }
+        }
+        // 桌面端 e.preventDefault() 没执行，就保留默认右键行为
+    }, { passive: false });
+}
+
 // 辅助函数：格式化时间)
 function formatPlayerTime(seconds) {
     if (isNaN(seconds) || seconds < 0) return "00:00";
@@ -80,35 +103,35 @@ window.currentEpisodeIndex = 0;
  */
 function clearCurrentVideoAllEpisodeProgresses() {
     try {
-      // 取出本地所有已保存的视频进度数据
-      const all = JSON.parse(
-        localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || "{}"
-      );
-  
-      // 构造当前视频的唯一 ID（要和保存时用的一致）
-      // 注意：window.currentVideoTitle、currentVideoTitle、source_code 都要已准备好
-      const sourceCode = new URLSearchParams(window.location.search)
-        .get("source_code") || "unknown_source";
-      const videoId = `${currentVideoTitle}_${sourceCode}`;
-  
-      // 如果存在该视频的进度记录，则删除
-      if (all[videoId]) {
-        delete all[videoId];
-        localStorage.setItem(
-          VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY,
-          JSON.stringify(all)
+        // 取出本地所有已保存的视频进度数据
+        const all = JSON.parse(
+            localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || "{}"
         );
-  
-        // 给用户一个清除成功的提示
-        const msg = `已清除《${currentVideoTitle}》的所有集数播放进度`;
-        if (typeof showMessage === "function") showMessage(msg, "success");
-        else if (typeof showToast === "function") showToast(msg, "success");
-      }
+
+        // 构造当前视频的唯一 ID（要和保存时用的一致）
+        // 注意：window.currentVideoTitle、currentVideoTitle、source_code 都要已准备好
+        const sourceCode = new URLSearchParams(window.location.search)
+            .get("source_code") || "unknown_source";
+        const videoId = `${currentVideoTitle}_${sourceCode}`;
+
+        // 如果存在该视频的进度记录，则删除
+        if (all[videoId]) {
+            delete all[videoId];
+            localStorage.setItem(
+                VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY,
+                JSON.stringify(all)
+            );
+
+            // 给用户一个清除成功的提示
+            const msg = `已清除《${currentVideoTitle}》的所有集数播放进度`;
+            if (typeof showMessage === "function") showMessage(msg, "success");
+            else if (typeof showToast === "function") showToast(msg, "success");
+        }
     } catch (e) {
-      console.error("清除特定视频集数进度失败:", e);
+        console.error("清除特定视频集数进度失败:", e);
     }
-  }
-  
+}
+
 function setupRememberEpisodeProgressToggle() {
     const toggle = document.getElementById('remember-episode-progress-toggle');
     if (!toggle) return;
@@ -161,8 +184,8 @@ document.addEventListener('DOMContentLoaded', function () {
 document.addEventListener('passwordVerified', () => {
     const loadingEl = document.getElementById('loading');
     if (loadingEl) {
-        loadingEl.style.display = 'flex';              // 原来的
-        document.documentElement.classList.add('show-loading'); // ← 新增
+        loadingEl.style.display = 'flex';
+        document.documentElement.classList.add('show-loading');
     }
     initializePageContent();
 });
@@ -1315,44 +1338,6 @@ function playEpisode(index) { // index 是目标新集数的索引
     playerUrl.searchParams.set('af', adOn ? '1' : '0');
 
     window.location.href = playerUrl.toString();
-    // ③ 再更新索引等-old
-    /*    currentEpisodeIndex = index;
-       window.currentEpisodeIndex = index; // 也更新 window 上的
-   
-       const episodeUrl = currentEpisodes[index];
-       if (!episodeUrl) {
-           console.warn(`[PlayerApp] No URL found for episode index: ${index}`);
-           return;
-       }
-   
-       // ... (后续构建 playerUrl 和跳转的逻辑不变) ...
-       const playerUrl = new URL(window.location.origin + window.location.pathname);
-       playerUrl.searchParams.set('url', episodeUrl);
-       playerUrl.searchParams.set('title', currentVideoTitle);
-       playerUrl.searchParams.set('index', index.toString());
-       // adFilteringEnabled 是前面已经算好的全局变量
-       playerUrl.searchParams.set('af', adFilteringEnabled ? '1' : '0');
-   
-       if (Array.isArray(currentEpisodes) && currentEpisodes.length) {
-           playerUrl.searchParams.set('episodes', encodeURIComponent(JSON.stringify(currentEpisodes)));
-       }
-       const sourceCode = new URLSearchParams(window.location.search).get('source_code');
-       if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
-   
-       const currentReversedForPlayer = localStorage.getItem('episodesReversed') === 'true';
-       playerUrl.searchParams.set('reversed', currentReversedForPlayer.toString());
-       playerUrl.searchParams.delete('position');
-   
-       try {
-           localStorage.setItem('currentEpisodes', JSON.stringify(currentEpisodes));
-           localStorage.setItem('currentVideoTitle', currentVideoTitle);
-           // 当跳转到新页面后，新页面的 initializePageContent 会从 URL 读取 index，
-           // 所以这里保存 currentEpisodeIndex (新的index) 到 localStorage 主要是为了
-           // 在某些极端情况下（如URL参数丢失）提供一个回退，但不是主要的恢复机制。
-           localStorage.setItem('currentEpisodeIndex', index.toString());
-       } catch (_) { }
-   
-       window.location.href = playerUrl.toString(); */
 }
 
 // ===== 新增：用于整合移动端长按菜单阻止 和 长按倍速播放功能 =====
@@ -1361,36 +1346,21 @@ function playEpisode(index) { // index 是目标新集数的索引
  * 初始化播放器相关的自定义事件和控制
  */
 function initializePlayerCustomControls() {
-    if (!dp) {
-        console.warn("DPlayer 实例尚未初始化，无法设置自定义控件。");
+    // 1. 必须等 dp 实例 和 dp.container 都准备好
+    if (!window.dp || !dp.container) {
+        console.warn('[PlayerApp] DPlayer 尚未初始化，跳过自定义控件');
         return;
     }
 
-    // 优先使用 DPlayer 内部的 videoWrap 元素作为交互目标，如果不存在，则使用播放器的根容器
-    // dp.template.videoWrap 是 DPlayer 一个常见的内部结构，代表视频的直接包装层
-    // 如果您的 DPlayer 版本或结构不同，可能需要调整选择器，例如 dp.container.querySelector('.dplayer-video-wrap')
+    // 2. 禁止移动端长按弹出原生菜单
+    disableMobileContextMenu(dp.container);
+
+    // 3. 设置移动端长按倍速播放功能
     const playerInteractionElement = dp.template.videoWrap || dp.container;
-
-    // 1. 始终阻止移动端的原生上下文菜单 (长按菜单)
-    if (dp.container) {
-        dp.container.addEventListener('contextmenu', function (event) {
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            if (isMobile) { // 严格按用户需求：移动端不跳出
-                event.preventDefault();
-                if (window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode) {
-                    console.log('[PlayerApp] 原生上下文菜单已在移动端被阻止。');
-                }
-            }
-            // 对于桌面端，如果不调用 event.preventDefault()，则会显示DPlayer自己的或原生的右键菜单
-            // 如果桌面端也不希望显示任何右键菜单，可以去掉 isMobile 的判断，直接 event.preventDefault();
-        });
-    }
-
-    // 2. 设置移动端长按倍速播放功能
-    if (playerInteractionElement) { // 确保交互元素存在
+    if (playerInteractionElement) {
         setupMobileLongPressSpeedControl(playerInteractionElement);
     } else {
-        console.warn("未能找到播放器交互元素 (videoWrap 或 container)，无法设置长按倍速功能。");
+        console.warn('[PlayerApp] 未能找到播放器交互元素，无法设置长按倍速功能。');
     }
 }
 
