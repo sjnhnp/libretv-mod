@@ -27,17 +27,21 @@ const M3U8_CONTENT_TYPES = [
   "audio/mpegurl",
 ];
 
-// === 广告标记正则（可按需增删） ================================================
+// === 广告标记正则（2025 最新版） =========
 const AD_START_PATTERNS = [
   /^#EXT-X-CUE-OUT\b/i,
-  /^#EXT-X-SCTE35-OUT\b/i,
   /^#EXT-X-CUE-OUT-CONT\b/i,
-  /#EXT-X-DATERANGE[^]*CLASS="[^"]*ads?/i,
+  /^#EXT-X-SCTE35-OUT\b/i,
+  /^#EXT-X-SPLICEPOINT-SCTE35\b/i,         // 新增 splice 标记
+  /^#EXT-X-PLACEMENT-OPPORTUNITY\b/i,      // 海外 CDN 常见
+  /#EXT-X-DATERANGE[^]*CLASS="[^"]*(ads?|ad-break|promo|preroll|commercial)[^"]*"/i,
+  /^#EXTINF:[\d.]+,\s*(ad|promo|preroll)/i  // 以 EXTINF 文本标记
 ];
 const AD_END_PATTERNS = [
   /^#EXT-X-CUE-IN\b/i,
   /^#EXT-X-SCTE35-IN\b/i,
-  /#EXT-X-DATERANGE[^]*END-ON-NEXT=YES/i,
+  /^#EXT-X-PLACEMENT-OPPORTUNITY-END\b/i,
+  /#EXT-X-DATERANGE[^]*END-ON-NEXT=(YES|TRUE)/i,
 ];
 
 const COMMON_HEADERS = {
@@ -309,7 +313,12 @@ const stripAdSections = (lines) => {
   for (const raw of lines) {
     const l = raw.trim();
     if (!inAd && AD_START_PATTERNS.some((re) => re.test(l))) { inAd = true; continue; }
-    if (inAd && AD_END_PATTERNS.some((re) => re.test(l)))     { inAd = false; continue; }
+    if (inAd && AD_END_PATTERNS.some((re) => re.test(l))) {
+      inAd = false;
+      /* 关键：在剥离段落处插入 DISCONTINUITY，防止回退 seek 卡住 */
+      out.push('#EXT-X-DISCONTINUITY');
+      continue;
+    }
     if (!inAd) out.push(raw);
   }
   return out;

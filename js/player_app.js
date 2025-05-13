@@ -46,13 +46,15 @@ const VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY = 'videoSpecificEpisodeProgresses'; 
 
 // ==== 广告分片起止标记 ====
 const AD_START_PATTERNS = [
-    /#EXT-X-DATERANGE:.*CLASS="ad"/i,
+    /#EXT-X-DATERANGE:.*CLASS="(ad|promo|preroll)"/i,
     /#EXT-X-SCTE35-OUT/i,
-    /#EXTINF:[\d.]+,\s*ad/i,
+    /#EXT-X-PLACEMENT-OPPORTUNITY\b/i,
+    /#EXTINF:[\d.]+,\s*(ad|promo|preroll)/i,
 ];
 const AD_END_PATTERNS = [
     /#EXT-X-DATERANGE:.*CLASS="content"/i,
     /#EXT-X-SCTE35-IN/i,
+    /^#EXT-X-PLACEMENT-OPPORTUNITY-END\b/i,
     /#EXT-X-DISCONTINUITY/i,   // 保险：有些源用 DISCONTINUITY 结束广告
 ];
 
@@ -409,8 +411,8 @@ class EnhancedAdFilterLoader extends Hls.DefaultConfig.loader {
         for (const l of lines) {
             if (!inAd && this.cueStart.some(re => re.test(l))) { inAd = true; continue; }
             if (inAd && this.cueEnd.some(re => re.test(l))) { inAd = false; continue; }
-            if (!inAd && !/^#EXT-X-DISCONTINUITY/.test(l)) out.push(l);
-
+            /* 保留 DISCONTINUITY，避免时间轴错位导致回退卡顿 */
+            if (!inAd) out.push(l);
         }
         return out.join('\n');
     }
@@ -1235,7 +1237,7 @@ function playEpisode(index) { // index 是目标新集数的索引
     // ② 标记“正在跳转”，让 after-save 的 beforeunload 不再写库
     isNavigatingToEpisode = true;
 
-        // 更新 currentEpisodeIndex，再构造最简 URL 跳转
+    // 更新 currentEpisodeIndex，再构造最简 URL 跳转
     currentEpisodeIndex = index;
     window.currentEpisodeIndex = index;
 
@@ -1253,7 +1255,7 @@ function playEpisode(index) { // index 是目标新集数的索引
 
     // 来源标记
     const sourceCode = new URLSearchParams(window.location.search).get('source_code');
-   if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
+    if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
 
     // 带上广告过滤开关
     const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
@@ -1261,42 +1263,42 @@ function playEpisode(index) { // index 是目标新集数的索引
 
     window.location.href = playerUrl.toString();
     // ③ 再更新索引等-old
- /*    currentEpisodeIndex = index;
-    window.currentEpisodeIndex = index; // 也更新 window 上的
-
-    const episodeUrl = currentEpisodes[index];
-    if (!episodeUrl) {
-        console.warn(`[PlayerApp] No URL found for episode index: ${index}`);
-        return;
-    }
-
-    // ... (后续构建 playerUrl 和跳转的逻辑不变) ...
-    const playerUrl = new URL(window.location.origin + window.location.pathname);
-    playerUrl.searchParams.set('url', episodeUrl);
-    playerUrl.searchParams.set('title', currentVideoTitle);
-    playerUrl.searchParams.set('index', index.toString());
-    // adFilteringEnabled 是前面已经算好的全局变量
-    playerUrl.searchParams.set('af', adFilteringEnabled ? '1' : '0');
-
-    if (Array.isArray(currentEpisodes) && currentEpisodes.length) {
-        playerUrl.searchParams.set('episodes', encodeURIComponent(JSON.stringify(currentEpisodes)));
-    }
-    const sourceCode = new URLSearchParams(window.location.search).get('source_code');
-    if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
-
-    const currentReversedForPlayer = localStorage.getItem('episodesReversed') === 'true';
-    playerUrl.searchParams.set('reversed', currentReversedForPlayer.toString());
-    playerUrl.searchParams.delete('position');
-
-    try {
-        localStorage.setItem('currentEpisodes', JSON.stringify(currentEpisodes));
-        localStorage.setItem('currentVideoTitle', currentVideoTitle);
-        // 当跳转到新页面后，新页面的 initializePageContent 会从 URL 读取 index，
-        // 所以这里保存 currentEpisodeIndex (新的index) 到 localStorage 主要是为了
-        // 在某些极端情况下（如URL参数丢失）提供一个回退，但不是主要的恢复机制。
-        localStorage.setItem('currentEpisodeIndex', index.toString());
-    } catch (_) { }
-
-    window.location.href = playerUrl.toString(); */
+    /*    currentEpisodeIndex = index;
+       window.currentEpisodeIndex = index; // 也更新 window 上的
+   
+       const episodeUrl = currentEpisodes[index];
+       if (!episodeUrl) {
+           console.warn(`[PlayerApp] No URL found for episode index: ${index}`);
+           return;
+       }
+   
+       // ... (后续构建 playerUrl 和跳转的逻辑不变) ...
+       const playerUrl = new URL(window.location.origin + window.location.pathname);
+       playerUrl.searchParams.set('url', episodeUrl);
+       playerUrl.searchParams.set('title', currentVideoTitle);
+       playerUrl.searchParams.set('index', index.toString());
+       // adFilteringEnabled 是前面已经算好的全局变量
+       playerUrl.searchParams.set('af', adFilteringEnabled ? '1' : '0');
+   
+       if (Array.isArray(currentEpisodes) && currentEpisodes.length) {
+           playerUrl.searchParams.set('episodes', encodeURIComponent(JSON.stringify(currentEpisodes)));
+       }
+       const sourceCode = new URLSearchParams(window.location.search).get('source_code');
+       if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
+   
+       const currentReversedForPlayer = localStorage.getItem('episodesReversed') === 'true';
+       playerUrl.searchParams.set('reversed', currentReversedForPlayer.toString());
+       playerUrl.searchParams.delete('position');
+   
+       try {
+           localStorage.setItem('currentEpisodes', JSON.stringify(currentEpisodes));
+           localStorage.setItem('currentVideoTitle', currentVideoTitle);
+           // 当跳转到新页面后，新页面的 initializePageContent 会从 URL 读取 index，
+           // 所以这里保存 currentEpisodeIndex (新的index) 到 localStorage 主要是为了
+           // 在某些极端情况下（如URL参数丢失）提供一个回退，但不是主要的恢复机制。
+           localStorage.setItem('currentEpisodeIndex', index.toString());
+       } catch (_) { }
+   
+       window.location.href = playerUrl.toString(); */
 }
 window.playEpisode = playEpisode; // Expose globally
