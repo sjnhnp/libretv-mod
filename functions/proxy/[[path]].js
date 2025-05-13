@@ -36,12 +36,16 @@ const AD_START_PATTERNS = [
   /^#EXT-X-PLACEMENT-OPPORTUNITY\b/i,      // 海外 CDN 常见
   /#EXT-X-DATERANGE[^]*CLASS="[^"]*(ads?|ad-break|promo|preroll|commercial)[^"]*"/i,
   /^#EXTINF:[\d.]+,\s*(ad|promo|preroll)/i  // 以 EXTINF 文本标记
+  /^ #EXT - X - AD - START\b / i,               // 新：部分流会用此显式标记
+  /^#EXT-OATEXT:\d+:\s*ad\b/i,         // 新：OVP 平台常见
 ];
 const AD_END_PATTERNS = [
   /^#EXT-X-CUE-IN\b/i,
   /^#EXT-X-SCTE35-IN\b/i,
   /^#EXT-X-PLACEMENT-OPPORTUNITY-END\b/i,
   /#EXT-X-DATERANGE[^]*END-ON-NEXT=(YES|TRUE)/i,
+  /^#EXT-X-AD-END\b/i,                 // 新：部分流会用此显式标记
+  /#EXT-X-DISCONTINUITY/i,            // 保险：有些源只靠 DISCONTINUITY 收尾
 ];
 
 const COMMON_HEADERS = {
@@ -308,7 +312,7 @@ const fetchContentWithType = async (targetUrl, originalRequest, cfg, logFn) => {
  * 用「0 秒 GAP 片段」替换广告，保持序号连续。
  * — EXT-X-GAP 是 HLS 官方跳片规范，hls.js / Safari 均支持。
  */
-const GAP_SEGMENT = ["#EXT-X-GAP", "#EXTINF:0.000,", ""];
+const GAP_SEGMENT = ["#EXT-X-GAP", "#EXTINF:0.100,", ""];
 
 const stripAdSections = (lines) => {
   const out = [];
@@ -317,14 +321,19 @@ const stripAdSections = (lines) => {
     const raw = lines[i];
     const l = raw.trim();
 
-    /* 进入广告段 —— 写一次 GAP 占位 */
+    // 进入广告段：双重 DISCONTINUITY + GAP + 再一个 DISCONTINUITY，强化时基跳跃
     if (!inAd && AD_START_PATTERNS.some((re) => re.test(l))) {
       inAd = true;
-      out.push("#EXT-X-DISCONTINUITY", ...GAP_SEGMENT);
+      out.push(
+        "#EXT-X-DISCONTINUITY",
+        "#EXT-X-DISCONTINUITY",
+        ...GAP_SEGMENT,
+        "#EXT-X-DISCONTINUITY"
+      );
       continue;
     }
 
-    /* 离开广告段 —— 再写一个 DISCONTINUITY，保持时基对齐 */
+    // 离开广告段：再补一个 DISCONTINUITY 保证恢复时基对齐
     if (inAd && AD_END_PATTERNS.some((re) => re.test(l))) {
       inAd = false;
       out.push("#EXT-X-DISCONTINUITY");

@@ -608,8 +608,8 @@ function addDPlayerEventListeners() {
         setTimeout(() => { isUserSeeking = false; }, 200); // Reset seeking flag after a short delay
 
         /* －－－－－－－【去广告断点退播防卡】－－－－－－－
-           1. seeked 之后，给 1.2s 观察窗口；
-           2. 若 currentTime 基本没动 → 认为卡住；
+           1. seeked 后给 0.8s 观察窗口；
+           2. 若跨越 <0.1s 仍没动 → 认定卡住，立即重启
            3. 自动调用 hls.recoverMediaError() 并微调时间戳，强制唤醒。 */
         if (seekStallChecker) clearTimeout(seekStallChecker);
         const startPos = dp.video.currentTime;
@@ -617,7 +617,7 @@ function addDPlayerEventListeners() {
             if (!dp || !dp.video) return;
             const advanced = dp.video.currentTime - startPos;
             // 若 <0.05 秒，则认为几乎没动，处于卡顿
-            if (advanced < 0.05) {
+            if (advanced < 0.1) {
                 if (debugMode) console.warn('[PlayerApp] Seek-stall detected → full reload');
 
                 if (currentHls) {
@@ -652,7 +652,7 @@ function addDPlayerEventListeners() {
                     dp.video.currentTime = newPos;
                 } catch (_) { }
             }
-        }, 1200);   // 1.2 秒窗口
+        }, 800);  
     });
 
     dp.on('pause', function () {
