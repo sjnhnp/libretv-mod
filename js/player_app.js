@@ -75,6 +75,40 @@ function formatPlayerTime(seconds) {
 window.currentEpisodes = [];
 window.currentEpisodeIndex = 0;
 
+/**
+ * 关闭“记住进度”时，清除当前视频在 localStorage 中保存的所有集数进度
+ */
+function clearCurrentVideoAllEpisodeProgresses() {
+    try {
+      // 取出本地所有已保存的视频进度数据
+      const all = JSON.parse(
+        localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || "{}"
+      );
+  
+      // 构造当前视频的唯一 ID（要和保存时用的一致）
+      // 注意：window.currentVideoTitle、currentVideoTitle、source_code 都要已准备好
+      const sourceCode = new URLSearchParams(window.location.search)
+        .get("source_code") || "unknown_source";
+      const videoId = `${currentVideoTitle}_${sourceCode}`;
+  
+      // 如果存在该视频的进度记录，则删除
+      if (all[videoId]) {
+        delete all[videoId];
+        localStorage.setItem(
+          VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY,
+          JSON.stringify(all)
+        );
+  
+        // 给用户一个清除成功的提示
+        const msg = `已清除《${currentVideoTitle}》的所有集数播放进度`;
+        if (typeof showMessage === "function") showMessage(msg, "success");
+        else if (typeof showToast === "function") showToast(msg, "success");
+      }
+    } catch (e) {
+      console.error("清除特定视频集数进度失败:", e);
+    }
+  }
+  
 function setupRememberEpisodeProgressToggle() {
     const toggle = document.getElementById('remember-episode-progress-toggle');
     if (!toggle) return;
