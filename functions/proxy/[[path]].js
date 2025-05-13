@@ -32,12 +32,12 @@ const AD_START_PATTERNS = [
   /^#EXT-X-CUE-OUT\b/i,
   /^#EXT-X-CUE-OUT-CONT\b/i,
   /^#EXT-X-SCTE35-OUT\b/i,
-  /^#EXT-X-SPLICEPOINT-SCTE35\b/i,         // 新增 splice 标记
-  /^#EXT-X-PLACEMENT-OPPORTUNITY\b/i,      // 海外 CDN 常见
+  /^#EXT-X-SPLICEPOINT-SCTE35\b/i,
+  /^#EXT-X-PLACEMENT-OPPORTUNITY\b/i,
   /#EXT-X-DATERANGE[^]*CLASS="[^"]*(ads?|ad-break|promo|preroll|commercial)[^"]*"/i,
-  /^#EXTINF:[\d.]+,\s*(ad|promo|preroll)/i  // 以 EXTINF 文本标记
-  /^ #EXT - X - AD - START\b / i,               // 新：部分流会用此显式标记
-  /^#EXT-OATEXT:\d+:\s*ad\b/i,         // 新：OVP 平台常见
+  /^#EXTINF:[\d.]+,\s*(ad|promo|preroll)/i,
+  /^#EXT-X-AD-START\b/i,
+  /^#EXT-OATEXT:\d+:\s*ad\b/i
 ];
 const AD_END_PATTERNS = [
   /^#EXT-X-CUE-IN\b/i,
