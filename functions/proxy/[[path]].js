@@ -33,6 +33,7 @@ const AD_START_PATTERNS = [
   /^#EXT-X-CUE-OUT-CONT\b/i,
   /^#EXT-X-SCTE35-OUT\b/i,
   /^#EXT-X-SPLICEPOINT-SCTE35\b/i,
+  /^#EXT-X-ASSET\b/i, // 新增对 EXT-X-ASSET 广告标记的支持 (常用于标记广告资产)
   /^#EXT-X-PLACEMENT-OPPORTUNITY\b/i,
   /#EXT-X-DATERANGE[^]*CLASS="[^"]*(ads?|ad-break|promo|preroll|commercial)[^"]*"/i,
   /^#EXTINF:[\d.]+,\s*(ad|promo|preroll)/i,
@@ -43,7 +44,7 @@ const AD_END_PATTERNS = [
   /^#EXT-X-CUE-IN\b/i,
   /^#EXT-X-SCTE35-IN\b/i,
   /^#EXT-X-PLACEMENT-OPPORTUNITY-END\b/i,
-  /#EXT-X-DATERANGE[^]*END-ON-NEXT=(YES|TRUE)/i,
+  /#EXT-X-DATERANGE[^]*(END-ON-NEXT=(YES|TRUE)|SCTE35-IN\s*=\s*0x)/i,
   /^#EXT-X-AD-END\b/i,                 // 新：部分流会用此显式标记
   /#EXT-X-DISCONTINUITY/i,            // 保险：有些源只靠 DISCONTINUITY 收尾
 ];
