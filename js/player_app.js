@@ -536,6 +536,7 @@ function initPlayer(videoUrl, sourceCode) {
 
         // Add DPlayer event listeners
         addDPlayerEventListeners();
+        initializePlayerCustomControls(); 
 
     } catch (playerError) {
         console.error("Failed to initialize DPlayer:", playerError);
@@ -592,8 +593,6 @@ function addDPlayerEventListeners() {
         }
         showError('播放器遇到错误，请检查视频源');
     });
-
-    setupLongPressSpeedControl(); // Setup long press after dp is initialized
 
     dp.on('seeking', function () { if (debugMode) console.log("[PlayerApp] DPlayer event: seeking"); isUserSeeking = true; videoHasEnded = false; });
     dp.on('seeked', function () {
@@ -961,44 +960,6 @@ function showShortcutHint(text, direction) {
     shortcutHintTimeout = setTimeout(() => hintElement.classList.remove('show'), 1500);
 }
 
-function setupLongPressSpeedControl() {
-    if (!dp) return;
-    const playerVideoWrap = document.querySelector('#dplayer .dplayer-video-wrap');
-    if (!playerVideoWrap) { console.warn('DPlayer video wrap for long press not found.'); return; }
-
-    let longPressTimer = null;
-    let originalSpeed = 1.0;
-    let speedChangedByLongPress = false;
-
-    playerVideoWrap.addEventListener('touchstart', function (e) {
-        if (isScreenLocked || dp.video.paused) return; // Ignore if screen locked or paused
-        const touchX = e.touches[0].clientX;
-        const rect = playerVideoWrap.getBoundingClientRect();
-        // Only trigger if touch is on the right half of the player
-        if (touchX > rect.left + rect.width / 2) {
-            originalSpeed = dp.video.playbackRate;
-            longPressTimer = setTimeout(() => {
-                if (isScreenLocked || dp.video.paused) return; // Double check
-                dp.speed(2.0);
-                speedChangedByLongPress = true;
-                if (typeof showMessage === 'function') showMessage('播放速度: 2.0x', 'info', 1000);
-            }, 300); // 300ms delay for long press
-        }
-    }, { passive: true });
-
-    const endLongPress = function () {
-        if (longPressTimer) clearTimeout(longPressTimer);
-        longPressTimer = null;
-        if (speedChangedByLongPress) {
-            dp.speed(originalSpeed);
-            speedChangedByLongPress = false;
-            if (typeof showMessage === 'function') showMessage(`播放速度: ${originalSpeed.toFixed(1)}x`, 'info', 1000);
-        }
-    };
-    playerVideoWrap.addEventListener('touchend', endLongPress);
-    playerVideoWrap.addEventListener('touchcancel', endLongPress);
-}
-
 function showPositionRestoreHint(position) {
     if (typeof showMessage !== 'function' || !position || position < 10) return;
     const minutes = Math.floor(position / 60);
@@ -1286,7 +1247,6 @@ function getVideoId() {
     return `${encodeURIComponent(currentVideoTitle)}_${sourceCode}_ep${window.currentEpisodeIndex}`;
 }
 
-// js/player_app.js
 function playEpisode(index) { // index 是目标新集数的索引
     if (index < 0 || index >= currentEpisodes.length) {
         console.warn(`[PlayerApp] Invalid episode index: ${index}`);
@@ -1368,4 +1328,151 @@ function playEpisode(index) { // index 是目标新集数的索引
    
        window.location.href = playerUrl.toString(); */
 }
+
+// ===== 新增：用于整合移动端长按菜单阻止 和 长按倍速播放功能 =====
+
+/**
+ * 初始化播放器相关的自定义事件和控制
+ */
+function initializePlayerCustomControls() {
+    if (!dp) {
+        console.warn("DPlayer 实例尚未初始化，无法设置自定义控件。");
+        return;
+    }
+
+    // 优先使用 DPlayer 内部的 videoWrap 元素作为交互目标，如果不存在，则使用播放器的根容器
+    // dp.template.videoWrap 是 DPlayer 一个常见的内部结构，代表视频的直接包装层
+    // 如果您的 DPlayer 版本或结构不同，可能需要调整选择器，例如 dp.container.querySelector('.dplayer-video-wrap')
+    const playerInteractionElement = dp.template.videoWrap || dp.container;
+
+    // 1. 始终阻止移动端的原生上下文菜单 (长按菜单)
+    if (dp.container) {
+        dp.container.addEventListener('contextmenu', function(event) {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            if (isMobile) { // 严格按用户需求：移动端不跳出
+                 event.preventDefault();
+                 if (window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode) {
+                    console.log('[PlayerApp] 原生上下文菜单已在移动端被阻止。');
+                }
+            }
+            // 对于桌面端，如果不调用 event.preventDefault()，则会显示DPlayer自己的或原生的右键菜单
+            // 如果桌面端也不希望显示任何右键菜单，可以去掉 isMobile 的判断，直接 event.preventDefault();
+        });
+    }
+
+    // 2. 设置移动端长按倍速播放功能
+    if (playerInteractionElement) { // 确保交互元素存在
+        setupMobileLongPressSpeedControl(playerInteractionElement);
+    } else {
+        console.warn("未能找到播放器交互元素 (videoWrap 或 container)，无法设置长按倍速功能。");
+    }
+}
+
+/**
+ * 设置移动端长按倍速播放功能 (整合了您提供的逻辑)
+ * @param {HTMLElement} targetElement - 监听触摸事件的元素
+ */
+function setupMobileLongPressSpeedControl(targetElement) {
+    if (!dp || !dp.video || !targetElement) {
+        console.warn("setupMobileLongPressSpeedControl：DPlayer、视频元素或目标元素未准备好。");
+        return;
+    }
+
+    let longPressTimer = null;
+    let originalPlaybackRate = 1.0;
+    let isLongPressActive = false;
+
+    function showSpeedHint(speed) {
+        if (typeof showShortcutHint === 'function') {
+            // 确保 speed 是数字并格式化
+            const numericSpeed = parseFloat(speed);
+            if (!isNaN(numericSpeed)) {
+                showShortcutHint(`${numericSpeed.toFixed(1)}倍速`, ''); // 提示中不显示方向箭头
+            }
+        }
+    }
+
+    targetElement.addEventListener('touchstart', function(e) {
+        // isScreenLocked 是您player_app.js中已有的全局变量 
+        if (dp.video.paused || isScreenLocked) {
+            return;
+        }
+
+        // 只在触摸点在视频播放区域的右半部分时触发倍速播放
+        const touchX = e.touches[0].clientX;
+        const rect = targetElement.getBoundingClientRect();
+        if (touchX <= rect.left + rect.width / 2) {
+            return; // 在左半部分触摸，不触发倍速
+        }
+
+        originalPlaybackRate = dp.video.playbackRate;
+        isLongPressActive = false;
+
+        longPressTimer = setTimeout(() => {
+            if (dp.video.paused || isScreenLocked) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+                return;
+            }
+
+            dp.video.playbackRate = 2.0; // 您可以按需调整倍速，例如 2.0 或您之前写的 3.0
+            isLongPressActive = true;
+            showSpeedHint(dp.video.playbackRate);
+            // 在长按确认后阻止默认事件，对某些设备可能有用
+            // e.preventDefault(); // 如果发现长按时仍有其他行为（如文字选中），可以取消这行注释
+        }, 300); // 长按触发延时，例如 300ms 或 500ms
+    }, { passive: false }); // 设置为 false 允许在回调中调用 e.preventDefault()
+
+    const clearLongPress = (event) => {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+        if (isLongPressActive) {
+            dp.video.playbackRate = originalPlaybackRate;
+            showSpeedHint(originalPlaybackRate);
+            isLongPressActive = false;
+            if (event) { // touchend 会传入 event 对象
+                 event.preventDefault(); // 阻止长按后的单击事件（如播放/暂停）
+            }
+        }
+    };
+
+    targetElement.addEventListener('touchend', clearLongPress);
+    targetElement.addEventListener('touchcancel', clearLongPress);
+
+    targetElement.addEventListener('touchmove', function(e) {
+        if (isLongPressActive) {
+            // 如果长按倍速已激活，阻止页面滚动
+            e.preventDefault();
+        } else {
+            // 如果用户在等待长按计时器期间显著移动了手指，可以取消长按（可选，取决于您希望的灵敏度）
+            if (longPressTimer) {
+                //  简单的位移判断示例，您可以根据需要调整或移除
+                //  const initialTouch = e.target.startTouch || e.touches[0]; // 需要在 touchstart 保存初始触摸点
+                //  const dx = Math.abs(e.touches[0].clientX - initialTouch.clientX);
+                //  const dy = Math.abs(e.touches[0].clientY - initialTouch.clientY);
+                //  if (dx > 10 || dy > 10) { // 移动超过10像素则取消
+                     clearTimeout(longPressTimer);
+                     longPressTimer = null;
+                //  }
+            }
+        }
+    }, { passive: false }); // 设置为 false 允许 e.preventDefault()
+
+    dp.video.addEventListener('pause', function() {
+        if (isLongPressActive) {
+            dp.video.playbackRate = originalPlaybackRate;
+            isLongPressActive = false;
+            // 暂停时通常不需要提示恢复速度，但可以根据需求添加
+        }
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+    });
+}
+
+// =================== 函数定义结束 ===================
+
 window.playEpisode = playEpisode; // Expose globally
