@@ -36,6 +36,7 @@ let currentHls = null;
 let autoplayEnabled = true;
 let isUserSeeking = false;
 let videoHasEnded = false;
+let seekStallChecker = null;     // ★ 新增：seek 卡顿检测计时器
 let userClickedPosition = null;
 let shortcutHintTimeout = null;
 let progressSaveInterval = null;
@@ -72,9 +73,6 @@ function formatPlayerTime(seconds) {
 // 将需要在 player_preload.js 中访问的变量挂载到 window
 window.currentEpisodes = [];
 window.currentEpisodeIndex = 0;
-// window.PLAYER_CONFIG is set by config.js
-// window.dp will be set after DPlayer initialization
-// window.playEpisode will be set later
 
 function setupRememberEpisodeProgressToggle() {
     const toggle = document.getElementById('remember-episode-progress-toggle');
@@ -94,10 +92,6 @@ function setupRememberEpisodeProgressToggle() {
         const isChecked = event.target.checked;
         localStorage.setItem(REMEMBER_EPISODE_PROGRESS_ENABLED_KEY, isChecked.toString());
         if (typeof showToast === 'function') { // 确保 showToast 可用
-            // showToast 是在 player.html 中通过 ui.js 引入的，应该全局可用
-            // 但 new6.txt 的 player_app.js (source:936-937) 中有检查 showToast/showMessage 的逻辑
-            // 并且 (source:1122-1128) 定义了本地的 showMessage
-            // 为简单起见，优先使用已有的 window.showMessage (如果它符合toast样式) 或 window.showToast
             const messageText = isChecked ? '将记住本视频的各集播放进度' : '将不再记住本视频的各集播放进度';
             if (typeof window.showMessage === 'function') { // 优先用 player_app.js 内的
                 window.showMessage(messageText, 'info');
@@ -611,6 +605,26 @@ function addDPlayerEventListeners() {
             }
         }
         setTimeout(() => { isUserSeeking = false; }, 200); // Reset seeking flag after a short delay
+
+        /* －－－－－－－【去广告断点退播防卡】－－－－－－－
+           1. seeked 之后，给 1.2s 观察窗口；
+           2. 若 currentTime 基本没动 → 认为卡住；
+           3. 自动调用 hls.recoverMediaError() 并微调时间戳，强制唤醒。 */
+        if (seekStallChecker) { clearTimeout(seekStallChecker); }
+        const startPos = dp.video.currentTime;
+        seekStallChecker = setTimeout(() => {
+            if (!dp || !dp.video) return;
+            const advanced = dp.video.currentTime - startPos;
+            // 若 <0.05 秒，则认为几乎没动，处于卡顿
+            if (advanced < 0.05) {
+                if (debugMode) console.warn('[PlayerApp] Seek-stall detected → recoverMediaError()');
+                if (currentHls && typeof currentHls.recoverMediaError === 'function') {
+                    try { currentHls.recoverMediaError(); } catch (e) { console.error(e); }
+                }
+                // 轻微回撤 0.1s，触发重新抓片
+                try { dp.video.currentTime = Math.max(0, startPos - 0.1); } catch (_) { }
+            }
+        }, 1200);   // 1.2 秒窗口
     });
 
     dp.on('pause', function () {
@@ -618,7 +632,6 @@ function addDPlayerEventListeners() {
         saveVideoSpecificProgress();
         // saveCurrentProgress(); // 可选：如果也想在暂停时更新观看历史列表
     });
-
 
     dp.on('ended', function () {
         videoHasEnded = true;
