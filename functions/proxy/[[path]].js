@@ -304,20 +304,61 @@ const fetchContentWithType = async (targetUrl, originalRequest, cfg, logFn) => {
   return { content, contentType, responseHeaders: resp.headers, isStream: false };
 };
 
-// -----------------------------------------------------------------------------
-//  广告剥离工具
+// -----------------------------------------------------------------------------+
+//  广告 → GAP 处理
+//    ‑  保留 EXTINF 时长、序号不变
+//    ‑  把 URI 行替换成 “#EXT-X-GAP”              (hls.js 会自动跳过)         +
 // -----------------------------------------------------------------------------
 const stripAdSections = (lines) => {
   const out = [];
   let inAd = false;
+  let pendingInf = null;          // 暂存广告段里的 EXTINF 行
+
+  const pushGap = () => {
+    // 按规范：保留一个极小时长(0.001s) + GAP 标记
+    out.push('#EXTINF:0.001,');
+    out.push('#EXT-X-GAP');
+  };
+
   for (const raw of lines) {
     const l = raw.trim();
-    if (!inAd && AD_START_PATTERNS.some((re) => re.test(l))) { inAd = true; continue; }
+
+    /* ——进入广告—— */
+    if (!inAd && AD_START_PATTERNS.some((re) => re.test(l))) {
+      inAd = true;
+      continue;
+    }
+
+    /* ——退出广告—— */
     if (inAd && AD_END_PATTERNS.some((re) => re.test(l))) {
       inAd = false;
-      continue;                   // 结束广告但 **不** 插入额外标记
+      out.push('#EXT-X-DISCONTINUITY');
+      continue;
     }
-    if (!inAd) out.push(raw);
+
+    if (!inAd) {                 // 正常内容原样输出
+      out.push(raw);
+      continue;
+    }
+
+    /* === 下面都是广告区内部 === */
+    if (l.startsWith('#EXTINF')) {    // 记住时长，准备产出 GAP
+      pendingInf = l;
+      continue;
+    }
+
+    if (!l.startsWith('#')) {         // URI 行
+      // 输出一个 GAP 片段（使用前面缓存的 EXTINF 时长；如无则 0.001s）
+      if (pendingInf) {
+        out.push(pendingInf.replace(/^#EXTINF:[^,]*/, '#EXTINF:0.001'));
+        pendingInf = null;
+      } else {
+        pushGap();
+      }
+      continue;
+    }
+
+    /* 其它 # 开头的标签（如 KEY、MAP）在广告段里直接丢弃 */
   }
   return out;
 };
