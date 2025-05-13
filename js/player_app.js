@@ -536,7 +536,7 @@ function initPlayer(videoUrl, sourceCode) {
 
         // Add DPlayer event listeners
         addDPlayerEventListeners();
-        initializePlayerCustomControls(); 
+        initializePlayerCustomControls();
 
     } catch (playerError) {
         console.error("Failed to initialize DPlayer:", playerError);
@@ -672,69 +672,69 @@ function addDPlayerEventListeners() {
                 }, 700); // 增加等待 `recoverMediaError` 生效的时间
             }
         }
-        , 1500);
-});
+            , 1500);
+    });
 
-dp.on('pause', function () {
-    if (debugMode) console.log("[PlayerApp] DPlayer event: pause");
-    saveVideoSpecificProgress();
-    // saveCurrentProgress(); // 可选：如果也想在暂停时更新观看历史列表
-});
+    dp.on('pause', function () {
+        if (debugMode) console.log("[PlayerApp] DPlayer event: pause");
+        saveVideoSpecificProgress();
+        // saveCurrentProgress(); // 可选：如果也想在暂停时更新观看历史列表
+    });
 
-dp.on('ended', function () {
-    videoHasEnded = true;
-    saveCurrentProgress(); // Ensure final progress is saved
-    clearVideoProgress(); // Clear progress for *this specific video*
-    if (!autoplayEnabled) return;       // 用户关掉了自动连播
-    const nextIdx = currentEpisodeIndex + 1;   // 始终 +1（上一条回复已统一）
-    if (nextIdx < currentEpisodes.length) {
-        setTimeout(() => {
-            // 再确认一下确实播完 & 没有人在拖动
-            if (videoHasEnded && !isUserSeeking) playEpisode(nextIdx);
-        }, 1000);                       // 1 s 延迟，防误触
-    } else {
-        if (debugMode) console.log('[PlayerApp] 已到最后一集，自动连播停止');
-    }
-});
-
-dp.on('timeupdate', function () {
-    // Reset ended flag if user seeks back after video ended
-    if (dp.video && dp.video.duration > 0) {
-        if (isUserSeeking && dp.video.currentTime > dp.video.duration * 0.95) {
-            videoHasEnded = false;
+    dp.on('ended', function () {
+        videoHasEnded = true;
+        saveCurrentProgress(); // Ensure final progress is saved
+        clearVideoProgress(); // Clear progress for *this specific video*
+        if (!autoplayEnabled) return;       // 用户关掉了自动连播
+        const nextIdx = currentEpisodeIndex + 1;   // 始终 +1（上一条回复已统一）
+        if (nextIdx < currentEpisodes.length) {
+            setTimeout(() => {
+                // 再确认一下确实播完 & 没有人在拖动
+                if (videoHasEnded && !isUserSeeking) playEpisode(nextIdx);
+            }, 1000);                       // 1 s 延迟，防误触
+        } else {
+            if (debugMode) console.log('[PlayerApp] 已到最后一集，自动连播停止');
         }
-    }
-    // Throttled progress save is handled by initializePageContent interval now
-});
+    });
 
-// Add a timeout to show a message if loading takes too long
-setTimeout(function () {
-    // Check if player exists, video exists, AND readyState suggests still loading/not enough data
-    if (dp && dp.video && dp.video.readyState < 3 && !videoHasEnded) {
-        const loadingEl = document.getElementById('loading');
-        if (loadingEl && loadingEl.style.display !== 'none') {
-            loadingEl.innerHTML = `<div class="loading-spinner"></div><div>视频加载时间较长...</div><div style="font-size: 12px; color: #aaa; margin-top: 10px;">如长时间无响应，请尝试其他视频源或刷新</div>`;
-            if (debugMode) console.warn("[PlayerApp] Loading timeout reached.");
+    dp.on('timeupdate', function () {
+        // Reset ended flag if user seeks back after video ended
+        if (dp.video && dp.video.duration > 0) {
+            if (isUserSeeking && dp.video.currentTime > dp.video.duration * 0.95) {
+                videoHasEnded = false;
+            }
         }
-    }
-}, 15000); // Increased timeout to 15s
+        // Throttled progress save is handled by initializePageContent interval now
+    });
 
-// Native fullscreen integration for DPlayer's *internal* button actions
-(function () {
-    const dplayerElement = document.getElementById('dplayer');
-    if (dplayerElement) {
-        dp.on('fullscreen', () => { // DPlayer *enters* its fullscreen mode
-            if (document.fullscreenElement || document.webkitFullscreenElement) return; // Already native FS
-            if (dplayerElement.requestFullscreen) dplayerElement.requestFullscreen().catch(err => console.warn('DPlayer internal FS to native failed:', err));
-            else if (dplayerElement.webkitRequestFullscreen) dplayerElement.webkitRequestFullscreen().catch(err => console.warn('DPlayer internal FS to native failed (webkit):', err));
-        });
-        dp.on('fullscreen_cancel', () => { // DPlayer *exits* its fullscreen mode
-            if (!document.fullscreenElement && !document.webkitFullscreenElement) return; // Not in native FS
-            if (document.exitFullscreen) document.exitFullscreen().catch(err => console.warn('DPlayer internal exit FS from native failed:', err));
-            else if (document.webkitExitFullscreen) document.webkitExitFullscreen().catch(err => console.warn('DPlayer internal exit FS from native failed (webkit):', err));
-        });
-    }
-})();
+    // Add a timeout to show a message if loading takes too long
+    setTimeout(function () {
+        // Check if player exists, video exists, AND readyState suggests still loading/not enough data
+        if (dp && dp.video && dp.video.readyState < 3 && !videoHasEnded) {
+            const loadingEl = document.getElementById('loading');
+            if (loadingEl && loadingEl.style.display !== 'none') {
+                loadingEl.innerHTML = `<div class="loading-spinner"></div><div>视频加载时间较长...</div><div style="font-size: 12px; color: #aaa; margin-top: 10px;">如长时间无响应，请尝试其他视频源或刷新</div>`;
+                if (debugMode) console.warn("[PlayerApp] Loading timeout reached.");
+            }
+        }
+    }, 15000); // Increased timeout to 15s
+
+    // Native fullscreen integration for DPlayer's *internal* button actions
+    (function () {
+        const dplayerElement = document.getElementById('dplayer');
+        if (dplayerElement) {
+            dp.on('fullscreen', () => { // DPlayer *enters* its fullscreen mode
+                if (document.fullscreenElement || document.webkitFullscreenElement) return; // Already native FS
+                if (dplayerElement.requestFullscreen) dplayerElement.requestFullscreen().catch(err => console.warn('DPlayer internal FS to native failed:', err));
+                else if (dplayerElement.webkitRequestFullscreen) dplayerElement.webkitRequestFullscreen().catch(err => console.warn('DPlayer internal FS to native failed (webkit):', err));
+            });
+            dp.on('fullscreen_cancel', () => { // DPlayer *exits* its fullscreen mode
+                if (!document.fullscreenElement && !document.webkitFullscreenElement) return; // Not in native FS
+                if (document.exitFullscreen) document.exitFullscreen().catch(err => console.warn('DPlayer internal exit FS from native failed:', err));
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen().catch(err => console.warn('DPlayer internal exit FS from native failed (webkit):', err));
+            });
+        }
+    })();
 }
 
 function setupPlayerControls() {
@@ -1347,11 +1347,11 @@ function initializePlayerCustomControls() {
 
     // 1. 始终阻止移动端的原生上下文菜单 (长按菜单)
     if (dp.container) {
-        dp.container.addEventListener('contextmenu', function(event) {
+        dp.container.addEventListener('contextmenu', function (event) {
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             if (isMobile) { // 严格按用户需求：移动端不跳出
-                 event.preventDefault();
-                 if (window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode) {
+                event.preventDefault();
+                if (window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode) {
                     console.log('[PlayerApp] 原生上下文菜单已在移动端被阻止。');
                 }
             }
@@ -1392,7 +1392,7 @@ function setupMobileLongPressSpeedControl(targetElement) {
         }
     }
 
-    targetElement.addEventListener('touchstart', function(e) {
+    targetElement.addEventListener('touchstart', function (e) {
         // isScreenLocked 是您player_app.js中已有的全局变量 
         if (dp.video.paused || isScreenLocked) {
             return;
@@ -1433,7 +1433,7 @@ function setupMobileLongPressSpeedControl(targetElement) {
             showSpeedHint(originalPlaybackRate);
             isLongPressActive = false;
             if (event) { // touchend 会传入 event 对象
-                 event.preventDefault(); // 阻止长按后的单击事件（如播放/暂停）
+                event.preventDefault(); // 阻止长按后的单击事件（如播放/暂停）
             }
         }
     };
@@ -1441,7 +1441,7 @@ function setupMobileLongPressSpeedControl(targetElement) {
     targetElement.addEventListener('touchend', clearLongPress);
     targetElement.addEventListener('touchcancel', clearLongPress);
 
-    targetElement.addEventListener('touchmove', function(e) {
+    targetElement.addEventListener('touchmove', function (e) {
         if (isLongPressActive) {
             // 如果长按倍速已激活，阻止页面滚动
             e.preventDefault();
@@ -1453,14 +1453,14 @@ function setupMobileLongPressSpeedControl(targetElement) {
                 //  const dx = Math.abs(e.touches[0].clientX - initialTouch.clientX);
                 //  const dy = Math.abs(e.touches[0].clientY - initialTouch.clientY);
                 //  if (dx > 10 || dy > 10) { // 移动超过10像素则取消
-                     clearTimeout(longPressTimer);
-                     longPressTimer = null;
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
                 //  }
             }
         }
     }, { passive: false }); // 设置为 false 允许 e.preventDefault()
 
-    dp.video.addEventListener('pause', function() {
+    dp.video.addEventListener('pause', function () {
         if (isLongPressActive) {
             dp.video.playbackRate = originalPlaybackRate;
             isLongPressActive = false;
