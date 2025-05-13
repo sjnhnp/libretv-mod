@@ -37,6 +37,7 @@ let autoplayEnabled = true;
 let isUserSeeking = false;
 let videoHasEnded = false;
 let seekStallChecker = null;     // ★ 新增：seek 卡顿检测计时器
+let needSwapCodecNext = false;        // ★ 轮流 swapAudioCodec() 的标志
 let userClickedPosition = null;
 let shortcutHintTimeout = null;
 let progressSaveInterval = null;
@@ -618,11 +619,21 @@ function addDPlayerEventListeners() {
             // 若 <0.05 秒，则认为几乎没动，处于卡顿
             if (advanced < 0.05) {
                 if (debugMode) console.warn('[PlayerApp] Seek-stall detected → recoverMediaError()');
-                if (currentHls && typeof currentHls.recoverMediaError === 'function') {
-                    try { currentHls.recoverMediaError(); } catch (e) { console.error(e); }
+                if (currentHls) {
+                    /* 1) 交替 swapAudioCodec() 重置 A/V 同步参考 */
+                    if (needSwapCodecNext && typeof currentHls.swapAudioCodec === 'function') {
+                        try { currentHls.swapAudioCodec(); } catch (e) { console.warn(e); }
+                    }
+                    needSwapCodecNext = !needSwapCodecNext;  // 每次交替
+
+                    /* 2) recoverMediaError() */
+                    if (typeof currentHls.recoverMediaError === 'function') {
+                        try { currentHls.recoverMediaError(); } catch (e) { console.error(e); }
+                    }
                 }
-                // 轻微回撤 0.1s，触发重新抓片
-                try { dp.video.currentTime = Math.max(0, startPos - 0.1); } catch (_) { }
+
+                /* 3) 轻微快进 0.08s → 触发重新缓冲并强制 A/V 对齐 */
+                try { dp.video.currentTime = Math.min(dp.video.duration - 0.01, startPos + 0.08); } catch (_) { }
             }
         }, 1200);   // 1.2 秒窗口
     });
