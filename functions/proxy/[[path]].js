@@ -304,40 +304,40 @@ const fetchContentWithType = async (targetUrl, originalRequest, cfg, logFn) => {
   return { content, contentType, responseHeaders: resp.headers, isStream: false };
 };
 
-+/**
-+ * 用「0 秒 GAP 片段」替换广告，保持序号连续。
-+ * — EXT-X-GAP 是 HLS 官方跳片规范，hls.js / Safari 均支持。
-+ */
-+const GAP_SEGMENT = ["#EXT-X-GAP", "#EXTINF:0.000,", ""];
-+
-+const stripAdSections = (lines) => {
-+  const out = [];
-+  let inAd = false;
-+  for (let i = 0; i < lines.length; i++) {
-+    const raw = lines[i];
-+    const l = raw.trim();
-+
-+    /* 进入广告段 —— 写一次 GAP 占位 */
-+    if (!inAd && AD_START_PATTERNS.some((re) => re.test(l))) {
-+      inAd = true;
-+      out.push("#EXT-X-DISCONTINUITY", ...GAP_SEGMENT);
-+      continue;
-+    }
-+
-+    /* 离开广告段 —— 再写一个 DISCONTINUITY，保持时基对齐 */
-+    if (inAd && AD_END_PATTERNS.some((re) => re.test(l))) {
-+      inAd = false;
-+      out.push("#EXT-X-DISCONTINUITY");
-+      continue;
-+    }
-+
-+    /* 广告内部其余行直接丢弃 */
-+    if (inAd) continue;
-+
-+    out.push(raw);
-+  }
-+  return out;
-+};
+/**
+ * 用「0 秒 GAP 片段」替换广告，保持序号连续。
+ * — EXT-X-GAP 是 HLS 官方跳片规范，hls.js / Safari 均支持。
+ */
+const GAP_SEGMENT = ["#EXT-X-GAP", "#EXTINF:0.000,", ""];
+
+const stripAdSections = (lines) => {
+  const out = [];
+  let inAd = false;
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const l = raw.trim();
+
+    /* 进入广告段 —— 写一次 GAP 占位 */
+    if (!inAd && AD_START_PATTERNS.some((re) => re.test(l))) {
+      inAd = true;
+      out.push("#EXT-X-DISCONTINUITY", ...GAP_SEGMENT);
+      continue;
+    }
+
+    /* 离开广告段 —— 再写一个 DISCONTINUITY，保持时基对齐 */
+    if (inAd && AD_END_PATTERNS.some((re) => re.test(l))) {
+      inAd = false;
+      out.push("#EXT-X-DISCONTINUITY");
+      continue;
+    }
+
+    /* 广告内部其余行直接丢弃 */
+    if (inAd) continue;
+
+    out.push(raw);
+  }
+  return out;
+};
 
 
 // -----------------------------------------------------------------------------
