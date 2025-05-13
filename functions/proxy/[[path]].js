@@ -304,64 +304,41 @@ const fetchContentWithType = async (targetUrl, originalRequest, cfg, logFn) => {
   return { content, contentType, responseHeaders: resp.headers, isStream: false };
 };
 
-// -----------------------------------------------------------------------------+
-//  广告 → GAP 处理
-//    ‑  保留 EXTINF 时长、序号不变
-//    ‑  把 URI 行替换成 “#EXT-X-GAP”              (hls.js 会自动跳过)         +
-// -----------------------------------------------------------------------------
-const stripAdSections = (lines) => {
-  const out = [];
-  let inAd = false;
-  let pendingInf = null;          // 暂存广告段里的 EXTINF 行
++/**
++ * 用「0 秒 GAP 片段」替换广告，保持序号连续。
++ * — EXT-X-GAP 是 HLS 官方跳片规范，hls.js / Safari 均支持。
++ */
++const GAP_SEGMENT = ["#EXT-X-GAP", "#EXTINF:0.000,", ""];
++
++const stripAdSections = (lines) => {
++  const out = [];
++  let inAd = false;
++  for (let i = 0; i < lines.length; i++) {
++    const raw = lines[i];
++    const l = raw.trim();
++
++    /* 进入广告段 —— 写一次 GAP 占位 */
++    if (!inAd && AD_START_PATTERNS.some((re) => re.test(l))) {
++      inAd = true;
++      out.push("#EXT-X-DISCONTINUITY", ...GAP_SEGMENT);
++      continue;
++    }
++
++    /* 离开广告段 —— 再写一个 DISCONTINUITY，保持时基对齐 */
++    if (inAd && AD_END_PATTERNS.some((re) => re.test(l))) {
++      inAd = false;
++      out.push("#EXT-X-DISCONTINUITY");
++      continue;
++    }
++
++    /* 广告内部其余行直接丢弃 */
++    if (inAd) continue;
++
++    out.push(raw);
++  }
++  return out;
++};
 
-  const pushGap = () => {
-    // 按规范：保留一个极小时长(0.001s) + GAP 标记
-    out.push('#EXTINF:0.001,');
-    out.push('#EXT-X-GAP');
-  };
-
-  for (const raw of lines) {
-    const l = raw.trim();
-
-    /* ——进入广告—— */
-    if (!inAd && AD_START_PATTERNS.some((re) => re.test(l))) {
-      inAd = true;
-      continue;
-    }
-
-    /* ——退出广告—— */
-    if (inAd && AD_END_PATTERNS.some((re) => re.test(l))) {
-      inAd = false;
-      out.push('#EXT-X-DISCONTINUITY');
-      continue;
-    }
-
-    if (!inAd) {                 // 正常内容原样输出
-      out.push(raw);
-      continue;
-    }
-
-    /* === 下面都是广告区内部 === */
-    if (l.startsWith('#EXTINF')) {    // 记住时长，准备产出 GAP
-      pendingInf = l;
-      continue;
-    }
-
-    if (!l.startsWith('#')) {         // URI 行
-      // 输出一个 GAP 片段（使用前面缓存的 EXTINF 时长；如无则 0.001s）
-      if (pendingInf) {
-        out.push(pendingInf.replace(/^#EXTINF:[^,]*/, '#EXTINF:0.001'));
-        pendingInf = null;
-      } else {
-        pushGap();
-      }
-      continue;
-    }
-
-    /* 其它 # 开头的标签（如 KEY、MAP）在广告段里直接丢弃 */
-  }
-  return out;
-};
 
 // -----------------------------------------------------------------------------
 //  M3U8 处理
