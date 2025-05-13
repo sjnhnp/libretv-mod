@@ -143,14 +143,6 @@ function setupRememberEpisodeProgressToggle() {
 
 // In js/player_app.js
 document.addEventListener('DOMContentLoaded', function () {
-    //  console.log('[PlayerApp Debug] DOMContentLoaded event fired.');
-    const testGridElement = document.getElementById('episode-grid');
-    if (testGridElement) {
-        //   console.log('[PlayerApp Debug] SUCCESS: episode-grid was FOUND immediately on DOMContentLoaded.');
-    } else {
-        console.error('[PlayerApp Debug] FAILURE: episode-grid was NOT FOUND immediately on DOMContentLoaded.');
-    }
-
     // Existing password check and initializePageContent call
     if (typeof window.isPasswordVerified === 'function' && typeof window.isPasswordProtected === 'function') {
         if (window.isPasswordProtected() && !window.isPasswordVerified()) {
