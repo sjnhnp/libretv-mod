@@ -12,8 +12,10 @@
 /* 播放器区域 - #player 是 Vidstack Player 的注入目标 */
 #player {
   width: 100%;
-  height: 60vh; /* 由 player.html 设置，保持一致 */
-  background-color: #000; /* 播放器区域背景色 */
+  height: 60vh;
+  /* 由 player.html 设置，保持一致 */
+  background-color: #000;
+  /* 播放器区域背景色 */
 }
 
 /* 加载和错误覆盖层 */
@@ -29,7 +31,8 @@
   justify-content: center;
   background-color: rgba(0, 0, 0, 0.7);
   color: #fff;
-  z-index: 100; /* 确保在播放器内容之上，但在自定义控件之下（如果需要） */
+  z-index: 100;
+  /* 确保在播放器内容之上，但在自定义控件之下（如果需要） */
   flex-direction: column;
 }
 
@@ -50,7 +53,8 @@
 }
 
 .error-container {
-  display: none; /* JS 控制显示 */
+  display: none;
+  /* JS 控制显示 */
   text-align: center;
   padding: 1rem;
 }
@@ -134,10 +138,12 @@ input:checked+.slider:before {
   display: flex;
   align-items: center;
   gap: .5rem;
-  z-index: 10000; /* 确保在最上层 */
+  z-index: 10000;
+  /* 确保在最上层 */
   opacity: 0;
   transition: opacity .3s;
-  pointer-events: none; /* 提示不应阻挡交互 */
+  pointer-events: none;
+  /* 提示不应阻挡交互 */
 }
 
 .shortcut-hint.show {
@@ -147,13 +153,18 @@ input:checked+.slider:before {
 /* 全屏适配 (针对播放器容器) */
 .player-container:-webkit-full-screen,
 .player-container:fullscreen {
-  position: fixed; /* 在HTML全屏API下，通常已是fixed */
+  position: fixed;
+  /* 在HTML全屏API下，通常已是fixed */
   top: 0;
   left: 0;
-  width: 100vw !important;  /* 确保覆盖其他样式 */
-  height: 100vh !important; /* 确保覆盖其他样式 */
-  max-width: none !important; /* 移除最大宽度限制 */
-  z-index: 2147483647; /* 最高z-index */
+  width: 100vw !important;
+  /* 确保覆盖其他样式 */
+  height: 100vh !important;
+  /* 确保覆盖其他样式 */
+  max-width: none !important;
+  /* 移除最大宽度限制 */
+  z-index: 2147483647;
+  /* 最高z-index */
   background: #000;
 }
 
@@ -167,15 +178,37 @@ input:checked+.slider:before {
 /* 当 .player-container.player-locked 时，禁用其内部 Vidstack 布局/控件的交互 */
 .player-container.player-locked media-video-layout,
 .player-container.player-locked media-controls,
-.player-container.player-locked media-gesture { /* 禁用 Vidstack 的内置手势 */
+.player-container.player-locked media-gesture {
+  /* 禁用 Vidstack 的内置手势 */
   pointer-events: none !important;
-  /* opacity: 0.7; */ /* 可选：视觉上表示控件已禁用 */
+  opacity: 0.6 !important;
+  /* 可选：视觉上调暗以表示禁用 */
 }
 
-/* 确保锁屏按钮本身在锁屏时仍然可以交互 */
-.player-locked #lock-button {
+/* 2. 禁用自定义的外部控件条中的元素 */
+/* 针对 .player-control-bar 内的所有可交互元素 (按钮、开关等) */
+.player-container.player-locked .player-control-bar button,
+.player-container.player-locked .player-control-bar .switch {
+  /* switch 是label，其内部input被CSS隐藏，slider响应点击 */
+  pointer-events: none !important;
+  opacity: 0.5 !important;
+  /* 视觉上调暗以表示禁用 */
+}
+
+/* 3. 禁用“上一集”/“下一集”按钮 (如果它们不在 .player-control-bar 内) */
+.player-container.player-locked #prev-episode,
+.player-container.player-locked #next-episode {
+  pointer-events: none !important;
+  opacity: 0.5 !important;
+}
+
+/* 修改为更具体的选择器，并确保透明度恢复 */
+.player-container.player-locked #lock-button {
   pointer-events: auto !important;
-  z-index: 2147483647; /* 确保在最顶层，高于其他可能覆盖的元素 */
+  opacity: 1 !important;
+  /* 恢复正常透明度 */
+  z-index: 2147483647;
+  /* 确保在最顶层，高于可能的覆盖层 */
 }
 
 
@@ -255,18 +288,21 @@ input:checked+.slider:before {
 }
 
 #episodes-count {
-  display: none !important; /* 使用 !important 确保覆盖 Tailwind 的类 (如果也用了Tailwind) */
+  display: none !important;
+  /* 使用 !important 确保覆盖 Tailwind 的类 (如果也用了Tailwind) */
 }
 
 /* 优雅记住进度弹窗样式 - 放在 player_styles.css 最后 */
 #progress-restore-modal {
   position: fixed;
-  z-index: 22002; /* 比锁屏按钮z-index高，确保可见 */
+  z-index: 22002;
+  /* 比锁屏按钮z-index高，确保可见 */
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  display: none; /* 默认隐藏 */
+  display: none;
+  /* 默认隐藏 */
   align-items: center;
   justify-content: center;
   background: rgba(16, 22, 34, 0.45);
@@ -296,12 +332,14 @@ input:checked+.slider:before {
   padding: 2rem 2.5rem 1.3rem 2.5rem;
   min-width: 330px;
   max-width: 92vw;
-  color: var(--text-color, #e6f2ff); /* 允许通过CSS变量覆盖 */
+  color: var(--text-color, #e6f2ff);
+  /* 允许通过CSS变量覆盖 */
   font-size: 1.07rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  border: 1.5px solid var(--primary-color, #00ccff); /* 允许通过CSS变量覆盖 */
+  border: 1.5px solid var(--primary-color, #00ccff);
+  /* 允许通过CSS变量覆盖 */
   backdrop-filter: blur(7px) saturate(1.35);
 }
 
