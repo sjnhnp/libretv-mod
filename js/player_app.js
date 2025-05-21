@@ -419,6 +419,7 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
         showError("Vidstack 播放器创建失败 (请检查控制台)"); // More specific message
         vsPlayer = null; // Ensure vsPlayer is null on error
         if (loadingElGlobal) loadingElGlobal.style.display = 'none';
+        playerReady = false;
     }
 }
 
@@ -1564,12 +1565,15 @@ function doEpisodeSwitch(index, url, seekToPosition) {
 window.playEpisode = playEpisode; // Expose globally
 
 document.addEventListener('keydown', function (e) {
-        if (e.key.toLowerCase() === 'f' && playerReady && window.vsPlayer && typeof window.vsPlayer.fullscreen === 'object') {
-            if (window.vsPlayer.fullscreen.active) {
+        if (e.key.toLowerCase() === 'f' && playerReady && window.vsPlayer) {
+                const fullscreen = window.vsPlayer.fullscreen;
+                if (typeof fullscreen === 'object' && 'active' in fullscreen) {
+    if (window.vsPlayer.fullscreen.active) {
                 window.vsPlayer.exitFullscreen();
             } else {
                 window.vsPlayer.enterFullscreen();
             }
             e.preventDefault();
+        }
         }
     });
