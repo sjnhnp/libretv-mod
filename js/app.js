@@ -1,9 +1,10 @@
-/**
- * 全局可用：window.proxifyUrl(...)
- */
 function proxifyUrl(rawUrl, adOn = true) {
     if (!rawUrl || rawUrl.startsWith('/proxy/')) return rawUrl;
-    return `${PROXY_URL}${encodeURIComponent(rawUrl)}${adOn ? '' : '?af=0'}`;
+    const prefix =
+        typeof PROXY_URL === 'string'
+            ? PROXY_URL
+            : (window.PROXY_URL || '/proxy/');
+    return `${prefix}${encodeURIComponent(rawUrl)}${adOn ? '' : '?af=0'}`;
 }
 window.proxifyUrl = proxifyUrl;
 
@@ -112,9 +113,13 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '') {
         addToViewingHistory(videoInfoForHistory);
     }
 
-    const playerUrl = new URL('player.html', window.location.origin);
+    // ① 先读取广告过滤配置
+    const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
+    // ② 再包装真实地址
     const proxiedUrl = proxifyUrl(url, adOn);
-    playerUrl.searchParams.set('url', encodeURIComponent(proxiedUrl));
+
+    const playerUrl = new URL('player.html', window.location.origin);
+    playerUrl.searchParams.set('url', proxiedUrl);   // 已编码，勿再 encodeURIComponent
     playerUrl.searchParams.set('title', title);
     playerUrl.searchParams.set('index', episodeIndex.toString());
 
@@ -122,7 +127,6 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '') {
     if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
 
     // ← 在这一行后面，插入广告过滤开关参数
-    const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
     playerUrl.searchParams.set('af', adOn ? '1' : '0');
 
     window.location.href = playerUrl.toString();
@@ -182,9 +186,13 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0, sourceN
     AppState.set('currentVideoTitle', title);
 
     // Build player URL with position parameter
-    const playerUrl = new URL('player.html', window.location.origin);
+    // ① 先取广告过滤状态
+    const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
+    // ② 包装播放地址
     const proxiedUrl = proxifyUrl(url, adOn);
-    playerUrl.searchParams.set('url', encodeURIComponent(proxiedUrl));
+
+    const playerUrl = new URL('player.html', window.location.origin);
+    playerUrl.searchParams.set('url', proxiedUrl);
     playerUrl.searchParams.set('title', title);
     playerUrl.searchParams.set('index', episodeIndex.toString()); // Changed from 'ep' to 'index' to match player.html expectations
     if (sourceName) playerUrl.searchParams.set('source', sourceName);
@@ -192,7 +200,6 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0, sourceN
     if (playbackPosition > 0) playerUrl.searchParams.set('position', playbackPosition.toString());
 
     // 去广告开关有关
-    const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
     playerUrl.searchParams.set('af', adOn ? '1' : '0');
     // Navigate to player page
     window.location.href = playerUrl.toString();
