@@ -280,9 +280,7 @@ class EnhancedAdFilterLoader extends Hls.DefaultConfig.loader {
     }
 
     load(ctx, cfg, cbs) {
-        // Check adFilteringEnabled from global scope or PLAYER_CONFIG
-        const currentAdFilteringEnabled = window.PLAYER_CONFIG?.adFilteringEnabled !== false;
-        if ((ctx.type === 'manifest' || ctx.type === 'level') && currentAdFilteringEnabled) {
+        if (ctx.type === 'manifest' || ctx.type === 'level') {
             const orig = cbs.onSuccess;
             cbs.onSuccess = (r, s, ctx2) => { r.data = EnhancedAdFilterLoader.strip(r.data); orig(r, s, ctx2); };
         }
