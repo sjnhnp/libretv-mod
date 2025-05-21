@@ -542,16 +542,7 @@ function initializePageContent() {
                         nextSeekPosition = positionToResume;
                     } else {
                         nextSeekPosition = 0;
-                    } else {
-                        episodeUrlForPlayer = currentEpisodes[indexForPlayer];
-                        const newUrl = new URL(window.location.href);
-                        newUrl.searchParams.set('url', episodeUrlForPlayer);
-                        newUrl.searchParams.set('index', indexForPlayer.toString());
-                        newUrl.searchParams.delete('position');
-                        window.history.replaceState({}, '', newUrl.toString());
-                        if (typeof showMessage === 'function') showMessage('已从头开始播放', 'info');
-                        else if (typeof showToast === 'function') showToast('已从头开始播放', 'info');
-                    }
+                    } 
                     /* 统一在原流程里继续向下执行，不再递归 */
                     // 更新 URL（保留/删除 position）
                     const newUrl = new URL(window.location.href);
