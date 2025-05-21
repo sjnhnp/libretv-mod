@@ -1150,7 +1150,7 @@ function toggleLockScreen() {
 
     if (playerContainer) {
         playerContainer.classList.toggle('player-locked', isScreenLocked);
-        +  }
+          }
 
     // Vidstack Player specific lock/unlock logic
     if (vsPlayer && typeof vsPlayer.el !== 'undefined') {
