@@ -3,6 +3,9 @@
 // 从Vidstack官方CDN导入必要的模块
 import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player';
 
+// 在模块最顶部，立刻监听键盘
+document.addEventListener('keydown', handleKeyboardShortcuts, true);
+
 /* ------------------------------------------------------------------
    代理辅助：把真实地址包进 /proxy/ 并附带广告过滤开关 (?af=0/1)
    ------------------------------------------------------------------ */
@@ -969,32 +972,34 @@ function showError(message) {
 // setupProgressBarPreciseClicks, handleProgressBarClick, handleProgressBarTouch are removed.
 
 function handleKeyboardShortcuts(e) {
+      // 输入框/文本域中不要拦截
+  const active = document.activeElement?.tagName;
+  if (active === 'INPUT' || active === 'TEXTAREA') return;
         if (!vsPlayer) return;
-        if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
     if (isScreenLocked) return;
     let actionText = '', direction = '';
     const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
 
-    switch (e.key) {
-        case 'ArrowLeft':
+    switch (e.key.toLowerCase()) {
+        case 'arrowleft':
             if (e.altKey) { if (typeof window.playPreviousEpisode === 'function') window.playPreviousEpisode(); actionText = '上一集'; direction = 'left'; }
             else { vsPlayer.currentTime = Math.max(0, vsPlayer.currentTime - 5); actionText = '后退 5s'; direction = 'left'; }
             e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
-        case 'ArrowRight':
+        case 'arrowright':
             if (e.altKey) { if (typeof window.playNextEpisode === 'function') window.playNextEpisode(); actionText = '下一集'; direction = 'right'; }
             else { vsPlayer.currentTime = Math.min(vsPlayer.duration, vsPlayer.currentTime + 5); actionText = '前进 5s'; direction = 'right'; }
             e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
-        case 'PageUp': if (typeof window.playPreviousEpisode === 'function') window.playPreviousEpisode(); actionText = '上一集'; direction = 'left'; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
-        case 'PageDown': if (typeof window.playNextEpisode === 'function') window.playNextEpisode(); actionText = '下一集'; direction = 'right'; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
+        case 'pageup': if (typeof window.playPreviousEpisode === 'function') window.playPreviousEpisode(); actionText = '上一集'; direction = 'left'; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
+        case 'pagedown': if (typeof window.playNextEpisode === 'function') window.playNextEpisode(); actionText = '下一集'; direction = 'right'; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case ' ': // Spacebar for play/pause
             if (vsPlayer.paused) vsPlayer.play(); else vsPlayer.pause();
             actionText = vsPlayer.paused ? '播放' : '暂停';
             e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
-        case 'ArrowUp':
+        case 'arrowup':
             vsPlayer.volume = Math.min(1, vsPlayer.volume + 0.1);
             actionText = `音量 ${Math.round(vsPlayer.volume * 100)}%`;
             e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
-        case 'ArrowDown':
+        case 'arrowdown':
             vsPlayer.volume = Math.max(0, vsPlayer.volume - 0.1);
             actionText = `音量 ${Math.round(vsPlayer.volume * 100)}%`;
             e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
