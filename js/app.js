@@ -1,6 +1,4 @@
 /**
- * 把真实播放地址包装到后端 /proxy/ 接口（带可选去广告标记）。
- * 若已是代理地址则原样返回。
  * 全局可用：window.proxifyUrl(...)
  */
 function proxifyUrl(rawUrl, adOn = true) {
