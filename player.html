@@ -20,9 +20,7 @@
     <script src="libs/tailwindcss.min.js"></script>
     <script src="libs/hls.min.js" defer></script>
     <script src="libs/sha256.min.js" defer></script>
-    <script>
-        window.Hls = window.Hls || Hls;
-        </script>        
+  
     <script src="js/config.js" defer></script>
     <script src="js/password.js" defer></script>
     <script type="module" src="js/player_app.js" defer></script>
@@ -182,17 +180,6 @@
             </div>
         </div>
     </div>
-    <script>
-        document.addEventListener('keydown', function (e) {
-            if (e.key.toLowerCase() === 'f') {
-                if (window.vsPlayer && typeof window.vsPlayer.fullscreen === 'object') {
-                    if (window.vsPlayer.fullscreen.active) window.vsPlayer.exitFullscreen();
-                    else window.vsPlayer.enterFullscreen();
-                    e.preventDefault();
-                }
-            }
-        }, false);
-    </script>
 </body>
 
 </html>

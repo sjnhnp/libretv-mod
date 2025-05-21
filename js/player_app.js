@@ -289,11 +289,6 @@ class EnhancedAdFilterLoader extends Hls.DefaultConfig.loader {
     }
 }
 
-// --- Patch global Hls loader for Vidstack compatibility ---
-if (typeof window.Hls === 'function' && window.Hls.DefaultConfig && typeof EnhancedAdFilterLoader !== 'undefined') {
-    window.Hls.DefaultConfig.loader = EnhancedAdFilterLoader;
-}
-
 async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySetting, sourceCode) {
     // 在这里第一次，也是唯一一次做 proxify
     let realSrc = proxifyUrl(initialSrc, adFilteringEnabled);
