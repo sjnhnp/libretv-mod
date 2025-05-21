@@ -999,11 +999,28 @@ function handleKeyboardShortcuts(e) {
             vsPlayer.volume = Math.max(0, vsPlayer.volume - 0.1);
             actionText = `音量 ${Math.round(vsPlayer.volume * 100)}%`;
             e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
-        case 'f':
-            if (vsPlayer.fullscreen.active) vsPlayer.exitFullscreen();
-            else vsPlayer.enterFullscreen();
-            actionText = '切换全屏';
-            e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
+            case 'f':
+                if (vsPlayer) {
+                    let isFs = false;
+                    // 多重兜底判断
+                    try {
+                        if (vsPlayer.fullscreen && typeof vsPlayer.fullscreen.active === 'boolean') {
+                            isFs = vsPlayer.fullscreen.active;
+                        } else if (typeof vsPlayer.isFullscreenActive === 'boolean') {
+                            isFs = vsPlayer.isFullscreenActive;
+                        } else if (document.fullscreenElement && vsPlayer.el && document.fullscreenElement === vsPlayer.el) {
+                            isFs = true;
+                        }
+                    } catch(e) { /* ignore */ }
+                    if (isFs) {
+                        vsPlayer.exitFullscreen && vsPlayer.exitFullscreen().catch?.(console.error);
+                    } else {
+                        vsPlayer.enterFullscreen && vsPlayer.enterFullscreen().catch?.(console.error);
+                    }
+                    actionText = '切换全屏';
+                    e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`);
+                }
+                break;            
     }
     if (actionText && typeof showShortcutHint === 'function') showShortcutHint(actionText, direction);
 }
@@ -1566,14 +1583,3 @@ function doEpisodeSwitch(index, url, seekToPosition) {
     }
 }
 window.playEpisode = playEpisode; // Expose globally
-
-document.addEventListener('keydown', function (e) {
-    if (e.key.toLowerCase() === 'f' && playerReady && vsPlayer && vsPlayer.fullscreen) {
-        if (vsPlayer.fullscreen.active) {
-            vsPlayer.exitFullscreen();
-        } else {
-            vsPlayer.enterFullscreen();
-        }
-        e.preventDefault();
-    }
-});
