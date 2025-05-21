@@ -29,7 +29,6 @@ const API_SITES = {
     ruyi: { api: 'https://cj.rycjapi.com', name: '如意资源' },
     maotai: { api: 'https://caiji.maotaizy.cc', name: '茅台资源' },
     wolong: { api: 'https://wolongzyw.com', name: '卧龙资源' },
-    sdzy: { api: 'https://xsd.sdzyapi.com/', name: '闪电资源' },   
     dyttzy: { api: 'http://caiji.dyttzyapi.com', name: '电影天堂', detail: 'http://caiji.dyttzyapi.com' },
     zy360: { api: 'https://360zy.com', name: '360资源' },
     jisu: { api: 'https://jszyapi.com', name: '极速资源', detail: 'https://jszyapi.com' },
