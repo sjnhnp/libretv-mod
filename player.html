@@ -7,41 +7,28 @@
     <meta name="description" content="看看讲究将就看看">
     <title>播放器</title>
 
-    <!-- 外部样式表 -->
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="/css/player_styles.css"> +
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@vidstack/player@1/styles/default/theme.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@vidstack/player@1/styles/default/layouts/video.css" />
-
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@vidstack/player@1/elements/bundles/player.js"></script>
-    <script type="module"
-        src="https://cdn.jsdelivr.net/npm/@vidstack/player@1/elements/bundles/layouts/default.js"></script>
-
-
-    <!-- 字体和图标 -->
+    <link rel="stylesheet" href="/css/player_styles.css"> <link rel="stylesheet" href="https://cdn.vidstack.io/player/theme.css" />
+    <link rel="stylesheet" href="https://cdn.vidstack.io/player/video.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
 
-    <!-- 环境变量注入 -->
     <script>window.__ENV__ = window.__ENV__ || {}; window.__ENV__.PASSWORD = "{{PASSWORD}}";</script>
 
-    <!-- 外部库 -->
     <script src="libs/tailwindcss.min.js"></script>
     <script src="libs/hls.min.js" defer></script>
     <script src="libs/sha256.min.js" defer></script>
 
-    <!-- 应用脚本 -->
     <script src="js/config.js" defer></script>
     <script src="js/password.js" defer></script>
-    <script src="js/player_app.js" defer></script>
+    <script type="module" src="js/player_app.js" defer></script>
     <script src="js/player_preload.js" defer></script>
     <script src="js/ui.js" defer></script>
 </head>
 
 <body class="bg-black text-white font-sans min-h-screen">
     <div class="player-container relative">
-        <!-- 顶部导航栏 - Position 1: Video Title -->
         <header class="flex items-center justify-between p-4">
             <button id="back-button" class="flex items-center gap-2 text-white hover:text-blue-400 transition-colors"
                 aria-label="返回">
@@ -54,7 +41,6 @@
                 <span>返回</span>
             </button>
 
-            <!-- Position 1: Video Title -->
             <h1 id="video-title" class="text-xl font-bold text-center flex-1 mx-4 truncate">加载中...</h1>
 
             <div class="flex items-center gap-4">
@@ -70,24 +56,12 @@
             </div>
         </header>
 
-        <!-- 播放器区域 -->
-        <div id="player" class="relative" role="region" aria-label="视频播放区域">
-            <media-player id="my-vidstack-player"
-            class="w-full h-full"
-                playsinline
-                crossorigin="anonymous">
-                <media-provider></media-provider>
-                <media-video-layout></media-video-layout>
-            </media-player>
-
-
-            <!-- 加载中提示 -->
+        <div id="player" class="relative w-full" style="height: 60vh;" role="region" aria-label="视频播放区域">
             <div id="loading" class="loading-container" aria-live="polite">
                 <div class="loading-spinner" aria-hidden="true"></div>
                 <div class="mt-4">加载中...</div>
             </div>
 
-            <!-- 错误提示 -->
             <div id="error" class="error-container" aria-live="assertive">
                 <div class="error-icon" aria-hidden="true">⚠️</div>
                 <div class="text-xl font-bold">播放出错</div>
@@ -97,7 +71,6 @@
             </div>
         </div>
 
-        <!-- Position 2, 4: Previous/Next Episode buttons and Episode Info -->
         <div class="flex items-center justify-between p-4">
             <button id="prev-episode"
                 class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg flex items-center gap-2 transition-colors"
@@ -111,7 +84,6 @@
                 <span>上一集</span>
             </button>
 
-            <!-- Position 4: Episode Info（内容由 JS 动态填充） -->
             <span id="episode-info-span" class="text-lg font-medium text-gray-300"></span>
 
             <button id="next-episode"
@@ -127,7 +99,6 @@
             </button>
         </div>
 
-        <!-- Position 3, 5: Controls and Lock Button -->
         <div class="p-4 bg-gray-900 rounded-lg mx-4 mb-4">
             <div class="player-control-bar">
                 <div class="flex items-center gap-2">
@@ -148,7 +119,7 @@
                 <button onclick="copyLinks()" title="复制当前视频链接"
                     class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors"
                     aria-label="复制链接">
-                    <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" class="h-5 w-5" fill="none"
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                         viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
@@ -176,7 +147,6 @@
             </div>
         </div>
 
-        <!-- 剧集选择区域 -->
         <div id="episodes-container" class="mt-2 mx-4 mb-4 hidden" role="navigation" aria-label="剧集选择">
             <div class="flex justify-between items-center mb-2">
                 <h2 class="text-xl font-bold">选集</h2>
@@ -186,27 +156,23 @@
             <div id="episode-grid" class="episode-grid grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2"></div>
         </div>
 
-        <!-- 快捷键提示 -->
         <div id="shortcut-hint" class="shortcut-hint" aria-live="polite" aria-atomic="true">
             <span id="shortcut-key"></span>
             <span id="shortcut-action"></span>
         </div>
 
-        <!-- 消息提示 -->
         <div id="message" class="fixed top-4 right-4 p-4 rounded shadow-lg z-50 hidden" aria-live="polite"></div>
     </div>
-    <!-- toast 容器 -->
     <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 opacity-0
              px-6 py-3 rounded-lg shadow-lg transform transition-all
              duration-300 text-white z-[10001] pointer-events-none">
         <span id="toastMessage"></span>
     </div>
 
-    <!-- 记住进度弹窗（居中，默认隐藏） -->
     <div id="progress-restore-modal" tabindex="-1" aria-modal="true" role="dialog">
         <div class="progress-restore-card" role="document">
             <div class="progress-modal-title">继续播放？</div>
-            <div class="progress-modal-content"><!-- JS填充 --></div>
+            <div class="progress-modal-content"></div>
             <div class="progress-modal-actions">
                 <button class="progress-modal-btn cancel" id="progress-restore-cancel">取消</button>
                 <button class="progress-modal-btn confirm" id="progress-restore-confirm">确定</button>
