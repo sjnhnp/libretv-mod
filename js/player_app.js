@@ -3,14 +3,20 @@
 // 从Vidstack官方CDN导入必要的模块
 import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player';
 
-+/**
-+ * 把真实播放地址包装到后端 /proxy/ 接口（带可选去广告标记）。
-+ * 若已是代理地址则原样返回。
-+ */
-    function proxifyUrl(rawUrl, adOn = true) {
-        if (!rawUrl || rawUrl.startsWith('/proxy/')) return rawUrl;
-        return `${PROXY_URL}${encodeURIComponent(rawUrl)}${adOn ? '' : '?af=0'}`;
-    }
+/* ------------------------------------------------------------------
+   代理辅助：把真实地址包进 /proxy/ 并附带广告过滤开关 (?af=0/1)
+   ------------------------------------------------------------------ */
+function proxifyUrl(rawUrl, adOn = true) {
+    if (!rawUrl || rawUrl.startsWith('/proxy/')) return rawUrl;
+    /* PROXY_URL 在 config.js 中用 const 定义，这里兜底防止加载顺序异常 */
+    const proxyBase =
+        typeof PROXY_URL !== 'undefined'
+            ? PROXY_URL
+            : (typeof window !== 'undefined' && window.PROXY_URL) || '/proxy/';
+    return `${proxyBase}${encodeURIComponent(rawUrl)}${adOn ? '' : '?af=0'}`;
+}
+/* 若别的模块也需要，可挂到 window ——不影响本文件作为 module 运行 */
+if (typeof window !== 'undefined') window.proxifyUrl = proxifyUrl;
 
 // Add this helper function at the top of js/player_app.js
 if (typeof showToast !== 'function' || typeof showMessage !== 'function') {
