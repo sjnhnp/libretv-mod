@@ -622,7 +622,7 @@ function initializePageContent() {
     updateOrderButton();
     // Custom progress bar click setup is removed. Vidstack handles its own.
 
-    document.addEventListener('keydown', handleKeyboardShortcuts);
+    document.addEventListener('keydown', handleKeyboardShortcuts, true); // 捕获阶段更保险
     window.addEventListener('beforeunload', function () {
         saveCurrentProgress();
         saveVideoSpecificProgress();
@@ -970,7 +970,6 @@ function showError(message) {
 
 function handleKeyboardShortcuts(e) {
         if (!vsPlayer) return;
-        // 只在输入框/文本区抢占时屏蔽快捷键，其他任意区域(比如按钮获得焦点、甚至容器获得焦点)都允许响应
         if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
     if (isScreenLocked) return;
     let actionText = '', direction = '';
