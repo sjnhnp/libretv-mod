@@ -3,9 +3,6 @@
 // 从Vidstack官方CDN导入必要的模块
 import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player';
 
-// 在模块最顶部，立刻监听键盘
-document.addEventListener('keydown', handleKeyboardShortcuts, true);
-
 /* ------------------------------------------------------------------
    代理辅助：把真实地址包进 /proxy/ 并附带广告过滤开关 (?af=0/1)
    ------------------------------------------------------------------ */
@@ -325,15 +322,15 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
     }
 
     const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
-        // 从URL参数恢复广告过滤开关，而不是只用PLAYER_CONFIG
-        const afParam = new URLSearchParams(window.location.search).get('af');
-        if (afParam === '0') {
-            adFilteringEnabled = false;
-        } else if (afParam === '1') {
-            adFilteringEnabled = true;
-        } else {
-            adFilteringEnabled = window.PLAYER_CONFIG?.adFilteringEnabled !== false;
-        }
+    // 从URL参数恢复广告过滤开关，而不是只用PLAYER_CONFIG
+    const afParam = new URLSearchParams(window.location.search).get('af');
+    if (afParam === '0') {
+        adFilteringEnabled = false;
+    } else if (afParam === '1') {
+        adFilteringEnabled = true;
+    } else {
+        adFilteringEnabled = window.PLAYER_CONFIG?.adFilteringEnabled !== false;
+    }
 
     // HLS configuration to be applied via provider-change
     const hlsConfigForProvider = {
@@ -371,31 +368,22 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
         vsPlayer = await VidstackPlayer.create(playerOptions);
         window.vsPlayer = vsPlayer; // Expose globally if other scripts need it
 
-        // Configure HLS provider after player is created
-        if (isHlsSource && vsPlayer.provider) {
-            if (vsPlayer.provider.type === 'hls') {
-                if (typeof vsPlayer.provider.configure === 'function') {
-                    vsPlayer.provider.configure(hlsConfigForProvider);
-                    console.log("[Vidstack] Applied custom HLS config via provider.configure() on initial provider.");
-                }
+        // —— HLS 广告过滤配置 —— 
+        if (isHlsSource) {
+            // 如果 provider 已就绪，立即 configure
+            if (vsPlayer.provider?.type === 'hls' && typeof vsPlayer.provider.configure === 'function') {
+                vsPlayer.provider.configure(hlsConfigForProvider);
+                console.log("[Vidstack] HLS provider configured immediately with ad filter.");
             }
-        } else if (isHlsSource) {
+            // provider-change 兜底
             vsPlayer.addEventListener('provider-change', (event) => {
-                const provider = event.detail;
-                if (provider && provider.type === 'hls') {
-                    if (typeof provider.configure === 'function') {
-                        provider.configure(hlsConfigForProvider);
-                        console.log("[Vidstack] Applied custom HLS config via provider.configure() on provider-change.");
-                    } else if (provider.instance && typeof provider.instance.config !== 'undefined') {
-                        Object.assign(provider.instance.config, hlsConfigForProvider);
-                        console.log("[Vidstack] Applied custom HLS config via provider.instance.config on provider-change.");
-                    } else {
-                        console.warn("[Vidstack] Could not directly configure HLS provider. EnhancedAdFilterLoader may not work as expected.");
-                    }
+                const p = event.detail;
+                if (p?.type === 'hls' && typeof p.configure === 'function') {
+                    p.configure(hlsConfigForProvider);
+                    console.log("[Vidstack] HLS provider configured on provider-change.");
                 }
             }, { once: true });
         }
-
 
         const savedVolume = parseFloat(localStorage.getItem('playerVolume'));
         const savedMuted = localStorage.getItem('playerMuted') === 'true';
@@ -625,7 +613,7 @@ function initializePageContent() {
     updateOrderButton();
     // Custom progress bar click setup is removed. Vidstack handles its own.
 
-    document.addEventListener('keydown', handleKeyboardShortcuts, true); // 捕获阶段更保险
+    window.addEventListener('keydown', handleKeyboardShortcuts, false);
     window.addEventListener('beforeunload', function () {
         saveCurrentProgress();
         saveVideoSpecificProgress();
@@ -972,15 +960,14 @@ function showError(message) {
 // setupProgressBarPreciseClicks, handleProgressBarClick, handleProgressBarTouch are removed.
 
 function handleKeyboardShortcuts(e) {
-      // 输入框/文本域中不要拦截
-  const active = document.activeElement?.tagName;
-  if (active === 'INPUT' || active === 'TEXTAREA') return;
-        if (!vsPlayer) return;
-    if (isScreenLocked) return;
+    // 排除在输入框/文本域内，以及屏幕锁定时
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || isScreenLocked || !vsPlayer) return;
     let actionText = '', direction = '';
-    const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
+    const debugMode = window.PLAYER_CONFIG?.debugMode;
+    const key = e.key.toLowerCase();   // 统一小写
 
-    switch (e.key.toLowerCase()) {
+    switch (key) {
         case 'arrowleft':
             if (e.altKey) { if (typeof window.playPreviousEpisode === 'function') window.playPreviousEpisode(); actionText = '上一集'; direction = 'left'; }
             else { vsPlayer.currentTime = Math.max(0, vsPlayer.currentTime - 5); actionText = '后退 5s'; direction = 'left'; }
@@ -1004,7 +991,8 @@ function handleKeyboardShortcuts(e) {
             actionText = `音量 ${Math.round(vsPlayer.volume * 100)}%`;
             e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case 'f':
-            if (vsPlayer.fullscreen.active) vsPlayer.exitFullscreen(); else vsPlayer.enterFullscreen();
+            if (vsPlayer.fullscreen.active) vsPlayer.exitFullscreen();
+            else vsPlayer.enterFullscreen();
             actionText = '切换全屏';
             e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
     }
