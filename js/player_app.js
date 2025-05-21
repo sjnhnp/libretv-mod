@@ -310,8 +310,14 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
         return;
     }
 
+    /* ---------- ② 更稳的 .m3u8 判定 ---------- */
+    const decodedSrc = (() => {
+        try { return decodeURIComponent(initialSrc); } catch { return initialSrc; }
+    })();
+    const isHlsSource = initialSrc.includes('.m3u8') || decodedSrc.includes('.m3u8');
+
     // Ensure Hls is available if needed for the loader
-    if (initialSrc.includes('.m3u8') && typeof Hls === 'undefined') {
+    if (isHlsSource && typeof Hls === 'undefined') {
         console.warn("HLS.js library not found. HLS playback might not work as expected or ad filtering might fail.");
     }
 
@@ -355,14 +361,14 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
         window.vsPlayer = vsPlayer; // Expose globally if other scripts need it
 
         // Configure HLS provider after player is created
-        if (initialSrc.includes('.m3u8') && vsPlayer.provider) { // Check if provider is immediately available
+        if (isHlsSource && vsPlayer.provider) {  
             if (vsPlayer.provider.type === 'hls') {
                 if (typeof vsPlayer.provider.configure === 'function') {
                     vsPlayer.provider.configure(hlsConfigForProvider);
                     console.log("[Vidstack] Applied custom HLS config via provider.configure() on initial provider.");
-                } // Add other checks if needed
+                } 
             }
-        } else if (initialSrc.includes('.m3u8')) { // Fallback to event listener if provider not immediate
+        } else if (isHlsSource) {            
             vsPlayer.addEventListener('provider-change', (event) => {
                 const provider = event.detail;
                 if (provider && provider.type === 'hls') {
@@ -1162,8 +1168,27 @@ function showMessage(text, type = 'info', duration = 3000) {
 
 function toggleLockScreen() {
     isScreenLocked = !isScreenLocked;
-    const playerContainer = document.querySelector('.player-container'); // Main container of your player UI
+    const playerContainer = document.querySelector('.player-container');
     const lockButton = document.getElementById('lock-button');
+
+    /* ---------- ① 透明遮罩 ---------- */
+    let overlay = document.getElementById('lock-overlay');
+    if (isScreenLocked && !overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'lock-overlay';
+        Object.assign(overlay.style, {
+            position: 'fixed',
+            inset: '0',
+            zIndex: '2147483646',         // 略低于锁屏按钮 (3647)
+            background: 'transparent',   // 不挡住画面
+            pointerEvents: 'auto'        // 拦截点击/滑动
+        });
+        /* 避免长按呼出系统菜单 */
+        overlay.addEventListener('contextmenu', e => e.preventDefault());
+        playerContainer?.appendChild(overlay);
+    } else if (!isScreenLocked && overlay) {
+        overlay.remove();
+    }
 
     if (playerContainer) {
         playerContainer.classList.toggle('player-locked', isScreenLocked);
