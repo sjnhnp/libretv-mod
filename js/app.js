@@ -113,23 +113,22 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '') {
         addToViewingHistory(videoInfoForHistory);
     }
 
-    // ① 先读取广告过滤配置
-    const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
-    // ② 再包装真实地址
-    const proxiedUrl = proxifyUrl(url, adOn);
-
-    const playerUrl = new URL('player.html', window.location.origin);
-    playerUrl.searchParams.set('url', proxiedUrl);   // 已编码，勿再 encodeURIComponent
-    playerUrl.searchParams.set('title', title);
-    playerUrl.searchParams.set('index', episodeIndex.toString());
-
-    if (sourceName) playerUrl.searchParams.set('source', sourceName);
-    if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
-
-    // ← 在这一行后面，插入广告过滤开关参数
-    playerUrl.searchParams.set('af', adOn ? '1' : '0');
-
-    window.location.href = playerUrl.toString();
+        // ① 先读取广告过滤配置
+        const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
+        // ② 再包装真实地址
+        const proxiedUrl = proxifyUrl(url, adOn);
+    
+        const playerUrl = new URL('player.html', window.location.origin);
+        playerUrl.searchParams.set('url', proxiedUrl);   // 已编码，勿再 encodeURIComponent
+       playerUrl.searchParams.set('title', title);
+        playerUrl.searchParams.set('index', episodeIndex.toString());
+    
+        if (sourceName) playerUrl.searchParams.set('source', sourceName);
+        if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
+        // 必须带 af 参数让player.html准确还原广告过滤参数状态
+        playerUrl.searchParams.set('af', adOn ? '1' : '0');
+    
+        window.location.href = playerUrl.toString();
 }
 
 

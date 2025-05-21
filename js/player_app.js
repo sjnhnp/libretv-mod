@@ -322,7 +322,15 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
     }
 
     const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
-    adFilteringEnabled = window.PLAYER_CONFIG?.adFilteringEnabled !== false; // Update global based on config
+        // 从URL参数恢复广告过滤开关，而不是只用PLAYER_CONFIG
+        const afParam = new URLSearchParams(window.location.search).get('af');
+        if (afParam === '0') {
+            adFilteringEnabled = false;
+        } else if (afParam === '1') {
+            adFilteringEnabled = true;
+        } else {
+            adFilteringEnabled = window.PLAYER_CONFIG?.adFilteringEnabled !== false;
+        }
 
     // HLS configuration to be applied via provider-change
     const hlsConfigForProvider = {
@@ -361,14 +369,14 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
         window.vsPlayer = vsPlayer; // Expose globally if other scripts need it
 
         // Configure HLS provider after player is created
-        if (isHlsSource && vsPlayer.provider) {  
+        if (isHlsSource && vsPlayer.provider) {
             if (vsPlayer.provider.type === 'hls') {
                 if (typeof vsPlayer.provider.configure === 'function') {
                     vsPlayer.provider.configure(hlsConfigForProvider);
                     console.log("[Vidstack] Applied custom HLS config via provider.configure() on initial provider.");
-                } 
+                }
             }
-        } else if (isHlsSource) {            
+        } else if (isHlsSource) {
             vsPlayer.addEventListener('provider-change', (event) => {
                 const provider = event.detail;
                 if (provider && provider.type === 'hls') {
@@ -536,8 +544,18 @@ function initializePageContent() {
                         newUrl.searchParams.set('index', indexForPlayer.toString());
                         newUrl.searchParams.set('position', actualPositionToResume.toString());
                         window.history.replaceState({}, '', newUrl.toString());
-                        // Message will be shown after player loads and seeks via nextSeekPosition
                     } else {
+                        try {
+                            const all = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
+                            const vid = `${currentVideoTitle}_${sourceCodeFromUrl || 'unknown_source'}`;
+                            if (all[vid] && all[vid][indexForPlayer.toString()]) {
+                                delete all[vid][indexForPlayer.toString()];
+                                localStorage.setItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY, JSON.stringify(all));
+                            }
+                        } catch (e) {
+                            console.warn('清除本集进度失败：', e);
+                        }
+                        // 【关键插入 END】
                         episodeUrlForPlayer = currentEpisodes[indexForPlayer];
                         const newUrl = new URL(window.location.href);
                         newUrl.searchParams.set('url', episodeUrlForPlayer);
@@ -547,8 +565,7 @@ function initializePageContent() {
                         if (typeof showMessage === 'function') showMessage('已从头开始播放', 'info');
                         else if (typeof showToast === 'function') showToast('已从头开始播放', 'info');
                     }
-                    // Re-initialize the content which will eventually call createAndSetupPlayer
-                    // with the possibly modified URL parameters.
+
                     initializePageContent();
                 });
                 return; // IMPORTANT: Stop further execution to wait for modal response
