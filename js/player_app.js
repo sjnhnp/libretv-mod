@@ -1277,6 +1277,7 @@ function copyLinks() {
         else alert('复制失败');
     });
 }
+window.copyLinks = copyLinks;
 
 function toggleEpisodeOrder() {
     episodesReversed = !episodesReversed;
