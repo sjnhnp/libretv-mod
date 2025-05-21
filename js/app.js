@@ -114,7 +114,7 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '') {
     }
 
         // ① 先读取广告过滤配置
-        const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
+        const adOn = getBoolConfig('adFilteringEnabled', true);
         // ② 再包装真实地址
         const proxiedUrl = proxifyUrl(url, adOn);
     
@@ -186,7 +186,7 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0, sourceN
 
     // Build player URL with position parameter
     // ① 先取广告过滤状态
-    const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
+    const adOn = getBoolConfig('adFilteringEnabled', true);
     // ② 包装播放地址
     const proxiedUrl = proxifyUrl(url, adOn);
 
@@ -307,12 +307,12 @@ function initializeEventListeners() {
     if (adFilteringToggle) {
         adFilteringToggle.addEventListener('change', function (e) {
             const enabled = e.target.checked;
-            localStorage.setItem(PLAYER_CONFIG.adFilteringStorage, enabled.toString());
+            localStorage.setItem(PLAYER_CONFIG.adFilteringEnabled, enabled.toString());
             showToast(enabled ? '已启用广告过滤' : '已禁用广告过滤', 'info');
         });
 
         // 初始化开关状态 - 使用getBoolConfig
-        adFilteringToggle.checked = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
+        adFilteringToggle.checked = getBoolConfig(PLAYER_CONFIG.adFilteringEnabled, true);
     }
 
     // 黄色内容过滤开关事件
