@@ -997,24 +997,47 @@ function handleKeyboardShortcuts(e) {
             vsPlayer.volume = Math.max(0, vsPlayer.volume - 0.1);
             actionText = `音量 ${Math.round(vsPlayer.volume * 100)}%`;
             e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
-            case 'f':
-                if (vsPlayer && vsPlayer.fullscreen) { // 确保全屏控制器存在
-                    if (vsPlayer.fullscreen.active) {
-                        vsPlayer.exitFullscreen().catch(err => console.error("Vidstack 退出全屏错误:", err));
-                        actionText = '退出全屏';
-                    } else {
-                        vsPlayer.enterFullscreen().catch(err => {
-                            console.error("Vidstack 进入全屏错误:", err);
-                            // 如果失败，可以在此处向用户显示消息
+        case 'f':
+            if (vsPlayer && vsPlayer.el) {
+                // 判断是否全屏：Vidstack 自己的状态 或 浏览器 document.fullscreenElement
+                let isFull =
+                    (vsPlayer.fullscreen && typeof vsPlayer.fullscreen.active === "boolean" && vsPlayer.fullscreen.active)
+                    || (document.fullscreenElement === vsPlayer.el);
+
+                if (isFull) {
+                    // 尝试退出全屏（Vidstack 优先，浏览器 API 兜底）
+                    if (typeof vsPlayer.exitFullscreen === 'function') {
+                        vsPlayer.exitFullscreen().catch(err => {
+                            console.error("Vidstack 退出全屏错误:", err);
                             if (typeof showMessage === 'function') {
-                                showMessage('全屏请求失败，请尝试点击播放器内全屏按钮。', 'warning');
+                                showMessage('退出全屏失败，请尝试使用ESC。', 'warning');
                             }
                         });
-                        actionText = '进入全屏';
+                    } else if (typeof document.exitFullscreen === 'function') {
+                        document.exitFullscreen();
                     }
-                    e.preventDefault(); if (debugMode) console.log(`键盘操作: ${actionText}`);
+                    actionText = '退出全屏';
+                } else {
+                    // 进入全屏（Vidstack 优先，浏览器 API 兜底）
+                    if (typeof vsPlayer.enterFullscreen === 'function') {
+                        vsPlayer.enterFullscreen().catch(err => {
+                            console.error("Vidstack 进入全屏错误:", err);
+                            if (typeof showMessage === 'function') {
+                                showMessage('进入全屏失败，请点击播放器控制条上的全屏按钮。', 'warning');
+                            }
+                        });
+                    } else if (typeof vsPlayer.el.requestFullscreen === 'function') {
+                        vsPlayer.el.requestFullscreen();
+                    } else if (typeof document.body.requestFullscreen === 'function') {
+                        // 极端备用，给整个body全屏
+                        document.body.requestFullscreen();
+                    }
+                    actionText = '进入全屏';
                 }
-                break;           
+                e.preventDefault();
+                if (debugMode) console.log(`键盘F操作: ${actionText}, fullscreenElement=`, document.fullscreenElement);
+            }
+            break;
     }
     if (actionText && typeof showShortcutHint === 'function') showShortcutHint(actionText, direction);
 }
