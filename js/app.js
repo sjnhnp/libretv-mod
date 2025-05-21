@@ -1,4 +1,15 @@
 /**
+ * 把真实播放地址包装到后端 /proxy/ 接口（带可选去广告标记）。
+ * 若已是代理地址则原样返回。
+ * 全局可用：window.proxifyUrl(...)
+ */
+function proxifyUrl(rawUrl, adOn = true) {
+    if (!rawUrl || rawUrl.startsWith('/proxy/')) return rawUrl;
+    return `${PROXY_URL}${encodeURIComponent(rawUrl)}${adOn ? '' : '?af=0'}`;
+}
+window.proxifyUrl = proxifyUrl;
+
+/**
  * 主应用程序逻辑
  * 使用AppState进行状态管理，DOMCache进行DOM元素缓存
  */
@@ -109,15 +120,6 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '') {
     playerUrl.searchParams.set('title', title);
     playerUrl.searchParams.set('index', episodeIndex.toString());
 
-    // const eps = AppState.get('currentEpisodes');
-    //if (Array.isArray(eps) && eps.length) {
-    //    playerUrl.searchParams.set('episodes', encodeURIComponent(JSON.stringify(eps)));
-    // }
-
-    // 注释掉这行，让URL不带 reversed 参数
-    //const currentReversedStateForPlayer = AppState.get('episodesReversed') || false;
-    // playerUrl.searchParams.set('reversed', currentReversedStateForPlayer.toString());
-
     if (sourceName) playerUrl.searchParams.set('source', sourceName);
     if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
 
@@ -209,19 +211,6 @@ function getBoolConfig(key, defaultValue) {
     if (value === null) return defaultValue;
     return value === 'true';
 }
-
-+/**
-+ * 把真实播放地址包装到后端 /proxy/ 接口（带可选去广告标记）。
-+ * 若已是代理地址则原样返回。
-+ * @param {string} rawUrl 真实地址
-+ * @param {boolean} adOn  是否启用去广告
-+ * @returns {string}      代理后的地址
-+ */
-    function proxifyUrl(rawUrl, adOn = true) {
-        if (!rawUrl || rawUrl.startsWith('/proxy/')) return rawUrl;
-        return `${PROXY_URL}${encodeURIComponent(rawUrl)}${adOn ? '' : '?af=0'}`;
-    }
-
 
 // 应用程序初始化
 document.addEventListener('DOMContentLoaded', function () {
