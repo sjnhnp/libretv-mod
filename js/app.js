@@ -1,12 +1,17 @@
+/* ==========================================================
+   代理辅助（全局可用）——缺了就会报 proxifyUrl 未定义
+   ========================================================== */
 function proxifyUrl(rawUrl, adOn = true) {
     if (!rawUrl || rawUrl.startsWith('/proxy/')) return rawUrl;
-    const prefix =
-        typeof PROXY_URL === 'string'
+    /* PROXY_URL 在 config.js 中定义。若加载顺序靠后，这里兜底 '/proxy/' */
+    const proxyBase =
+        typeof PROXY_URL !== 'undefined'
             ? PROXY_URL
-            : (window.PROXY_URL || '/proxy/');
-    return `${prefix}${encodeURIComponent(rawUrl)}${adOn ? '' : '?af=0'}`;
+            : (typeof window !== 'undefined' && window.PROXY_URL) || '/proxy/';
+    return `${proxyBase}${encodeURIComponent(rawUrl)}${adOn ? '' : '?af=0'}`;
 }
-window.proxifyUrl = proxifyUrl;
+/* 供其它脚本（player_app.js 等）复用 */
+if (typeof window !== 'undefined') window.proxifyUrl = proxifyUrl;
 
 /**
  * 主应用程序逻辑
@@ -184,10 +189,10 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0, sourceN
     AppState.set('currentEpisodeIndex', episodeIndex);
     AppState.set('currentVideoTitle', title);
 
-        /* ① 读取广告过滤配置 —— true 表示“启用过滤” */
-        const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
-        /* ② 包装地址；当 adOn===false 时附带 ?af=0 */
-        const proxiedUrl = proxifyUrl(url, adOn);
+    /* ① 读取广告过滤配置 —— true 表示“启用过滤” */
+    const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
+    /* ② 包装地址；当 adOn===false 时附带 ?af=0 */
+    const proxiedUrl = proxifyUrl(url, adOn);
 
     const playerUrl = new URL('player.html', window.location.origin);
     playerUrl.searchParams.set('url', proxiedUrl);

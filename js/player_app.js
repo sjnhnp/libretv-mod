@@ -1286,9 +1286,17 @@ function updateEpisodeInfo() {
 }
 
 function copyLinks() {
-    const currentUrlFromParams = new URLSearchParams(window.location.search).get('url');
-    // vsPlayer.source for current src object, vsPlayer.source.src for URL string
-    const playerSrcUrl = vsPlayer?.src || vsPlayer?.currentSrc || '';
+    /* URL 参数里是 encodeURIComponent 后的结果，需要先解码 */
+    let currentUrlFromParams = new URLSearchParams(window.location.search).get('url');
+    if (currentUrlFromParams) {
+        try { currentUrlFromParams = decodeURIComponent(currentUrlFromParams); } catch { }
+    }
+
+    /* Vidstack 如果返回对象 {src,type}，取其中的 src 字符串 */
+    const playerSrcUrl = typeof vsPlayer?.src === 'string'
+        ? vsPlayer.src
+        : (vsPlayer?.src?.src || vsPlayer?.currentSrc || '');
+
     const linkUrl = currentUrlFromParams || playerSrcUrl || '';
 
     if (!linkUrl) {
