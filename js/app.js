@@ -127,8 +127,7 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '') {
     if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
 
     // ← 在这一行后面，插入广告过滤开关参数
-    playerUrl.searchParams.set('af', adOn ? '1' : '0');
-
+    if (!adOn) playerUrl.searchParams.set('af', '0');
     window.location.href = playerUrl.toString();
 }
 
@@ -185,11 +184,10 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0, sourceN
     AppState.set('currentEpisodeIndex', episodeIndex);
     AppState.set('currentVideoTitle', title);
 
-    // Build player URL with position parameter
-    // ① 先取广告过滤状态
-    const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
-    // ② 包装播放地址
-    const proxiedUrl = proxifyUrl(url, adOn);
+        /* ① 读取广告过滤配置 —— true 表示“启用过滤” */
+        const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
+        /* ② 包装地址；当 adOn===false 时附带 ?af=0 */
+        const proxiedUrl = proxifyUrl(url, adOn);
 
     const playerUrl = new URL('player.html', window.location.origin);
     playerUrl.searchParams.set('url', proxiedUrl);
@@ -200,7 +198,7 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0, sourceN
     if (playbackPosition > 0) playerUrl.searchParams.set('position', playbackPosition.toString());
 
     // 去广告开关有关
-    playerUrl.searchParams.set('af', adOn ? '1' : '0');
+    if (!adOn) playerUrl.searchParams.set('af', '0');
     // Navigate to player page
     window.location.href = playerUrl.toString();
 }

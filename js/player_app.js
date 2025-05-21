@@ -161,7 +161,14 @@ const AD_END_PATTERNS = [
     /#EXT-X-DISCONTINUITY/i,
 ];
 
-let adFilteringEnabled = window.PLAYER_CONFIG?.adFilteringEnabled !== false;
+/* 优先以 URL 的 af 参数为准，其次读全局配置 */
+const urlAfParam = new URLSearchParams(window.location.search).get('af');
+let adFilteringEnabled =
+    urlAfParam === '0'
+        ? false
+        : (urlAfParam === '1'
+            ? true
+            : window.PLAYER_CONFIG?.adFilteringEnabled !== false);
 
 function isMobile() {
     return /Mobile|Tablet|iPod|iPhone|iPad|Android|BlackBerry|Windows Phone/i.test(navigator.userAgent);
@@ -361,14 +368,14 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
         window.vsPlayer = vsPlayer; // Expose globally if other scripts need it
 
         // Configure HLS provider after player is created
-        if (isHlsSource && vsPlayer.provider) {  
+        if (isHlsSource && vsPlayer.provider) {
             if (vsPlayer.provider.type === 'hls') {
                 if (typeof vsPlayer.provider.configure === 'function') {
                     vsPlayer.provider.configure(hlsConfigForProvider);
                     console.log("[Vidstack] Applied custom HLS config via provider.configure() on initial provider.");
-                } 
+                }
             }
-        } else if (isHlsSource) {            
+        } else if (isHlsSource) {
             vsPlayer.addEventListener('provider-change', (event) => {
                 const provider = event.detail;
                 if (provider && provider.type === 'hls') {
@@ -1526,8 +1533,9 @@ function doEpisodeSwitch(index, url, seekToPosition) {
         const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
         if (currentSourceCode) newUrlForBrowser.searchParams.set('source_code', currentSourceCode);
 
-        // adFilteringEnabled is global, should reflect current state
-        newUrlForBrowser.searchParams.set('af', adFilteringEnabled ? '1' : '0');
+        /* 只有关闭时才写 af=0，保持与初始页一致 */
+        if (!adFilteringEnabled) newUrlForBrowser.searchParams.set('af', '0');
+        else newUrlForBrowser.searchParams.delete('af');
 
         if (seekToPosition > 0) {
             newUrlForBrowser.searchParams.set('position', seekToPosition.toString());
