@@ -998,51 +998,29 @@ function handleKeyboardShortcuts(e) {
             actionText = `音量 ${Math.round(vsPlayer.volume * 100)}%`;
             e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case 'f':
-            if (vsPlayer && vsPlayer.el) {
-                // ====== 最靠谱的全屏状态判断 ======
-                // 1. 首选 Vidstack 状态
-                // 2. 备选 document.fullscreenElement 判断（兼容鼠标/esc等进入全屏场景）
-                let isFullscreen = false;
-                try {
-                    if (vsPlayer.fullscreen && typeof vsPlayer.fullscreen.active === "boolean") {
-                        isFullscreen = vsPlayer.fullscreen.active;
-                    }
-                    // Vidstack 一些实现下 .fullscreen 可能 undefined，这时用浏览器原生状态判断
-                    if (document.fullscreenElement === vsPlayer.el) {
-                        isFullscreen = true;
-                    }
-                } catch (e) {
-                    // ignore
-                }
+            if (vsPlayer && vsPlayer.el && vsPlayer.fullscreen) {
+                const browserFullscreenEl = document.fullscreenElement;
+                const isPlayerElementCurrentlyFullscreenInBrowser = browserFullscreenEl &&
+                    (browserFullscreenEl === vsPlayer.el || vsPlayer.el.contains(browserFullscreenEl));
 
-                // 优先用原生api退出
-                if (isFullscreen) {
-                    if (typeof vsPlayer.exitFullscreen === 'function') {
-                        vsPlayer.exitFullscreen().catch(err => {
-                            // 可能已不全屏，不影响体验
-                            if (typeof showMessage === 'function') {
-                                showMessage('退出全屏失败，可尝试按ESC', 'warning');
-                            }
-                        });
-                    } else if (document.exitFullscreen) {
-                        document.exitFullscreen();
-                    }
+                // 如果 Vidstack 状态认为已全屏，或者浏览器 DOM 结构显示播放器已全屏，则认为播放器当前是全屏状态。
+                const isEffectivelyFullscreen = vsPlayer.fullscreen.active || isPlayerElementCurrentlyFullscreenInBrowser;
+
+                if (isEffectivelyFullscreen) {
+                    vsPlayer.exitFullscreen().catch(err => {
+                        console.error("Vidstack 退出全屏错误:", err);
+                    });
                     actionText = '退出全屏';
                 } else {
-                    // 进入全屏
-                    if (typeof vsPlayer.enterFullscreen === 'function') {
-                        vsPlayer.enterFullscreen().catch(err => {
-                            if (typeof showMessage === 'function') {
-                                showMessage('全屏请求失败，请尝试点击播放器内全屏按钮。', 'warning');
-                            }
-                        });
-                    } else if (vsPlayer.el && vsPlayer.el.requestFullscreen) {
-                        vsPlayer.el.requestFullscreen();
-                    }
+                    vsPlayer.enterFullscreen().catch(err => {
+                        console.error("Vidstack 进入全屏错误:", err);
+                        if (typeof showMessage === 'function') {
+                            showMessage('全屏请求失败。', 'warning');
+                        }
+                    });
                     actionText = '进入全屏';
                 }
-                e.preventDefault();
-                if (debugMode) console.log(`[Keyboard/f] ${actionText}, Vidstack.fullscreen:`, vsPlayer.fullscreen, "doc.fullscreenElement:", document.fullscreenElement);
+                e.preventDefault(); if (debugMode) console.log(`键盘操作: ${actionText}`);
             }
             break;
     }
