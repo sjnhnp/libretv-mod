@@ -3,7 +3,7 @@
 // 从Vidstack官方CDN导入必要的模块
 import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player';
 
-window.addEventListener('keydown', function(e) {
+window.addEventListener('keydown', function (e) {
     // 忽略在输入框和锁屏
     if (
         e.target.tagName === 'INPUT' ||
@@ -289,11 +289,15 @@ class EnhancedAdFilterLoader extends Hls.DefaultConfig.loader {
     }
 }
 
+// --- Patch global Hls loader for Vidstack compatibility ---
+if (typeof window.Hls === 'function' && window.Hls.DefaultConfig && typeof EnhancedAdFilterLoader !== 'undefined') {
+    window.Hls.DefaultConfig.loader = EnhancedAdFilterLoader;
+}
 
 async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySetting, sourceCode) {
-       // 在这里第一次，也是唯一一次做 proxify
-   let realSrc = proxifyUrl(initialSrc, adFilteringEnabled);
-   
+    // 在这里第一次，也是唯一一次做 proxify
+    let realSrc = proxifyUrl(initialSrc, adFilteringEnabled);
+
     if (vsPlayer && typeof vsPlayer.destroy === 'function') {
         vsPlayer.destroy(); // Destroy previous instance if exists
         vsPlayer = null;
@@ -305,8 +309,8 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
         showError("播放器目标DIV元素 ('player') 未找到!");
         return;
     }
-  
-    playerTargetElement.innerHTML = ''; 
+
+    playerTargetElement.innerHTML = '';
 
     const loadingElGlobal = document.getElementById('loading');
     if (loadingElGlobal) loadingElGlobal.style.display = 'flex';
@@ -874,13 +878,10 @@ function setupPlayerControls() {
     const lockButton = document.getElementById('lock-button');
     if (lockButton) lockButton.addEventListener('click', toggleLockScreen);
 
-    // Setup double click and long press after vsPlayer is initialized
-    // This needs vsPlayer to be ready. Delay slightly or ensure it's called after createAndSetupPlayer.
-    // Since setupPlayerControls is called after createAndSetupPlayer via setTimeout, vsPlayer should exist.
-    if (vsPlayer && vsPlayer.el) { // vsPlayer.el is the root DOM element of the player
+    if (vsPlayer && vsPlayer.el) {
         setupDoubleClickToPlayPause(vsPlayer, vsPlayer.el);
-        setupLongPressSpeedControl(vsPlayer.el); // Pass the DOM element
-    } else if (vsPlayer) { // If .el is not the way, try passing the container where player was rendered
+        setupLongPressSpeedControl(vsPlayer.el);
+    } else if (vsPlayer) {
         const playerTargetElement = document.getElementById('player');
         if (playerTargetElement && playerTargetElement.firstChild) {
             setupDoubleClickToPlayPause(vsPlayer, playerTargetElement.firstChild);
