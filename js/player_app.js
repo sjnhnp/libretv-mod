@@ -997,30 +997,44 @@ function handleKeyboardShortcuts(e) {
             vsPlayer.volume = Math.max(0, vsPlayer.volume - 0.1);
             actionText = `音量 ${Math.round(vsPlayer.volume * 100)}%`;
             e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
-            case 'f':
-                if (vsPlayer) {
-                    let isFs = false;
-                    // 多重兜底判断
-                    try {
-                        if (vsPlayer.fullscreen && typeof vsPlayer.fullscreen.active === 'boolean') {
-                            isFs = vsPlayer.fullscreen.active;
-                        } else if (typeof vsPlayer.isFullscreenActive === 'boolean') {
-                            isFs = vsPlayer.isFullscreenActive;
-                        } else if (document.fullscreenElement && vsPlayer.el && document.fullscreenElement === vsPlayer.el) {
-                            isFs = true;
+           
+            case 'f': {
+                if (vsPlayer && vsPlayer.el) {
+                    let isFull =
+                        (vsPlayer.fullscreen && typeof vsPlayer.fullscreen.active === "boolean" && vsPlayer.fullscreen.active)
+                        || document.fullscreenElement === vsPlayer.el
+                        || !!document.fullscreenElement;
+            
+                    if (isFull) {
+                        // 只在确实全屏时尝试 exit，且包裹 try/catch
+                        try {
+                            if (typeof vsPlayer.exitFullscreen === 'function') {
+                                vsPlayer.exitFullscreen();
+                            } else if (document.exitFullscreen) {
+                                document.exitFullscreen();
+                            }
+                        } catch (e) {
+                            // 可选: console.warn("退出全屏失败", e);
                         }
-                    } catch(e) { /* ignore */ }
-                    if (isFs) {
-                        vsPlayer.exitFullscreen && vsPlayer.exitFullscreen().catch?.(console.error);
                     } else {
-                        vsPlayer.enterFullscreen && vsPlayer.enterFullscreen().catch?.(console.error);
+                        try {
+                            if (typeof vsPlayer.enterFullscreen === 'function') {
+                                vsPlayer.enterFullscreen();
+                            } else if (vsPlayer.el.requestFullscreen) {
+                                vsPlayer.el.requestFullscreen();
+                            }
+                        } catch (e) {
+                            // 可选: console.warn("进入全屏失败", e);
+                        }
                     }
                     actionText = '切换全屏';
-                    e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`);
+                    e.preventDefault();
+                    if (debugMode) console.log(`Keyboard: ${actionText}, isFull:`, isFull);
                 }
-                break;            
-    }
+                break;
+            }
     if (actionText && typeof showShortcutHint === 'function') showShortcutHint(actionText, direction);
+}
 }
 
 function showShortcutHint(text, direction) {
