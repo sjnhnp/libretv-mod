@@ -998,27 +998,23 @@ function handleKeyboardShortcuts(e) {
             actionText = `音量 ${Math.round(vsPlayer.volume * 100)}%`;
             e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
             case 'f':
-                if (vsPlayer) {
-                    let isFs = false;
-                    // 多重兜底判断
-                    try {
-                        if (vsPlayer.fullscreen && typeof vsPlayer.fullscreen.active === 'boolean') {
-                            isFs = vsPlayer.fullscreen.active;
-                        } else if (typeof vsPlayer.isFullscreenActive === 'boolean') {
-                            isFs = vsPlayer.isFullscreenActive;
-                        } else if (document.fullscreenElement && vsPlayer.el && document.fullscreenElement === vsPlayer.el) {
-                            isFs = true;
-                        }
-                    } catch(e) { /* ignore */ }
-                    if (isFs) {
-                        vsPlayer.exitFullscreen && vsPlayer.exitFullscreen().catch?.(console.error);
+                if (vsPlayer && vsPlayer.fullscreen) { // 确保全屏控制器存在
+                    if (vsPlayer.fullscreen.active) {
+                        vsPlayer.exitFullscreen().catch(err => console.error("Vidstack 退出全屏错误:", err));
+                        actionText = '退出全屏';
                     } else {
-                        vsPlayer.enterFullscreen && vsPlayer.enterFullscreen().catch?.(console.error);
+                        vsPlayer.enterFullscreen().catch(err => {
+                            console.error("Vidstack 进入全屏错误:", err);
+                            // 如果失败，可以在此处向用户显示消息
+                            if (typeof showMessage === 'function') {
+                                showMessage('全屏请求失败，请尝试点击播放器内全屏按钮。', 'warning');
+                            }
+                        });
+                        actionText = '进入全屏';
                     }
-                    actionText = '切换全屏';
-                    e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`);
+                    e.preventDefault(); if (debugMode) console.log(`键盘操作: ${actionText}`);
                 }
-                break;            
+                break;           
     }
     if (actionText && typeof showShortcutHint === 'function') showShortcutHint(actionText, direction);
 }
