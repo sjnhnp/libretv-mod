@@ -998,31 +998,53 @@ function handleKeyboardShortcuts(e) {
             actionText = `音量 ${Math.round(vsPlayer.volume * 100)}%`;
             e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case 'f':
-            if (vsPlayer && vsPlayer.el && vsPlayer.fullscreen) {
-                const browserFullscreenEl = document.fullscreenElement;
-                const isPlayerElementCurrentlyFullscreenInBrowser = browserFullscreenEl &&
-                    (browserFullscreenEl === vsPlayer.el || vsPlayer.el.contains(browserFullscreenEl));
-
-                // 如果 Vidstack 状态认为已全屏，或者浏览器 DOM 结构显示播放器已全屏，则认为播放器当前是全屏状态。
-                const isEffectivelyFullscreen = vsPlayer.fullscreen.active || isPlayerElementCurrentlyFullscreenInBrowser;
-
-                if (isEffectivelyFullscreen) {
-                    vsPlayer.exitFullscreen().catch(err => {
-                        console.error("Vidstack 退出全屏错误:", err);
-                    });
+            if (vsPlayer && vsPlayer.el) {
+                // 判断是否当前播放器已在全屏
+                const isFullscreen = document.fullscreenElement === vsPlayer.el;
+                if (isFullscreen) {
+                    // 已是本播放器全屏，尝试退出
+                    if (typeof vsPlayer.exitFullscreen === 'function') {
+                        vsPlayer.exitFullscreen().catch((err) => {
+                            if (typeof showMessage === 'function') {
+                                showMessage('退出全屏失败，可尝试按ESC', 'warning');
+                            }
+                        });
+                    } else if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
                     actionText = '退出全屏';
                 } else {
-                    vsPlayer.enterFullscreen().catch(err => {
-                        console.error("Vidstack 进入全屏错误:", err);
-                        if (typeof showMessage === 'function') {
-                            showMessage('全屏请求失败。', 'warning');
-                        }
-                    });
+                    // 不是本播放器全屏，尝试进入
+                    // 若其它元素占用了全屏，主动先退出
+                    if (document.fullscreenElement && document.fullscreenElement !== vsPlayer.el && document.exitFullscreen) {
+                        document.exitFullscreen().then(() => {
+                            // 再进全屏（此时已处于激活事件中，可成功）
+                            if (typeof vsPlayer.enterFullscreen === 'function') {
+                                vsPlayer.enterFullscreen().catch((err) => {
+                                    if (typeof showMessage === 'function') {
+                                        showMessage('全屏请求失败，请尝试点击播放器内全屏按钮。', 'warning');
+                                    }
+                                });
+                            } else if (vsPlayer.el.requestFullscreen) {
+                                vsPlayer.el.requestFullscreen();
+                            }
+                        });
+                    } else if (typeof vsPlayer.enterFullscreen === 'function') {
+                        vsPlayer.enterFullscreen().catch((err) => {
+                            if (typeof showMessage === 'function') {
+                                showMessage('全屏请求失败，请尝试点击播放器内全屏按钮。', 'warning');
+                            }
+                        });
+                    } else if (vsPlayer.el.requestFullscreen) {
+                        vsPlayer.el.requestFullscreen();
+                    }
                     actionText = '进入全屏';
                 }
-                e.preventDefault(); if (debugMode) console.log(`键盘操作: ${actionText}`);
+                e.preventDefault();
+                if (debugMode) console.log('[Keyboard/f]', actionText, '| doc.fullscreenElement:', document.fullscreenElement, '| vsPlayer.el:', vsPlayer.el);
             }
             break;
+
     }
     if (actionText && typeof showShortcutHint === 'function') showShortcutHint(actionText, direction);
 }
