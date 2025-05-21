@@ -3,6 +3,16 @@
 // 从Vidstack官方CDN导入必要的模块
 import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player';
 
+window.addEventListener('keydown', function(e) {
+    // 忽略在输入框和锁屏
+    if (
+        e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'TEXTAREA' ||
+        window.isScreenLocked // 注意变量作用域
+    ) return;
+    handleKeyboardShortcuts(e);
+}, true); // 捕获阶段保证不被shadow dom覆盖
+
 /* ------------------------------------------------------------------
    代理辅助：把真实地址包进 /proxy/ 并附带广告过滤开关 (?af=0/1)
    ------------------------------------------------------------------ */
@@ -281,6 +291,9 @@ class EnhancedAdFilterLoader extends Hls.DefaultConfig.loader {
 
 
 async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySetting, sourceCode) {
+       // 在这里第一次，也是唯一一次做 proxify
+   let realSrc = proxifyUrl(initialSrc, adFilteringEnabled);
+   
     if (vsPlayer && typeof vsPlayer.destroy === 'function') {
         vsPlayer.destroy(); // Destroy previous instance if exists
         vsPlayer = null;
@@ -292,12 +305,9 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
         showError("播放器目标DIV元素 ('player') 未找到!");
         return;
     }
-    // Clear the target div of any previous player elements or messages (except loading/error)
-    // Ensure loading/error divs are direct children of player-container or handled by CSS correctly
-    // For simplicity, if playerTargetElement is meant to ONLY contain the player, then:
-    playerTargetElement.innerHTML = ''; // Or selectively remove previous player
+  
+    playerTargetElement.innerHTML = ''; 
 
-    // Show loading indicator before player creation
     const loadingElGlobal = document.getElementById('loading');
     if (loadingElGlobal) loadingElGlobal.style.display = 'flex';
     const errorElGlobal = document.getElementById('error');
@@ -353,7 +363,7 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
         const playerOptions = {
             target: playerTargetElement, // Target the div
             title: initialTitle,
-            src: initialSrc,
+            src: realSrc,
             autoplay: initialAutoplaySetting,
             playsinline: true, // Important for mobile
             // poster: 'YOUR_POSTER_URL_IF_AVAILABLE', // Example
@@ -569,9 +579,6 @@ function initializePageContent() {
     } else {
         episodeUrlForPlayer = currentEpisodes[indexForPlayer] || urlParams.get('url');
     }
-
-    /* 统一经过代理，带去广告参数 */
-    episodeUrlForPlayer = proxifyUrl(episodeUrlForPlayer, adFilteringEnabled);
 
     currentEpisodeIndex = indexForPlayer;
     window.currentEpisodeIndex = currentEpisodeIndex;

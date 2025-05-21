@@ -113,22 +113,17 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '') {
         addToViewingHistory(videoInfoForHistory);
     }
 
-        // ① 先读取广告过滤配置
-        const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
-        // ② 再包装真实地址
-        const proxiedUrl = proxifyUrl(url, adOn);
-    
-        const playerUrl = new URL('player.html', window.location.origin);
-        playerUrl.searchParams.set('url', proxiedUrl);   // 已编码，勿再 encodeURIComponent
-       playerUrl.searchParams.set('title', title);
-        playerUrl.searchParams.set('index', episodeIndex.toString());
-    
-        if (sourceName) playerUrl.searchParams.set('source', sourceName);
-        if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
-        // 必须带 af 参数让player.html准确还原广告过滤参数状态
-        playerUrl.searchParams.set('af', adOn ? '1' : '0');
-    
-        window.location.href = playerUrl.toString();
+    // ① 先读取广告过滤配置
+    const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
+    // ② 直接传递原始地址，千万不要提前 proxifyUrl！
+    const playerUrl = new URL('player.html', window.location.origin);
+    playerUrl.searchParams.set('url', url); // ✅ 直接用原始url
+    playerUrl.searchParams.set('title', title);
+    playerUrl.searchParams.set('index', episodeIndex.toString());
+    if (sourceName) playerUrl.searchParams.set('source', sourceName);
+    if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
+    playerUrl.searchParams.set('af', adOn ? '1' : '0'); // ✅ 广告过滤开关
+    window.location.href = playerUrl.toString();
 }
 
 
@@ -184,23 +179,16 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0, sourceN
     AppState.set('currentEpisodeIndex', episodeIndex);
     AppState.set('currentVideoTitle', title);
 
-    // Build player URL with position parameter
-    // ① 先取广告过滤状态
+    // ① 先读取广告过滤配置
     const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
-    // ② 包装播放地址
-    const proxiedUrl = proxifyUrl(url, adOn);
-
+    // ② 直接传递原始地址，千万不要提前 proxifyUrl！
     const playerUrl = new URL('player.html', window.location.origin);
-    playerUrl.searchParams.set('url', proxiedUrl);
+    playerUrl.searchParams.set('url', url); // ✅ 直接用原始url
     playerUrl.searchParams.set('title', title);
-    playerUrl.searchParams.set('index', episodeIndex.toString()); // Changed from 'ep' to 'index' to match player.html expectations
+    playerUrl.searchParams.set('index', episodeIndex.toString());
     if (sourceName) playerUrl.searchParams.set('source', sourceName);
     if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
-    if (playbackPosition > 0) playerUrl.searchParams.set('position', playbackPosition.toString());
-
-    // 去广告开关有关
-    playerUrl.searchParams.set('af', adOn ? '1' : '0');
-    // Navigate to player page
+    playerUrl.searchParams.set('af', adOn ? '1' : '0'); // ✅ 广告过滤开关
     window.location.href = playerUrl.toString();
 }
 
