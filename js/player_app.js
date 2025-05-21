@@ -1150,8 +1150,21 @@ function toggleLockScreen() {
 
     if (playerContainer) {
         playerContainer.classList.toggle('player-locked', isScreenLocked);
+        +  }
+
+    // Vidstack Player specific lock/unlock logic
+    if (vsPlayer && typeof vsPlayer.el !== 'undefined') {
+        if (isScreenLocked) {
+
+            if (vsPlayer.el.querySelector('media-gesture')) {
+                vsPlayer.el.querySelector('media-gesture').disabled = true;
+            }
+        } else {
+            if (vsPlayer.el.querySelector('media-gesture')) {
+                vsPlayer.el.querySelector('media-gesture').disabled = false;
+            }
+        }
     }
-    // The CSS in player_styles.css handles disabling controls within .player-locked
 
     if (lockButton && lockIcon) {
         if (isScreenLocked) {
@@ -1233,8 +1246,14 @@ function updateEpisodeInfo() {
 
 function copyLinks() {
     const currentUrlFromParams = new URLSearchParams(window.location.search).get('url');
-    // vsPlayer.source for current src object, vsPlayer.source.src for URL string
-    const playerSrcUrl = (vsPlayer && vsPlayer.source && typeof vsPlayer.source.src === 'string') ? vsPlayer.source.src : (vsPlayer ? vsPlayer.currentSrc : '');
+    let playerSrcUrl = '';
+    if (vsPlayer) {
+        if (vsPlayer.state && vsPlayer.state.source && typeof vsPlayer.state.source.src === 'string') {
+            playerSrcUrl = vsPlayer.state.source.src;
+        } else if (vsPlayer.currentSrc && typeof vsPlayer.currentSrc.src === 'string') { // .src is a MediaSrc object, its .src is the string
+            playerSrcUrl = vsPlayer.currentSrc.src;
+        }
+    }
     const linkUrl = currentUrlFromParams || playerSrcUrl || '';
 
     if (!linkUrl) {
