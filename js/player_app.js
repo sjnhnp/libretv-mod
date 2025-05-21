@@ -405,7 +405,7 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
         addVidstackEventListeners(); // Attaches event listeners like 'can-play', 'error', etc.
 
         if (isMobile()) {
-            playerReady = true;
+
             // vsPlayer.el should be the root DOM element of the player instance
             if (vsPlayer && vsPlayer.el) {
                 disableContextMenuDeep(vsPlayer.el);
@@ -413,7 +413,10 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
                 disableContextMenuDeep(playerTargetElement.firstChild);
             }
         }
-
+        vsPlayer.addEventListener('loadedmetadata', () => {
+            playerReady = true;
+            console.log('Player is ready, fullscreen property should be available.');
+        });
     } catch (playerError) {
         console.error("Vidstack 播放器创建时发生错误:", playerError);
         showError("Vidstack 播放器创建失败 (请检查控制台)"); // More specific message
@@ -1565,15 +1568,12 @@ function doEpisodeSwitch(index, url, seekToPosition) {
 window.playEpisode = playEpisode; // Expose globally
 
 document.addEventListener('keydown', function (e) {
-        if (e.key.toLowerCase() === 'f' && playerReady && window.vsPlayer) {
-                const fullscreen = window.vsPlayer.fullscreen;
-                if (typeof fullscreen === 'object' && 'active' in fullscreen) {
-    if (window.vsPlayer.fullscreen.active) {
-                window.vsPlayer.exitFullscreen();
-            } else {
-                window.vsPlayer.enterFullscreen();
-            }
-            e.preventDefault();
+    if (e.key.toLowerCase() === 'f' && playerReady && vsPlayer && vsPlayer.fullscreen) {
+        if (vsPlayer.fullscreen.active) {
+            vsPlayer.exitFullscreen();
+        } else {
+            vsPlayer.enterFullscreen();
         }
-        }
-    });
+        e.preventDefault();
+    }
+});
