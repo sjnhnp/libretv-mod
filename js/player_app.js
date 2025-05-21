@@ -143,6 +143,7 @@ let isNavigatingToEpisode = false;
 let currentVideoTitle = '';
 let currentEpisodeIndex = 0;
 let currentEpisodes = [];
+let playerReady = false;
 let episodesReversed = localStorage.getItem('episodesReversed') === 'true';
 let vsPlayer = null; // Vidstack Player instance (from VidstackPlayer.create())
 let autoplayEnabled = localStorage.getItem('autoplayEnabled') !== 'false';
@@ -404,6 +405,7 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
         addVidstackEventListeners(); // Attaches event listeners like 'can-play', 'error', etc.
 
         if (isMobile()) {
+            playerReady = true;
             // vsPlayer.el should be the root DOM element of the player instance
             if (vsPlayer && vsPlayer.el) {
                 disableContextMenuDeep(vsPlayer.el);
@@ -1560,3 +1562,14 @@ function doEpisodeSwitch(index, url, seekToPosition) {
     }
 }
 window.playEpisode = playEpisode; // Expose globally
+
+document.addEventListener('keydown', function (e) {
+        if (e.key.toLowerCase() === 'f' && playerReady && window.vsPlayer && typeof window.vsPlayer.fullscreen === 'object') {
+            if (window.vsPlayer.fullscreen.active) {
+                window.vsPlayer.exitFullscreen();
+            } else {
+                window.vsPlayer.enterFullscreen();
+            }
+            e.preventDefault();
+        }
+    });
