@@ -454,9 +454,10 @@ function initializePageContent() {
         if (positionToSeekFromUrl) {
             nextSeekPosition = parseInt(positionToSeekFromUrl, 10);
         }
-    } else {
+    } else { // 这个 else 与 if (episodeUrlForPlayer) 配对
         showError('无效的视频链接');
-    }
+    } // 这个 '}' 是 if (episodeUrlForPlayer) {...} else {...} 语句块的结束
+
 
     updateEpisodeInfo();
     // Use requestAnimationFrame for initial render to ensure DOM is ready
@@ -496,7 +497,7 @@ function initializePageContent() {
 
     // Bind custom control buttons after a slight delay
     setTimeout(setupPlayerControls, 100);
-} 
+}
 
 // --- Ad Filtering Loader (Using Legacy Logic) ---
 class EnhancedAdFilterLoader extends Hls.DefaultConfig.loader {
