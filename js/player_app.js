@@ -161,14 +161,7 @@ const AD_END_PATTERNS = [
     /#EXT-X-DISCONTINUITY/i,
 ];
 
-/* 优先以 URL 的 af 参数为准，其次读全局配置 */
-const urlAfParam = new URLSearchParams(window.location.search).get('af');
-let adFilteringEnabled =
-    urlAfParam === '0'
-        ? false
-        : (urlAfParam === '1'
-            ? true
-            : window.PLAYER_CONFIG?.adFilteringEnabled !== false);
+let adFilteringEnabled = window.PLAYER_CONFIG?.adFilteringEnabled !== false;
 
 function isMobile() {
     return /Mobile|Tablet|iPod|iPhone|iPad|Android|BlackBerry|Windows Phone/i.test(navigator.userAgent);
@@ -368,14 +361,14 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
         window.vsPlayer = vsPlayer; // Expose globally if other scripts need it
 
         // Configure HLS provider after player is created
-        if (isHlsSource && vsPlayer.provider) {
+        if (isHlsSource && vsPlayer.provider) {  
             if (vsPlayer.provider.type === 'hls') {
                 if (typeof vsPlayer.provider.configure === 'function') {
                     vsPlayer.provider.configure(hlsConfigForProvider);
                     console.log("[Vidstack] Applied custom HLS config via provider.configure() on initial provider.");
-                }
+                } 
             }
-        } else if (isHlsSource) {
+        } else if (isHlsSource) {            
             vsPlayer.addEventListener('provider-change', (event) => {
                 const provider = event.detail;
                 if (provider && provider.type === 'hls') {
@@ -526,12 +519,9 @@ function initializePageContent() {
 
             // Use the potentially updated indexForPlayer for positionToResume check
             const actualPositionToResume = savedProgressData[indexForPlayer.toString()] ? parseInt(savedProgressData[indexForPlayer.toString()]) : 0;
-            if (!window.__progressPromptDone &&          /* ← 新增：只弹一次 */
-                positionToResume > 5 &&
-                currentEpisodes[indexForPlayer]) {
 
-                window.__progressPromptDone = true;      /* 标记已弹出 */
 
+            if (actualPositionToResume > 5 && currentEpisodes[indexForPlayer]) {
                 showProgressRestoreModal({
                     title: "继续播放？",
                     content: `发现《${currentVideoTitle}》第 ${indexForPlayer + 1} 集的播放记录，<br>是否从 <span style="color:#00ccff">${formatPlayerTime(actualPositionToResume)}</span> 继续播放？`,
@@ -539,24 +529,29 @@ function initializePageContent() {
                     cancelText: "从头播放"
                 }).then(wantsToResume => {
                     if (wantsToResume) {
-                        nextSeekPosition = positionToResume;
+                        episodeUrlForPlayer = currentEpisodes[indexForPlayer]; // URL for the episode to resume
+                        // indexForPlayer is already set
+                        const newUrl = new URL(window.location.href);
+                        newUrl.searchParams.set('url', episodeUrlForPlayer);
+                        newUrl.searchParams.set('index', indexForPlayer.toString());
+                        newUrl.searchParams.set('position', actualPositionToResume.toString());
+                        window.history.replaceState({}, '', newUrl.toString());
+                        // Message will be shown after player loads and seeks via nextSeekPosition
                     } else {
-                        nextSeekPosition = 0;
-                    } 
-                    /* 统一在原流程里继续向下执行，不再递归 */
-                    // 更新 URL（保留/删除 position）
-                    const newUrl = new URL(window.location.href);
-                    newUrl.searchParams.set('url', currentEpisodes[indexForPlayer]);
-                    newUrl.searchParams.set('index', indexForPlayer.toString());
-                    nextSeekPosition
-                        ? newUrl.searchParams.set('position', nextSeekPosition.toString())
-                        : newUrl.searchParams.delete('position');
-                    window.history.replaceState({}, '', newUrl.toString());
-
-                    // 继续后续初始化 —— 相当于“跳出”if 分支
-                    finalizePlayerSetup();               /* ← 见下 */
+                        episodeUrlForPlayer = currentEpisodes[indexForPlayer];
+                        const newUrl = new URL(window.location.href);
+                        newUrl.searchParams.set('url', episodeUrlForPlayer);
+                        newUrl.searchParams.set('index', indexForPlayer.toString());
+                        newUrl.searchParams.delete('position');
+                        window.history.replaceState({}, '', newUrl.toString());
+                        if (typeof showMessage === 'function') showMessage('已从头开始播放', 'info');
+                        else if (typeof showToast === 'function') showToast('已从头开始播放', 'info');
+                    }
+                    // Re-initialize the content which will eventually call createAndSetupPlayer
+                    // with the possibly modified URL parameters.
+                    initializePageContent();
                 });
-                return;
+                return; // IMPORTANT: Stop further execution to wait for modal response
             } else {
                 episodeUrlForPlayer = currentEpisodes[indexForPlayer] || urlParams.get('url');
             }
@@ -570,16 +565,7 @@ function initializePageContent() {
     /* 统一经过代理，带去广告参数 */
     episodeUrlForPlayer = proxifyUrl(episodeUrlForPlayer, adFilteringEnabled);
 
-    /* -----------------------------------------------------------
-       弹窗结束后，从这里继续完成播放器创建等后续步骤
-       ----------------------------------------------------------- */
-    function finalizePlayerSetup() {
-        currentEpisodeIndex = indexForPlayer;
-        window.currentEpisodeIndex = currentEpisodeIndex;
-    }
-    // 若没有弹窗需等待，直接进入后续流程
-    finalizePlayerSetup();
-    // currentEpisodeIndex = indexForPlayer;
+    currentEpisodeIndex = indexForPlayer;
     window.currentEpisodeIndex = currentEpisodeIndex;
     if (currentEpisodes.length > 0 && (!episodeUrlForPlayer || !currentEpisodes.includes(episodeUrlForPlayer))) {
         episodeUrlForPlayer = currentEpisodes[currentEpisodeIndex];
@@ -1293,17 +1279,9 @@ function updateEpisodeInfo() {
 }
 
 function copyLinks() {
-    /* URL 参数里是 encodeURIComponent 后的结果，需要先解码 */
-    let currentUrlFromParams = new URLSearchParams(window.location.search).get('url');
-    if (currentUrlFromParams) {
-        try { currentUrlFromParams = decodeURIComponent(currentUrlFromParams); } catch { }
-    }
-
-    /* Vidstack 如果返回对象 {src,type}，取其中的 src 字符串 */
-    const playerSrcUrl = typeof vsPlayer?.src === 'string'
-        ? vsPlayer.src
-        : (vsPlayer?.src?.src || vsPlayer?.currentSrc || '');
-
+    const currentUrlFromParams = new URLSearchParams(window.location.search).get('url');
+    // vsPlayer.source for current src object, vsPlayer.source.src for URL string
+    const playerSrcUrl = vsPlayer?.src || vsPlayer?.currentSrc || '';
     const linkUrl = currentUrlFromParams || playerSrcUrl || '';
 
     if (!linkUrl) {
@@ -1548,9 +1526,8 @@ function doEpisodeSwitch(index, url, seekToPosition) {
         const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
         if (currentSourceCode) newUrlForBrowser.searchParams.set('source_code', currentSourceCode);
 
-        /* 只有关闭时才写 af=0，保持与初始页一致 */
-        if (!adFilteringEnabled) newUrlForBrowser.searchParams.set('af', '0');
-        else newUrlForBrowser.searchParams.delete('af');
+        // adFilteringEnabled is global, should reflect current state
+        newUrlForBrowser.searchParams.set('af', adFilteringEnabled ? '1' : '0');
 
         if (seekToPosition > 0) {
             newUrlForBrowser.searchParams.set('position', seekToPosition.toString());

@@ -1,17 +1,12 @@
-/* ==========================================================
-   代理辅助（全局可用）——缺了就会报 proxifyUrl 未定义
-   ========================================================== */
 function proxifyUrl(rawUrl, adOn = true) {
     if (!rawUrl || rawUrl.startsWith('/proxy/')) return rawUrl;
-    /* PROXY_URL 在 config.js 中定义。若加载顺序靠后，这里兜底 '/proxy/' */
-    const proxyBase =
-        typeof PROXY_URL !== 'undefined'
+    const prefix =
+        typeof PROXY_URL === 'string'
             ? PROXY_URL
-            : (typeof window !== 'undefined' && window.PROXY_URL) || '/proxy/';
-    return `${proxyBase}${encodeURIComponent(rawUrl)}${adOn ? '' : '?af=0'}`;
+            : (window.PROXY_URL || '/proxy/');
+    return `${prefix}${encodeURIComponent(rawUrl)}${adOn ? '' : '?af=0'}`;
 }
-/* 供其它脚本（player_app.js 等）复用 */
-if (typeof window !== 'undefined') window.proxifyUrl = proxifyUrl;
+window.proxifyUrl = proxifyUrl;
 
 /**
  * 主应用程序逻辑
@@ -132,7 +127,8 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '') {
     if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
 
     // ← 在这一行后面，插入广告过滤开关参数
-    if (!adOn) playerUrl.searchParams.set('af', '0');
+    playerUrl.searchParams.set('af', adOn ? '1' : '0');
+
     window.location.href = playerUrl.toString();
 }
 
@@ -189,9 +185,10 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0, sourceN
     AppState.set('currentEpisodeIndex', episodeIndex);
     AppState.set('currentVideoTitle', title);
 
-    /* ① 读取广告过滤配置 —— true 表示“启用过滤” */
+    // Build player URL with position parameter
+    // ① 先取广告过滤状态
     const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, true);
-    /* ② 包装地址；当 adOn===false 时附带 ?af=0 */
+    // ② 包装播放地址
     const proxiedUrl = proxifyUrl(url, adOn);
 
     const playerUrl = new URL('player.html', window.location.origin);
@@ -203,7 +200,7 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0, sourceN
     if (playbackPosition > 0) playerUrl.searchParams.set('position', playbackPosition.toString());
 
     // 去广告开关有关
-    if (!adOn) playerUrl.searchParams.set('af', '0');
+    playerUrl.searchParams.set('af', adOn ? '1' : '0');
     // Navigate to player page
     window.location.href = playerUrl.toString();
 }
