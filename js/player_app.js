@@ -454,51 +454,49 @@ function initializePageContent() {
         if (positionToSeekFromUrl) {
             nextSeekPosition = parseInt(positionToSeekFromUrl, 10);
         }
+    } else {
+        showError('无效的视频链接');
     }
-} else {
-    showError('无效的视频链接');
-}
 
-updateEpisodeInfo();
-// Use requestAnimationFrame for initial render to ensure DOM is ready
-requestAnimationFrame(() => {
-    renderEpisodes();
-    //   console.log('[PlayerApp] renderEpisodes called via requestAnimationFrame in initializePageContent');
-});
-updateButtonStates();
-updateOrderButton();
+    updateEpisodeInfo();
+    // Use requestAnimationFrame for initial render to ensure DOM is ready
+    requestAnimationFrame(() => {
+        renderEpisodes();
+    });
+    updateButtonStates();
+    updateOrderButton();
+    setTimeout(() => {
+        setupProgressBarPreciseClicks();
+    }, 1000); // Delay progress bar setup slightly
 
-setTimeout(() => {
-    setupProgressBarPreciseClicks();
-}, 1000); // Delay progress bar setup slightly
-
-document.addEventListener('keydown', handleKeyboardShortcuts);
-window.addEventListener('beforeunload', function () {
-    saveCurrentProgress();
-    saveVideoSpecificProgress();
-});
-document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'hidden') {
+    document.addEventListener('keydown', handleKeyboardShortcuts);
+    window.addEventListener('beforeunload', function () {
         saveCurrentProgress();
-        saveVideoSpecificProgress(); // 补充：隐藏时也保存特定进度
-    }
-});
+        saveVideoSpecificProgress();
+    });
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') {
+            saveCurrentProgress();
+            saveVideoSpecificProgress(); // 补充：隐藏时也保存特定进度
 
-// Ensure critical functions from ui.js are globally available
-let checkUICounter = 0; // Declared with let
-const checkUIInterval = setInterval(() => {
-    if (typeof window.addToViewingHistory === 'function' || checkUICounter > 20) { // Check for 2s
-        clearInterval(checkUIInterval);
-        if (typeof window.addToViewingHistory !== 'function') {
-            console.error("UI functions like addToViewingHistory did not become available.");
         }
-    }
-    checkUICounter++; // Increment counter
-}, 100);
+    });
 
-// Bind custom control buttons after a slight delay
-setTimeout(setupPlayerControls, 100);
-}
+    // Ensure critical functions from ui.js are globally available
+    let checkUICounter = 0;
+    const checkUIInterval = setInterval(() => {
+        if (typeof window.addToViewingHistory === 'function' || checkUICounter > 20) {
+            clearInterval(checkUIInterval);
+            if (typeof window.addToViewingHistory !== 'function') {
+                console.error("UI functions like addToViewingHistory did not become available.");
+            }
+        }
+        checkUICounter++;
+    }, 100);
+
+    // Bind custom control buttons after a slight delay
+    setTimeout(setupPlayerControls, 100);
+} 
 
 // --- Ad Filtering Loader (Using Legacy Logic) ---
 class EnhancedAdFilterLoader extends Hls.DefaultConfig.loader {
@@ -528,8 +526,9 @@ class EnhancedAdFilterLoader extends Hls.DefaultConfig.loader {
 
 // --- Player Initialization ---
 function initPlayer(videoUrl, sourceCode) {
-    if (progressSaveInterval) clearInterval(progressSaveInterval);
-    vsPlayer = document.getElementById('my-vidstack-player');
+    if (progressSaveInterval) clearInterval(progressSaveInterval); // 保持
+
+    vsPlayer = document.getElementById('my-vidstack-player'); // 获取播放器元素
     if (!vsPlayer) {
         showError("播放器元素 (media-player) 未找到!");
         return;
@@ -538,69 +537,75 @@ function initPlayer(videoUrl, sourceCode) {
         showError("视频链接无效");
         return;
     }
-    if (!Hls) {
+    if (!Hls && videoUrl.includes('.m3u8')) {
         console.warn("HLS.js library not found. HLS playback might not work as expected if Vidstack relies on it globally.");
     }
-    return;
-}
 
-const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
-adFilteringEnabled = window.PLAYER_CONFIG?.adFilteringEnabled !== false;
 
-const hlsConfig = {
-    debug: debugMode,
-    loader: adFilteringEnabled ? EnhancedAdFilterLoader : Hls.DefaultConfig.loader,
-    skipDateRanges: adFilteringEnabled,
-    enableWorker: true, lowLatencyMode: false, backBufferLength: 90, maxBufferLength: 30,
-    maxMaxBufferLength: 60, maxBufferSize: 30 * 1000 * 1000, maxBufferHole: 0.5,
-    fragLoadingMaxRetry: 6, fragLoadingMaxRetryTimeout: 64000, fragLoadingRetryDelay: 1000,
-    manifestLoadingMaxRetry: 3, manifestLoadingRetryDelay: 1000, levelLoadingMaxRetry: 4,
-    levelLoadingRetryDelay: 1000,
-    abrEwmaDefaultEstimate: 500000,
-    abrBandWidthFactor: 0.95, abrBandWidthUpFactor: 0.7, abrMaxWithRealBitrate: true,
-    stretchShortVideoTrack: true, appendErrorMaxRetry: 5, liveSyncDurationCount: 3,
-    liveDurationInfinity: false
-};
+    const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
 
-try {
 
-    vsPlayer.src = videoUrl; // Set the video source
-    vsPlayer.autoplay = true; // Or based on your autoplayEnabled logic
+    const hlsConfig = {
+        debug: debugMode,
+        // EnhancedAdFilterLoader 需要 Hls.DefaultConfig.loader，确保 Hls 对象有效
+        loader: (adFilteringEnabled && Hls) ? EnhancedAdFilterLoader : (Hls ? Hls.DefaultConfig.loader : undefined),
+        skipDateRanges: adFilteringEnabled,
+        enableWorker: true, lowLatencyMode: false, backBufferLength: 90, maxBufferLength: 30,
+        maxMaxBufferLength: 60, maxBufferSize: 30 * 1000 * 1000, maxBufferHole: 0.5,
+        fragLoadingMaxRetry: 6, fragLoadingMaxRetryTimeout: 64000, fragLoadingRetryDelay: 1000,
+        manifestLoadingMaxRetry: 3, manifestLoadingRetryDelay: 1000, levelLoadingMaxRetry: 4,
+        levelLoadingRetryDelay: 1000,
+        abrEwmaDefaultEstimate: 500000,
+        abrBandWidthFactor: 0.95, abrBandWidthUpFactor: 0.7, abrMaxWithRealBitrate: true,
+        stretchShortVideoTrack: true, appendErrorMaxRetry: 5, liveSyncDurationCount: 3,
+        liveDurationInfinity: false
+    };
 
-    if (videoUrl.includes('.m3u8')) {
-        if (vsPlayer.hls) {
-            vsPlayer.hls.config = hlsConfig;
-            console.log("[Vidstack Migration] Applied custom HLS config via vsPlayer.hls.config.");
-        } else {
-            if (window.Hls) {
+    try {
+        vsPlayer.src = videoUrl;
+        vsPlayer.autoplay = autoplayEnabled; // 使用全局的 autoplayEnabled
 
-                if (typeof vsPlayer.configure === 'function') {
-                    vsPlayer.configure({ hls: hlsConfig });
-                    console.log("[Vidstack Migration] Applied custom HLS config via vsPlayer.configure().");
-                } else if (vsPlayer.canPlayType && Hls.isSupported()) {
-                    console.warn("[Vidstack Migration] HLS config for Vidstack needs specific API usage. Relying on attribute or future configuration.");
+        if (videoUrl.includes('.m3u8')) {
+            // 推荐的 Vidstack HLS 配置方式是监听事件
+            vsPlayer.addEventListener('provider-change', (event) => {
+                const provider = event.detail;
+                if (provider && provider.type === 'hls') {
+                    // @ts-ignore - Vidstack HLS provider type might not be fully known here
+                    if (typeof provider.configure === 'function') {
+                        // @ts-ignore
+                        provider.configure(hlsConfig);
+                        console.log("[Vidstack Migration] Applied custom HLS config via provider.configure().");
+                        // @ts-ignore
+                    } else if (provider.instance && typeof provider.instance.config !== 'undefined') { // For direct HLS.js instance access
+                        // @ts-ignore
+                        Object.assign(provider.instance.config, hlsConfig); // Merge new config into existing
+                        console.log("[Vidstack Migration] Applied custom HLS config via provider.instance.config.");
+                    } else {
+                        console.warn("[Vidstack Migration] Could not directly configure HLS provider. EnhancedAdFilterLoader may not work as expected unless HLS.js is globally pre-configured.");
+                    }
                 }
-            }
+            }, { once: true });
         }
+
+        const savedVolume = parseFloat(localStorage.getItem('playerVolume'));
+        const savedMuted = localStorage.getItem('playerMuted') === 'true';
+        if (!isNaN(savedVolume)) vsPlayer.volume = savedVolume;
+        vsPlayer.muted = savedMuted;
+
+        window.vsPlayer = vsPlayer;
+
+        if (debugMode) console.log("[PlayerApp] Vidstack Player instance configured.");
+
+        addVidstackEventListeners();
+
+        if (isMobile()) {
+            disableContextMenuDeep(vsPlayer);
+        }
+
+    } catch (playerError) {
+        console.error("Vidstack 播放器初始化时发生错误:", playerError); // 更新错误消息
+        showError("Vidstack 播放器初始化失败");
     }
-
-    const savedVolume = parseFloat(localStorage.getItem('playerVolume'));
-    const savedMuted = localStorage.getItem('playerMuted') === 'true';
-    if (!isNaN(savedVolume)) vsPlayer.volume = savedVolume;
-    vsPlayer.muted = savedMuted;
-
-    window.vsPlayer = vsPlayer;
-
-    if (debugMode) console.log("[PlayerApp] DPlayer instance created.");
-
-    addVidstackEventListeners();
-
-    if (isMobile()) disableContextMenuDeep(vsPlayer);
-
-} catch (playerError) {
-    console.error("Failed to initialize DPlayer:", playerError);
-    showError("Vidstack播放器初始化失败");
-}  
 }
 
 function addVidstackEventListeners() {
@@ -885,8 +890,8 @@ function clearCurrentVideoSpecificEpisodeProgresses() {
 
 function showError(message) {
     const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
-    if (dp && dp.video && dp.video.currentTime > 1 && !debugMode) { // Show error even if playing if debug mode is on
-        console.warn('Ignoring error as video is playing:', message);
+    if (vsPlayer && typeof vsPlayer.currentTime === 'number' && vsPlayer.currentTime > 1 && !debugMode) {
+        console.warn('Ignoring error as video is playing (Vidstack):', message);
         return;
     }
     const loadingEl = document.getElementById('loading'); if (loadingEl) loadingEl.style.display = 'none';
@@ -902,7 +907,7 @@ function showError(message) {
 }
 
 function setupProgressBarPreciseClicks() {
-    if (!dp) return;
+    if (!vsPlayer) return;
     console.warn("[Vidstack Migration] setupProgressBarPreciseClicks needs to be adapted for Vidstack's progress bar element or custom bar.");
 }
 
@@ -1255,8 +1260,10 @@ function updateEpisodeInfo() {
 
 // 复制播放链接
 function copyLinks() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const linkUrl = urlParams.get('url') || (dp && dp.video && dp.video.src) || ''; // 尝试从播放器获取当前链接作为备选
+    const currentUrlFromParams = new URLSearchParams(window.location.search).get('url');
+    const playerSrc = vsPlayer ? vsPlayer.currentSrc || vsPlayer.src : '';
+    const linkUrl = currentUrlFromParams || playerSrc || '';
+
 
     if (!linkUrl) {
         if (typeof showToast === 'function') {
@@ -1529,5 +1536,5 @@ function doEpisodeSwitch(index, url) {
             newUrlForBrowser.toString()
         );
     }
-
-    window.playEpisode = playEpisode;
+}
+window.playEpisode = playEpisode;
