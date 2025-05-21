@@ -8,7 +8,8 @@
     <title>播放器</title>
 
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="/css/player_styles.css"> <link rel="stylesheet" href="https://cdn.vidstack.io/player/theme.css" />
+    <link rel="stylesheet" href="/css/player_styles.css">
+    <link rel="stylesheet" href="https://cdn.vidstack.io/player/theme.css" />
     <link rel="stylesheet" href="https://cdn.vidstack.io/player/video.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -119,8 +120,8 @@
                 <button onclick="copyLinks()" title="复制当前视频链接"
                     class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors"
                     aria-label="复制链接">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                     </svg>
@@ -179,6 +180,17 @@
             </div>
         </div>
     </div>
+    <script>
+        document.addEventListener('keydown', function (e) {
+            if (e.key.toLowerCase() === 'f') {
+                if (window.vsPlayer && typeof window.vsPlayer.fullscreen === 'object') {
+                    if (window.vsPlayer.fullscreen.active) window.vsPlayer.exitFullscreen();
+                    else window.vsPlayer.enterFullscreen();
+                    e.preventDefault();
+                }
+            }
+        }, false);
+    </script>
 </body>
 
 </html>
