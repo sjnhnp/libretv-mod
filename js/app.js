@@ -104,7 +104,8 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '') {
     }
 
     const playerUrl = new URL('player.html', window.location.origin);
-    playerUrl.searchParams.set('url', url);
+    const proxiedUrl = proxifyUrl(url, adOn);
+    playerUrl.searchParams.set('url', encodeURIComponent(proxiedUrl));
     playerUrl.searchParams.set('title', title);
     playerUrl.searchParams.set('index', episodeIndex.toString());
 
@@ -182,7 +183,8 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0, sourceN
 
     // Build player URL with position parameter
     const playerUrl = new URL('player.html', window.location.origin);
-    playerUrl.searchParams.set('url', url);
+    const proxiedUrl = proxifyUrl(url, adOn);
+    playerUrl.searchParams.set('url', encodeURIComponent(proxiedUrl));
     playerUrl.searchParams.set('title', title);
     playerUrl.searchParams.set('index', episodeIndex.toString()); // Changed from 'ep' to 'index' to match player.html expectations
     if (sourceName) playerUrl.searchParams.set('source', sourceName);
@@ -207,6 +209,19 @@ function getBoolConfig(key, defaultValue) {
     if (value === null) return defaultValue;
     return value === 'true';
 }
+
++/**
++ * 把真实播放地址包装到后端 /proxy/ 接口（带可选去广告标记）。
++ * 若已是代理地址则原样返回。
++ * @param {string} rawUrl 真实地址
++ * @param {boolean} adOn  是否启用去广告
++ * @returns {string}      代理后的地址
++ */
+    function proxifyUrl(rawUrl, adOn = true) {
+        if (!rawUrl || rawUrl.startsWith('/proxy/')) return rawUrl;
+        return `${PROXY_URL}${encodeURIComponent(rawUrl)}${adOn ? '' : '?af=0'}`;
+    }
+
 
 // 应用程序初始化
 document.addEventListener('DOMContentLoaded', function () {

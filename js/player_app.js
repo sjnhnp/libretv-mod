@@ -3,6 +3,15 @@
 // 从Vidstack官方CDN导入必要的模块
 import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player';
 
++/**
++ * 把真实播放地址包装到后端 /proxy/ 接口（带可选去广告标记）。
++ * 若已是代理地址则原样返回。
++ */
+    function proxifyUrl(rawUrl, adOn = true) {
+        if (!rawUrl || rawUrl.startsWith('/proxy/')) return rawUrl;
+        return `${PROXY_URL}${encodeURIComponent(rawUrl)}${adOn ? '' : '?af=0'}`;
+    }
+
 // Add this helper function at the top of js/player_app.js
 if (typeof showToast !== 'function' || typeof showMessage !== 'function') {
     if (typeof showToast !== 'function') {
@@ -540,6 +549,9 @@ function initializePageContent() {
     } else {
         episodeUrlForPlayer = currentEpisodes[indexForPlayer] || urlParams.get('url');
     }
+
+    /* 统一经过代理，带去广告参数 */
+    episodeUrlForPlayer = proxifyUrl(episodeUrlForPlayer, adFilteringEnabled);
 
     currentEpisodeIndex = indexForPlayer;
     window.currentEpisodeIndex = currentEpisodeIndex;
@@ -1146,24 +1158,28 @@ function toggleLockScreen() {
     isScreenLocked = !isScreenLocked;
     const playerContainer = document.querySelector('.player-container'); // Main container of your player UI
     const lockButton = document.getElementById('lock-button');
-    const lockIcon = document.getElementById('lock-icon');
 
     if (playerContainer) {
         playerContainer.classList.toggle('player-locked', isScreenLocked);
     }
-    // The CSS in player_styles.css handles disabling controls within .player-locked
 
-    if (lockButton && lockIcon) {
+    if (lockButton) {
         if (isScreenLocked) {
-            lockIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-unlock"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`;
+            lockButton.innerHTML = `<svg id="lock-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`;
             lockButton.setAttribute('aria-label', '解锁屏幕');
-            if (typeof showMessage === 'function') showMessage('屏幕已锁定', 'info');
-            else if (typeof showToast === 'function') showToast('屏幕已锁定', 'info');
+            (window.showMessage ?? window.showToast)('屏幕已锁定', 'info');
         } else {
-            lockIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-lock"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+            lockButton.innerHTML = `<svg id="lock-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
             lockButton.setAttribute('aria-label', '锁定屏幕');
-            if (typeof showMessage === 'function') showMessage('屏幕已解锁', 'info');
-            else if (typeof showToast === 'function') showToast('屏幕已解锁', 'info');
+            (window.showMessage ?? window.showToast)('屏幕已解锁', 'info');
         }
     }
 }
@@ -1234,7 +1250,7 @@ function updateEpisodeInfo() {
 function copyLinks() {
     const currentUrlFromParams = new URLSearchParams(window.location.search).get('url');
     // vsPlayer.source for current src object, vsPlayer.source.src for URL string
-    const playerSrcUrl = (vsPlayer && vsPlayer.source && typeof vsPlayer.source.src === 'string') ? vsPlayer.source.src : (vsPlayer ? vsPlayer.currentSrc : '');
+    const playerSrcUrl = vsPlayer?.src || vsPlayer?.currentSrc || '';
     const linkUrl = currentUrlFromParams || playerSrcUrl || '';
 
     if (!linkUrl) {
@@ -1399,7 +1415,7 @@ function playEpisode(index) {
     const oldEpisodeIndexForRevertOnError = currentEpisodeIndex;
     const rememberEpisodeProgressToggle = document.getElementById('remember-episode-progress-toggle');
     const shouldRestoreSpecificProgress = rememberEpisodeProgressToggle ? rememberEpisodeProgressToggle.checked : true;
-    const newEpisodeUrl = currentEpisodes[index];
+    const newEpisodeUrl = proxifyUrl(currentEpisodes[index], adFilteringEnabled);
 
     if (!newEpisodeUrl || typeof newEpisodeUrl !== 'string' || !newEpisodeUrl.trim()) {
         currentEpisodeIndex = oldEpisodeIndexForRevertOnError; // Revert
@@ -1472,7 +1488,7 @@ function doEpisodeSwitch(index, url, seekToPosition) {
 
         // Update browser URL
         const newUrlForBrowser = new URL(window.location.href);
-        newUrlForBrowser.searchParams.set('url', url);
+        newUrlForBrowser.searchParams.set('url', encodeURIComponent(url));
         newUrlForBrowser.searchParams.set('title', currentVideoTitle); // Ensure title is in URL
         newUrlForBrowser.searchParams.set('index', currentEpisodeIndex.toString());
         const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
