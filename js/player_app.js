@@ -526,9 +526,12 @@ function initializePageContent() {
 
             // Use the potentially updated indexForPlayer for positionToResume check
             const actualPositionToResume = savedProgressData[indexForPlayer.toString()] ? parseInt(savedProgressData[indexForPlayer.toString()]) : 0;
+            if (!window.__progressPromptDone &&          /* ← 新增：只弹一次 */
+                positionToResume > 5 &&
+                currentEpisodes[indexForPlayer]) {
 
+                window.__progressPromptDone = true;      /* 标记已弹出 */
 
-            if (actualPositionToResume > 5 && currentEpisodes[indexForPlayer]) {
                 showProgressRestoreModal({
                     title: "继续播放？",
                     content: `发现《${currentVideoTitle}》第 ${indexForPlayer + 1} 集的播放记录，<br>是否从 <span style="color:#00ccff">${formatPlayerTime(actualPositionToResume)}</span> 继续播放？`,
@@ -536,14 +539,9 @@ function initializePageContent() {
                     cancelText: "从头播放"
                 }).then(wantsToResume => {
                     if (wantsToResume) {
-                        episodeUrlForPlayer = currentEpisodes[indexForPlayer]; // URL for the episode to resume
-                        // indexForPlayer is already set
-                        const newUrl = new URL(window.location.href);
-                        newUrl.searchParams.set('url', episodeUrlForPlayer);
-                        newUrl.searchParams.set('index', indexForPlayer.toString());
-                        newUrl.searchParams.set('position', actualPositionToResume.toString());
-                        window.history.replaceState({}, '', newUrl.toString());
-                        // Message will be shown after player loads and seeks via nextSeekPosition
+                        nextSeekPosition = positionToResume;
+                    } else {
+                        nextSeekPosition = 0;
                     } else {
                         episodeUrlForPlayer = currentEpisodes[indexForPlayer];
                         const newUrl = new URL(window.location.href);
@@ -554,11 +552,20 @@ function initializePageContent() {
                         if (typeof showMessage === 'function') showMessage('已从头开始播放', 'info');
                         else if (typeof showToast === 'function') showToast('已从头开始播放', 'info');
                     }
-                    // Re-initialize the content which will eventually call createAndSetupPlayer
-                    // with the possibly modified URL parameters.
-                    initializePageContent();
+                    /* 统一在原流程里继续向下执行，不再递归 */
+                    // 更新 URL（保留/删除 position）
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.set('url', currentEpisodes[indexForPlayer]);
+                    newUrl.searchParams.set('index', indexForPlayer.toString());
+                    nextSeekPosition
+                        ? newUrl.searchParams.set('position', nextSeekPosition.toString())
+                        : newUrl.searchParams.delete('position');
+                    window.history.replaceState({}, '', newUrl.toString());
+
+                    // 继续后续初始化 —— 相当于“跳出”if 分支
+                    finalizePlayerSetup();               /* ← 见下 */
                 });
-                return; // IMPORTANT: Stop further execution to wait for modal response
+                return;
             } else {
                 episodeUrlForPlayer = currentEpisodes[indexForPlayer] || urlParams.get('url');
             }
@@ -572,7 +579,16 @@ function initializePageContent() {
     /* 统一经过代理，带去广告参数 */
     episodeUrlForPlayer = proxifyUrl(episodeUrlForPlayer, adFilteringEnabled);
 
-    currentEpisodeIndex = indexForPlayer;
+    /* -----------------------------------------------------------
+       弹窗结束后，从这里继续完成播放器创建等后续步骤
+       ----------------------------------------------------------- */
+    function finalizePlayerSetup() {
+        currentEpisodeIndex = indexForPlayer;
+        window.currentEpisodeIndex = currentEpisodeIndex;
+    }
+    // 若没有弹窗需等待，直接进入后续流程
+    finalizePlayerSetup();
+    // currentEpisodeIndex = indexForPlayer;
     window.currentEpisodeIndex = currentEpisodeIndex;
     if (currentEpisodes.length > 0 && (!episodeUrlForPlayer || !currentEpisodes.includes(episodeUrlForPlayer))) {
         episodeUrlForPlayer = currentEpisodes[currentEpisodeIndex];
