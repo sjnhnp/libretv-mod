@@ -345,9 +345,10 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
     // HLS configuration to be applied via provider-change
     const hlsConfigForProvider = {
         debug: debugMode,
-        // Ensure Hls and Hls.DefaultConfig are available before trying to use EnhancedAdFilterLoader
-        loader: (adFilteringEnabled && typeof Hls !== 'undefined' && Hls.DefaultConfig) ? EnhancedAdFilterLoader : (typeof Hls !== 'undefined' && Hls.DefaultConfig ? Hls.DefaultConfig.loader : undefined),
-        skipDateRanges: adFilteringEnabled, // Vidstack might have its own way or this might be for HLS.js
+        // 当广告过滤启用时，代理服务器应该已经处理了M3U8，客户端使用默认加载器即可
+        // 当广告过滤禁用时 (af=0)，代理服务器不处理，客户端也使用默认加载器，不进行额外过滤
+        loader: (typeof Hls !== 'undefined' && Hls.DefaultConfig) ? Hls.DefaultConfig.loader : undefined,
+        // skipDateRanges: adFilteringEnabled, // 此选项可能不再需要，因为代理会移除相关行
         enableWorker: true, lowLatencyMode: false, backBufferLength: 90, maxBufferLength: 30,
         maxMaxBufferLength: 60, maxBufferSize: 30 * 1000 * 1000, maxBufferHole: 0.5,
         fragLoadingMaxRetry: 6, fragLoadingMaxRetryTimeout: 64000, fragLoadingRetryDelay: 1000,
@@ -357,7 +358,7 @@ async function createAndSetupPlayer(initialSrc, initialTitle, initialAutoplaySet
         abrBandWidthFactor: 0.95, abrBandWidthUpFactor: 0.7, abrMaxWithRealBitrate: true,
         stretchShortVideoTrack: true, appendErrorMaxRetry: 5, liveSyncDurationCount: 3,
         liveDurationInfinity: false
-    };
+    };    
 
     try {
         const playerOptions = {
