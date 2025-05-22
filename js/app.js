@@ -188,6 +188,7 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0, sourceN
     playerUrl.searchParams.set('index', episodeIndex.toString());
     if (sourceName) playerUrl.searchParams.set('source', sourceName);
     if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
+    if (playbackPosition > 0) playerUrl.searchParams.set('position', playbackPosition.toString());
     playerUrl.searchParams.set('af', adOn ? '1' : '0'); // ✅ 广告过滤开关
     window.location.href = playerUrl.toString();
 }
