@@ -420,3 +420,64 @@ input:checked+.slider:before {
     font-size: 0.98rem;
   }
 }
+
+/* 美化 Vidstack/VDS 音量滑块，替换原全白样式 */
+.vds-volume-slider,
+.vds-slider,
+input[type="range"].volume {
+  width: 8px !important;
+  height: 96px !important;
+  background: rgba(30,40,56,0.9);
+  border-radius: 8px;
+  box-shadow: 0 1.5px 9px rgba(0,0,0,0.10);
+  display: block;
+  margin: 0 auto;
+  padding: 8px 0;
+}
+
+/* 轨道背景 */
+.vds-volume-slider::-webkit-slider-runnable-track,
+.vds-slider::-webkit-slider-runnable-track,
+input[type="range"].volume::-webkit-slider-runnable-track {
+  background: #333;
+  border-radius: 8px;
+  height: 96px;
+}
+
+.vds-volume-slider::-moz-range-track,
+.vds-slider::-moz-range-track,
+input[type="range"].volume::-moz-range-track {
+  background: #333;
+  border-radius: 8px;
+}
+
+.vds-volume-slider::-ms-fill-lower,
+.vds-slider::-ms-fill-lower,
+input[type="range"].volume::-ms-fill-lower {
+  background: #333;
+  border-radius: 8px;
+}
+
+/* 滑块（高亮圆点） */
+.vds-volume-slider::-webkit-slider-thumb,
+.vds-slider::-webkit-slider-thumb,
+input[type="range"].volume::-webkit-slider-thumb {
+  background: #00ccff;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  height: 20px;
+  width: 20px;
+  cursor: pointer;
+}
+
+.vds-volume-slider:focus,
+.vds-slider:focus,
+input[type="range"].volume:focus {
+  outline: none;
+}
+
+.vds-volume-slider:focus::-webkit-slider-thumb,
+.vds-slider:focus::-webkit-slider-thumb,
+input[type="range"].volume:focus::-webkit-slider-thumb {
+  border-color: #00ccff;
+}
