@@ -542,39 +542,92 @@ function initializePageContent() {
                     confirmText: "继续播放",
                     cancelText: "从头播放"
                 }).then(wantsToResume => {
+                    const siteName = (window.SITE_CONFIG && window.SITE_CONFIG.name) ? window.SITE_CONFIG.name : '播放器';
+                    const sourceCodeFromUrl = new URLSearchParams(window.location.search).get('source_code');
+                    const urlParams = new URLSearchParams(window.location.search); // 获取当前的URL参数
+                    const titleFromUrl = urlParams.get('title') ? fullyDecode(urlParams.get('title')) : currentVideoTitle; // 优先使用URL中的标题
+
                     if (wantsToResume) {
-                        episodeUrlForPlayer = currentEpisodes[indexForPlayer]; // URL for the episode to resume
-                        // indexForPlayer is already set
+                        episodeUrlForPlayer = currentEpisodes[indexForPlayer]; // 这是原始URL
+                        currentEpisodeIndex = indexForPlayer;
+                        window.currentEpisodeIndex = currentEpisodeIndex;
+                        nextSeekPosition = actualPositionToResume;
+
+                        // 更新浏览器URL以反映恢复的状态，方便刷新或分享
                         const newUrl = new URL(window.location.href);
-                        newUrl.searchParams.set('url', episodeUrlForPlayer);
+                        newUrl.searchParams.set('url', episodeUrlForPlayer); // 存储原始URL
                         newUrl.searchParams.set('index', indexForPlayer.toString());
                         newUrl.searchParams.set('position', actualPositionToResume.toString());
+                        if (titleFromUrl) newUrl.searchParams.set('title', titleFromUrl);
+                        if (sourceCodeFromUrl) newUrl.searchParams.set('source_code', sourceCodeFromUrl);
+                        newUrl.searchParams.set('af', adFilteringEnabled ? '1' : '0');
                         window.history.replaceState({}, '', newUrl.toString());
-                    } else {
+
+                        // 直接创建或更新播放器
+                        document.title = `${currentVideoTitle} - 第 ${currentEpisodeIndex + 1} 集 - ${siteName}`;
+                        const videoTitleElement = document.getElementById('video-title');
+                        if (videoTitleElement) videoTitleElement.textContent = `${currentVideoTitle} (第 ${currentEpisodeIndex + 1} 集)`;
+
+                        createAndSetupPlayer(episodeUrlForPlayer, currentVideoTitle, autoplayEnabled, sourceCodeFromUrl); // episodeUrlForPlayer 是原始URL
+
+                        updateEpisodeInfo();
+                        renderEpisodes(); // 确保UI同步当前剧集
+                        updateButtonStates();
+                        updateOrderButton();
+
+                    } else { // 用户选择从头播放
+                        // 清除该特定剧集的已保存进度
                         try {
-                            const all = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
-                            const vid = `${currentVideoTitle}_${sourceCodeFromUrl || 'unknown_source'}`;
-                            if (all[vid] && all[vid][indexForPlayer.toString()]) {
-                                delete all[vid][indexForPlayer.toString()];
-                                localStorage.setItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY, JSON.stringify(all));
+                            const allProgress = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
+                            const videoIdForStorage = `${currentVideoTitle}_${sourceCodeFromUrl || 'unknown_source'}`;
+                            if (allProgress[videoIdForStorage] && allProgress[videoIdForStorage][indexForPlayer.toString()]) {
+                                delete allProgress[videoIdForStorage][indexForPlayer.toString()];
+                                // 可选：如果该视频下没有其他剧集进度，则删除整个 videoIdForStorage 条目
+                                if (Object.keys(allProgress[videoIdForStorage]).length === 0 || (Object.keys(allProgress[videoIdForStorage]).length === 1 && allProgress[videoIdForStorage].lastPlayedEpisodeIndex !== undefined)) {
+                                    // 额外检查 lastPlayedEpisodeIndex，如果只剩它，也意味着没有实际的集数进度了
+                                    if (Object.keys(allProgress[videoIdForStorage]).length === 1 && allProgress[videoIdForStorage].lastPlayedEpisodeIndex !== undefined && allProgress[videoIdForStorage].lastPlayedEpisodeIndex.toString() === indexForPlayer.toString()) {
+                                        delete allProgress[videoIdForStorage].lastPlayedEpisodeIndex; // 也清除 lastPlayedEpisodeIndex 如果它是当前集
+                                    }
+                                    if (Object.keys(allProgress[videoIdForStorage]).length === 0) {
+                                        delete allProgress[videoIdForStorage];
+                                    }
+                                }
+                                localStorage.setItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY, JSON.stringify(allProgress));
                             }
-                        } catch (e) {
-                            console.warn('清除本集进度失败：', e);
-                        }
-                        // 【关键插入 END】
-                        episodeUrlForPlayer = currentEpisodes[indexForPlayer];
+                        } catch (e) { console.warn('清除本集特定进度失败：', e); }
+
+                        episodeUrlForPlayer = currentEpisodes[indexForPlayer]; // 原始URL
+                        currentEpisodeIndex = indexForPlayer;
+                        window.currentEpisodeIndex = currentEpisodeIndex;
+                        nextSeekPosition = 0; // 从头播放
+
+                        // 更新浏览器URL，移除position参数
                         const newUrl = new URL(window.location.href);
-                        newUrl.searchParams.set('url', episodeUrlForPlayer);
+                        newUrl.searchParams.set('url', episodeUrlForPlayer); // 存储原始URL
                         newUrl.searchParams.set('index', indexForPlayer.toString());
                         newUrl.searchParams.delete('position');
+                        if (titleFromUrl) newUrl.searchParams.set('title', titleFromUrl);
+                        if (sourceCodeFromUrl) newUrl.searchParams.set('source_code', sourceCodeFromUrl);
+                        newUrl.searchParams.set('af', adFilteringEnabled ? '1' : '0');
                         window.history.replaceState({}, '', newUrl.toString());
+
                         if (typeof showMessage === 'function') showMessage('已从头开始播放', 'info');
                         else if (typeof showToast === 'function') showToast('已从头开始播放', 'info');
-                    }
 
-                    initializePageContent();
+                        // 直接创建或更新播放器
+                        document.title = `${currentVideoTitle} - 第 ${currentEpisodeIndex + 1} 集 - ${siteName}`;
+                        const videoTitleElement = document.getElementById('video-title');
+                        if (videoTitleElement) videoTitleElement.textContent = `${currentVideoTitle} (第 ${currentEpisodeIndex + 1} 集)`;
+
+                        createAndSetupPlayer(episodeUrlForPlayer, currentVideoTitle, autoplayEnabled, sourceCodeFromUrl); // episodeUrlForPlayer 是原始URL
+
+                        updateEpisodeInfo();
+                        renderEpisodes();
+                        updateButtonStates();
+                        updateOrderButton();
+                    }
                 });
-                return; // IMPORTANT: Stop further execution to wait for modal response
+                return;
             } else {
                 episodeUrlForPlayer = currentEpisodes[indexForPlayer] || urlParams.get('url');
             }
@@ -999,28 +1052,28 @@ function handleKeyboardShortcuts(e) {
             vsPlayer.volume = Math.max(0, vsPlayer.volume - 0.1);
             actionText = `音量 ${Math.round(vsPlayer.volume * 100)}%`;
             e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
-            case 'f':
-                if (vsPlayer) {
-                    let isFs = false;
-                    // 多重兜底判断
-                    try {
-                        if (vsPlayer.fullscreen && typeof vsPlayer.fullscreen.active === 'boolean') {
-                            isFs = vsPlayer.fullscreen.active;
-                        } else if (typeof vsPlayer.isFullscreenActive === 'boolean') {
-                            isFs = vsPlayer.isFullscreenActive;
-                        } else if (document.fullscreenElement && vsPlayer.el && document.fullscreenElement === vsPlayer.el) {
-                            isFs = true;
-                        }
-                    } catch(e) { /* ignore */ }
-                    if (isFs) {
-                        vsPlayer.exitFullscreen && vsPlayer.exitFullscreen().catch?.(console.error);
-                    } else {
-                        vsPlayer.enterFullscreen && vsPlayer.enterFullscreen().catch?.(console.error);
+        case 'f':
+            if (vsPlayer) {
+                let isFs = false;
+                // 多重兜底判断
+                try {
+                    if (vsPlayer.fullscreen && typeof vsPlayer.fullscreen.active === 'boolean') {
+                        isFs = vsPlayer.fullscreen.active;
+                    } else if (typeof vsPlayer.isFullscreenActive === 'boolean') {
+                        isFs = vsPlayer.isFullscreenActive;
+                    } else if (document.fullscreenElement && vsPlayer.el && document.fullscreenElement === vsPlayer.el) {
+                        isFs = true;
                     }
-                    actionText = '切换全屏';
-                    e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`);
+                } catch (e) { /* ignore */ }
+                if (isFs) {
+                    vsPlayer.exitFullscreen && vsPlayer.exitFullscreen().catch?.(console.error);
+                } else {
+                    vsPlayer.enterFullscreen && vsPlayer.enterFullscreen().catch?.(console.error);
                 }
-                break;            
+                actionText = '切换全屏';
+                e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`);
+            }
+            break;
     }
     if (actionText && typeof showShortcutHint === 'function') showShortcutHint(actionText, direction);
 }

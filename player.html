@@ -20,7 +20,7 @@
     <script src="libs/tailwindcss.min.js"></script>
     <script src="libs/hls.min.js" defer></script>
     <script src="libs/sha256.min.js" defer></script>
-  
+
     <script src="js/config.js" defer></script>
     <script src="js/password.js" defer></script>
     <script type="module" src="js/player_app.js" defer></script>
@@ -169,10 +169,17 @@
              duration-300 text-white z-[10001] pointer-events-none">
         <span id="toastMessage"></span>
     </div>
-
-    <div id="progress-restore-modal" tabindex="-1" aria-modal="true" role="dialog">
+    <div id="progress-restore-modal" tabindex="-1" aria-modal="true" role="dialog"
+        aria-labelledby="progress-restore-modal-title">
         <div class="progress-restore-card" role="document">
-            <div class="progress-modal-title">继续播放？</div>
+            <div id="progress-restore-modal-title" class="progress-modal-title">继续播放？</div>
+            <div class="progress-modal-content" style="margin-top: 1rem; margin-bottom: 1.5rem;">
+            </div>
+            <div class="progress-modal-actions">
+                <button id="progress-restore-cancel" class="progress-modal-btn cancel">从头播放</button> {/* 文字更新以匹配常见逻辑 */}
+                <button id="progress-restore-confirm" class="progress-modal-btn confirm">继续播放</button> {/* 文字更新以匹配常见逻辑
+                */}
+            </div>
         </div>
     </div>
 </body>
