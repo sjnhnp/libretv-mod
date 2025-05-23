@@ -551,4 +551,4 @@ input:checked+.slider:before {
 .player-locked .allow-when-locked {
   z-index: 10003 !important;
   pointer-events: auto !important;
-}
+}}
