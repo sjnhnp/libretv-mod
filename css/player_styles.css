@@ -2,6 +2,7 @@
 /* Player-specific styles */
 /* 基本布局和播放器相关样式 */
 .player-container {
+  position: relative;
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
@@ -546,4 +547,14 @@ input:checked+.slider:before {
   pointer-events: auto !important;
   cursor: pointer;
   z-index: 51; /* 锁屏按钮原有的 z-index 可以保留 */
+}
+
+/* 这个保证全屏按钮永远在最上层、可点击 */
+#fullscreen-button {
+  position: absolute;
+  top: 1rem;            /* 你可以按需要调整 */
+  right: 1rem;          /* 你可以按需要调整 */
+  z-index: 9999;        /* 要比播放器各层都高 */
+  pointer-events: auto; /* 确保它自己可响应点击 */
+  cursor: pointer;
 }
