@@ -3,8 +3,7 @@
 // ================================
 
 // 通用fetch，支持超时
-// new1/js/api.js
-async function fetchWithTimeout(targetUrl, options, timeout = 10000, responseType = 'json') { // 添加 responseType 参数，默认为 'json'
+async function fetchWithTimeout(targetUrl, options, timeout = 10000) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
     try {
@@ -12,15 +11,11 @@ async function fetchWithTimeout(targetUrl, options, timeout = 10000, responseTyp
             ...options,
             signal: controller.signal
         });
-        clearTimeout(timer); // 清除定时器
+        clearTimeout(timer);
         if (!response.ok) throw new Error(`请求失败: ${response.status}`);
-
-        if (responseType === 'text') {
-            return await response.text(); // 如果要求文本，则返回文本
-        }
-        return await response.json(); // 否则，按原样返回JSON
+        return await response.json();
     } catch (error) {
-        clearTimeout(timer); // 发生错误时也要清除定时器
+        clearTimeout(timer);
         throw error;
     }
 }
@@ -28,55 +23,45 @@ async function fetchWithTimeout(targetUrl, options, timeout = 10000, responseTyp
 // 处理特殊片源详情
 async function handleSpecialSourceDetail(id, sourceCode) {
     try {
-        const detailUrl = `<span class="math-inline">\{API\_SITES\[sourceCode\]\.detail\}/index\.php/vod/detail/id/</span>{id}.html`;
-        // 调用 fetchWithTimeout 时，指明需要 'text' 类型的响应
-        const htmlContent = await fetchWithTimeout(
+        const detailUrl = `${API_SITES[sourceCode].detail}/index.php/vod/detail/id/${id}.html`;
+        const result = await fetchWithTimeout(
             PROXY_URL + encodeURIComponent(detailUrl),
-            { headers: { 'User-Agent': API_CONFIG.search.headers['User-Agent'] } }, // API_CONFIG.search.headers 可能需要调整为适合详情页的
-            10000, // 超时时间
-            'text' // <--- 指明期望的响应类型是文本
+            { headers: { 'User-Agent': API_CONFIG.search.headers['User-Agent'] } }
         );
-
-        // 现在 htmlContent 是 HTML 字符串，可以进行正则匹配
+        // 一级正则优先，二级通配兜底
         let matches = [];
-        if (sourceCode === 'ffzy') { // ffzy 的特殊处理（如果需要）
-            matches = htmlContent.match(/\$(https?:\/\/[^"'\s]+?\/\d{8}\/\d+_[a-f0-9]+\/index\.m3u8)/g) || [];
+        if (sourceCode === 'ffzy') {
+            matches = result.html.match(/\$(https?:\/\/[^"'\s]+?\/\d{8}\/\d+_[a-f0-9]+\/index\.m3u8)/g) || [];
         }
-        if (matches.length === 0) { // 其他源（包括dyttzy）或ffzy没匹配到时，使用通用匹配
-            matches = htmlContent.match(/\$(https?:\/\/[^"'\s]+?\.m3u8)/g) || [];
+        if (matches.length === 0) {
+            matches = result.html.match(/\$(https?:\/\/[^"'\s]+?\.m3u8)/g) || [];
         }
-
-        // 处理链接 (去除 $ 和可能的括号内容)
         matches = Array.from(new Set(matches)).map(link => {
-            link = link.slice(1); // 去除开头的 $
-            const parenIndex = link.indexOf('(');
-            return parenIndex > -1 ? link.slice(0, parenIndex) : link;
+            link = link.slice(1);
+            const idx = link.indexOf('(');
+            return idx > -1 ? link.slice(0, idx) : link;
         });
 
         if (matches.length === 0) {
             throw new Error(`未能从${API_SITES[sourceCode].name}源获取到有效的播放地址`);
         }
 
-        // 从htmlContent中提取标题和描述
-        const title = (htmlContent.match(/<h1[^>]*>([^<]+)<\/h1>/) || [, ''])[1].trim();
-        const desc = (htmlContent.match(/<div[^>]*class=["']sketch["'][^>]*>([\s\S]*?)<\/div>/) || [, ''])[1]
+        const title = (result.html.match(/<h1[^>]*>([^<]+)<\/h1>/) || [, ''])[1].trim();
+        const desc = (result.html.match(/<div[^>]*class=["']sketch["'][^>]*>([\s\S]*?)<\/div>/) || [, ''])[1]
             .replace(/<[^>]+>/g, ' ').trim();
 
         return JSON.stringify({
-            code: 200,
-            episodes: matches,
-            detailUrl: detailUrl, // 保留原始详情页地址
+            code: 200, episodes: matches, detailUrl,
             videoInfo: {
-                title: title,
-                desc: desc,
+                title,
+                desc,
                 source_name: API_SITES[sourceCode].name,
                 source_code: sourceCode
             }
         });
     } catch (e) {
         console.error(`${API_SITES[sourceCode]?.name || sourceCode}详情获取失败:`, e);
-        // 返回一个符合API错误格式的JSON字符串，或直接抛出错误由上层处理
-         return JSON.stringify({ code: 400, msg: `获取${API_SITES[sourceCode]?.name || sourceCode}详情失败: ${e.message}`, episodes: [] });
+        throw new Error(`获取${API_SITES[sourceCode]?.name || sourceCode}详情失败: ${e.message}`);
     }
 }
 
@@ -291,8 +276,8 @@ async function handleApiRequest(url) {
 
             try {
                 // 特殊片源
-                if (sourceCode !== 'custom' && API_SITES[sourceCode] && API_SITES[sourceCode].detail) { // 检查 API_SITES[sourceCode] 是否存在
-                    // console.log(`[API Detail] Using handleSpecialSourceDetail (old1 logic) for ${sourceCode}`); // 调试信息
+                if ((['ffzy', 'jisu', 'huangcang'].includes(sourceCode)) &&
+                    API_SITES[sourceCode]?.detail) {
                     return await handleSpecialSourceDetail(id, sourceCode);
                 }
                 // 自定义API特殊
