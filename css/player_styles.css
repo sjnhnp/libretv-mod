@@ -156,6 +156,21 @@ input:checked+.slider:before {
   height: 100%;
 }
 
+/* 锁屏样式 */
+.player-locked .dplayer-controller,
+.player-locked .dplayer-mask,
+.player-locked .dplayer-video-wrap,
+.player-locked .dplayer-bar-wrap,
+.player-locked .dplayer-menu,
+.player-locked .dplayer-bezel {
+  pointer-events: none !important;
+}
+
+.player-locked #lock-button {
+  pointer-events: auto !important;
+  z-index: 51;
+}
+
 /* 选集按钮样式（未选中） */
 #episode-grid button:not(.episode-active) {
   background: #222;
