@@ -158,28 +158,6 @@ input:checked+.slider:before {
   height: 100%;
 }
 
-/* 锁屏样式 */
-.player-locked .dplayer-controller,
-.player-locked .dplayer-mask,
-.player-locked .dplayer-video-wrap,
-.player-locked .dplayer-bar-wrap,
-.player-locked .dplayer-menu,
-.player-locked .dplayer-bezel {
-  pointer-events: none !important;
-}
-
-.player-locked #lock-button {
-  pointer-events: auto !important;
-  z-index: 51;
-}
-
-/* 只恢复外层全屏切换按钮的点击能力 */
-.player-locked #fullscreen-button {
-  pointer-events: auto !important;
-  cursor: pointer;
-}
-
-
 /* 选集按钮样式（未选中） */
 #episode-grid button:not(.episode-active) {
   background: #222;
@@ -376,6 +354,8 @@ input:checked+.slider:before {
   }
 }
 
+/* 跳过片头和片尾下拉菜单样式*/
+
 /* 父容器：用于相对定位 */
 .skip-control-container {
   position: relative;
@@ -542,4 +522,28 @@ input:checked+.slider:before {
 #skip-control-dropdown .inline-fields input {
   width: 100%;
   /* 填满各自的 label 宽度 */
+}
+
+/* 锁屏态：屏蔽所有 DPlayer 内部交互，仅放行遮罩、外层全屏和锁定按钮 */
+
+/* 1. 禁用 控制条 / 进度条 / 菜单 / 按钮图标 等内部交互 */
+.player-locked .dplayer-controller,
+.player-locked .dplayer-bar-wrap,
+.player-locked .dplayer-menu,
+.player-locked .dplayer-bezel {
+  pointer-events: none !important;
+}
+
+/* 2. 恢复 DPlayer 自带的遮罩层拦截点击，防止落到底层 video */
+.player-locked .dplayer-mask {
+  pointer-events: auto !important;
+  cursor: default;
+}
+
+/* 3. 放行外层“全屏”按钮和“锁屏”按钮 */
+.player-locked #fullscreen-button,
+.player-locked #lock-button {
+  pointer-events: auto !important;
+  cursor: pointer;
+  z-index: 51; /* 锁屏按钮原有的 z-index 可以保留 */
 }
