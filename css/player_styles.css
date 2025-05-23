@@ -173,6 +173,10 @@ input:checked+.slider:before {
   z-index: 51;
 }
 
+.player-locked #fullscreen-button {
+  pointer-events: auto !important;
+}
+
 /* 选集按钮样式（未选中） */
 #episode-grid button:not(.episode-active) {
   background: #222;
