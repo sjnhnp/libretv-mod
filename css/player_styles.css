@@ -521,3 +521,20 @@ input:checked+.slider:before {
   width: 100%;
   /* 填满各自的 label 宽度 */
 }
+
+/* 锁屏时也允许全屏按钮交互 */
+.allow-when-locked {
+  z-index: 10003 !important;
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  position: absolute;
+  /* 如需 */
+  top: 10px;
+  right: 20px;
+  /* 取决于页面 */
+}
+
+.player-locked .allow-when-locked {
+  z-index: 10003 !important;
+  pointer-events: auto !important;
+}
