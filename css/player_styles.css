@@ -535,7 +535,6 @@ input:checked+.slider:before {
 #skip-control-dropdown .inline-fields input {
   width: 100%;
   /* 填满各自的 label 宽度 */
-}
 
 /* 锁屏时也允许全屏按钮交互 */
 .allow-when-locked {
