@@ -312,16 +312,16 @@ window.currentEpisodeIndex = 0;
  */
 function clearCurrentVideoAllEpisodeProgresses() {
     try {
-        // 取出本地所有已保存的视频进度数据
         const all = JSON.parse(
             localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || "{}"
         );
 
         const sourceCode = new URLSearchParams(window.location.search)
             .get("source_code") || "unknown_source";
-        const videoId = `${currentVideoTitle}_${sourceCode}`;
+        const currentUrl = new URLSearchParams(window.location.search).get('url') || '';
+        const urlId = currentUrl.split('/').pop().split('.')[0] || 'unknown';
+        const videoId = `${currentVideoTitle}_${sourceCode}_${urlId}`;
 
-        // 如果存在该视频的进度记录，则删除
         if (all[videoId]) {
             delete all[videoId];
             localStorage.setItem(
@@ -329,7 +329,6 @@ function clearCurrentVideoAllEpisodeProgresses() {
                 JSON.stringify(all)
             );
 
-            // 给用户一个清除成功的提示
             const msg = `已清除《${currentVideoTitle}》的所有集数播放进度`;
             if (typeof showMessage === "function") showMessage(msg, "success");
             else if (typeof showToast === "function") showToast(msg, "success");
@@ -505,7 +504,10 @@ function initializePageContent() {
         // ---------- 下面是弹窗断点逻辑（你的原有弹窗代码完整贴入这里，结构无须再裁剪/再分支）----------
     } else if (shouldRestoreSpecificProgress && currentEpisodes.length > 0) {
         const sourceCodeFromUrl = urlParams.get('source_code');
-        const videoSpecificIdForRestore = `${currentVideoTitle}_${sourceCodeFromUrl}`;
+        const currentUrl = urlParams.get('url') || '';
+        const urlId = currentUrl.split('/').pop().split('.')[0] || 'unknown';
+        const videoSpecificIdForRestore = `${currentVideoTitle}_${sourceCodeFromUrl}_${urlId}`;
+        
         let allSpecificProgresses = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
         const savedProgressData = allSpecificProgresses[videoSpecificIdForRestore];
 
@@ -552,7 +554,9 @@ function initializePageContent() {
                         // 用户选择“从头播放”，应立刻清除该集的 progress
                         try {
                             const all = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
-                            const vid = `${currentVideoTitle}_${sourceCodeFromUrl || 'unknown_source'}`;
+                        const currentUrl = urlParams.get('url') || '';
+                        const urlId = currentUrl.split('/').pop().split('.')[0] || 'unknown';
+                        const vid = `${currentVideoTitle}_${sourceCodeFromUrl || 'unknown_source'}_${urlId}`;
                             if (all[vid] && all[vid][indexForPlayer.toString()]) {
                                 delete all[vid][indexForPlayer.toString()];
                                 localStorage.setItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY, JSON.stringify(all));
@@ -1116,7 +1120,7 @@ function setupPlayerControls() {
 }
 
 function saveVideoSpecificProgress() {
-    if (isNavigatingToEpisode) return;   // ← 跳过 beforeunload 那次调用
+    if (isNavigatingToEpisode) return;   // ← 跳过 beforeunload 那次调用
     const toggle = document.getElementById('remember-episode-progress-toggle');
     if (!toggle || !toggle.checked) { // 如果开关未勾选，则不保存
         return;
@@ -1129,8 +1133,12 @@ function saveVideoSpecificProgress() {
     const currentTime = Math.floor(dp.video.currentTime);
     const duration = Math.floor(dp.video.duration);
     const sourceCodeFromUrl = new URLSearchParams(window.location.search).get('source_code') || 'unknown_source';
-    // 构建一个基于标题和数据源的唯一视频ID
-    const videoSpecificId = `${currentVideoTitle}_${sourceCodeFromUrl}`;
+    
+    // 使用更唯一的标识符：包含URL中的唯一ID部分
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentUrl = urlParams.get('url') || '';
+    const urlId = currentUrl.split('/').pop().split('.')[0] || 'unknown';
+    const videoSpecificId = `${currentVideoTitle}_${sourceCodeFromUrl}_${urlId}`;
 
     // 仅当播放进度有意义时才保存 (例如，播放超过5秒，且未播放到接近末尾)
     if (currentTime > 5 && duration > 0 && currentTime < duration * 0.95) {
@@ -1161,7 +1169,9 @@ function clearCurrentVideoSpecificEpisodeProgresses() {
         return;
     }
     const sourceCodeFromUrl = new URLSearchParams(window.location.search).get('source_code') || 'unknown_source';
-    const videoId = `${currentVideoTitle}_${sourceCodeFromUrl}`;
+    const currentUrl = new URLSearchParams(window.location.search).get('url') || '';
+    const urlId = currentUrl.split('/').pop().split('.')[0] || 'unknown';
+    const videoId = `${currentVideoTitle}_${sourceCodeFromUrl}_${urlId}`;
 
     try {
         let allVideoProgresses = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
@@ -1742,7 +1752,9 @@ function playEpisode(index) {
     nextSeekPosition = 0;
     if (shouldRestoreSpecificProgress) {
         const sourceCodeFromUrl = new URLSearchParams(window.location.search).get('source_code') || 'unknown_source';
-        const videoSpecificIdForRestore = `${currentVideoTitle}_${sourceCodeFromUrl}`;
+        const currentUrl = new URLSearchParams(window.location.search).get('url') || '';
+        const urlId = currentUrl.split('/').pop().split('.')[0] || 'unknown';
+        const videoSpecificIdForRestore = `${currentVideoTitle}_${sourceCodeFromUrl}_${urlId}`;
         let allSpecificProgresses = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
         const savedProgressDataForVideo = allSpecificProgresses[videoSpecificIdForRestore];
 

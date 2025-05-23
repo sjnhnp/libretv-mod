@@ -506,17 +506,26 @@ function formatPlaybackTime(seconds) {
  * @param {Object} videoInfo 视频信息对象
  */
 function addToViewingHistory(videoInfo) {
-    if (!checkPasswordProtection()) return; // Crucial security check
+    if (!checkPasswordProtection()) return;
 
     try {
         let history = getViewingHistory();
-        const idx = history.findIndex(item => item.title === videoInfo.title); // Original logic: find by title
+        
+        // 使用更唯一的标识符：标题 + 数据源 + URL的一部分（如ID）
+        const createUniqueKey = (item) => {
+            const sourceCode = item.sourceCode || 'unknown';
+            const urlId = item.url ? item.url.split('/').pop().split('.')[0] : 'unknown';
+            return `${item.title}_${sourceCode}_${urlId}`;
+        };
+        
+        const newItemKey = createUniqueKey(videoInfo);
+        const idx = history.findIndex(item => createUniqueKey(item) === newItemKey);
 
         if (idx !== -1) {
             const item = history[idx];
             // Update existing item with specific fields from videoInfo
             item.episodeIndex = videoInfo.episodeIndex;
-            item.timestamp = Date.now(); // Always update timestamp
+            item.timestamp = Date.now();
             if (videoInfo.sourceName && !item.sourceName) { // Only set if not already present or to update
                 item.sourceName = videoInfo.sourceName;
             }
@@ -548,12 +557,12 @@ function addToViewingHistory(videoInfo) {
 
         // Limit history items
         if (history.length > HISTORY_MAX_ITEMS) {
-            history.splice(HISTORY_MAX_ITEMS); // Corrected from previous thought: splice directly
+            history.splice(HISTORY_MAX_ITEMS);
         }
 
         localStorage.setItem('viewingHistory', JSON.stringify(history));
     } catch (e) {
-        console.error('保存观看历史失败:', e); // Retain original error logging style
+        console.error('保存观看历史失败:', e);
     }
 }
 
