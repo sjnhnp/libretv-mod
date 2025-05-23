@@ -372,18 +372,24 @@ input:checked+.slider:before {
 /* 父容器：用于相对定位 */
 .skip-control-container {
   position: relative;
-  display: inline-block; /* 根据需要也可改成 block */
+  display: inline-block;
+  /* 根据需要也可改成 block */
 }
 
 /* 下拉菜单 默认样式（隐藏） */
 #skip-control-dropdown {
   position: absolute;
-  top: calc(100% + 8px);   /* 距离按钮底部 8px */
-  right: 0;                 /* 贴合父容器右侧 */
+  top: calc(100% + 8px);
+  /* 距离按钮底部 8px */
+  right: 0;
+  /* 贴合父容器右侧 */
   left: auto;
-  width: clamp(200px, 60vw, 280px);      /* 响应式宽度 */
-  max-width: calc(100vw - 16px);         /* 视口宽度减去两侧各8px的安全边距 */
-  margin: 0 8px;                         /* 小屏幕下防止紧贴屏幕边缘 */
+  width: clamp(200px, 60vw, 280px);
+  /* 响应式宽度 */
+  max-width: calc(100vw - 16px);
+  /* 视口宽度减去两侧各8px的安全边距 */
+  margin: 0 8px;
+  /* 小屏幕下防止紧贴屏幕边缘 */
   box-sizing: border-box;
   background: rgba(25, 28, 38, 0.97);
   border-radius: 8px;
@@ -452,8 +458,8 @@ input:checked+.slider:before {
   border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.2s ease-out,
-              color 0.15s ease-out,
-              transform 0.1s ease-out;
+    color 0.15s ease-out,
+    transform 0.1s ease-out;
 }
 
 #skip-control-dropdown button:active {
@@ -465,6 +471,7 @@ input:checked+.slider:before {
   background: linear-gradient(135deg, #007bff, #0056b3);
   color: #fff;
 }
+
 #skip-control-dropdown #apply-skip-settings:hover {
   background: linear-gradient(135deg, #0069d9, #004085);
 }
@@ -474,6 +481,7 @@ input:checked+.slider:before {
   background: #4A5568;
   color: #e0e0e0;
 }
+
 #skip-control-dropdown #reset-skip-settings:hover {
   background: #3A4354;
 }
@@ -484,19 +492,47 @@ input:checked+.slider:before {
     width: clamp(180px, 75vw, 260px);
     max-width: calc(100vw - 16px);
     padding: 10px 12px;
-    right: 8px;   /* 贴合视口右侧并留白 */
+    right: 8px;
+    /* 贴合视口右侧并留白 */
     left: auto;
   }
+
   #skip-control-dropdown label {
     font-size: 0.85em;
   }
+
   #skip-control-dropdown input[type="number"] {
     font-size: 0.9em;
     padding: 7px 9px;
   }
+
   #skip-control-dropdown button {
     font-size: 0.85em;
     padding: 8px 10px;
   }
 }
 
+/* 1. 弹性行容器，让子 label 同一行 */
+#skip-control-dropdown .inline-fields {
+  display: flex;
+  gap: 8px;
+  /* 两列间距 */
+  margin-bottom: 8px;
+  /* 与下一行跳片尾的间距 */
+}
+
+/* 2. 让两个 label 平分一行 */
+#skip-control-dropdown .inline-fields label {
+  flex: 1;
+  /* 平分剩余宽度 */
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+  /* 覆盖全局 label 的下边距 */
+}
+
+/* 3. 复用已有的 input 样式，或按需微调宽度 */
+#skip-control-dropdown .inline-fields input {
+  width: 100%;
+  /* 填满各自的 label 宽度 */
+}
