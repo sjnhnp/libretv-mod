@@ -173,6 +173,13 @@ input:checked+.slider:before {
   z-index: 51;
 }
 
+/* 只恢复外层全屏切换按钮的点击能力 */
+.player-locked #fullscreen-button {
+  pointer-events: auto !important;
+  cursor: pointer;
+}
+
+
 /* 选集按钮样式（未选中） */
 #episode-grid button:not(.episode-active) {
   background: #222;
