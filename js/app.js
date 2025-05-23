@@ -682,7 +682,16 @@ async function getVideoDetail(id, sourceCode, apiUrl = '') {
 
         // 添加到观看历史
         if (data.videoInfo && typeof addToViewingHistory === 'function') {
-            addToViewingHistory(data.videoInfo);
+            // 标准化字段名，确保与 createUniqueKey 函数期望的字段匹配
+            const normalizedVideoInfo = {
+                ...data.videoInfo,
+                sourceCode: data.videoInfo.source_code || sourceCode, // 添加 sourceCode 字段
+                sourceName: data.videoInfo.source_name || selectedApi.name || '', // 添加 sourceName 字段
+                url: firstEpisode, // 添加 url 字段
+                episodeIndex: 0, // 添加 episodeIndex 字段
+                episodes: data.episodes || [] // 添加 episodes 字段
+            };
+            addToViewingHistory(normalizedVideoInfo);
         }
 
         // 使用playVideo函数播放第一集

@@ -1656,11 +1656,11 @@ function saveCurrentProgress() {
                 title: currentVideoTitle,
                 url: window.currentEpisodes[window.currentEpisodeIndex], // url of the current episode
                 episodeIndex: window.currentEpisodeIndex,
+                sourceCode: new URLSearchParams(window.location.search).get('source_code') || 'unknown_source',
+                sourceName: new URLSearchParams(window.location.search).get('source') || '', // If you have source name
                 playbackPosition: Math.floor(currentTime),
                 duration: Math.floor(duration),
                 timestamp: Date.now(),
-                sourceName: new URLSearchParams(window.location.search).get('source') || '', // If you have source name
-                sourceCode: new URLSearchParams(window.location.search).get('source_code') || '',
                 episodes: window.currentEpisodes // Save the full list for context
             };
             window.addToViewingHistory(videoInfo); // Call global function from ui.js
@@ -1685,12 +1685,12 @@ function saveToHistory() { // This is more like an "initial save" or "episode ch
             title: currentVideoTitle,
             url: window.currentEpisodes[window.currentEpisodeIndex],
             episodeIndex: window.currentEpisodeIndex,
+            sourceCode: new URLSearchParams(window.location.search).get('source_code') || 'unknown_source',
+            sourceName: new URLSearchParams(window.location.search).get('source') || '',
             episodes: window.currentEpisodes, // Full list for context
             playbackPosition: Math.floor(dp.video.currentTime), // Current time, even if 0 for new episode
             duration: Math.floor(dp.video.duration) || 0, // Duration, or 0 if not loaded yet
-            timestamp: Date.now(),
-            sourceName: new URLSearchParams(window.location.search).get('source') || '',
-            sourceCode: new URLSearchParams(window.location.search).get('source_code') || ''
+            timestamp: Date.now()
         };
         window.addToViewingHistory(videoInfo);
     } catch (e) {
