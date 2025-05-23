@@ -1,5 +1,3 @@
-/* 移除重复的滚动条样式，使用全局样式 */
-/* Player-specific styles */
 /* 基本布局和播放器相关样式 */
 .player-container {
   position: relative;
@@ -7,6 +5,20 @@
   max-width: 1200px;
   margin: 0 auto;
 }
+
+#fullscreen-button {
+  position: absolute;
+  top: 1rem;
+  /* 按需调整位置 */
+  right: 1rem;
+  /* 按需调整位置 */
+  z-index: 10000;
+  /* 保证比 DPlayer 各层都高 */
+  pointer-events: auto;
+  /* 确保按钮自己可响应点击 */
+  cursor: pointer;
+}
+
 
 /* 播放器区域 */
 #player {
@@ -527,34 +539,25 @@ input:checked+.slider:before {
 
 /* 锁屏态：屏蔽所有 DPlayer 内部交互，仅放行遮罩、外层全屏和锁定按钮 */
 
-/* 1. 禁用 控制条 / 进度条 / 菜单 / 按钮图标 等内部交互 */
+/* 3. 锁屏态：屏蔽内部所有可点击区域（包括视频层） */
 .player-locked .dplayer-controller,
 .player-locked .dplayer-bar-wrap,
 .player-locked .dplayer-menu,
-.player-locked .dplayer-bezel {
+.player-locked .dplayer-bezel,
+.player-locked .dplayer-video-wrap {
   pointer-events: none !important;
 }
 
-/* 2. 恢复 DPlayer 自带的遮罩层拦截点击，防止落到底层 video */
+/* 4. 锁屏态：让 DPlayer 自带遮罩层（.dplayer-mask）继续吞掉内部点击 */
 .player-locked .dplayer-mask {
   pointer-events: auto !important;
-  cursor: default;
 }
 
-/* 3. 放行外层“全屏”按钮和“锁屏”按钮 */
+/* 5. 锁屏态：放行并提权全屏/解锁按钮 */
 .player-locked #fullscreen-button,
 .player-locked #lock-button {
   pointer-events: auto !important;
-  cursor: pointer;
-  z-index: 51; /* 锁屏按钮原有的 z-index 可以保留 */
-}
-
-/* 这个保证全屏按钮永远在最上层、可点击 */
-#fullscreen-button {
-  position: absolute;
-  top: 1rem;            /* 你可以按需要调整 */
-  right: 1rem;          /* 你可以按需要调整 */
-  z-index: 9999;        /* 要比播放器各层都高 */
-  pointer-events: auto; /* 确保它自己可响应点击 */
+  z-index: 10001 !important;
+  /* 比 mask 高 */
   cursor: pointer;
 }
