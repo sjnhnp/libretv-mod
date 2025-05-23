@@ -1231,7 +1231,7 @@ function handleProgressBarTouch(e) {
 
 function handleKeyboardShortcuts(e) {
     if (!dp || (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA'))) return;
-    if (isScreenLocked) return; // Ignore shortcuts if screen is locked
+    if (isScreenLocked && (e.key !== 'f' && e.key !== 'F' && e.key !== "Escape")) return;
     let actionText = '', direction = '';
     const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
 
