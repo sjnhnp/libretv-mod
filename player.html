@@ -146,18 +146,32 @@
                                 d="M3 3h18M3 21h18M3 7h18M3 14h18" />
                         </svg>
                     </button>
+
                     <div id="skip-control-dropdown"
                         class="hidden absolute top-10 left-0 bg-gray-900 rounded shadow-lg p-3 w-48">
-                        <label class="block text-gray-300 text-sm mb-2">
-                            跳片头(秒)
-                            <input id="skip-intro-input" type="number" min="0" step="1"
-                                class="w-full mt-1 bg-gray-800 rounded p-2 text-gray-300" placeholder="输入时间">
-                        </label>
+
+                        <!-- 并排的两列：跳片头 & 自定义描述 -->
+                        <div class="inline-fields flex gap-2 mb-2">
+                            <label class="flex-1 flex flex-col text-gray-300 text-sm">
+                                跳片头(秒)
+                                <input id="skip-intro-input" type="number" min="0" step="1"
+                                    class="w-full mt-1 bg-gray-800 rounded p-2 text-gray-300" placeholder="输入时间">
+                            </label>
+                            <label class="flex-1 flex flex-col text-gray-300 text-sm">
+                                自定义描述
+                                <input id="custom-desc-input" type="text"
+                                    class="w-full mt-1 bg-gray-800 rounded p-2 text-gray-300" placeholder="例如：跳片头">
+                            </label>
+                        </div>
+
+                        <!-- 跳片尾 -->
                         <label class="block text-gray-300 text-sm mb-2">
                             跳片尾(秒)
                             <input id="skip-outro-input" type="number" min="0" step="1"
                                 class="w-full mt-1 bg-gray-800 rounded p-2 text-gray-300" placeholder="输入时间">
                         </label>
+
+                        <!-- 操作按钮 -->
                         <button id="apply-skip-settings"
                             class="w-full bg-blue-600 rounded p-2 text-white hover:bg-blue-700 mt-2">
                             应用
@@ -168,6 +182,7 @@
                         </button>
                     </div>
                 </div>
+
 
                 <button onclick="copyLinks()" title="复制当前视频链接"
                     class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors"
