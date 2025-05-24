@@ -506,54 +506,67 @@ function formatPlaybackTime(seconds) {
  * @param {Object} videoInfo 视频信息对象
  */
 function addToViewingHistory(videoInfo) {
-    if (!checkPasswordProtection()) return; // Crucial security check
 
+    if (!checkPasswordProtection()) return;
     try {
         let history = getViewingHistory();
-        const idx = history.findIndex(item => item.title === videoInfo.title); // Original logic: find by title
 
-        if (idx !== -1) {
+        // 创建一个明确的剧集标识符 (show identifier)
+        let internalShowIdentifier;
+        if (videoInfo.title && videoInfo.sourceCode && videoInfo.vod_id) {
+            internalShowIdentifier = `<span class="math-inline">\{videoInfo\.title\}\_</span>{videoInfo.sourceCode}_${videoInfo.vod_id}`;
+        } else {
+            // 如果关键信息不足，生成一个基于URL的降级标识符 (尽量避免这种情况)
+            console.warn("addToViewingHistory: videoInfo 缺少 title, sourceCode 或 vod_id 来创建首选的 showIdentifier。");
+            const fallbackUrlId = (videoInfo.url || '').split('/').pop().split('.')[0] || 'unknown_show_id';
+            internalShowIdentifier = `<span class="math-inline">\{videoInfo\.title \|\| 'UnknownShow'\}\_</span>{videoInfo.sourceCode || 'unknown_source'}_${fallbackUrlId}`;
+        }
+
+        const idx = history.findIndex(item => item.internalShowIdentifier === internalShowIdentifier);
+
+        if (idx !== -1) { // 如果这部剧已在历史中
             const item = history[idx];
-            // Update existing item with specific fields from videoInfo
+            // 更新为最新观看的这一集的信息
+            item.url = videoInfo.url; // 当前播放的特定集的URL
             item.episodeIndex = videoInfo.episodeIndex;
-            item.timestamp = Date.now(); // Always update timestamp
-            if (videoInfo.sourceName && !item.sourceName) { // Only set if not already present or to update
-                item.sourceName = videoInfo.sourceName;
-            }
-            if (videoInfo.playbackPosition && videoInfo.playbackPosition > 10) {
-                item.playbackPosition = videoInfo.playbackPosition;
-                item.duration = videoInfo.duration || item.duration; // Preserve existing duration if new one isn't provided
-            }
-            item.url = videoInfo.url; // Update URL if title matches, as per original logic
-
-            if (videoInfo.episodes && Array.isArray(videoInfo.episodes) && videoInfo.episodes.length) {
-                // Update episodes if new list is different or doesn't exist
-                if (!item.episodes || item.episodes.length !== videoInfo.episodes.length) {
+            item.playbackPosition = videoInfo.playbackPosition;
+            item.duration = videoInfo.duration;
+            item.timestamp = Date.now();
+            // 如果新的videoInfo提供了更完整的剧集列表，则更新
+            if (videoInfo.episodes && videoInfo.episodes.length > 0) {
+                // 简单的检查，如果长度不同或第一个元素不同，就认为需要更新（可以做得更复杂）
+                if (!item.episodes || item.episodes.length !== videoInfo.episodes.length || (item.episodes[0] !== videoInfo.episodes[0])) {
                     item.episodes = [...videoInfo.episodes];
                 }
             }
+            // 其他信息如 title, sourceName, sourceCode, vod_id, internalShowIdentifier 应该保持不变
+            item.sourceName = videoInfo.sourceName || item.sourceName; // 保留旧的，除非新的明确提供
 
-            history.splice(idx, 1); // Remove old item
-            history.unshift(item);  // Add updated item to the beginning
-        } else {
-            // Add as a new item
+            history.splice(idx, 1); // 移除旧条目
+            history.unshift(item);  // 将更新后的条目移到最前面
+        } else { // 如果是新的剧集条目
             const newItem = {
-                ...videoInfo,
+                title: videoInfo.title,
+                url: videoInfo.url,
+                episodeIndex: videoInfo.episodeIndex,
+                sourceName: videoInfo.sourceName,
+                sourceCode: videoInfo.sourceCode,
+                vod_id: videoInfo.vod_id,
+                internalShowIdentifier: internalShowIdentifier, // 保存这个内部标识符
+                playbackPosition: videoInfo.playbackPosition,
+                duration: videoInfo.duration,
                 timestamp: Date.now(),
-                // Ensure 'episodes' is an array for new items, even if empty
-                episodes: Array.isArray(videoInfo.episodes) ? [...videoInfo.episodes] : []
+                episodes: (videoInfo.episodes && videoInfo.episodes.length > 0) ? [...videoInfo.episodes] : []
             };
             history.unshift(newItem);
         }
 
-        // Limit history items
-        if (history.length > HISTORY_MAX_ITEMS) {
-            history.splice(HISTORY_MAX_ITEMS); // Corrected from previous thought: splice directly
+        if (history.length > HISTORY_MAX_ITEMS) { // HISTORY_MAX_ITEMS 在 ui.js 定义 [cite: 1059]
+            history.splice(HISTORY_MAX_ITEMS);
         }
-
         localStorage.setItem('viewingHistory', JSON.stringify(history));
     } catch (e) {
-        console.error('保存观看历史失败:', e); // Retain original error logging style
+        console.error('保存观看历史失败:', e);
     }
 }
 

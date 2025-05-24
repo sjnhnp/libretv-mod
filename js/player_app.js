@@ -267,6 +267,22 @@ let isScreenLocked = false;
 let nextSeekPosition = 0; // Stores the position to seek to for the next episode
 let _tempUrlForCustomHls = ''; // Temporary holder for the URL if DPlayer options are stale in customType
 let lastTapTimeForDoubleTap = 0;
+let vodIdForPlayer = ''; // 新增全局变量存储从URL获取的 VOD ID
+
+function getShowIdentifier() {
+    const title = currentVideoTitle; // 使用全局的 currentVideoTitle
+    const sc = new URLSearchParams(window.location.search).get('source_code') || 'unknown_source';
+    // vodIdForPlayer 会在 initializePageContent 中从URL参数 'id' 初始化
+    const vid = vodIdForPlayer || 'unknown_vod_id';
+
+    if (vid && vid !== 'unknown_vod_id' && sc !== 'unknown_source') {
+        return `<span class="math-inline">\{title\}\_</span>{sc}_${vid}`; // 优先使用标题、源编码和VOD ID
+    }
+    // Fallback (如果 VOD ID 不可用，这种情况应该尽量避免通过确保 app.js 传递 id 来解决)
+    console.warn("Player: VOD ID or Source Code not available for getShowIdentifier. Using fallback identifier based on URL.");
+    const fallbackUrlIdPart = (currentEpisodes.length > 0 && currentEpisodes[0] ? currentEpisodes[0] : (new URLSearchParams(window.location.search).get('url') || '')).split('/').pop().split('.')[0] || 'unknown_fallback_id';
+    return `<span class="math-inline">\{title\}\_</span>{sc}_${fallbackUrlIdPart}`;
+}
 
 const DOUBLE_TAP_INTERVAL = 300; // 双击的最大时间间隔 (毫秒)
 
@@ -312,18 +328,12 @@ window.currentEpisodeIndex = 0;
  */
 function clearCurrentVideoAllEpisodeProgresses() {
     try {
-        // 取出本地所有已保存的视频进度数据
-        const all = JSON.parse(
-            localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || "{}"
-        );
-
-        const sourceCode = new URLSearchParams(window.location.search)
-            .get("source_code") || "unknown_source";
-        const videoId = `${currentVideoTitle}_${sourceCode}`;
+        const all = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || "{}");
+        const showId = getShowIdentifier();
 
         // 如果存在该视频的进度记录，则删除
-        if (all[videoId]) {
-            delete all[videoId];
+        if (all[showId]) {
+            delete all[showId];
             localStorage.setItem(
                 VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY,
                 JSON.stringify(all)
@@ -404,6 +414,7 @@ function initializePageContent() {
     const urlParams = new URLSearchParams(window.location.search);
     let episodeUrlForPlayer = urlParams.get('url'); // 先用 let，后续可能修改
     let title = urlParams.get('title');
+    vodIdForPlayer = urlParams.get('id') || '';
     // 把可能的多层编码全部拆掉
     function fullyDecode(str) {
         try {
@@ -504,25 +515,22 @@ function initializePageContent() {
         indexForPlayer = parseInt(urlParams.get('index') || '0', 10);
         // ---------- 下面是弹窗断点逻辑（你的原有弹窗代码完整贴入这里，结构无须再裁剪/再分支）----------
     } else if (shouldRestoreSpecificProgress && currentEpisodes.length > 0) {
-        const sourceCodeFromUrl = urlParams.get('source_code');
-        const videoSpecificIdForRestore = `${currentVideoTitle}_${sourceCodeFromUrl}`;
+        const showId = getShowIdentifier(); // <--- 使用新的函数获取剧集ID
         let allSpecificProgresses = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
-        const savedProgressData = allSpecificProgresses[videoSpecificIdForRestore];
+        const savedProgressDataForShow = allSpecificProgresses[showId]; // <--- 用 showId 获取该剧的进度对象
 
-        if (savedProgressData) {
-            // ① 决定“要不要提示进度”
-            const resumeIndex = indexForPlayer; // ← 统一使用这个
+        if (savedProgressDataForShow) {
+            const resumeIndex = indexForPlayer;
             const positionToResume =
-                savedProgressData[resumeIndex.toString()]
-                    ? parseInt(savedProgressData[resumeIndex.toString()])
+                savedProgressDataForShow[resumeIndex.toString()] // <--- 从剧集对象中获取特定集的进度
+                    ? parseInt(savedProgressDataForShow[resumeIndex.toString()])
                     : 0;
 
-            // ② 如果 URL *没* 带 index（多半是直接点“继续播放”进入播放器），
-            if ((!urlParams.has('index') || urlParams.get('index') === null)
-                && typeof savedProgressData.lastPlayedEpisodeIndex === 'number'
-                && savedProgressData.lastPlayedEpisodeIndex >= 0
-                && savedProgressData.lastPlayedEpisodeIndex < currentEpisodes.length) {
-                indexForPlayer = savedProgressData.lastPlayedEpisodeIndex;
+            if ((!urlParams.has('index') || urlParams.get('index') === null) &&
+                typeof savedProgressDataForShow.lastPlayedEpisodeIndex === 'number' && // <--- 从剧集对象中获取
+                savedProgressDataForShow.lastPlayedEpisodeIndex >= 0 &&
+                savedProgressDataForShow.lastPlayedEpisodeIndex < currentEpisodes.length) {
+                indexForPlayer = savedProgressDataForShow.lastPlayedEpisodeIndex; // <--- 从剧集对象中获取
             }
 
             if (positionToResume > 5 && currentEpisodes[resumeIndex]) {
@@ -540,6 +548,8 @@ function initializePageContent() {
                         newUrl.searchParams.set('url', episodeUrlForPlayer);
                         newUrl.searchParams.set('index', indexForPlayer.toString());
                         newUrl.searchParams.set('position', positionToResume.toString());
+                        newUrl.searchParams.set('id', vodIdForPlayer); // <--- 确保 id 也存在
+
                         window.history.replaceState({}, '', newUrl.toString());
 
                         if (typeof window.showMessage === 'function') {
@@ -548,42 +558,35 @@ function initializePageContent() {
                             window.showToast(`将从 ${formatPlayerTime(positionToResume)} 继续播放`, 'info');
                         }
                     } else {
-                        // 【关键插入 START】
-                        // 用户选择“从头播放”，应立刻清除该集的 progress
+                        // 用户选择从头播放，清除该集的特定进度
                         try {
-                            const all = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
-                            const vid = `${currentVideoTitle}_${sourceCodeFromUrl || 'unknown_source'}`;
-                            if (all[vid] && all[vid][indexForPlayer.toString()]) {
-                                delete all[vid][indexForPlayer.toString()];
-                                localStorage.setItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY, JSON.stringify(all));
+                            const show_Id_for_clear = getShowIdentifier(); // 获取当前节目的ID
+                            const all_prog = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
+                            if (all_prog[show_Id_for_clear] && all_prog[show_Id_for_clear][indexForPlayer.toString()]) {
+                                delete all_prog[show_Id_for_clear][indexForPlayer.toString()];
+                                // (可选) 检查是否清空了所有集数的进度，如果是，也可以删除 lastPlayedEpisodeIndex
+                                localStorage.setItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY, JSON.stringify(all_prog));
                             }
-                        } catch (e) {
-                            console.warn('清除本集进度失败：', e);
-                        }
-                        // 【关键插入 END】
+                        } catch (e) { console.warn('清除本集特定进度失败：', e); }   
                         episodeUrlForPlayer = currentEpisodes[indexForPlayer];
                         const newUrl = new URL(window.location.href);
                         newUrl.searchParams.set('url', episodeUrlForPlayer);
                         newUrl.searchParams.set('index', indexForPlayer.toString());
                         newUrl.searchParams.delete('position');
+                        newUrl.searchParams.set('id', vodIdForPlayer);  
                         window.history.replaceState({}, '', newUrl.toString());
                         if (typeof showMessage === 'function') showMessage('已从头开始播放', 'info');
-                        else if (typeof showToast === 'function') showToast('已从头开始播放', 'info');
+                        else if (typeof showToast === 'function') showToast('已从头开始播放', 'info');                                                
                     }
-                    // ★ 弹窗回调里，直接重新初始化（再次走此流程就不会再弹窗）
-                    initializePageContent();
+                    initializePageContent(); // 重新初始化以应用选择
                 });
-                return; // 不再往下执行
+                return;
             } else {
-                // 没有有效进度，或进度太短，播放用户从首页选择的
                 episodeUrlForPlayer = currentEpisodes[indexForPlayer] || urlParams.get('url');
             }
         } else {
-            // 该视频没有任何保存的集数进度
             episodeUrlForPlayer = currentEpisodes[indexForPlayer] || urlParams.get('url');
         }
-        // ---------- 弹窗断点逻辑结束 ----------
-
     } else {
         episodeUrlForPlayer = currentEpisodes[indexForPlayer] || urlParams.get('url');
     }
@@ -1116,11 +1119,9 @@ function setupPlayerControls() {
 }
 
 function saveVideoSpecificProgress() {
-    if (isNavigatingToEpisode) return;   // ← 跳过 beforeunload 那次调用
+    if (isNavigatingToEpisode) return;
     const toggle = document.getElementById('remember-episode-progress-toggle');
-    if (!toggle || !toggle.checked) { // 如果开关未勾选，则不保存
-        return;
-    }
+    if (!toggle || !toggle.checked) { return; }
 
     if (!dp || !dp.video || typeof currentVideoTitle === 'undefined' || typeof currentEpisodeIndex !== 'number' || !currentEpisodes || currentEpisodes.length === 0) {
         return;
@@ -1128,27 +1129,22 @@ function saveVideoSpecificProgress() {
 
     const currentTime = Math.floor(dp.video.currentTime);
     const duration = Math.floor(dp.video.duration);
-    const sourceCodeFromUrl = new URLSearchParams(window.location.search).get('source_code') || 'unknown_source';
-    // 构建一个基于标题和数据源的唯一视频ID
-    const videoSpecificId = `${currentVideoTitle}_${sourceCodeFromUrl}`;
 
-    // 仅当播放进度有意义时才保存 (例如，播放超过5秒，且未播放到接近末尾)
+    const showId = getShowIdentifier(); // <--- 使用新的函数获取剧集ID
+
     if (currentTime > 5 && duration > 0 && currentTime < duration * 0.95) {
         try {
-            let allVideosProgresses = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
-
-            if (!allVideosProgresses[videoSpecificId]) {
-                allVideosProgresses[videoSpecificId] = {};
+            let allShowsProgresses = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
+            if (!allShowsProgresses[showId]) { // <--- 如果该剧还没有进度对象，则创建
+                allShowsProgresses[showId] = {};
             }
             // 保存当前集数的进度
-            allVideosProgresses[videoSpecificId][currentEpisodeIndex.toString()] = currentTime;
+            allShowsProgresses[showId][currentEpisodeIndex.toString()] = currentTime; // <--- 在剧集对象下保存特定集的进度
             // 记录这个视频最后播放到哪一集
-            allVideosProgresses[videoSpecificId].lastPlayedEpisodeIndex = currentEpisodeIndex;
-            // (可选) 记录总集数，方便后续判断
-            // allVideosProgresses[videoSpecificId].totalEpisodes = currentEpisodes.length; 
+            allShowsProgresses[showId].lastPlayedEpisodeIndex = currentEpisodeIndex; // <--- 在剧集对象下记录
+            allShowsProgresses[showId].totalEpisodes = currentEpisodes.length; // (可选)
 
-            localStorage.setItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY, JSON.stringify(allVideosProgresses));
-
+            localStorage.setItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY, JSON.stringify(allShowsProgresses));
         } catch (e) {
             console.error('保存特定视频集数进度失败:', e);
         }
@@ -1157,17 +1153,14 @@ function saveVideoSpecificProgress() {
 
 // （可选）用于在关闭“记住进度”时清除当前视频的集数进度
 function clearCurrentVideoSpecificEpisodeProgresses() {
-    if (typeof currentVideoTitle === 'undefined' || !currentEpisodes || currentEpisodes.length === 0) {
-        return;
-    }
-    const sourceCodeFromUrl = new URLSearchParams(window.location.search).get('source_code') || 'unknown_source';
-    const videoId = `${currentVideoTitle}_${sourceCodeFromUrl}`;
+    const showId = getShowIdentifier();
 
     try {
-        let allVideoProgresses = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
-        if (allVideoProgresses[videoId]) {
-            delete allVideoProgresses[videoId];
-            localStorage.setItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY, JSON.stringify(allVideoProgresses));
+        const allProgress = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
+        if (allProgress[showId]) {
+            delete allProgress[showId];
+            localStorage.setItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY, JSON.stringify(allProgress));
+
             if (typeof showToast === 'function') {
                 showToast(`已清除《${currentVideoTitle}》的各集播放进度`, 'info');
             }
@@ -1644,16 +1637,17 @@ function saveCurrentProgress() {
         try {
             const videoInfo = {
                 title: currentVideoTitle,
-                url: window.currentEpisodes[window.currentEpisodeIndex], // url of the current episode
+                url: window.currentEpisodes[window.currentEpisodeIndex],
                 episodeIndex: window.currentEpisodeIndex,
+                vod_id: vodIdForPlayer || '', // <--- 使用全局的 vodIdForPlayer
+                sourceCode: new URLSearchParams(window.location.search).get('source_code') || 'unknown_source',
+                sourceName: new URLSearchParams(window.location.search).get('source') || '',
                 playbackPosition: Math.floor(currentTime),
                 duration: Math.floor(duration),
                 timestamp: Date.now(),
-                sourceName: new URLSearchParams(window.location.search).get('source') || '', // If you have source name
-                sourceCode: new URLSearchParams(window.location.search).get('source_code') || '',
-                episodes: window.currentEpisodes // Save the full list for context
+                episodes: window.currentEpisodes
             };
-            window.addToViewingHistory(videoInfo); // Call global function from ui.js
+            window.addToViewingHistory(videoInfo);
         } catch (e) {
             console.error('保存播放进度失败:', e);
         }
@@ -1675,12 +1669,13 @@ function saveToHistory() { // This is more like an "initial save" or "episode ch
             title: currentVideoTitle,
             url: window.currentEpisodes[window.currentEpisodeIndex],
             episodeIndex: window.currentEpisodeIndex,
-            episodes: window.currentEpisodes, // Full list for context
-            playbackPosition: Math.floor(dp.video.currentTime), // Current time, even if 0 for new episode
-            duration: Math.floor(dp.video.duration) || 0, // Duration, or 0 if not loaded yet
-            timestamp: Date.now(),
+            vod_id: vodIdForPlayer || '', // <--- 使用全局的 vodIdForPlayer
+            sourceCode: new URLSearchParams(window.location.search).get('source_code') || 'unknown_source',
             sourceName: new URLSearchParams(window.location.search).get('source') || '',
-            sourceCode: new URLSearchParams(window.location.search).get('source_code') || ''
+            episodes: window.currentEpisodes,
+            playbackPosition: Math.floor(dp.video.currentTime),
+            duration: Math.floor(dp.video.duration) || 0,
+            timestamp: Date.now()
         };
         window.addToViewingHistory(videoInfo);
     } catch (e) {
@@ -1741,10 +1736,11 @@ function playEpisode(index) {
     // 进度恢复弹窗逻辑整合
     nextSeekPosition = 0;
     if (shouldRestoreSpecificProgress) {
-        const sourceCodeFromUrl = new URLSearchParams(window.location.search).get('source_code') || 'unknown_source';
-        const videoSpecificIdForRestore = `${currentVideoTitle}_${sourceCodeFromUrl}`;
-        let allSpecificProgresses = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
-        const savedProgressDataForVideo = allSpecificProgresses[videoSpecificIdForRestore];
+        const showId = getShowIdentifier();   // 与 saveVideoSpecificProgress 保持一致
+        const allSpecificProgresses = JSON.parse(
+            localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}'
+        );
+        const savedProgressDataForVideo = allSpecificProgresses[showId];
 
         if (savedProgressDataForVideo) {
             const positionToResume = savedProgressDataForVideo[index.toString()]
