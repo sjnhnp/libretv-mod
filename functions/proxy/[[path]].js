@@ -1,6 +1,6 @@
 // functions/proxy/[[path]].js
 // -----------------------------------------------------------------------------
-//     • 智能缓存 & M3U8 重写（含广告剥离）
+//     • 智能缓存 & M3U8 重写
 // -----------------------------------------------------------------------------
 
 import { kvHelper } from "../utils/kv-helper.js";
@@ -25,19 +25,6 @@ const M3U8_CONTENT_TYPES = [
   "application/vnd.apple.mpegurl",
   "application/x-mpegurl",
   "audio/mpegurl",
-];
-
-// === 广告标记正则（可按需增删） ================================================
-const AD_START_PATTERNS = [
-  /^#EXT-X-CUE-OUT\b/i,
-  /^#EXT-X-SCTE35-OUT\b/i,
-  /^#EXT-X-CUE-OUT-CONT\b/i,
-  /#EXT-X-DATERANGE[^]*CLASS="[^"]*ads?/i,
-];
-const AD_END_PATTERNS = [
-  /^#EXT-X-CUE-IN\b/i,
-  /^#EXT-X-SCTE35-IN\b/i,
-  /#EXT-X-DATERANGE[^]*END-ON-NEXT=YES/i,
 ];
 
 const COMMON_HEADERS = {
@@ -111,9 +98,8 @@ const resolveUrl = (baseUrl, relativeUrl, cache, logFn) => {
   }
 };
 
-// 新：在重写时保留广告过滤参数
-const rewriteUrlToProxy = (url, adFilterOn) =>
-  `/proxy/${encodeURIComponent(url)}${adFilterOn ? "" : "?af=0"}`;
+const rewriteUrlToProxy = (url) =>
+  `/proxy/${encodeURIComponent(url)}`;
 
 const safeJsonParse = (str, def = null, logFn) => {
   if (typeof str !== "string") return def;
@@ -257,11 +243,11 @@ const decideStreamOrBuffer = async (resp, isText, threshold, logFn) => {
 /**
  * 抓取任意资源。
  * @returns {{content:string|ArrayBuffer|ReadableStream, contentType:string,
- *            responseHeaders:Headers, isStream:boolean}}
+ * responseHeaders:Headers, isStream:boolean}}
  */
 const fetchContentWithType = async (targetUrl, originalRequest, cfg, logFn) => {
   const headers = createFetchHeaders(originalRequest, targetUrl, cfg.USER_AGENTS);
-  logFn(`Fetch → ${targetUrl}`);
+  logFn(`Workspace → ${targetUrl}`);
 
   let resp;
   try {
@@ -301,54 +287,37 @@ const fetchContentWithType = async (targetUrl, originalRequest, cfg, logFn) => {
 };
 
 // -----------------------------------------------------------------------------
-//  广告剥离工具
-// -----------------------------------------------------------------------------
-const stripAdSections = (lines) => {
-  const out = [];
-  let inAd = false;
-  for (const raw of lines) {
-    const l = raw.trim();
-    if (!inAd && AD_START_PATTERNS.some((re) => re.test(l))) { inAd = true; continue; }
-    if (inAd && AD_END_PATTERNS.some((re) => re.test(l)))     { inAd = false; continue; }
-    if (!inAd) out.push(raw);
-  }
-  return out;
-};
-
-// -----------------------------------------------------------------------------
 //  M3U8 处理
 // -----------------------------------------------------------------------------
-const processUriLine = (line, baseUrl, cache, logFn, adFilterOn) => {
+const processUriLine = (line, baseUrl, cache, logFn) => {
   let out = line.replace(RE_URI, (_, uri) => {
     const abs = resolveUrl(baseUrl, uri, cache, logFn);
-    return `URI="${rewriteUrlToProxy(abs, adFilterOn)}"`;
+    return `URI="${rewriteUrlToProxy(abs)}"`;
   });
   out = out.replace(RE_OTHER_URI, (match, attr, uri) => {
     if (!uri.includes("://")) return match;
     const abs = resolveUrl(baseUrl, uri, cache, logFn);
-    return `${attr}="${rewriteUrlToProxy(abs, adFilterOn)}"`;
+    return `${attr}="${rewriteUrlToProxy(abs)}"`;
   });
   return out;
 };
 
 // -------- 媒体播放列表 ---------------------------------------------------------
-const processMediaPlaylist = (targetUrl, content, cache, logFn, adFilterOn) => {
+const processMediaPlaylist = (targetUrl, content, cache, logFn) => {
   const base = getBaseUrl(targetUrl);
   const newline = /\r\n/.test(content) ? "\r\n" : "\n";
-  const rewritten = content
+  const finalLines = content
     .split(/\r?\n/)
     .map((line) => {
       const t = line.trim();
       if (!t) return "";
       if (t.startsWith("#EXT-X-KEY") || t.startsWith("#EXT-X-MAP"))
-        return processUriLine(t, base, cache, logFn, adFilterOn);
+        return processUriLine(t, base, cache, logFn);
       if (t.startsWith("#")) return t;
       const abs = resolveUrl(base, t, cache, logFn);
-      return rewriteUrlToProxy(abs, adFilterOn);
+      return rewriteUrlToProxy(abs);
     });
 
-  // 如开关开启 → 再剥离广告段
-  const finalLines = adFilterOn ? stripAdSections(rewritten) : rewritten;
   return finalLines.join(newline);
 };
 
@@ -387,17 +356,16 @@ const processMasterPlaylist = async (
   cache,
   logFn,
   kv,
-  adFilterOn,
 ) => {
   if (depth > cfg.MAX_RECURSION) throw new Error("Max recursion depth reached");
 
   const variantUrl = findFirstVariantUrl(content, getBaseUrl(targetUrl), cache, logFn);
   if (!variantUrl) {
     logFn("No variant found – fallback to media playlist");
-    return processMediaPlaylist(targetUrl, content, cache, logFn, adFilterOn);
+    return processMediaPlaylist(targetUrl, content, cache, logFn);
   }
 
-  const cacheKey = `${KV_M3U8_PROCESSED_PREFIX}${variantUrl}|${adFilterOn ? 1 : 0}`;
+  const cacheKey = `${KV_M3U8_PROCESSED_PREFIX}${variantUrl}`;
   const processedHit = kv ? await kv.get(cacheKey) : null;
   if (processedHit) {
     logFn("[KV hit – processed M3U8]");
@@ -421,7 +389,6 @@ const processMasterPlaylist = async (
     cache,
     logFn,
     kv,
-    adFilterOn,
   );
 
   if (kv) {
@@ -440,13 +407,12 @@ const processM3u8Recursive = async (
   cache,
   logFn,
   kv,
-  adFilterOn,
 ) => {
   const isMaster =
     content.includes("#EXT-X-STREAM-INF") || content.includes("#EXT-X-MEDIA:");
   return isMaster
-    ? processMasterPlaylist(targetUrl, content, depth, ctx, cfg, cache, logFn, kv, adFilterOn)
-    : processMediaPlaylist(targetUrl, content, cache, logFn, adFilterOn);
+    ? processMasterPlaylist(targetUrl, content, depth, ctx, cfg, cache, logFn, kv)
+    : processMediaPlaylist(targetUrl, content, cache, logFn);
 };
 
 // -----------------------------------------------------------------------------
@@ -467,7 +433,7 @@ export const onRequest = async (ctx) => {
 
   // 提取目标 URL
   const urlObj = new URL(request.url);
-  const { pathname, searchParams } = urlObj;
+  const { pathname } = urlObj;
   const encoded = pathname.slice(7); // 去掉 "/proxy/"
   let targetUrl;
   try {
@@ -478,10 +444,6 @@ export const onRequest = async (ctx) => {
   if (!/^https?:\/\//i.test(targetUrl))
     return createResponse(request, "Bad Request: invalid target URL", 400);
   log(`Target → ${targetUrl}`);
-
-  // 广告过滤开关 (?af=0 关闭)
-  const adFilterEnabled = searchParams.get("af") !== "0";
-  log(`AdFilter ${adFilterEnabled ? "ON" : "OFF"}`);
 
   // KV 辅助
   const kv = env.LIBRETV_PROXY_KV ? kvHelper(env.LIBRETV_PROXY_KV, cfg.CACHE_TTL, log) : null;
@@ -538,7 +500,6 @@ export const onRequest = async (ctx) => {
       cache,
       log,
       kv,
-      adFilterEnabled,
     );
     return createM3u8Response(request, processed, cfg.CACHE_TTL);
   }
@@ -551,4 +512,3 @@ export const onRequest = async (ctx) => {
 //  CORS 预检
 // -----------------------------------------------------------------------------
 export const onOptions = () => new Response(null, { status: 204, headers: OPTIONS_HEADERS });
-
