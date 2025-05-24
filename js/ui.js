@@ -13,6 +13,24 @@ const TOAST_BG_COLORS = {
 };
 const HISTORY_MAX_ITEMS = 50;           // 观看历史最大数量
 
+
+/**
+ * 生成「剧 + 集」唯一标识  
+ * - 优先：title + sourceCode + vod_id + _epX  
+ * - 兜底：title + sourceCode + url 最后一段 + _epX  
+ */
+function getUniqueEpisodeId(v) {
+    const getUrlKey = (raw = '') =>
+        (raw.split('/').pop().split(/[?#]/)[0] || raw).slice(-80); // 取文件名或 URL 尾部
+
+    const sc = v.sourceCode || 'unknown_source';
+    const vid = v.vod_id || '';
+    const ep = (typeof v.episodeIndex === 'number') ? `_ep${v.episodeIndex}` : '';
+
+    if (vid) return `${v.title}_${sc}_${vid}${ep}`;
+    return `${v.title}_${sc}_${getUrlKey(v.url)}${ep}`;
+}
+
 // DOM元素缓存
 const domCache = new Map();
 
@@ -511,16 +529,8 @@ function addToViewingHistory(videoInfo) {
     try {
         let history = getViewingHistory();
 
-        // 创建一个明确的剧集标识符 (show identifier)
-        let internalShowIdentifier;
-        if (videoInfo.title && videoInfo.sourceCode && videoInfo.vod_id) {
-            internalShowIdentifier = `<span class="math-inline">\{videoInfo\.title\}\_</span>{videoInfo.sourceCode}_${videoInfo.vod_id}`;
-        } else {
-            // 如果关键信息不足，生成一个基于URL的降级标识符 (尽量避免这种情况)
-            console.warn("addToViewingHistory: videoInfo 缺少 title, sourceCode 或 vod_id 来创建首选的 showIdentifier。");
-            const fallbackUrlId = (videoInfo.url || '').split('/').pop().split('.')[0] || 'unknown_show_id';
-            internalShowIdentifier = `<span class="math-inline">\{videoInfo\.title \|\| 'UnknownShow'\}\_</span>{videoInfo.sourceCode || 'unknown_source'}_${fallbackUrlId}`;
-        }
+        // 使用统一工具生成「剧 + 集」级唯一键，避免同名不同集互相覆盖
+        const internalShowIdentifier = getUniqueEpisodeId(videoInfo);
 
         const idx = history.findIndex(item => item.internalShowIdentifier === internalShowIdentifier);
 
