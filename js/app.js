@@ -127,7 +127,7 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', v
     const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, false);
     playerUrl.searchParams.set('af', adOn ? '1' : '0');
 
-    window.location.replace(playerUrl.toString());
+    window.location.href = playerUrl.toString();
 }
 
 
@@ -239,7 +239,7 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     playerUrl.searchParams.set('af', adOn ? '1' : '0');
 
     console.log(`[App - playFromHistory] Navigating to player: ${playerUrl.toString()}`);
-    window.location.replace(playerUrl.toString());
+    window.location.href = playerUrl.toString();
 }
 
 /**
@@ -271,6 +271,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 加载搜索历史
     renderSearchHistory();
+
+    // 恢复搜索状态
+    restoreSearchFromCache();
 });
 
 /**
@@ -437,8 +440,6 @@ function initializeUIComponents() {
     // 初始化任何需要的UI组件
 }
 
-// 在 new3.txt/js/app.js
-
 /**
  * 执行搜索
  * @param {object} options - 搜索选项，可以包含 doubanQuery 和 onComplete 回调
@@ -559,7 +560,6 @@ async function performSearch(query, selectedAPIs) {
     return Promise.all(searchPromises);
 }
 
-// 在 new3.txt/js/app.js
 function renderSearchResults(results, doubanSearchedTitle = null) {
     const searchResultsContainer = DOMCache.get('searchResults'); // 这个是放置所有结果卡片或无结果提示的容器
     const resultsArea = getElement('resultsArea'); // 这个是包含 searchResultsCount 和 searchResultsContainer 的外层区域
@@ -682,6 +682,115 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
         searchArea.classList.remove('hidden');
     }
     getElement('doubanArea')?.classList.add('hidden');
+
+    // 缓存搜索结果到 sessionStorage
+    try {
+        const searchInput = DOMCache.get('searchInput');
+        const query = searchInput ? searchInput.value.trim() : '';
+
+        if (query && allResults.length > 0) {
+            // 缓存搜索关键词
+            sessionStorage.setItem('searchQuery', query);
+
+            // 缓存搜索结果
+            sessionStorage.setItem('searchResults', JSON.stringify(allResults));
+
+            // 缓存当前的API选择状态
+            const selectedAPIs = AppState.get('selectedAPIs');
+            if (selectedAPIs) {
+                sessionStorage.setItem('searchSelectedAPIs', JSON.stringify(selectedAPIs));
+            }
+
+            console.log('[缓存] 搜索结果已保存到 sessionStorage');
+        }
+    } catch (e) {
+        console.error('缓存搜索结果失败:', e);
+    }
+}
+
+function restoreSearchFromCache() {
+    try {
+        const cachedQuery = sessionStorage.getItem('searchQuery');
+        const cachedResults = sessionStorage.getItem('searchResults');
+        const cachedSelectedAPIs = sessionStorage.getItem('searchSelectedAPIs');
+
+        if (cachedQuery && cachedResults) {
+            console.log('[恢复] 从 sessionStorage 恢复搜索状态');
+
+            // 恢复搜索关键词到输入框
+            const searchInput = DOMCache.get('searchInput');
+            if (searchInput) {
+                searchInput.value = cachedQuery;
+            }
+
+            // 恢复API选择状态
+            if (cachedSelectedAPIs) {
+                try {
+                    const selectedAPIs = JSON.parse(cachedSelectedAPIs);
+                    AppState.set('selectedAPIs', selectedAPIs);
+                } catch (e) {
+                    console.warn('恢复API选择状态失败:', e);
+                }
+            }
+
+            // 直接恢复搜索结果显示
+            const parsedResults = JSON.parse(cachedResults);
+            renderSearchResultsFromCache(parsedResults);
+
+            // 确保关闭弹窗
+            if (typeof closeModal === 'function') {
+                closeModal();
+            }
+
+            console.log('[恢复] 搜索状态恢复完成，显示了', parsedResults.length, '个结果');
+        } else {
+            console.log('[恢复] 没有找到缓存的搜索数据');
+        }
+    } catch (e) {
+        console.error('恢复搜索状态失败:', e);
+    }
+}
+
+// 在 js/app.js 中添加专门用于恢复缓存结果的渲染函数
+function renderSearchResultsFromCache(cachedResults) {
+    const searchResultsContainer = DOMCache.get('searchResults');
+    const resultsArea = getElement('resultsArea');
+    const searchResultsCountElement = getElement('searchResultsCount');
+
+    if (!searchResultsContainer || !resultsArea || !searchResultsCountElement) return;
+
+    // 显示结果区域
+    resultsArea.classList.remove('hidden');
+    searchResultsCountElement.textContent = cachedResults.length.toString();
+
+    // 清空并重新渲染
+    searchResultsContainer.innerHTML = '';
+
+    if (cachedResults.length > 0) {
+        const gridContainer = document.createElement('div');
+        gridContainer.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4';
+
+        const fragment = document.createDocumentFragment();
+        cachedResults.forEach(item => {
+            try {
+                fragment.appendChild(createResultItemUsingTemplate(item));
+            } catch (error) {
+                console.error('渲染缓存结果项失败:', error);
+            }
+        });
+
+        gridContainer.appendChild(fragment);
+        searchResultsContainer.appendChild(gridContainer);
+    }
+
+    // 调整搜索区域布局
+    const searchArea = getElement('searchArea');
+    if (searchArea) {
+        searchArea.classList.remove('flex-1');
+        searchArea.classList.add('mb-8');
+        searchArea.classList.remove('hidden');
+    }
+    getElement('doubanArea')?.classList.add('hidden');
 }
 
 /**
@@ -777,6 +886,15 @@ function resetToHome() {
     if (doubanArea) {
         const showDouban = getBoolConfig('doubanEnabled', false);
         doubanArea.classList.toggle('hidden', !showDouban);
+    }
+
+    // 清理搜索缓存
+    try {
+        sessionStorage.removeItem('searchQuery');
+        sessionStorage.removeItem('searchResults');
+        sessionStorage.removeItem('searchSelectedAPIs');
+    } catch (e) {
+        console.error('清理搜索缓存失败:', e);
     }
 
     renderSearchHistory();
@@ -1101,11 +1219,3 @@ function toggleEpisodeOrderUI() {
 
 // 将函数暴露给全局作用域
 window.showVideoEpisodesModal = showVideoEpisodesModal;
-
-window.addEventListener('pageshow', e => {
-    if (e.persisted) {
-      if (typeof closeModal === 'function') {
-        closeModal();
-      }
-    }
-  });
