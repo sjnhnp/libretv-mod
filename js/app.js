@@ -271,6 +271,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 加载搜索历史
     renderSearchHistory();
+
+    // ===== 新增：如果有上次搜索关键词，就恢复它并触发一次搜索 =====
+    const lastQuery = sessionStorage.getItem('lastSearchQuery');
+    if (lastQuery) {
+        const input = DOMCache.get('searchInput');
+        if (input) {
+            input.value = lastQuery;
+            // 触发一次完整的普通搜索
+            search();
+        }
+    }
 });
 
 /**
@@ -460,6 +471,11 @@ function search(options = {}) {
         if (typeof showToast === 'function') showToast('请输入搜索内容', 'warning');
         if (typeof options.onComplete === 'function') options.onComplete();
         return;
+    }
+
+    // 只有普通搜索（不是豆瓣回调），才写 sessionStorage
+    if (!options.doubanQuery) {
+        sessionStorage.setItem('lastSearchQuery', query);
     }
 
     // 只有当不是豆瓣触发的搜索时，才调用 showLoading。豆瓣触发时，其调用处已处理。

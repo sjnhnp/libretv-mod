@@ -1058,7 +1058,11 @@ function addDPlayerEventListeners() {
 function setupPlayerControls() {
     const backButton = document.getElementById('back-button');
     if (backButton) {
-        backButton.addEventListener('click', () => { window.location.href = 'index.html'; });
+        // 原来可能写的是 history.back() 或者 window.history.go(-1)
+        backButton.addEventListener('click', () => {
+            // 直接跳转到首页（index.html），强制刷新
+            window.location.href = 'index.html';
+        });
     }
 
     const fullscreenButton = document.getElementById('fullscreen-button');
