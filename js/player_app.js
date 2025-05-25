@@ -330,7 +330,7 @@ window.currentEpisodeIndex = 0;
 function clearCurrentVideoAllEpisodeProgresses() {
     try {
         const all = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || "{}");
-        const showId = getShowIdentifier(true);
+        const showId = getShowIdentifier(false);
 
         // 如果存在该视频的进度记录，则删除
         if (all[showId]) {
@@ -516,7 +516,7 @@ function initializePageContent() {
         indexForPlayer = parseInt(urlParams.get('index') || '0', 10);
         // ---------- 下面是弹窗断点逻辑（你的原有弹窗代码完整贴入这里，结构无须再裁剪/再分支）----------
     } else if (shouldRestoreSpecificProgress && currentEpisodes.length > 0) {
-        const showId = getShowIdentifier(true); // <--- 使用新的函数获取剧集ID
+        const showId = getShowIdentifier(false); // <--- 使用新的函数获取剧集ID
         let allSpecificProgresses = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
         const savedProgressDataForShow = allSpecificProgresses[showId]; // <--- 用 showId 获取该剧的进度对象
 
@@ -561,7 +561,7 @@ function initializePageContent() {
                     } else {
                         // 用户选择从头播放，清除该集的特定进度
                         try {
-                            const show_Id_for_clear = getShowIdentifier(); // 获取当前节目的ID
+                            const show_Id_for_clear = getShowIdentifier(false); // 获取当前节目的ID
                             const all_prog = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
                             if (all_prog[show_Id_for_clear] && all_prog[show_Id_for_clear][indexForPlayer.toString()]) {
                                 delete all_prog[show_Id_for_clear][indexForPlayer.toString()];
@@ -1131,7 +1131,7 @@ function saveVideoSpecificProgress() {
     const currentTime = Math.floor(dp.video.currentTime);
     const duration = Math.floor(dp.video.duration);
 
-    const showId = getShowIdentifier(true); // <--- 使用新的函数获取剧集ID
+    const showId = getShowIdentifier(false); // <--- 使用新的函数获取剧集ID
 
     if (currentTime > 5 && duration > 0 && currentTime < duration * 0.95) {
         try {
@@ -1154,7 +1154,7 @@ function saveVideoSpecificProgress() {
 
 // （可选）用于在关闭“记住进度”时清除当前视频的集数进度
 function clearCurrentVideoSpecificEpisodeProgresses() {
-    const showId = getShowIdentifier(true);
+    const showId = getShowIdentifier(false);
 
     try {
         const allProgress = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
@@ -1737,7 +1737,7 @@ function playEpisode(index) {
     // 进度恢复弹窗逻辑整合
     nextSeekPosition = 0;
     if (shouldRestoreSpecificProgress) {
-        const showId = getShowIdentifier(true);   // 与 saveVideoSpecificProgress 保持一致
+        const showId = getShowIdentifier(false);   // 与 saveVideoSpecificProgress 保持一致
         const allSpecificProgresses = JSON.parse(
             localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}'
         );
