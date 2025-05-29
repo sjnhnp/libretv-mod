@@ -1,42 +1,28 @@
-// =================== 全局常量、工具 =====================
-
-// 搜索与历史相关常量
+// --- File: js/ui.js ---
 window.MAX_HISTORY_ITEMS = window.MAX_HISTORY_ITEMS || 30;
 window.SEARCH_HISTORY_KEY = window.SEARCH_HISTORY_KEY || 'searchHistory';
+const TOAST_BG_COLORS = { 'error': 'bg-red-500', 'success': 'bg-green-500', 'info': 'bg-blue-500', 'warning': 'bg-yellow-500' };
+const HISTORY_MAX_ITEMS = 50;
+const domCacheUi = new Map(); // Renamed to avoid conflict if app.js also has domCache
 
-// UI样式类型
-const TOAST_BG_COLORS = {
-    'error': 'bg-red-500',
-    'success': 'bg-green-500',
-    'info': 'bg-blue-500',
-    'warning': 'bg-yellow-500'
-};
-const HISTORY_MAX_ITEMS = 50;           // 观看历史最大数量
-
-// DOM元素缓存
-const domCache = new Map();
-
-/**
- * 获取DOM元素（带缓存）
- * @param {string} id 元素ID
- * @returns {HTMLElement|null} DOM元素
- */
-// ui.js 里替换 getElement 的实现 —— 失效即更新缓存
-function getElement(id) {
-    const cached = domCache.get(id);
-    if (cached && cached.isConnected) {
-        return cached;
-    }
+function getElementUi(id) { // Renamed
+    const cached = domCacheUi.get(id);
+    if (cached && cached.isConnected) return cached;
     const fresh = document.getElementById(id);
-    if (fresh) domCache.set(id, fresh);
+    if (fresh) domCacheUi.set(id, fresh);
     return fresh;
 }
 
+function getUniqueEpisodeId(v) { // From old.txt/ui.js - used by addToViewingHistory
+    const getUrlKey = (raw = '') => (raw.split('/').pop().split(/[?#]/)[0] || raw).slice(-80);
+    const sc = v.sourceCode || 'unknown_source';
+    const vid = v.vod_id || ''; // Use vod_id from videoInfo
+    const ep = (typeof v.episodeIndex === 'number') ? `_ep${v.episodeIndex}` : '';
+    if (vid) return `${v.title}_${sc}_${vid}${ep}`;
+    return `${v.title}_${sc}_${getUrlKey(v.url)}${ep}`;
+}
 
-/**
- * 检查密码保护
- * @returns {boolean} 是否通过密码验证
- */
+
 function checkPasswordProtection() {
     if (window.isPasswordProtected && window.isPasswordVerified) {
         if (window.isPasswordProtected() && !window.isPasswordVerified()) {
@@ -47,88 +33,59 @@ function checkPasswordProtection() {
     return true;
 }
 
-/**
- * 集中管理面板切换逻辑
- * @param {string} panelIdToShow 要显示的面板ID
- * @param {string} panelIdToHide 要隐藏的面板ID（可选）
- * @param {Function} onShowCallback 面板显示后的回调函数（可选）
- * @returns {boolean} 是否成功切换面板
- */
 function togglePanel(panelIdToShow, panelIdToHide, onShowCallback) {
     if (!checkPasswordProtection()) return false;
 
-    const panelToShow = getElement(panelIdToShow);
+    const panelToShow = getElementUi(panelIdToShow);
     if (!panelToShow) return false;
 
-    // 切换目标面板
     const isShowing = panelToShow.classList.toggle('show');
     panelToShow.setAttribute('aria-hidden', !isShowing);
 
-    // 如果指定了要隐藏的面板，确保它被关闭
     if (panelIdToHide) {
-        const panelToHide = getElement(panelIdToHide);
+        const panelToHide = getElementUi(panelIdToHide);
         if (panelToHide && panelToHide.classList.contains('show')) {
             panelToHide.classList.remove('show');
             panelToHide.setAttribute('aria-hidden', 'true');
         }
     }
 
-    // 如果面板被显示且有回调，执行回调
     if (isShowing && typeof onShowCallback === 'function') {
         onShowCallback();
     }
-
     return true;
 }
 
-// =============== UI相关函数 =============================
-
-/**
- * 设置面板开关
- * @param {Event} e 事件对象
- */
 function toggleSettings(e) {
     e?.stopPropagation();
     togglePanel('settingsPanel', 'historyPanel');
 }
 
-/**
- * 历史面板开关
- * @param {Event} e 事件对象
- */
 function toggleHistory(e) {
     if (e) e.stopPropagation();
     togglePanel('historyPanel', 'settingsPanel', loadViewingHistory);
 }
 
-// ------------- Toast功能（支持队列） -------------
-const toastQueue = [];
-let isShowingToast = false;
+const toastQueueUi = [];
+let isShowingToastUi = false;
 
-/** 
- * 显示消息Toast（支持消息队列，背景色可变更）
- * @param {string} message 消息内容
- * @param {string} type 消息类型 (error|success|info|warning)
- */
-function showToast(message, type = 'error') {
-    toastQueue.push({ message, type });
-    if (!isShowingToast) showNextToast();
+function showToast(message, type = 'error') { // This is ui.js's showToast
+    toastQueueUi.push({ message, type });
+    if (!isShowingToastUi) showNextToastUi();
 }
 
-/**
- * 显示下一条Toast消息
- */
-function showNextToast() {
-    if (!toastQueue.length) return isShowingToast = false;
-    isShowingToast = true;
-    const { message, type } = toastQueue.shift();
-    const toast = getElement('toast');
-    const toastMessage = getElement('toastMessage');
+function showNextToastUi() { // Renamed
+    if (!toastQueueUi.length) {
+        isShowingToastUi = false;
+        return;
+    }
+    isShowingToastUi = true;
+    const { message, type } = toastQueueUi.shift();
+    const toast = getElementUi('toast');
+    const toastMessage = getElementUi('toastMessage');
     if (!toast || !toastMessage) return;
 
-    // 设置样式
-    const bg = TOAST_BG_COLORS[type] || TOAST_BG_COLORS.error;
-    toast.className = `fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${bg} text-white z-50`;
+    toast.className = `fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${TOAST_BG_COLORS[type] || TOAST_BG_COLORS.error} text-white z-50`;
     toastMessage.textContent = message;
 
     toast.style.opacity = '1';
@@ -137,69 +94,48 @@ function showNextToast() {
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateX(-50%) translateY(-100%)';
-        setTimeout(showNextToast, 300);
+        setTimeout(showNextToastUi, 300);
     }, 3000);
 }
 
-// ----------- Loading区域 --------------
-let loadingTimeoutId = null;
+let loadingTimeoutIdUi = null;
 
-/** 
- * 显示Loading
- * @param {string} message 加载提示文本
- */
 function showLoading(message = '加载中...') {
-    if (loadingTimeoutId) { clearTimeout(loadingTimeoutId); loadingTimeoutId = null; }
-    const loading = getElement('loading');
+    if (loadingTimeoutIdUi) { clearTimeout(loadingTimeoutIdUi); loadingTimeoutIdUi = null; }
+    const loading = getElementUi('loading');
     if (!loading) return;
     const p = loading.querySelector('p');
     if (p) p.textContent = message;
     loading.style.display = 'flex';
-    loadingTimeoutId = setTimeout(() => {
+    loadingTimeoutIdUi = setTimeout(() => {
         hideLoading();
         showToast('操作超时，请稍后重试', 'warning');
     }, 30000);
 }
 
-/** 
- * 隐藏Loading
- */
 function hideLoading() {
-    if (loadingTimeoutId) { clearTimeout(loadingTimeoutId); loadingTimeoutId = null; }
-    const loading = getElement('loading');
+    if (loadingTimeoutIdUi) { clearTimeout(loadingTimeoutIdUi); loadingTimeoutIdUi = null; }
+    const loading = getElementUi('loading');
     if (loading) loading.style.display = 'none';
 }
 
-// ----------- 模态框管理 --------------
-let lastFocusedElement = null;
+let lastFocusedElementUi = null;
 
-/** 
- * 显示模态框
- * @param {string} content 模态框内容
- * @param {string} title 模态框标题（可选）
- */
 function showModal(content, title = '') {
-    const modal = getElement('modal');
-    const modalContent = getElement('modalContent');
-    const modalTitle = getElement('modalTitle');
+    const modal = getElementUi('modal');
+    const modalContent = getElementUi('modalContent');
+    const modalTitle = getElementUi('modalTitle');
 
     if (!modal || !modalContent) return;
 
-    // 保存当前焦点元素，以便关闭时恢复
-    lastFocusedElement = document.activeElement;
-
-    // 设置内容
+    lastFocusedElementUi = document.activeElement;
     modalContent.innerHTML = content;
     if (modalTitle && title) modalTitle.textContent = title;
 
-    // 显示模态框
     modal.classList.remove('hidden');
     modal.setAttribute('aria-hidden', 'false');
-
-    // 设置焦点陷阱
     setupFocusTrap(modal);
 
-    // 将焦点移至模态框内的第一个可聚焦元素
     const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
     if (focusableElements.length) {
         focusableElements[0].focus();
@@ -208,58 +144,36 @@ function showModal(content, title = '') {
     }
 }
 
-/**
- * 设置焦点陷阱
- * @param {HTMLElement} container 需要设置焦点陷阱的容器
- */
 function setupFocusTrap(container) {
     container.addEventListener('keydown', function (e) {
-        // 如果按下的不是Tab键，不处理
         if (e.key !== 'Tab') return;
-
         const focusableElements = container.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
         if (!focusableElements.length) return;
-
         const firstElement = focusableElements[0];
         const lastElement = focusableElements[focusableElements.length - 1];
-
-        // Shift+Tab 从第一个元素循环到最后一个
         if (e.shiftKey && document.activeElement === firstElement) {
             e.preventDefault();
             lastElement.focus();
-        }
-        // Tab 从最后一个元素循环到第一个
-        else if (!e.shiftKey && document.activeElement === lastElement) {
+        } else if (!e.shiftKey && document.activeElement === lastElement) {
             e.preventDefault();
             firstElement.focus();
         }
     });
 }
 
-/** 
- * 关闭详情弹窗
- */
 function closeModal() {
-    const modal = getElement('modal');
-    const modalContent = getElement('modalContent');
+    const modal = getElementUi('modal');
+    const modalContent = getElementUi('modalContent');
     if (modal) {
         modal.classList.add('hidden');
         modal.setAttribute('aria-hidden', 'true');
     }
     if (modalContent) modalContent.innerHTML = '';
-
-    // 恢复焦点
-    if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
-        lastFocusedElement.focus();
+    if (lastFocusedElementUi && typeof lastFocusedElementUi.focus === 'function') {
+        lastFocusedElementUi.focus();
     }
 }
 
-// ========== 搜索历史相关 ================
-
-/** 
- * 获取历史（兼容老新格式）
- * @returns {Array} 搜索历史数组
- */
 function getSearchHistory() {
     try {
         const data = localStorage.getItem(SEARCH_HISTORY_KEY);
@@ -275,10 +189,6 @@ function getSearchHistory() {
     }
 }
 
-/** 
- * 保存搜索历史，记录时间戳，去重，控量，防止XSS
- * @param {string} query 搜索关键词
- */
 function saveSearchHistory(query) {
     if (!query || !query.trim()) return;
     query = query.trim().slice(0, 50).replace(/[<>"]/g, c => ({
@@ -286,45 +196,35 @@ function saveSearchHistory(query) {
     })[c]);
     let history = getSearchHistory();
     const now = Date.now();
-    // 2个月有效、去重
     history = history.filter(item =>
-        typeof item === 'object' && item.timestamp && (now - item.timestamp < 5184000000) &&
+        typeof item === 'object' && item.timestamp && (now - item.timestamp < 5184000000) && // 60 days
         item.text !== query
     );
-    // 新项在最前
     history.unshift({ text: query, timestamp: now });
-    if (history.length > MAX_HISTORY_ITEMS) history = history.slice(0, MAX_HISTORY_ITEMS);
+    if (history.length > window.MAX_HISTORY_ITEMS) history = history.slice(0, window.MAX_HISTORY_ITEMS);
     try {
         localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
     } catch (e) {
-        // 空间不足时清理
         localStorage.removeItem(SEARCH_HISTORY_KEY);
         try {
             localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history.slice(0, 3)));
         } catch (e2) {
-            // 两次都失败则放弃
+            // Give up
         }
     }
     renderSearchHistory();
 }
 
-/**
- * 处理搜索标签点击事件
- * @param {Event} e 事件对象
- */
 function handleSearchTagClick(e) {
-    // 删除按钮点击
     const delSpan = e.target.closest('span[data-deletequery]');
     if (delSpan) {
         deleteSingleSearchHistory(delSpan.dataset.deletequery);
         e.stopPropagation();
         return;
     }
-
-    // 标签点击（只有非X按钮才允许搜索）
     const tagBtn = e.target.closest('.search-tag');
     if (tagBtn && !e.target.closest('span[data-deletequery]')) {
-        const searchInput = getElement('searchInput');
+        const searchInput = getElementUi('searchInput');
         if (searchInput) {
             searchInput.value = tagBtn.textContent.trim();
             if (typeof search === 'function') search();
@@ -333,95 +233,67 @@ function handleSearchTagClick(e) {
     }
 }
 
-
-/**
- * 渲染搜索历史标签
- */
 function renderSearchHistory() {
-    const historyContainer = getElement('recentSearches');
+    const historyContainer = getElementUi('recentSearches');
     if (!historyContainer) return;
     const history = getSearchHistory();
     if (!history.length) { historyContainer.innerHTML = ''; return; }
 
     const frag = document.createDocumentFragment();
-
-    // 标题与清空按钮
     const header = document.createElement('div');
     header.className = "flex justify-between items-center w-full mb-2";
-
     const titleDiv = document.createElement('div');
     titleDiv.className = "text-gray-500";
     titleDiv.textContent = "最近搜索:";
-
     const clearBtn = document.createElement('button');
     clearBtn.id = "clearHistoryBtn";
     clearBtn.className = "text-gray-500 hover:text-white transition-colors";
     clearBtn.setAttribute('aria-label', "清除搜索历史");
     clearBtn.textContent = "清除搜索历史";
     clearBtn.onclick = clearSearchHistory;
-
     header.appendChild(titleDiv);
     header.appendChild(clearBtn);
     frag.appendChild(header);
 
-    // 渲染每个标签，自带删除x按钮
     history.forEach(item => {
-        // 外部包裹，让标签和x对齐
         const tagWrap = document.createElement('div');
         tagWrap.className = 'inline-flex items-center mb-2 mr-2';
-
-        // 核心：只用你自己的search-tag class!
         const tag = document.createElement('button');
-        tag.className = 'search-tag';
+        tag.className = 'search-tag'; // Ensure this class matches your CSS for the tag button itself
         tag.textContent = item.text;
         if (item.timestamp) tag.title = `搜索于: ${new Date(item.timestamp).toLocaleString()}`;
-
-        // 删除按钮
         const deleteBtn = document.createElement('span');
         deleteBtn.className = 'ml-2 text-gray-400 hover:text-red-500 cursor-pointer select-none flex items-center';
         deleteBtn.setAttribute('role', 'button');
         deleteBtn.setAttribute('aria-label', '删除');
         deleteBtn.dataset.deletequery = item.text;
         deleteBtn.style.fontSize = '1.15em';
-
         deleteBtn.innerHTML =
             '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="pointer-events:none;">' +
             '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>' +
             '</svg>';
-
         tagWrap.appendChild(tag);
         tagWrap.appendChild(deleteBtn);
         frag.appendChild(tagWrap);
     });
-
     historyContainer.innerHTML = '';
     historyContainer.appendChild(frag);
 }
 
-
-/**
- * 删除单条搜索历史
- * @param {string} query 要删除的标签内容
- */
 function deleteSingleSearchHistory(query) {
     try {
         let history = getSearchHistory();
-        // 防XSS与历史一致
         history = history.filter(item => item.text !== query);
         localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
-        renderSearchHistory(); // 重新渲染
+        renderSearchHistory();
     } catch (e) {
         console.error('删除单条搜索历史失败:', e);
         showToast('删除单条搜索历史失败', 'error');
     }
 }
 
-/**
- * 清除搜索历史
- */
 function clearSearchHistory() {
     if (!checkPasswordProtection()) return;
-
     try {
         localStorage.removeItem(SEARCH_HISTORY_KEY);
         renderSearchHistory();
@@ -432,27 +304,35 @@ function clearSearchHistory() {
     }
 }
 
-// ========== 观看历史相关 ================
-
-/** 
- * 时间戳人性化显示
- * @param {number} timestamp 时间戳
- * @returns {string} 格式化后的时间字符串
- */
 function formatTimestamp(timestamp) {
-    const date = new Date(timestamp), now = new Date();
-    const diff = now - date;
-    if (diff < 3600000) return `${Math.max(0, Math.floor(diff / 60000)) || '刚刚'}分钟前`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-    if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}
-        ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date; // Difference in milliseconds
+
+    if (diff < 60000) return '刚刚'; // Less than 1 minute
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`; // Less than 1 hour
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`; // Less than 1 day
+
+    // For dates older than a day, show date and time
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+
+    if (now.getFullYear() === year && now.getMonth() === date.getMonth() && now.getDate() === date.getDate()) {
+        // Same day
+        return `今天 ${hours}:${minutes}`;
+    } else if (now.getFullYear() === year && now.getMonth() === date.getMonth() && now.getDate() - 1 === date.getDate()) {
+        // Yesterday
+        return `昨天 ${hours}:${minutes}`;
+    } else if (diff < 604800000) { // Less than 7 days
+        return `${Math.floor(diff / 86400000)}天前`;
+    }
+    // Default format for older dates
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
-/**
- * 获取观看历史
- * @returns {Array} 观看历史数组
- */
 function getViewingHistory() {
     try {
         const data = localStorage.getItem('viewingHistory');
@@ -463,115 +343,113 @@ function getViewingHistory() {
     }
 }
 
-/**
- * 处理历史列表点击事件
- * @param {Event} e 事件对象
- */
 function handleHistoryListClick(e) {
-    // 处理删除按钮点击
     const deleteButton = e.target.closest('.history-item-delete-btn');
     if (deleteButton) {
         e.stopPropagation();
-        const historyItem = deleteButton.closest('.history-item');
-        if (historyItem && historyItem.dataset.url) {
-            deleteHistoryItem(encodeURIComponent(historyItem.dataset.url));
+        const historyItemEl = deleteButton.closest('.history-item');
+        if (historyItemEl && historyItemEl.dataset.internalId) { // Use internalId for deletion
+            deleteHistoryItemByInternalId(historyItemEl.dataset.internalId);
         }
         return;
     }
+    const historyItemEl = e.target.closest('.history-item');
+    if (historyItemEl) {
+        const url = historyItemEl.dataset.url;
+        const title = historyItemEl.dataset.title;
+        const episodeIndex = parseInt(historyItemEl.dataset.episodeIndex, 10);
+        const playbackPosition = parseInt(historyItemEl.dataset.playbackPosition, 10);
+        const vodId = historyItemEl.dataset.vodId || '';
+        const sourceName = historyItemEl.dataset.sourceName || '';
+        const sourceCode = historyItemEl.dataset.sourceCode || '';
+        let episodes = [];
+        try { episodes = JSON.parse(historyItemEl.dataset.episodes || '[]'); } catch(e) {console.warn("Could not parse episodes from history item dataset");}
 
-    // 处理历史项点击
-    const historyItem = e.target.closest('.history-item');
-    if (historyItem) {
-        const url = historyItem.dataset.url;
-        const title = historyItem.dataset.title;
-        const episodeIndex = parseInt(historyItem.dataset.episodeIndex, 10);
-        const playbackPosition = parseInt(historyItem.dataset.playbackPosition, 10);
-        playFromHistory(url, title, episodeIndex, playbackPosition);
+        if (typeof window.playFromHistory === 'function') {
+            window.playFromHistory(url, title, episodeIndex, playbackPosition, vodId, sourceName, sourceCode, episodes);
+        } else {
+            console.error("playFromHistory function not found on window.");
+            showToast("无法播放历史记录", "error");
+        }
     }
 }
 
-/** 
- * mm:ss时间格式
- * @param {number} seconds 秒数
- * @returns {string} 格式化后的时间字符串
- */
+function deleteHistoryItemByInternalId(internalIdToDelete) {
+    if (!checkPasswordProtection()) return;
+    try {
+        let history = getViewingHistory();
+        history = history.filter(item => item.internalShowIdentifier !== internalIdToDelete);
+        localStorage.setItem('viewingHistory', JSON.stringify(history));
+        loadViewingHistory();
+        showToast('已删除该条观看历史', 'success');
+    } catch (e) {
+        console.error('删除观看历史失败:', e);
+        showToast('删除观看历史失败', 'error');
+    }
+}
+
 function formatPlaybackTime(seconds) {
-    if (!seconds || isNaN(seconds)) return '00:00';
-    const m = Math.floor(seconds / 60), s = Math.floor(seconds % 60);
+    if (isNaN(seconds) || seconds < 0) return "00:00";
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-/**
- * 增加/更新历史（同标题合并，每标题仅一条记录）
- * @param {Object} videoInfo 视频信息对象
- */
 function addToViewingHistory(videoInfo) {
     if (!checkPasswordProtection()) return;
-
     try {
         let history = getViewingHistory();
-        
-        // 使用更唯一的标识符：标题 + 数据源 + URL的一部分（如ID）
-        const createUniqueKey = (item) => {
-            const sourceCode = item.sourceCode || 'unknown';
-            const urlId = item.url ? item.url.split('/').pop().split('.')[0] : 'unknown';
-            return `${item.title}_${sourceCode}_${urlId}`;
+        const internalId = getUniqueEpisodeId(videoInfo);
+        const idx = history.findIndex(item => item.internalShowIdentifier === internalId);
+
+        const newItemData = {
+            title: videoInfo.title,
+            url: videoInfo.url,
+            episodeIndex: videoInfo.episodeIndex,
+            sourceName: videoInfo.sourceName,
+            sourceCode: videoInfo.sourceCode,
+            vod_id: videoInfo.vod_id,
+            internalShowIdentifier: internalId,
+            playbackPosition: videoInfo.playbackPosition,
+            duration: videoInfo.duration,
+            timestamp: Date.now(),
+            episodes: (videoInfo.episodes && videoInfo.episodes.length > 0) ? [...videoInfo.episodes] : []
         };
-        
-        const newItemKey = createUniqueKey(videoInfo);
-        const idx = history.findIndex(item => createUniqueKey(item) === newItemKey);
 
         if (idx !== -1) {
-            const item = history[idx];
-            // Update existing item with specific fields from videoInfo
-            item.episodeIndex = videoInfo.episodeIndex;
-            item.timestamp = Date.now();
-            if (videoInfo.sourceName && !item.sourceName) { // Only set if not already present or to update
-                item.sourceName = videoInfo.sourceName;
+            // history[idx] = { ...history[idx], ...newItemData }; // This was causing issues with overwriting potentially different episode lists
+            // Instead, specifically update fields that should change, and preserve others like 'episodes' if not provided anew.
+            const existingItem = history[idx];
+            existingItem.url = newItemData.url;
+            existingItem.episodeIndex = newItemData.episodeIndex;
+            existingItem.playbackPosition = newItemData.playbackPosition;
+            existingItem.duration = newItemData.duration;
+            existingItem.timestamp = newItemData.timestamp;
+            // Only update episodes if the new videoInfo explicitly provides a different list
+            if (newItemData.episodes.length > 0 && JSON.stringify(newItemData.episodes) !== JSON.stringify(existingItem.episodes)) {
+                 existingItem.episodes = newItemData.episodes;
             }
-            if (videoInfo.playbackPosition && videoInfo.playbackPosition > 10) {
-                item.playbackPosition = videoInfo.playbackPosition;
-                item.duration = videoInfo.duration || item.duration; // Preserve existing duration if new one isn't provided
-            }
-            item.url = videoInfo.url; // Update URL if title matches, as per original logic
+            // Ensure other key identifiers are preserved from the original item if not in newItemData (though they should be)
+            existingItem.title = newItemData.title || existingItem.title;
+            existingItem.sourceName = newItemData.sourceName || existingItem.sourceName;
+            existingItem.sourceCode = newItemData.sourceCode || existingItem.sourceCode;
+            existingItem.vod_id = newItemData.vod_id || existingItem.vod_id;
+            existingItem.internalShowIdentifier = newItemData.internalShowIdentifier || existingItem.internalShowIdentifier;
 
-            if (videoInfo.episodes && Array.isArray(videoInfo.episodes) && videoInfo.episodes.length) {
-                // Update episodes if new list is different or doesn't exist
-                if (!item.episodes || item.episodes.length !== videoInfo.episodes.length) {
-                    item.episodes = [...videoInfo.episodes];
-                }
-            }
 
-            history.splice(idx, 1); // Remove old item
-            history.unshift(item);  // Add updated item to the beginning
+            history.splice(idx, 1);
+            history.unshift(existingItem); // Use the modified existingItem
         } else {
-            // Add as a new item
-            const newItem = {
-                ...videoInfo,
-                timestamp: Date.now(),
-                // Ensure 'episodes' is an array for new items, even if empty
-                episodes: Array.isArray(videoInfo.episodes) ? [...videoInfo.episodes] : []
-            };
-            history.unshift(newItem);
+            history.unshift(newItemData);
         }
 
-        // Limit history items
-        if (history.length > HISTORY_MAX_ITEMS) {
-            history.splice(HISTORY_MAX_ITEMS);
-        }
-
+        if (history.length > HISTORY_MAX_ITEMS) history.splice(HISTORY_MAX_ITEMS);
         localStorage.setItem('viewingHistory', JSON.stringify(history));
-    } catch (e) {
-        console.error('保存观看历史失败:', e);
-    }
+    } catch (e) { console.error('保存观看历史失败:', e); }
 }
 
-/**
- * 清空观看历史
- */
 function clearViewingHistory() {
     if (!checkPasswordProtection()) return;
-
     try {
         localStorage.removeItem('viewingHistory');
         loadViewingHistory();
@@ -582,22 +460,16 @@ function clearViewingHistory() {
     }
 }
 
-/**
- * 渲染历史面板
- */
 function loadViewingHistory() {
-    const historyList = getElement('historyList');
+    const historyList = getElementUi('historyList');
     if (!historyList) return;
     const history = getViewingHistory();
     if (!history.length) {
         historyList.innerHTML = `<div class="text-center text-gray-500 py-8">暂无观看记录</div>`;
         return;
     }
-
     const frag = document.createDocumentFragment();
-
     history.forEach(item => {
-        // 防XSS
         const safeTitle = (item.title || '').replace(/[<>"']/g, c => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
         const safeSource = (item.sourceName || '未知来源').replace(/[<>"']/g, c => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
         const episodeText = item.episodeIndex !== undefined ? `第${item.episodeIndex + 1}集` : '';
@@ -608,15 +480,17 @@ function loadViewingHistory() {
         historyItem.dataset.title = safeTitle;
         historyItem.dataset.episodeIndex = item.episodeIndex || 0;
         historyItem.dataset.playbackPosition = item.playbackPosition || 0;
+        historyItem.dataset.vodId = item.vod_id || '';
+        historyItem.dataset.sourceName = item.sourceName || '';
+        historyItem.dataset.sourceCode = item.sourceCode || '';
+        historyItem.dataset.internalId = item.internalShowIdentifier;
+        try { historyItem.dataset.episodes = JSON.stringify(item.episodes || []); } catch(e) { console.warn("Error stringifying episodes for dataset", e); }
 
-        // 构建历史项内容
         const historyInfo = document.createElement('div');
         historyInfo.className = 'history-info';
-
         const titleDiv = document.createElement('div');
         titleDiv.className = 'history-title';
         titleDiv.innerHTML = safeTitle;
-
         const metaDiv = document.createElement('div');
         metaDiv.className = 'history-meta';
 
@@ -625,13 +499,11 @@ function loadViewingHistory() {
             episodeSpan.className = 'history-episode';
             episodeSpan.innerHTML = episodeText;
             metaDiv.appendChild(episodeSpan);
-
             const separatorSpan = document.createElement('span');
             separatorSpan.className = 'history-separator mx-1';
             separatorSpan.innerHTML = '·';
             metaDiv.appendChild(separatorSpan);
         }
-
         const sourceSpan = document.createElement('span');
         sourceSpan.className = 'history-source';
         sourceSpan.innerHTML = safeSource;
@@ -644,114 +516,68 @@ function loadViewingHistory() {
         historyInfo.appendChild(titleDiv);
         historyInfo.appendChild(metaDiv);
 
-        // 进度条
         if (item.playbackPosition && item.duration && item.playbackPosition > 10 && item.playbackPosition < item.duration * 0.95) {
             const progressDiv = document.createElement('div');
             progressDiv.className = 'history-progress';
-
             const progressBar = document.createElement('div');
             progressBar.className = 'progress-bar';
-
             const progressFilled = document.createElement('div');
             progressFilled.className = 'progress-filled';
             progressFilled.style.width = `${Math.round(item.playbackPosition / item.duration * 100)}%`;
-
             const progressText = document.createElement('div');
             progressText.className = 'progress-text';
             progressText.textContent = `${formatPlaybackTime(item.playbackPosition)} / ${formatPlaybackTime(item.duration)}`;
-
             progressBar.appendChild(progressFilled);
             progressDiv.appendChild(progressBar);
             progressDiv.appendChild(progressText);
             historyInfo.appendChild(progressDiv);
         }
-
         historyInfo.appendChild(timeDiv);
         historyItem.appendChild(historyInfo);
 
-        // 删除按钮
         const deleteButton = document.createElement('button');
         deleteButton.className = 'history-item-delete-btn absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-gray-400 hover:text-red-400 p-1 rounded-full hover:bg-gray-800 z-10';
         deleteButton.title = '删除记录';
         deleteButton.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>`;
-
         historyItem.appendChild(deleteButton);
         frag.appendChild(historyItem);
     });
-
     historyList.innerHTML = '';
     historyList.appendChild(frag);
     if (history.length > 5) historyList.classList.add('pb-4');
-
-    // 移除旧的事件监听器和添加新的事件委托的代码已移至attachEventListeners函数
 }
 
-/**
- * 初始化事件监听器
- */
 function attachEventListeners() {
-    // 设置按钮事件
-    const settingsButton = getElement('settingsButton');
-    if (settingsButton) {
-        settingsButton.addEventListener('click', toggleSettings);
-    }
+    const settingsButton = getElementUi('settingsButton');
+    if (settingsButton) settingsButton.addEventListener('click', toggleSettings);
 
-    // 观看历史按钮
-    const historyButton = getElement('historyButton');
-    if (historyButton) {
-        historyButton.addEventListener('click', toggleHistory);
-    }
+    const historyButton = getElementUi('historyButton');
+    if (historyButton) historyButton.addEventListener('click', toggleHistory);
 
-    // 关闭设置面板按钮
-    const closeSettingsPanelButton = getElement('closeSettingsPanelButton');
-    if (closeSettingsPanelButton) {
-        closeSettingsPanelButton.addEventListener('click', toggleSettings);
-    }
+    const closeSettingsPanelButton = getElementUi('closeSettingsPanelButton');
+    if (closeSettingsPanelButton) closeSettingsPanelButton.addEventListener('click', toggleSettings);
 
-    // 关闭历史面板按钮  ← 新增这一段
-    const closeHistoryPanelButton = getElement('closeHistoryPanelButton');
-    if (closeHistoryPanelButton) {
-        closeHistoryPanelButton.addEventListener('click', toggleHistory);
-    }
+    const closeHistoryPanelButton = getElementUi('closeHistoryPanelButton');
+    if (closeHistoryPanelButton) closeHistoryPanelButton.addEventListener('click', toggleHistory);
 
-    // 清空观看历史按钮
-    const clearViewingHistoryButton = getElement('clearViewingHistoryButton');
-    if (clearViewingHistoryButton) {
-        clearViewingHistoryButton.addEventListener('click', clearViewingHistory);
-    }
+    const clearViewingHistoryButton = getElementUi('clearViewingHistoryButton');
+    if (clearViewingHistoryButton) clearViewingHistoryButton.addEventListener('click', clearViewingHistory);
 
-    // 关闭模态框按钮
-    const closeModalButton = getElement('closeModalButton');
-    if (closeModalButton) {
-        closeModalButton.addEventListener('click', closeModal);
-    }
+    const closeModalButton = getElementUi('closeModalButton');
+    if (closeModalButton) closeModalButton.addEventListener('click', closeModal);
 
-    // 优化：将委托事件监听器移到这里一次性设置
-    // 搜索历史标签点击事件委托
-    const recentSearches = getElement('recentSearches');
-    if (recentSearches) {
-        recentSearches.addEventListener('click', handleSearchTagClick);
-    }
+    const recentSearches = getElementUi('recentSearches');
+    if (recentSearches) recentSearches.addEventListener('click', handleSearchTagClick);
 
-    // 观看历史列表点击事件委托
-    const historyList = getElement('historyList');
-    if (historyList) {
-        historyList.addEventListener('click', handleHistoryListClick);
-    }
+    const historyList = getElementUi('historyList');
+    if (historyList) historyList.addEventListener('click', handleHistoryListClick);
 
-    // 初始化其他可能的事件监听器
     initializeAdditionalListeners();
 }
 
-/**
- * 初始化其他可能的事件监听器
- */
 function initializeAdditionalListeners() {
-    // API选择按钮 - 保留单独的事件监听器
-    // 注: 由于这些按钮数量有限且不会动态变化，使用单独的事件监听器更直接清晰
-    // 如果未来这些按钮会动态增减，可考虑改为事件委托模式
     const apiSelectButtons = document.querySelectorAll('[data-action="selectAllAPIs"]');
     if (apiSelectButtons.length > 0) {
         const apiSelectHandler = function () {
@@ -760,30 +586,20 @@ function initializeAdditionalListeners() {
                 window.selectAllAPIs(selectAll);
             }
         };
-
-        apiSelectButtons.forEach(button => {
-            button.addEventListener('click', apiSelectHandler);
-        });
+        apiSelectButtons.forEach(button => button.addEventListener('click', apiSelectHandler));
     }
-
-    // 自定义API管理
     const addCustomApiButton = document.querySelector('[data-action="showAddCustomApiForm"]');
     if (addCustomApiButton && typeof window.showAddCustomApiForm === 'function') {
         addCustomApiButton.addEventListener('click', window.showAddCustomApiForm);
     }
 }
 
-// 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function () {
-    // 初始化事件监听器
     attachEventListeners();
-
-    // 初始化搜索历史
-    renderSearchHistory();
+    if (typeof renderSearchHistory === 'function') renderSearchHistory();
     setupPanelAutoClose();
 });
 
-// 导出公共函数
 window.showToast = showToast;
 window.showLoading = showLoading;
 window.hideLoading = hideLoading;
@@ -792,47 +608,30 @@ window.toggleSettings = toggleSettings;
 window.toggleHistory = toggleHistory;
 window.addToViewingHistory = addToViewingHistory;
 window.clearViewingHistory = clearViewingHistory;
-// window.playFromHistory = playFromHistory;
 window.saveSearchHistory = saveSearchHistory;
 window.clearSearchHistory = clearSearchHistory;
 window.renderSearchHistory = renderSearchHistory;
 window.deleteSingleSearchHistory = deleteSingleSearchHistory;
 
-/**
- * 设置面板自动关闭功能
- * 当用户点击面板外区域时自动关闭面板
- */
 function setupPanelAutoClose() {
     document.addEventListener('click', function (event) {
-        // 检查是否点击了设置按钮或历史按钮
-        const settingsButton = document.getElementById('settingsButton');
-        const historyButton = document.getElementById('historyButton');
-        const settingsPanel = document.getElementById('settingsPanel');
-        const historyPanel = document.getElementById('historyPanel');
+        const settingsButton = getElementUi('settingsButton');
+        const historyButton = getElementUi('historyButton');
+        const settingsPanel = getElementUi('settingsPanel');
+        const historyPanel = getElementUi('historyPanel');
 
-        // 如果点击的是设置按钮或设置面板内部，不做处理
         if (settingsButton && settingsButton.contains(event.target)) return;
-        if (settingsPanel && settingsPanel.contains(event.target)) return;
-
-        // 如果点击的是历史按钮或历史面板内部，不做处理
+        if (settingsPanel && settingsPanel.contains(event.target) && settingsPanel.classList.contains('show')) return;
         if (historyButton && historyButton.contains(event.target)) return;
-        if (historyPanel && historyPanel.contains(event.target)) return;
+        if (historyPanel && historyPanel.contains(event.target) && historyPanel.classList.contains('show')) return;
 
-        // 关闭设置面板
         if (settingsPanel && settingsPanel.classList.contains('show')) {
             settingsPanel.classList.remove('show');
             settingsPanel.setAttribute('aria-hidden', 'true');
         }
-
-        // 关闭历史面板
         if (historyPanel && historyPanel.classList.contains('show')) {
             historyPanel.classList.remove('show');
             historyPanel.setAttribute('aria-hidden', 'true');
         }
     });
 }
-
-// 在DOMContentLoaded事件中调用setupPanelAutoClose
-document.addEventListener('DOMContentLoaded', function () {
-    setupPanelAutoClose();
-});

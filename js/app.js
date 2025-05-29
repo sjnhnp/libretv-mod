@@ -1,3 +1,4 @@
+// --- File: js/app.js ---
 /**
  * 主应用程序逻辑
  * 使用AppState进行状态管理，DOMCache进行DOM元素缓存
@@ -13,7 +14,6 @@ const AppState = (function () {
         get: function (key) {
             return state.get(key);
         },
-        // Method to initialize multiple values
         initialize: function (initialData = {}) {
             for (const key in initialData) {
                 if (initialData.hasOwnProperty(key)) {
@@ -36,7 +36,6 @@ const DOMCache = (function () {
         get: function (key) {
             return cache.get(key);
         },
-        // Initialize multiple elements
         init: function (elementsToCache) {
             for (const key in elementsToCache) {
                 if (elementsToCache.hasOwnProperty(key)) {
@@ -50,26 +49,7 @@ const DOMCache = (function () {
     };
 })();
 
-// STUB 实现 - 处理缺失的函数定义
-/**
- * 显示详情
- * @param {HTMLElement} element - 包含数据属性的元素
- */
-function showDetails(element) {
-    const id = element.dataset.id;
-    const sourceCode = element.dataset.source;
-    // const name = element.querySelector('.result-title').textContent; // 获取名称的示例
-    // const customApiUrl = element.dataset.customApi;
-    console.log(`STUB: showDetails called for element with ID: ${id}, Source: ${sourceCode}`);
-    // 潜在地使用这些数据属性获取并显示详情
-}
 
-/**
- * 文本净化函数
- * 重要：这是一个基本的存根。真实实现需要强大的XSS保护。
- * @param {string} text - 需要净化的文本
- * @returns {string} - 净化后的文本
- */
 function sanitizeText(text) {
     if (typeof text !== 'string') return '';
     return text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -82,14 +62,16 @@ function sanitizeText(text) {
  * @param {number} episodeIndex - 集数索引
  * @param {string} sourceName - 来源名称
  * @param {string} sourceCode - 来源代码
+ * @param {string} vodId - VOD ID for history/progress
  */
-function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '') {
+function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', vodId = '') {
     if (!url) {
         showToast('无效的视频链接', 'error');
         return;
     }
     AppState.set('currentEpisodeIndex', episodeIndex);
     AppState.set('currentVideoTitle', title);
+    AppState.set('currentVideoId', vodId); // Store vodId in AppState
 
     if (typeof addToViewingHistory === 'function') {
         const videoInfoForHistory = {
@@ -98,6 +80,7 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '') {
             episodeIndex: episodeIndex,
             sourceName: sourceName,
             sourceCode: sourceCode,
+            vod_id: vodId, // Pass vod_id to history
             episodes: AppState.get('currentEpisodes') || []
         };
         addToViewingHistory(videoInfoForHistory);
@@ -107,58 +90,55 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '') {
     playerUrl.searchParams.set('url', url);
     playerUrl.searchParams.set('title', title);
     playerUrl.searchParams.set('index', episodeIndex.toString());
-
-    // const eps = AppState.get('currentEpisodes');
-    //if (Array.isArray(eps) && eps.length) {
-    //    playerUrl.searchParams.set('episodes', encodeURIComponent(JSON.stringify(eps)));
-    // }
-
-    // 注释掉这行，让URL不带 reversed 参数
-    //const currentReversedStateForPlayer = AppState.get('episodesReversed') || false;
-    // playerUrl.searchParams.set('reversed', currentReversedStateForPlayer.toString());
-
+    if (vodId) { // Pass vodId to player.html
+        playerUrl.searchParams.set('id', vodId);
+    }
     if (sourceName) playerUrl.searchParams.set('source', sourceName);
     if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
-
-    // ← 在这一行后面，插入广告过滤开关参数
+    
     const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, false);
     playerUrl.searchParams.set('af', adOn ? '1' : '0');
 
+    // Pass all episodes to player.html for context if available
+    const episodesForPlayer = AppState.get('currentEpisodes');
+    if (Array.isArray(episodesForPlayer) && episodesForPlayer.length > 0) {
+        try {
+            playerUrl.searchParams.set('episodes', encodeURIComponent(JSON.stringify(episodesForPlayer)));
+        } catch (e) {
+            console.warn("Failed to stringify/encode episodes for player URL:", e);
+        }
+    }
+    
     window.location.href = playerUrl.toString();
 }
 
 
-/**
- * 播放上一集
- */
 function playPreviousEpisode() {
     const currentIndex = AppState.get('currentEpisodeIndex');
     const episodes = AppState.get('currentEpisodes');
     if (currentIndex > 0 && episodes && episodes.length > 0) {
         const prevIndex = currentIndex - 1;
-        AppState.set('currentEpisodeIndex', prevIndex);
-        localStorage.setItem('currentEpisodeIndex', prevIndex.toString());
-
         const title = AppState.get('currentVideoTitle');
-        playVideo(episodes[prevIndex], title, prevIndex);
+        const sourceName = AppState.get('currentSourceName') || '';
+        const sourceCode = AppState.get('currentSourceCode') || '';
+        const vodId = AppState.get('currentVideoId') || '';
+        playVideo(episodes[prevIndex], title, prevIndex, sourceName, sourceCode, vodId);
     } else {
         showToast('已经是第一集了', 'info');
     }
 }
 
-/**
- * 播放下一集
- */
+
 function playNextEpisode() {
     const currentIndex = AppState.get('currentEpisodeIndex');
     const episodes = AppState.get('currentEpisodes');
     if (episodes && currentIndex < episodes.length - 1) {
         const nextIndex = currentIndex + 1;
-        AppState.set('currentEpisodeIndex', nextIndex);
-        localStorage.setItem('currentEpisodeIndex', nextIndex.toString());
-
         const title = AppState.get('currentVideoTitle');
-        playVideo(episodes[nextIndex], title, nextIndex);
+        const sourceName = AppState.get('currentSourceName') || '';
+        const sourceCode = AppState.get('currentSourceCode') || '';
+        const vodId = AppState.get('currentVideoId') || '';
+        playVideo(episodes[nextIndex], title, nextIndex, sourceName, sourceCode, vodId);
     } else {
         showToast('已经是最后一集了', 'info');
     }
@@ -170,114 +150,108 @@ function playNextEpisode() {
  * @param {string} title - Video title
  * @param {number} episodeIndex - Episode index
  * @param {number} playbackPosition - Playback position in seconds
- * @param {string} sourceName - Source name (optional)
- * @param {string} sourceCode - Source code (optional)
+ * @param {string} vodId - VOD ID from history item
+ * @param {string} sourceName - Source name from history item
+ * @param {string} sourceCode - Source code from history item
+ * @param {Array} episodes - Episodes list from history item
  */
-function playFromHistory(url, title, episodeIndex, playbackPosition = 0, sourceName = '', sourceCode = '') {
-    console.log(`Playing from history: ${title}, Episode ${episodeIndex + 1}`);
+function playFromHistory(url, title, episodeIndex, playbackPosition = 0, vodId = '', sourceName = '', sourceCode = '', episodes = []) {
+    console.log(`[App - playFromHistory] Called with: url=${url}, title=${title}, epIndex=${episodeIndex}, pos=${playbackPosition}, vodId=${vodId}`);
 
-    // Update state
     AppState.set('currentEpisodeIndex', episodeIndex);
     AppState.set('currentVideoTitle', title);
+    AppState.set('currentVideoId', vodId);
+    if (episodes && episodes.length > 0) {
+        AppState.set('currentEpisodes', episodes);
+        localStorage.setItem('currentEpisodes', JSON.stringify(episodes)); // For player.html fallback
+    }
+    localStorage.setItem('currentEpisodeIndex', episodeIndex.toString());
+    localStorage.setItem('currentVideoTitle', title);
 
-    // Build player URL with position parameter
+
     const playerUrl = new URL('player.html', window.location.origin);
     playerUrl.searchParams.set('url', url);
     playerUrl.searchParams.set('title', title);
-    playerUrl.searchParams.set('index', episodeIndex.toString()); // Changed from 'ep' to 'index' to match player.html expectations
+    playerUrl.searchParams.set('index', episodeIndex.toString());
+    if (vodId) playerUrl.searchParams.set('id', vodId);
     if (sourceName) playerUrl.searchParams.set('source', sourceName);
     if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
     if (playbackPosition > 0) playerUrl.searchParams.set('position', playbackPosition.toString());
+    
+    // Pass episodes list to player if available from history item
+    if (episodes && episodes.length > 0) {
+        try {
+            playerUrl.searchParams.set('episodes', encodeURIComponent(JSON.stringify(episodes)));
+        } catch (e) {
+            console.warn("Failed to stringify/encode episodes from history for player URL:", e);
+        }
+    }
 
-    // 去广告开关有关
     const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, false);
     playerUrl.searchParams.set('af', adOn ? '1' : '0');
-    // Navigate to player page
+
+    console.log(`[App - playFromHistory] Navigating to player: ${playerUrl.toString()}`);
     window.location.href = playerUrl.toString();
 }
 
-/**
- * 从localStorage获取布尔配置
- * @param {string} key - 配置键
- * @param {boolean} defaultValue - 默认值
- * @returns {boolean} - 配置值
- */
+
 function getBoolConfig(key, defaultValue) {
     const value = localStorage.getItem(key);
     if (value === null) return defaultValue;
     return value === 'true';
 }
 
-// 应用程序初始化
 document.addEventListener('DOMContentLoaded', function () {
-
-    // 初始化应用状态
     initializeAppState();
-
-    // 初始化DOM缓存
     initializeDOMCache();
-
-    // 初始化API源管理器
     APISourceManager.init();
-
-    // 初始化事件监听器
     initializeEventListeners();
-
-    // 加载搜索历史
-    renderSearchHistory();
+    renderSearchHistory(); // From ui.js
+    restoreSearchFromCache(); // Restore search if applicable
 });
 
-/**
- * 初始化应用状态
- * 从localStorage加载初始状态并设置到AppState
- */
+
 function initializeAppState() {
-    // 使用AppState.initialize方法初始化状态
     AppState.initialize({
         'selectedAPIs': JSON.parse(localStorage.getItem('selectedAPIs') || '["bfzy", "heimuer", "tyyszy", "dbzy"]'),
         'customAPIs': JSON.parse(localStorage.getItem('customAPIs') || '[]'),
         'currentEpisodeIndex': 0,
         'currentEpisodes': [],
         'currentVideoTitle': '',
+        'currentVideoId': '', // Added for VOD ID
+        'currentSourceName': '',
+        'currentSourceCode': '',
         'episodesReversed': false
     });
 }
 
-/**
- * 初始化DOM缓存
- * 缓存频繁访问的DOM元素
- */
+
 function initializeDOMCache() {
-    // 缓存搜索相关元素
-    DOMCache.set('searchInput', document.getElementById('searchInput'));
-    DOMCache.set('searchResults', document.getElementById('searchResults'));
-    DOMCache.set('searchForm', document.getElementById('searchForm'));
-    DOMCache.set('searchHistoryContainer', document.getElementById('searchHistory'));
-
-    // 缓存API相关元素
-    DOMCache.set('apiCheckboxes', document.getElementById('apiCheckboxes'));
-    DOMCache.set('customApisList', document.getElementById('customApisList'));
-    DOMCache.set('selectedApiCount', document.getElementById('selectedApiCount'));
-    DOMCache.set('addCustomApiForm', document.getElementById('addCustomApiForm'));
-    DOMCache.set('customApiName', document.getElementById('customApiName'));
-    DOMCache.set('customApiUrl', document.getElementById('customApiUrl'));
-    DOMCache.set('customApiIsAdult', document.getElementById('customApiIsAdult'));
-
-    // 缓存过滤器相关元素
-    DOMCache.set('yellowFilterToggle', document.getElementById('yellowFilterToggle'));
-    DOMCache.set('adFilteringToggle', document.getElementById('adFilterToggle'));
-
-    // 缓存预加载相关元素
-    DOMCache.set('preloadingToggle', document.getElementById('preloadingToggle'));
-    // (fix) ID is preloadCountInput, not preloadCount
-    DOMCache.set('preloadCountInput', document.getElementById('preloadCountInput'));
+    DOMCache.init({
+        'searchInput': 'searchInput',
+        'searchResults': 'searchResults',
+        'searchForm': 'searchForm',
+        'searchHistoryContainer': 'searchHistory', // Used by ui.js renderSearchHistory
+        'apiCheckboxes': 'apiCheckboxes',
+        'customApisList': 'customApisList',
+        'selectedApiCount': 'selectedApiCount',
+        'addCustomApiForm': 'addCustomApiForm',
+        'customApiName': 'customApiName',
+        'customApiUrl': 'customApiUrl',
+        'customApiIsAdult': 'customApiIsAdult',
+        'yellowFilterToggle': 'yellowFilterToggle',
+        'adFilteringToggle': 'adFilterToggle', // Ensure ID matches HTML
+        'preloadingToggle': 'preloadingToggle',
+        'preloadCountInput': 'preloadCountInput',
+        'resultsArea': 'resultsArea',
+        'searchResultsCount': 'searchResultsCount',
+        'doubanArea': 'doubanArea',
+        'searchArea': 'searchArea'
+    });
 }
 
-/**
- * 初始化事件监听器
- */
+
 function initializeEventListeners() {
-    // 搜索表单提交事件
     const searchForm = DOMCache.get('searchForm');
     if (searchForm) {
         searchForm.addEventListener('submit', function (e) {
@@ -286,15 +260,6 @@ function initializeEventListeners() {
         });
     }
 
-    // 搜索输入框事件
-    const searchInput = DOMCache.get('searchInput');
-    if (searchInput) {
-        searchInput.addEventListener('input', function () {
-            // 可以添加实时搜索建议等功能
-        });
-    }
-
-    // 广告过滤开关事件
     const adFilteringToggle = DOMCache.get('adFilteringToggle');
     if (adFilteringToggle) {
         adFilteringToggle.addEventListener('change', function (e) {
@@ -302,12 +267,9 @@ function initializeEventListeners() {
             localStorage.setItem(PLAYER_CONFIG.adFilteringStorage, enabled.toString());
             showToast(enabled ? '已启用广告过滤' : '已禁用广告过滤', 'info');
         });
-
-        // 初始化开关状态 - 使用getBoolConfig
         adFilteringToggle.checked = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, false);
     }
 
-    // 黄色内容过滤开关事件
     const yellowFilterToggle = DOMCache.get('yellowFilterToggle');
     if (yellowFilterToggle) {
         yellowFilterToggle.addEventListener('change', function (e) {
@@ -315,88 +277,45 @@ function initializeEventListeners() {
             localStorage.setItem('yellowFilterEnabled', enabled.toString());
             showToast(enabled ? '已启用黄色内容过滤' : '已禁用黄色内容过滤', 'info');
         });
-
-        // 初始化开关状态 - 使用getBoolConfig
         yellowFilterToggle.checked = getBoolConfig('yellowFilterEnabled', true);
     }
 
-    // 预加载开关事件
     const preloadingToggle = DOMCache.get('preloadingToggle');
-    if (preloadingToggle) {
+    const preloadCountInput = DOMCache.get('preloadCountInput');
+    if (preloadingToggle && preloadCountInput) {
+        const initPreloading = () => {
+            const preloadingEnabled = getBoolConfig('preloadingEnabled', PLAYER_CONFIG.enablePreloading);
+            preloadingToggle.checked = preloadingEnabled;
+            PLAYER_CONFIG.enablePreloading = preloadingEnabled;
+            preloadCountInput.disabled = !preloadingEnabled;
+
+            const savedCount = localStorage.getItem('preloadCount');
+            const preloadCount = savedCount ? parseInt(savedCount) : PLAYER_CONFIG.preloadCount;
+            preloadCountInput.value = preloadCount;
+            PLAYER_CONFIG.preloadCount = preloadCount;
+        };
+
         preloadingToggle.addEventListener('change', function (e) {
             const enabled = e.target.checked;
             localStorage.setItem('preloadingEnabled', enabled.toString());
-
-            // 注意：这里直接修改PLAYER_CONFIG。更健壮的解决方案可能涉及在config.js模块中使用setter
             PLAYER_CONFIG.enablePreloading = enabled;
-
+            preloadCountInput.disabled = !enabled;
             showToast(enabled ? '已启用预加载' : '已禁用预加载', 'info');
-
-            // 更新预加载数量输入框的可用性
-            const preloadCountInput = DOMCache.get('preloadCountInput');
-            if (preloadCountInput) {
-                preloadCountInput.disabled = !enabled;
-            }
         });
-
-        // 初始化开关状态 - 使用getBoolConfig
-        const preloadingEnabled = getBoolConfig('preloadingEnabled', true);
-        preloadingToggle.checked = preloadingEnabled;
-
-        // 注意：这里直接修改PLAYER_CONFIG。更健壮的解决方案可能涉及在config.js模块中使用setter
-        PLAYER_CONFIG.enablePreloading = preloadingEnabled;
-
-        // 更新预加载数量输入框的可用性
-        const preloadCountInput = DOMCache.get('preloadCountInput');
-        if (preloadCountInput) {
-            preloadCountInput.disabled = !preloadingEnabled;
-        }
-    }
-
-    // 预加载数量输入事件
-    const preloadCountInput = DOMCache.get('preloadCountInput');
-    if (preloadCountInput) {
+        
         preloadCountInput.addEventListener('change', function (e) {
             let count = parseInt(e.target.value);
-            if (isNaN(count) || count < 1) {
-                count = 1;
-                e.target.value = '1';
-            } else if (count > 10) {
-                count = 10;
-                e.target.value = '10';
-            }
-
+            if (isNaN(count) || count < 1) count = 1;
+            else if (count > 10) count = 10;
+            e.target.value = count.toString();
             localStorage.setItem('preloadCount', count.toString());
-
-            // 注意：这里直接修改PLAYER_CONFIG。更健壮的解决方案可能涉及在config.js模块中使用setter
             PLAYER_CONFIG.preloadCount = count;
-
             showToast(`预加载数量已设置为 ${count}`, 'info');
         });
-
-        // 初始化预加载数量
-        const savedCount = localStorage.getItem('preloadCount');
-        const preloadCount = savedCount ? parseInt(savedCount) : 2;
-        preloadCountInput.value = preloadCount;
-
-        // 注意：这里直接修改PLAYER_CONFIG。更健壮的解决方案可能涉及在config.js模块中使用setter
-        PLAYER_CONFIG.preloadCount = preloadCount;
+        initPreloading();
     }
 }
 
-/**
- * 初始化UI组件
- */
-function initializeUIComponents() {
-    // 初始化任何需要的UI组件
-}
-
-// 在 new3.txt/js/app.js
-
-/**
- * 执行搜索
- * @param {object} options - 搜索选项，可以包含 doubanQuery 和 onComplete 回调
- */
 
 function search(options = {}) {
     const searchInput = DOMCache.get('searchInput');
@@ -407,8 +326,8 @@ function search(options = {}) {
         return;
     }
 
-    const queryFromInput = searchInput.value.trim(); // 用户在输入框实际输入的内容
-    const query = options.doubanQuery || queryFromInput; // 优先用豆瓣的query，否则用输入框的
+    const queryFromInput = searchInput.value.trim();
+    const query = options.doubanQuery || queryFromInput;
 
     if (!query) {
         if (typeof showToast === 'function') showToast('请输入搜索内容', 'warning');
@@ -416,30 +335,27 @@ function search(options = {}) {
         return;
     }
 
-    // 只有当不是豆瓣触发的搜索时，才调用 showLoading。豆瓣触发时，其调用处已处理。
-    // 或者，如果 options.onComplete 不存在 (意味着不是豆瓣那种带回调的调用方式)，则认为是普通搜索。
-    let isNormalSearch = !options.doubanQuery; // 简单判断是否为普通搜索
-
+    let isNormalSearch = !options.doubanQuery;
     if (isNormalSearch && typeof showLoading === 'function') {
-        showLoading(`正在搜索“${query}”`); // 普通搜索也显示全局 loading
+        showLoading(`正在搜索“${query}”`);
     }
 
-    // 只有非豆瓣触发的搜索才保存历史（或按您之前的逻辑调整）
-    if (!options.doubanQuery) {
+    if (!options.doubanQuery) { // Only save to history if it's not a Douban-triggered search
         if (typeof saveSearchHistory === 'function') saveSearchHistory(query);
     }
+    
+    // Clear previous search cache before new search
+    try {
+        sessionStorage.removeItem('searchQuery');
+        sessionStorage.removeItem('searchResults');
+        sessionStorage.removeItem('searchSelectedAPIs');
+    } catch(e) { console.warn("Failed to clear previous search cache", e); }
 
-    // Always record the search, including Douban queries
-    // if (typeof saveSearchHistory === 'function') {
-    //     saveSearchHistory(query);
-    // }
 
     const selectedAPIs = AppState.get('selectedAPIs');
     if (!selectedAPIs || selectedAPIs.length === 0) {
         if (searchResultsContainer) searchResultsContainer.innerHTML = '<div class="text-center py-4 text-gray-400">请至少选择一个API源</div>';
-        // 如果是普通搜索触发的loading，这里需要hide
         if (isNormalSearch && typeof hideLoading === 'function') hideLoading();
-        // 豆瓣的 onComplete 也会处理 hideLoading
         if (typeof options.onComplete === 'function') options.onComplete();
         return;
     }
@@ -452,89 +368,72 @@ function search(options = {}) {
             if (searchResultsContainer) searchResultsContainer.innerHTML = `<div class="text-center py-4 text-red-400">搜索出错: ${error.message}</div>`;
         })
         .finally(() => {
-            // 如果是普通搜索触发的loading，在这里hide
             if (isNormalSearch && typeof hideLoading === 'function') {
                 hideLoading();
             }
-            // 豆瓣的 onComplete 也会处理 hideLoading
             if (typeof options.onComplete === 'function') {
                 options.onComplete();
             }
         });
 }
 
-/**
- * 执行搜索请求
- * @param {string} query - 搜索查询
- * @param {Array} selectedAPIs - 选中的API列表
- * @returns {Promise} - 搜索结果Promise
- */
+
 async function performSearch(query, selectedAPIs) {
-    // 创建搜索请求数组
     const searchPromises = selectedAPIs.map(apiId => {
+        let fetchUrl;
+        let apiName;
+        let customApiUrlForFetch = ''; // Specifically for custom APIs to pass to /api/search
+
         if (apiId.startsWith('custom_')) {
-            // 自定义API搜索
             const customIndex = parseInt(apiId.replace('custom_', ''));
             const customApi = APISourceManager.getCustomApiInfo(customIndex);
-            if (customApi) {
-                return fetch(`/api/search?wd=${encodeURIComponent(query)}&source=custom&customApi=${encodeURIComponent(customApi.url)}`)
-                    .then(response => response.json())
-                    .then(data => ({
-                        ...data,
-                        apiId: apiId,
-                        apiName: customApi.name
-                    }))
-                    .catch(error => ({
-                        code: 400,
-                        msg: `自定义API(${customApi.name})搜索失败: ${error.message}`,
-                        list: [],
-                        apiId: apiId
-                    }));
+            if (customApi && customApi.url) {
+                apiName = customApi.name;
+                customApiUrlForFetch = customApi.url; // This is the base URL of the custom API
+                // The source parameter will be 'custom_X', and customApi will be the actual URL
+                fetchUrl = `/api/search?wd=${encodeURIComponent(query)}&source=${apiId}&customApi=${encodeURIComponent(customApiUrlForFetch)}`;
+            } else {
+                return Promise.resolve({ code: 400, msg: `自定义API配置错误: ${apiId}`, list: [], apiId: apiId });
             }
         } else {
-            // 内置API搜索
-            return fetch(`/api/search?wd=${encodeURIComponent(query)}&source=${apiId}`)
-                .then(response => response.json())
-                .then(data => ({
-                    ...data,
-                    apiId: apiId,
-                    apiName: API_SITES[apiId]?.name || apiId
-                }))
-                .catch(error => ({
-                    code: 400,
-                    msg: `API(${API_SITES[apiId]?.name || apiId})搜索失败: ${error.message}`,
-                    list: [],
-                    apiId: apiId
-                }));
+            apiName = API_SITES[apiId]?.name || apiId;
+            // For built-in APIs, only source is needed; customApi param is not used by handleApiRequest for built-in
+            fetchUrl = `/api/search?wd=${encodeURIComponent(query)}&source=${apiId}`;
         }
+
+        return fetch(fetchUrl) // This fetch is intercepted by api.js
+            .then(response => response.json())
+            .then(data => ({
+                ...data,
+                apiId: apiId, // Keep original apiId (e.g., 'custom_0' or 'heimuer')
+                apiName: apiName, // Display name
+                // api_url is added by handleApiRequest if it's a custom API
+            }))
+            .catch(error => ({
+                code: 400,
+                msg: `API(${apiName})搜索失败: ${error.message}`,
+                list: [],
+                apiId: apiId
+            }));
     }).filter(Boolean);
 
-    // 等待所有搜索完成
     return Promise.all(searchPromises);
 }
 
-// 在 new3.txt/js/app.js
+
 function renderSearchResults(results, doubanSearchedTitle = null) {
-    const searchResultsContainer = DOMCache.get('searchResults'); // 这个是放置所有结果卡片或无结果提示的容器
-    const resultsArea = getElement('resultsArea'); // 这个是包含 searchResultsCount 和 searchResultsContainer 的外层区域
-    const searchResultsCountElement = getElement('searchResultsCount'); // “X个结果”的元素
+    const searchResultsContainer = DOMCache.get('searchResults'); 
+    const resultsArea = getElement('resultsArea'); 
+    const searchResultsCountElement = getElement('searchResultsCount'); 
 
     if (!searchResultsContainer || !resultsArea || !searchResultsCountElement) return;
 
-    // ... (合并结果和错误信息的逻辑保持不变) ...
     let allResults = [];
     let errors = [];
-    // (假设 allResults 和 errors 已正确填充)
     results.forEach(result => {
         if (result.code === 200 && Array.isArray(result.list)) {
-            const resultsWithSource = result.list.map(item => ({
-                ...item,
-                source_name: result.apiName || (typeof API_SITES !== 'undefined' && API_SITES[result.apiId]?.name) || '未知来源',
-                source_code: result.apiId,
-                api_url: result.apiId.startsWith('custom_') && typeof APISourceManager !== 'undefined' ?
-                    APISourceManager.getCustomApiInfo(parseInt(result.apiId.replace('custom_', '')))?.url : ''
-            }));
-            allResults = allResults.concat(resultsWithSource);
+            // source_name and api_url should already be set by handleApiRequest (from api.js)
+            allResults = allResults.concat(result.list);
         } else if (result.msg) {
             errors.push(result.msg);
         }
@@ -542,7 +441,6 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
 
     const yellowFilterEnabled = getBoolConfig('yellowFilterEnabled', true);
     if (yellowFilterEnabled) {
-        // ... (过滤逻辑)
         allResults = allResults.filter(item => {
             const title = item.vod_name || '';
             const type = item.type_name || '';
@@ -550,31 +448,16 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
         });
     }
 
-
-    searchResultsContainer.innerHTML = ''; // 先清空旧内容
+    searchResultsContainer.innerHTML = ''; 
 
     if (allResults.length === 0) {
-        resultsArea.classList.remove('hidden'); // 确保结果区域可见以显示提示
-        searchResultsCountElement.textContent = '0'; // 更新结果计数为0
+        resultsArea.classList.remove('hidden'); 
+        searchResultsCountElement.textContent = '0'; 
 
-        let messageTitle;
-        let messageSuggestion;
+        let messageTitle = doubanSearchedTitle ? `关于 <strong class="text-pink-400">《${sanitizeText(doubanSearchedTitle)}》</strong> 未找到结果` : '没有找到匹配的结果';
+        let messageSuggestion = doubanSearchedTitle ? "请尝试使用其他关键词搜索，或检查您的数据源选择。" : "请尝试其他关键词或更换数据源。";
+        let errorBlockHTML = errors.length > 0 ? `<div class="mt-4 text-xs text-red-300">${errors.map(err => sanitizeText(err)).join('<br>')}</div>` : '';
 
-        if (doubanSearchedTitle) {
-            messageTitle = `关于 <strong class="text-pink-400">《${sanitizeText(doubanSearchedTitle)}》</strong> 未找到结果`;
-            messageSuggestion = "请尝试使用其他关键词搜索，或检查您的数据源选择。";
-        } else {
-            messageTitle = '没有找到匹配的结果';
-            messageSuggestion = "请尝试其他关键词或更换数据源。";
-        }
-
-        let errorBlockHTML = '';
-        if (errors.length > 0) {
-            const errorMessages = errors.map(err => sanitizeText(err)).join('<br>');
-            errorBlockHTML = `<div class="mt-4 text-xs text-red-300">${errorMessages}</div>`;
-        }
-
-        // 使用类似老代码的结构和样式 (Tailwind CSS)
         searchResultsContainer.innerHTML = `
             <div class="col-span-full text-center py-10 sm:py-16">
                 <svg class="mx-auto h-12 w-12 text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -584,51 +467,121 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
                 <h3 class="mt-2 text-lg font-medium text-gray-300">${messageTitle}</h3>
                 <p class="mt-1 text-sm text-gray-500">${messageSuggestion}</p>
                 ${errorBlockHTML}
-            </div>
-        `;
-        // 确保 searchArea 布局正确
+            </div>`;
         const searchArea = getElement('searchArea');
         if (searchArea) {
             searchArea.classList.add('flex-1');
             searchArea.classList.remove('mb-8');
         }
-        // 一定要把豆瓣区收起来
         getElement('doubanArea')?.classList.add('hidden');
         return;
     }
 
-    // 如果有结果，正常渲染
     resultsArea.classList.remove('hidden');
     searchResultsCountElement.textContent = allResults.length.toString();
 
     const gridContainer = document.createElement('div');
-    // 确保这里的 class 与 index.html 中 #results 的 class 一致或兼容
     gridContainer.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4';
 
     const fragment = document.createDocumentFragment();
-    allResults.forEach(item => { /* ... 渲染卡片 ... */
+    allResults.forEach(item => { 
         try {
             fragment.appendChild(createResultItemUsingTemplate(item));
         } catch (error) {
-            // ... error handling for card creation
+            console.error("Error creating result card:", item, error);
         }
     });
     gridContainer.appendChild(fragment);
     searchResultsContainer.appendChild(gridContainer);
 
     if (errors.length > 0) {
-        // ... (显示 API 错误信息)
         const errorDiv = document.createElement('div');
-        errorDiv.className = 'mt-4 p-3 bg-red-900 bg-opacity-30 rounded text-sm text-red-300 space-y-1'; // 优化错误显示
+        errorDiv.className = 'mt-4 p-3 bg-red-900 bg-opacity-30 rounded text-sm text-red-300 space-y-1';
         errors.forEach(errMsg => {
             const errorLine = document.createElement('p');
             errorLine.textContent = sanitizeText(errMsg);
             errorDiv.appendChild(errorLine);
         });
-        searchResultsContainer.appendChild(errorDiv); // 将错误信息也放入 searchResultsContainer
+        searchResultsContainer.appendChild(errorDiv);
     }
 
-    // 调整搜索区域布局
+    const searchArea = getElement('searchArea');
+    if (searchArea) {
+        searchArea.classList.remove('flex-1');
+        searchArea.classList.add('mb-8');
+        searchArea.classList.remove('hidden');
+    }
+    getElement('doubanArea')?.classList.add('hidden');
+
+    // Cache search results to sessionStorage
+    try {
+        const searchInput = DOMCache.get('searchInput');
+        const query = searchInput ? searchInput.value.trim() : '';
+        if (query && allResults.length > 0) {
+            sessionStorage.setItem('searchQuery', query);
+            sessionStorage.setItem('searchResults', JSON.stringify(allResults));
+            const selectedAPIs = AppState.get('selectedAPIs');
+            if (selectedAPIs) {
+                sessionStorage.setItem('searchSelectedAPIs', JSON.stringify(selectedAPIs));
+            }
+        }
+    } catch (e) {
+        console.error('缓存搜索结果失败:', e);
+    }
+}
+
+function restoreSearchFromCache() {
+    try {
+        const cachedQuery = sessionStorage.getItem('searchQuery');
+        const cachedResults = sessionStorage.getItem('searchResults');
+        const cachedSelectedAPIs = sessionStorage.getItem('searchSelectedAPIs');
+
+        if (cachedQuery && cachedResults) {
+            const searchInput = DOMCache.get('searchInput');
+            if (searchInput) searchInput.value = cachedQuery;
+
+            if (cachedSelectedAPIs) {
+                try {
+                    AppState.set('selectedAPIs', JSON.parse(cachedSelectedAPIs));
+                    // Optionally, re-render API checkboxes if their state is not automatically updated
+                    if (typeof APISourceManager !== 'undefined' && typeof APISourceManager.initAPICheckboxes === 'function') {
+                       // APISourceManager.initAPICheckboxes(); // This might be too much, depends on how checkboxes are managed
+                    }
+                } catch (e) { console.warn('恢复API选择状态失败:', e); }
+            }
+            
+            renderSearchResultsFromCache(JSON.parse(cachedResults));
+            if (typeof closeModal === 'function') closeModal();
+        }
+    } catch (e) {
+        console.error('恢复搜索状态失败:', e);
+    }
+}
+
+function renderSearchResultsFromCache(cachedResults) {
+    const searchResultsContainer = DOMCache.get('searchResults');
+    const resultsArea = getElement('resultsArea');
+    const searchResultsCountElement = getElement('searchResultsCount');
+
+    if (!searchResultsContainer || !resultsArea || !searchResultsCountElement) return;
+
+    resultsArea.classList.remove('hidden');
+    searchResultsCountElement.textContent = cachedResults.length.toString();
+    searchResultsContainer.innerHTML = '';
+
+    if (cachedResults.length > 0) {
+        const gridContainer = document.createElement('div');
+        gridContainer.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4';
+        const fragment = document.createDocumentFragment();
+        cachedResults.forEach(item => {
+            try {
+                fragment.appendChild(createResultItemUsingTemplate(item));
+            } catch (error) { console.error('渲染缓存结果项失败:', error); }
+        });
+        gridContainer.appendChild(fragment);
+        searchResultsContainer.appendChild(gridContainer);
+    }
+
     const searchArea = getElement('searchArea');
     if (searchArea) {
         searchArea.classList.remove('flex-1');
@@ -639,81 +592,18 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
 }
 
 /**
- * 获取视频详情
- * @param {string} id - 视频ID
- * @param {string} sourceCode - 来源代码
- * @param {string} apiUrl - API URL（对于自定义API）
+ * This function is not directly called anymore as per the new flow.
+ * Details are fetched in showVideoEpisodesModal.
+ * Kept for reference or if a different flow is introduced.
  */
 async function getVideoDetail(id, sourceCode, apiUrl = '') {
-    if (!id || !sourceCode) {
-        showToast('无效的视频信息', 'error');
-        return;
-    }
-
-    const searchResults = DOMCache.get('searchResults');
-    if (searchResults) {
-        searchResults.innerHTML = '<div class="text-center py-4"><div class="spinner"></div><p class="mt-2 text-gray-400">正在获取视频信息，请稍候...</p></div>';
-    }
-
-    try {
-        let url = `/api/detail?id=${id}&source=${sourceCode}`;
-
-        // 对于自定义API，添加customApi参数
-        if (sourceCode === 'custom' && apiUrl) {
-            url += `&customApi=${encodeURIComponent(apiUrl)}&useDetail=true`;
-        }
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.code !== 200 || !Array.isArray(data.episodes) || data.episodes.length === 0) {
-            throw new Error(data.msg || '获取视频详情失败');
-        }
-
-        // 保存视频信息到状态
-        AppState.set('currentEpisodes', data.episodes);
-        AppState.set('currentVideoTitle', data.videoInfo?.title || '未知视频');
-        AppState.set('currentEpisodeIndex', 0);
-
-        // 保存到localStorage（用于播放器页面）
-        localStorage.setItem('currentEpisodes', JSON.stringify(data.episodes));
-        localStorage.setItem('currentVideoTitle', data.videoInfo?.title || '未知视频');
-        localStorage.setItem('currentEpisodeIndex', '0');
-
-        // 添加到观看历史
-        if (data.videoInfo && typeof addToViewingHistory === 'function') {
-            // 标准化字段名，确保与 createUniqueKey 函数期望的字段匹配
-            const normalizedVideoInfo = {
-                ...data.videoInfo,
-                sourceCode: data.videoInfo.source_code || sourceCode, // 添加 sourceCode 字段
-                sourceName: data.videoInfo.source_name || selectedApi.name || '', // 添加 sourceName 字段
-                url: firstEpisode, // 添加 url 字段
-                episodeIndex: 0, // 添加 episodeIndex 字段
-                episodes: data.episodes || [] // 添加 episodes 字段
-            };
-            addToViewingHistory(normalizedVideoInfo);
-        }
-
-        // 使用playVideo函数播放第一集
-        const firstEpisode = data.episodes[0];
-        playVideo(
-            firstEpisode,
-            data.videoInfo?.title || '未知视频',
-            0,
-            selectedApi.name || '',
-            sourceCode
-        );
-    } catch (error) {
-        if (searchResults) {
-            searchResults.innerHTML = `<div class="text-center py-4 text-red-400">获取视频详情失败: ${error.message}</div>`;
-        }
-        showToast('获取视频详情失败: ' + error.message, 'error');
-    }
+    // ... (original getVideoDetail logic, now largely superseded by showVideoEpisodesModal)
+    // This function would typically lead to playVideo.
+    // The main change needed if this were used is to ensure vod_id is passed to playVideo.
+    console.warn("getVideoDetail is likely deprecated in favor of showVideoEpisodesModal flow.");
 }
 
-/**
- * 重置到首页
- */
+
 function resetToHome() {
     const searchInput = DOMCache.get('searchInput');
     const searchResults = DOMCache.get('searchResults');
@@ -724,46 +614,45 @@ function resetToHome() {
     if (searchInput) searchInput.value = '';
     if (searchResults) searchResults.innerHTML = '';
 
-    // 回到「初始版面」
-    /* ---- 恢复搜索区默认样式 ---- */
     if (searchArea) {
-        searchArea.classList.add('flex-1');   // 重新撑满页面
-        searchArea.classList.remove('mb-8');  // 移除搜索结果页加的外边距
-        searchArea.classList.remove('hidden');
+        searchArea.classList.add('flex-1');
+        searchArea.classList.remove('mb-8', 'hidden');
     }
-
-    /* ---- 隐藏结果区 ---- */
     resultsArea?.classList.add('hidden');
-
-    /* ---- 视用户设置决定是否显示豆瓣区 ---- */
     if (doubanArea) {
         const showDouban = getBoolConfig('doubanEnabled', false);
         doubanArea.classList.toggle('hidden', !showDouban);
     }
-
-    renderSearchHistory();
+    // Clear search cache on reset
+    try {
+        sessionStorage.removeItem('searchQuery');
+        sessionStorage.removeItem('searchResults');
+        sessionStorage.removeItem('searchSelectedAPIs');
+    } catch (e) { console.error('清理搜索缓存失败:', e); }
+    
+    if (typeof renderSearchHistory === 'function') renderSearchHistory();
 }
 
 
-// 导出需要在全局访问的函数
 window.search = search;
-window.getVideoDetail = getVideoDetail;
+// window.getVideoDetail = getVideoDetail; // Potentially deprecated
 window.resetToHome = resetToHome;
 window.playVideo = playVideo;
 window.playPreviousEpisode = playPreviousEpisode;
 window.playNextEpisode = playNextEpisode;
-window.showDetails = showDetails;
-window.playFromHistory = playFromHistory;
+// window.showDetails = showDetails; // Stub, might not be used
+window.playFromHistory = playFromHistory; // Ensure this is globally available for ui.js
 
 function createResultItemUsingTemplate(item) {
     const template = document.getElementById('search-result-template');
     if (!template) {
         console.error("搜索结果模板未找到！");
-        return document.createDocumentFragment();
+        return document.createDocumentFragment(); // Return empty fragment
     }
 
     const clone = template.content.cloneNode(true);
     const cardElement = clone.querySelector('.card-hover');
+    
     if (!cardElement) {
         console.error("卡片元素 (.card-hover) 在模板克隆中未找到，项目:", item);
         const errorDiv = document.createElement('div');
@@ -780,14 +669,14 @@ function createResultItemUsingTemplate(item) {
         imgElement.onerror = function () {
             this.onerror = null;
             this.src = 'https://via.placeholder.com/100x150/191919/555555?text=Error';
-            this.classList.add('object-contain');
+            this.classList.add('object-contain'); // Ensure error image is contained
         };
     }
 
     const titleElement = clone.querySelector('.result-title');
     if (titleElement) {
         titleElement.textContent = item.vod_name || '未知标题';
-        titleElement.title = item.vod_name || '未知标题';
+        titleElement.title = item.vod_name || '未知标题'; // Tooltip for long titles
     }
 
     const typeElement = clone.querySelector('.result-type');
@@ -799,7 +688,7 @@ function createResultItemUsingTemplate(item) {
             typeElement.classList.add('hidden');
         }
     }
-
+    
     const yearElement = clone.querySelector('.result-year');
     if (yearElement) {
         if (item.vod_year) {
@@ -819,23 +708,23 @@ function createResultItemUsingTemplate(item) {
             remarksElement.classList.add('hidden');
         }
     }
-
+    
     const sourceNameElement = clone.querySelector('.result-source-name');
     if (sourceNameElement) {
         if (item.source_name) {
-            sourceNameElement.textContent = item.source_name; // 设置文本内容
+            sourceNameElement.textContent = item.source_name;
             sourceNameElement.className = 'result-source-name bg-[#222222] text-xs text-gray-200 px-2 py-1 rounded-md';
-
         } else {
-            // 如果没有 source_name，则确保元素是隐藏的
             sourceNameElement.className = 'result-source-name hidden';
         }
     }
 
     cardElement.dataset.id = item.vod_id || '';
     cardElement.dataset.name = item.vod_name || '';
-    cardElement.dataset.sourceCode = item.source_code || '';
-    if (item.api_url) {
+    cardElement.dataset.sourceCode = item.source_code || ''; // e.g. 'heimuer' or 'custom_0'
+    // api_url is the base URL for the API, useful for custom APIs.
+    // It's added by performSearch (if custom) or handleApiRequest (if custom).
+    if (item.api_url) { 
         cardElement.dataset.apiUrl = item.api_url;
     }
     cardElement.onclick = handleResultClick;
@@ -843,71 +732,66 @@ function createResultItemUsingTemplate(item) {
     return clone;
 }
 
-// Add the handler function (if not already present) 
 function handleResultClick(event) {
     const card = event.currentTarget;
-    const id = card.dataset.id;
+    const id = card.dataset.id; // This is vod_id
     const name = card.dataset.name;
-    const sourceCode = card.dataset.sourceCode;
-    const apiUrl = card.dataset.apiUrl || '';
+    const sourceCode = card.dataset.sourceCode; // e.g. 'heimuer' or 'custom_0'
+    const apiUrl = card.dataset.apiUrl || ''; // Base URL for custom API, or empty for built-in
 
     if (typeof showVideoEpisodesModal === 'function') {
+        // Pass vod_id (as id), name, sourceCode, and apiUrl (if custom)
         showVideoEpisodesModal(id, name, sourceCode, apiUrl);
     } else {
         console.error('showVideoEpisodesModal function not found!');
         showToast('无法加载剧集信息', 'error');
     }
 }
-
 window.handleResultClick = handleResultClick;
-window.copyLinks = copyLinks;
-window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 
-/**
- * 显示视频剧集模态框
- * @param {string} id - 视频ID
- * @param {string} title - 视频标题
- * @param {string} sourceCode - 来源代码
- */
-// 在 app.js 中
 
-async function showVideoEpisodesModal(id, title, sourceCode) {
+async function showVideoEpisodesModal(id, title, sourceCode, customApiUrl = '') {
     showLoading('加载剧集信息...');
+    AppState.set('currentVideoId', id); // Store VOD ID
 
-    // 确保 APISourceManager 和 getSelectedApi 方法可用
-    if (typeof APISourceManager === 'undefined' || typeof APISourceManager.getSelectedApi !== 'function') {
-        hideLoading();
-        showToast('数据源管理器不可用', 'error');
-        console.error('APISourceManager or getSelectedApi is not defined.');
-        return;
-    }
     const selectedApi = APISourceManager.getSelectedApi(sourceCode);
-
     if (!selectedApi) {
         hideLoading();
-        showToast('未找到有效的数据源', 'error');
-        console.error('Selected API is null for sourceCode:', sourceCode);
+        showToast('未找到有效的数据源信息', 'error');
+        console.error('Selected API metadata is null for sourceCode:', sourceCode);
         return;
     }
 
-    try {
-        let detailApiUrl = `/api/detail?id=${encodeURIComponent(id)}&source=${encodeURIComponent(sourceCode)}`;
-        if (selectedApi.isCustom && selectedApi.url) {
-            detailApiUrl += `&customApi=${encodeURIComponent(selectedApi.url)}`;
+    // Construct the detail API URL
+    // The `source` param in /api/detail will be like 'heimuer' or 'custom_0'
+    // The `customApi` param will be the base URL if it's a custom API.
+    // The `useDetail` param signals if HTML scraping is preferred for this custom source.
+    let detailFetchUrl = `/api/detail?id=${encodeURIComponent(id)}&source=${encodeURIComponent(sourceCode)}`;
+    if (selectedApi.isCustom) {
+        detailFetchUrl += `&customApi=${encodeURIComponent(selectedApi.url)}`; // selectedApi.url is the base search/JSON detail URL
+        // Check if this custom API has a specific .detail property for HTML scraping
+        const customInfo = APISourceManager.getCustomApiInfo(parseInt(sourceCode.replace('custom_','')));
+        if (customInfo && customInfo.detail) { // If custom API has a 'detail' field for scraping
+            detailFetchUrl += `&useDetail=true`;
         }
+    } else if (API_SITES[sourceCode] && API_SITES[sourceCode].detail) {
+        // For built-in APIs that have a .detail field, api.js handleApiRequest will use it for scraping
+        // No need to add useDetail=true here, handleApiRequest checks API_SITES[sourceCode].detail
+    }
 
-        const response = await fetch(detailApiUrl);
+
+    try {
+        const response = await fetch(detailFetchUrl); // This fetch is intercepted by api.js
         if (!response.ok) {
             throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
         }
         const data = await response.json();
-
         hideLoading();
 
         if (data.code !== 200 || !data.episodes || data.episodes.length === 0) {
-            let errorMessage = data.msg || (data.videoInfo && data.videoInfo.msg) || (data.list && data.list.length > 0 && data.list[0] && data.list[0].msg) || '未找到剧集信息';
+            let errorMessage = data.msg || (data.videoInfo && data.videoInfo.msg) || '未找到剧集信息';
             showToast(errorMessage, 'warning');
-            console.warn('获取剧集详情数据问题:', data, `Requested URL: ${detailApiUrl}`);
+            console.warn('获取剧集详情数据问题:', data, `Requested URL: ${detailFetchUrl}`);
             return;
         }
 
@@ -915,8 +799,8 @@ async function showVideoEpisodesModal(id, title, sourceCode) {
         AppState.set('currentVideoTitle', title);
         AppState.set('currentSourceName', selectedApi.name);
         AppState.set('currentSourceCode', sourceCode);
+        // currentVideoId is already set from card's data-id
 
-        // ← 在这里，紧接着写入 localStorage，player.html 会读取这两项
         localStorage.setItem('currentEpisodes', JSON.stringify(data.episodes));
         localStorage.setItem('currentVideoTitle', title);
 
@@ -925,23 +809,16 @@ async function showVideoEpisodesModal(id, title, sourceCode) {
 
     } catch (error) {
         hideLoading();
-        console.error('获取剧集信息失败 (catch block):', error, `Requested URL: ${detailApiUrl}`);
+        console.error('获取剧集信息失败 (catch block):', error, `Original fetch URL for modal: ${detailFetchUrl}`);
         showToast(`获取剧集信息失败: ${error.message}`, 'error');
     }
 }
 
-/**
- * 渲染剧集按钮HTML
- * @param {Array} episodes - 剧集列表
- * @param {string} videoTitle - 视频标题
- * @param {string} sourceCode - 来源代码
- * @param {string} sourceName - 来源名称
- * @returns {string} - 剧集按钮HTML
- */
 
 function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
     if (!episodes || episodes.length === 0) return '<p class="text-center text-gray-500">暂无剧集信息</p>';
     const currentReversedState = AppState.get('episodesReversed') || false;
+    const vodId = AppState.get('currentVideoId') || ''; // Get VOD ID from AppState
 
     let html = `
     <div class="mb-4 flex justify-end items-center space-x-2">
@@ -954,7 +831,7 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
             </svg>
         </button>
         <button id="toggleEpisodeOrderBtn" onclick="toggleEpisodeOrderUI()" 
-                title="${currentReversedState ? '切换为正序排列' : '切换为倒序排列'}" /* 添加 title 提示 */
+                title="${currentReversedState ? '切换为正序排列' : '切换为倒序排列'}"
                 class="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors flex items-center justify-center">
             <svg id="orderIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="transition: transform 0.3s ease;">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
@@ -969,10 +846,10 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
         const originalIndex = currentReversedState ? (episodes.length - 1 - displayIndex) : displayIndex;
         const safeVideoTitle = encodeURIComponent(videoTitle);
         const safeSourceName = encodeURIComponent(sourceName);
-
+        // Pass vodId to playVideo
         html += `
         <button 
-            onclick="playVideo('${episodeUrl}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}')" 
+            onclick="playVideo('${episodeUrl}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}', '${vodId}')" 
             class="episode-btn px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate"
             data-index="${originalIndex}"
             title="第 ${originalIndex + 1} 集" 
@@ -987,17 +864,14 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
         if (orderIcon) {
             orderIcon.style.transform = currentReversedState ? 'rotate(180deg)' : 'rotate(0deg)';
         }
-        // 更新 title 提示
         const toggleBtn = document.getElementById('toggleEpisodeOrderBtn');
         if (toggleBtn) {
-            const currentReversed = AppState.get('episodesReversed') || false;
-            toggleBtn.title = currentReversed ? '切换为正序排列' : '切换为倒序排列';
+            toggleBtn.title = currentReversedState ? '切换为正序排列' : '切换为倒序排列';
         }
     });
     return html;
 }
-// 复制视频链接到剪贴板
-function copyLinks() {
+window.copyLinks = function() { // Ensure it's global if called from HTML string
     const reversed = AppState.get('episodesReversed') || false;
     const episodesToCopy = AppState.get('currentEpisodes');
 
@@ -1005,41 +879,30 @@ function copyLinks() {
         showToast('没有可复制的链接', 'warning');
         return;
     }
-
     const actualEpisodes = reversed ? [...episodesToCopy].reverse() : [...episodesToCopy];
     const linkList = actualEpisodes.join('\r\n');
-
     navigator.clipboard.writeText(linkList).then(() => {
         showToast('所有剧集链接已复制', 'success');
     }).catch(err => {
         console.error('复制链接失败:', err);
         showToast('复制失败，请检查浏览器权限', 'error');
     });
-}
+};
 
-/**
- * 切换剧集排序UI并更新状态
- */
-
-function toggleEpisodeOrderUI() {
+window.toggleEpisodeOrderUI = function() { // Ensure it's global
     const container = document.getElementById('episodeButtonsContainer');
-    // const orderTextElement = document.getElementById('orderText'); // 该元素已被删除
     const orderIcon = document.getElementById('orderIcon');
-    const toggleBtn = document.getElementById('toggleEpisodeOrderBtn'); // 获取按钮本身
+    const toggleBtn = document.getElementById('toggleEpisodeOrderBtn');
 
-    if (!container || !orderIcon || !toggleBtn) return; // 确保按钮也存在
+    if (!container || !orderIcon || !toggleBtn) return;
 
     let currentReversedState = AppState.get('episodesReversed') || false;
     currentReversedState = !currentReversedState;
     AppState.set('episodesReversed', currentReversedState);
 
-    // 更新图标的旋转状态
     orderIcon.style.transform = currentReversedState ? 'rotate(180deg)' : 'rotate(0deg)';
-
-    // 更新按钮的 title 属性来提供状态反馈
     toggleBtn.title = currentReversedState ? '切换为正序排列' : '切换为倒序排列';
 
-    // 重新渲染集数按钮部分 (保持不变)
     const episodes = AppState.get('currentEpisodes');
     const title = AppState.get('currentVideoTitle');
     const sourceName = AppState.get('currentSourceName');
@@ -1047,25 +910,13 @@ function toggleEpisodeOrderUI() {
 
     if (episodes && title && sourceCode) {
         const newButtonsHtml = renderEpisodeButtons(episodes, title, sourceCode, sourceName || '');
-        // 从返回的完整 HTML（包括外部的控制按钮div）中提取出集数按钮容器的内容
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = newButtonsHtml;
         const buttonsContainerFromRender = tempDiv.querySelector('#episodeButtonsContainer');
         if (buttonsContainerFromRender) {
             container.innerHTML = buttonsContainerFromRender.innerHTML;
-        } else {
-            const parsedDoc = new DOMParser().parseFromString(newButtonsHtml, 'text/html');
-            const newEpisodeButtonsContent = parsedDoc.getElementById('episodeButtonsContainer');
-            if (newEpisodeButtonsContent) {
-                container.innerHTML = newEpisodeButtonsContent.innerHTML;
-            } else {
-                console.error("无法从 renderEpisodeButtons 的输出中提取集数按钮。");
-            }
         }
-    } else {
-        console.error("无法重新渲染剧集按钮：缺少必要的状态信息。");
     }
-}
+};
 
-// 将函数暴露给全局作用域
 window.showVideoEpisodesModal = showVideoEpisodesModal;
