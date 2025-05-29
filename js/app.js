@@ -34,14 +34,21 @@ const DOMCache = (function () {
             }
         },
         get: function (key) {
-            return cache.get(key);
+            const el = cache.get(key);
+            // Optional: Check if element is still in DOM, re-fetch if not
+            // if (el && !document.body.contains(el)) {
+            //     const freshEl = document.getElementById(key); // Assuming key is ID
+            //     if (freshEl) cache.set(key, freshEl);
+            //     return freshEl;
+            // }
+            return el;
         },
         init: function (elementsToCache) {
             for (const key in elementsToCache) {
                 if (elementsToCache.hasOwnProperty(key)) {
-                    const element = document.getElementById(elementsToCache[key]);
+                    const element = document.getElementById(elementsToCache[key]); // elementsToCache[key] is the ID
                     if (element) {
-                        cache.set(key, element);
+                        cache.set(key, element); // Store by key, not by ID if they are different
                     } else {
                         console.warn(`[DOMCache] Element with ID '${elementsToCache[key]}' not found during init for key '${key}'.`);
                     }
@@ -58,32 +65,37 @@ function sanitizeText(text) {
 }
 
 /**
- * 播放视频
- * @param {string} url - 视频URL
- * @param {string} title - 视频标题
- * @param {number} episodeIndex - 集数索引
- * @param {string} sourceName - 来源名称
- * @param {string} sourceCode - 来源代码
- * @param {string} vodId - VOD ID for history/progress
+ * 播放视频 - Navigates to player.html
+ * @param {string} url - 视频URL (specific episode m3u8)
+ * @param {string} title - 视频标题 (show title)
+ * @param {number} episodeIndex - 集数索引 (0-based)
+ * @param {string} sourceName - 来源名称 (display name of the source)
+ * @param {string} sourceCode - 来源代码 (e.g., 'heimuer', 'custom_0')
+ * @param {string} vodId - VOD ID for history/progress (ID of the show/movie)
  */
 function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', vodId = '') {
     if (!url) {
-        showToast('无效的视频链接', 'error');
+        if (typeof showToast === 'function') showToast('无效的视频链接', 'error');
         return;
     }
+    // Update AppState for the current video being prepared for playback
     AppState.set('currentEpisodeIndex', episodeIndex);
     AppState.set('currentVideoTitle', title);
-    AppState.set('currentVideoId', vodId); // Store vodId in AppState
+    AppState.set('currentVideoId', vodId); 
+    AppState.set('currentSourceName', sourceName);
+    AppState.set('currentSourceCode', sourceCode);
+    // currentEpisodes should be set when details are fetched (e.g., in showVideoEpisodesModal)
 
+    // Add to viewing history (ui.js function)
     if (typeof addToViewingHistory === 'function') {
         const videoInfoForHistory = {
-            url: url,
-            title: title,
+            url: url, // Current episode's URL
+            title: title, // Show title
             episodeIndex: episodeIndex,
             sourceName: sourceName,
             sourceCode: sourceCode,
-            vod_id: vodId, // Pass vod_id to history
-            episodes: AppState.get('currentEpisodes') || []
+            vod_id: vodId, // Show's VOD ID
+            episodes: AppState.get('currentEpisodes') || [] // Full list of episode URLs for this show
         };
         addToViewingHistory(videoInfoForHistory);
     }
@@ -92,16 +104,13 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', v
     playerUrl.searchParams.set('url', url);
     playerUrl.searchParams.set('title', title);
     playerUrl.searchParams.set('index', episodeIndex.toString());
-    if (vodId) { // Pass vodId to player.html
-        playerUrl.searchParams.set('id', vodId);
-    }
-    if (sourceName) playerUrl.searchParams.set('source', sourceName);
-    if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
+    if (vodId) playerUrl.searchParams.set('id', vodId); // Pass VOD ID to player
+    if (sourceName) playerUrl.searchParams.set('source', sourceName); // Pass display source name
+    if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode); // Pass source code identifier
     
-    const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, false);
+    const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, false); // From config.js
     playerUrl.searchParams.set('af', adOn ? '1' : '0');
 
-    // Pass all episodes to player.html for context if available
     const episodesForPlayer = AppState.get('currentEpisodes');
     if (Array.isArray(episodesForPlayer) && episodesForPlayer.length > 0) {
         try {
@@ -114,7 +123,7 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', v
     window.location.href = playerUrl.toString();
 }
 
-
+// These functions are called by player_app.js via window scope
 function playPreviousEpisode() {
     const currentIndex = AppState.get('currentEpisodeIndex');
     const episodes = AppState.get('currentEpisodes');
@@ -126,10 +135,10 @@ function playPreviousEpisode() {
         const vodId = AppState.get('currentVideoId') || '';
         playVideo(episodes[prevIndex], title, prevIndex, sourceName, sourceCode, vodId);
     } else {
-        showToast('已经是第一集了', 'info');
+        if (typeof showToast === 'function') showToast('已经是第一集了', 'info');
     }
 }
-
+window.playPreviousEpisode = playPreviousEpisode;
 
 function playNextEpisode() {
     const currentIndex = AppState.get('currentEpisodeIndex');
@@ -142,37 +151,36 @@ function playNextEpisode() {
         const vodId = AppState.get('currentVideoId') || '';
         playVideo(episodes[nextIndex], title, nextIndex, sourceName, sourceCode, vodId);
     } else {
-        showToast('已经是最后一集了', 'info');
+        if (typeof showToast === 'function') showToast('已经是最后一集了', 'info');
     }
 }
+window.playNextEpisode = playNextEpisode;
+
 
 /**
- * Plays video from history (called by ui.js)
- * @param {string} url - Video URL
- * @param {string} title - Video title
- * @param {number} episodeIndex - Episode index
- * @param {number} playbackPosition - Playback position in seconds
- * @param {string} vodId - VOD ID from history item
- * @param {string} sourceName - Source name from history item
- * @param {string} sourceCode - Source code from history item
- * @param {Array} episodes - Episodes list from history item
+ * Plays video from history item.
+ * This function is called by ui.js's handleHistoryListClick.
  */
 function playFromHistory(url, title, episodeIndex, playbackPosition = 0, vodId = '', sourceName = '', sourceCode = '', episodes = []) {
     console.log(`[App - playFromHistory] Called with: url=${url}, title=${title}, epIndex=${episodeIndex}, pos=${playbackPosition}, vodId=${vodId}`);
 
+    // Update AppState with details from the history item
     AppState.set('currentEpisodeIndex', episodeIndex);
     AppState.set('currentVideoTitle', title);
     AppState.set('currentVideoId', vodId);
+    AppState.set('currentSourceName', sourceName);
+    AppState.set('currentSourceCode', sourceCode);
     if (episodes && episodes.length > 0) {
         AppState.set('currentEpisodes', episodes);
-        localStorage.setItem('currentEpisodes', JSON.stringify(episodes)); // For player.html fallback
+        // Also save to localStorage for player.html to potentially pick up if direct AppState access isn't feasible
+        localStorage.setItem('currentEpisodes', JSON.stringify(episodes)); 
     }
     localStorage.setItem('currentEpisodeIndex', episodeIndex.toString());
     localStorage.setItem('currentVideoTitle', title);
 
 
     const playerUrl = new URL('player.html', window.location.origin);
-    playerUrl.searchParams.set('url', url);
+    playerUrl.searchParams.set('url', url); // Specific episode URL
     playerUrl.searchParams.set('title', title);
     playerUrl.searchParams.set('index', episodeIndex.toString());
     if (vodId) playerUrl.searchParams.set('id', vodId);
@@ -180,7 +188,6 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0, vodId =
     if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
     if (playbackPosition > 0) playerUrl.searchParams.set('position', playbackPosition.toString());
     
-    // Pass episodes list to player if available from history item
     if (episodes && episodes.length > 0) {
         try {
             playerUrl.searchParams.set('episodes', encodeURIComponent(JSON.stringify(episodes)));
@@ -189,15 +196,16 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0, vodId =
         }
     }
 
-    const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, false);
+    const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, false); // From config.js
     playerUrl.searchParams.set('af', adOn ? '1' : '0');
 
     console.log(`[App - playFromHistory] Navigating to player: ${playerUrl.toString()}`);
     window.location.href = playerUrl.toString();
 }
+window.playFromHistory = playFromHistory; // Make global for ui.js
 
 
-function getBoolConfig(key, defaultValue) {
+function getBoolConfig(key, defaultValue) { // Helper, also in config.js
     const value = localStorage.getItem(key);
     if (value === null) return defaultValue;
     return value === 'true';
@@ -205,10 +213,10 @@ function getBoolConfig(key, defaultValue) {
 
 document.addEventListener('DOMContentLoaded', function () {
     initializeAppState();
-    initializeDOMCache(); // This must run and successfully cache elements
+    initializeDOMCache(); 
     APISourceManager.init();
     initializeEventListeners();
-    if (typeof renderSearchHistory === 'function') { // Ensure ui.js is loaded
+    if (typeof renderSearchHistory === 'function') { 
         renderSearchHistory();
     } else {
         console.warn("renderSearchHistory function not found, ui.js might not be loaded or initialized yet.");
@@ -235,7 +243,7 @@ function initializeAppState() {
 function initializeDOMCache() {
     DOMCache.init({
         'searchInput': 'searchInput',
-        'searchResults': 'searchResults', // Crucial for displaying results
+        'searchResults': 'searchResults', 
         'searchForm': 'searchForm',
         'searchHistoryContainer': 'searchHistory', 
         'apiCheckboxes': 'apiCheckboxes',
@@ -249,14 +257,10 @@ function initializeDOMCache() {
         'adFilteringToggle': 'adFilterToggle', 
         'preloadingToggle': 'preloadingToggle',
         'preloadCountInput': 'preloadCountInput',
-        'resultsArea': 'resultsArea', // Crucial for results area visibility
-        'searchResultsCount': 'searchResultsCount', // Crucial for displaying count
+        'resultsArea': 'resultsArea', 
+        'searchResultsCount': 'searchResultsCount', 
         'doubanArea': 'doubanArea',
         'searchArea': 'searchArea'
-        // Ensure your main HTML file (e.g., index.html) has elements with these IDs:
-        // - searchResults
-        // - resultsArea
-        // - searchResultsCount
     });
 }
 
@@ -329,9 +333,7 @@ function initializeEventListeners() {
 
 function search(options = {}) {
     const searchInput = DOMCache.get('searchInput');
-    // searchResultsContainer is retrieved inside renderSearchResults using DOMCache
-
-    if (!searchInput) { // Only check for searchInput here
+    if (!searchInput) { 
         console.error("Search input field not found in DOMCache.");
         if (typeof options.onComplete === 'function') options.onComplete();
         return;
@@ -361,10 +363,9 @@ function search(options = {}) {
         sessionStorage.removeItem('searchSelectedAPIs');
     } catch(e) { console.warn("Failed to clear previous search cache", e); }
 
-
     const selectedAPIs = AppState.get('selectedAPIs');
     if (!selectedAPIs || selectedAPIs.length === 0) {
-        const searchResultsContainer = DOMCache.get('searchResults'); // Get it here for the message
+        const searchResultsContainer = DOMCache.get('searchResults'); 
         if (searchResultsContainer) searchResultsContainer.innerHTML = '<div class="text-center py-4 text-gray-400">请至少选择一个API源</div>';
         else console.warn("searchResults container not found for 'no API' message.");
         if (isNormalSearch && typeof hideLoading === 'function') hideLoading();
@@ -377,7 +378,7 @@ function search(options = {}) {
             renderSearchResults(resultsData, options.doubanQuery ? query : null);
         })
         .catch(error => {
-            const searchResultsContainer = DOMCache.get('searchResults'); // Get it here for error message
+            const searchResultsContainer = DOMCache.get('searchResults'); 
             if (searchResultsContainer) searchResultsContainer.innerHTML = `<div class="text-center py-4 text-red-400">搜索出错: ${error.message}</div>`;
             else console.warn("searchResults container not found for error message.");
         })
@@ -390,47 +391,50 @@ function search(options = {}) {
             }
         });
 }
+window.search = search; // Make global
 
 
 async function performSearch(query, selectedAPIs) {
     const searchPromises = selectedAPIs.map(apiId => {
         let fetchUrl;
-        let apiName;
-        let customApiUrlForFetch = ''; 
+        let apiNameForError; // For more specific error messages
+        let customApiBaseUrl = ''; // Only for custom APIs
 
         if (apiId.startsWith('custom_')) {
             const customIndex = parseInt(apiId.replace('custom_', ''));
             const customApi = APISourceManager.getCustomApiInfo(customIndex);
             if (customApi && customApi.url) {
-                apiName = customApi.name;
-                customApiUrlForFetch = customApi.url; 
-                fetchUrl = `/api/search?wd=${encodeURIComponent(query)}&source=${apiId}&customApi=${encodeURIComponent(customApiUrlForFetch)}`;
+                apiNameForError = customApi.name;
+                customApiBaseUrl = customApi.url; 
+                // Pass `source` as `custom_X` and `customApi` as the base URL to the backend/api.js
+                fetchUrl = `/api/search?wd=${encodeURIComponent(query)}&source=${apiId}&customApi=${encodeURIComponent(customApiBaseUrl)}`;
             } else {
                 console.warn(`Custom API config error for ${apiId}. Skipping.`);
-                return Promise.resolve({ code: 400, msg: `自定义API配置错误: ${apiId}`, list: [], apiId: apiId });
+                return Promise.resolve({ code: 400, msg: `自定义API配置错误: ${apiId}`, list: [], apiId: apiId, apiName: `Custom ${customIndex}` });
             }
         } else {
-            apiName = API_SITES[apiId]?.name || apiId;
+            apiNameForError = API_SITES[apiId]?.name || apiId;
+            // For built-in APIs, only `source` is needed.
             fetchUrl = `/api/search?wd=${encodeURIComponent(query)}&source=${apiId}`;
         }
 
-        return fetch(fetchUrl) 
+        return fetch(fetchUrl) // This fetch is intercepted by api.js
             .then(response => response.json())
-            .then(data => ({
-                ...data,
-                apiId: apiId, 
-                apiName: apiName, 
-            }))
+            .then(data => {
+                // apiName and api_url (for custom) are expected to be added by handleApiRequest in api.js
+                return { ...data, apiId: apiId, apiName: data.apiName || apiNameForError }; 
+            })
             .catch(error => {
-                console.error(`API(${apiName}) search failed:`, error);
+                console.error(`API(${apiNameForError}) search failed:`, error);
                 return {
                     code: 400,
-                    msg: `API(${apiName})搜索失败: ${error.message}`,
+                    msg: `API(${apiNameForError})搜索失败: ${error.message}`,
                     list: [],
-                    apiId: apiId
+                    apiId: apiId,
+                    apiName: apiNameForError
                 };
             });
-    }).filter(Boolean);
+    }).filter(Boolean); // Filter out any null promises from config errors
 
     return Promise.all(searchPromises);
 }
@@ -445,24 +449,20 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
         console.error("Element with ID 'searchResults' not found. Cannot render results.");
         return;
     }
-    if (!resultsArea) {
-        console.error("Element with ID 'resultsArea' not found. Cannot update results area visibility.");
-        // Continue to try and render in searchResultsContainer if it exists
-    }
-    if (!searchResultsCountElement) {
-        console.error("Element with ID 'searchResultsCount' not found. Cannot update results count.");
-        // Continue
-    }
-
+    // These are less critical if missing, but good to check
+    if (!resultsArea) console.warn("Element with ID 'resultsArea' not found. Results area visibility might not update.");
+    if (!searchResultsCountElement) console.warn("Element with ID 'searchResultsCount' not found. Results count will not be updated.");
 
     let allResults = [];
     let errors = [];
     results.forEach(result => {
         if (result && result.code === 200 && Array.isArray(result.list)) {
+            // `source_name` and `api_url` (for custom) are expected to be set by `handleApiRequest` in `api.js`
+            // and passed through `performSearch`.
             allResults = allResults.concat(result.list);
         } else if (result && result.msg) {
             errors.push(result.msg);
-        } else if (result) { // Catch other malformed results
+        } else if (result) { 
             errors.push(`Received malformed result from API: ${result.apiName || result.apiId || 'Unknown API'}`);
         }
     });
@@ -496,12 +496,12 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
                 <p class="mt-1 text-sm text-gray-500">${messageSuggestion}</p>
                 ${errorBlockHTML}
             </div>`;
-        const searchArea = DOMCache.get('searchArea'); // Use DOMCache
+        const searchArea = DOMCache.get('searchArea'); 
         if (searchArea) {
             searchArea.classList.add('flex-1');
             searchArea.classList.remove('mb-8');
         }
-        const doubanArea = DOMCache.get('doubanArea'); // Use DOMCache
+        const doubanArea = DOMCache.get('doubanArea'); 
         if (doubanArea) doubanArea.classList.add('hidden');
         return;
     }
@@ -516,7 +516,7 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
     allResults.forEach(item => { 
         try {
             const resultItemElement = createResultItemUsingTemplate(item);
-            if (resultItemElement) { // Ensure it's not null/undefined
+            if (resultItemElement) { 
                  fragment.appendChild(resultItemElement);
             }
         } catch (error) {
@@ -537,13 +537,13 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
         searchResultsContainer.appendChild(errorDiv);
     }
 
-    const searchArea = DOMCache.get('searchArea'); // Use DOMCache
+    const searchArea = DOMCache.get('searchArea'); 
     if (searchArea) {
         searchArea.classList.remove('flex-1');
         searchArea.classList.add('mb-8');
         searchArea.classList.remove('hidden');
     }
-    const doubanArea = DOMCache.get('doubanArea'); // Use DOMCache
+    const doubanArea = DOMCache.get('doubanArea'); 
     if (doubanArea) doubanArea.classList.add('hidden');
 
     try {
@@ -579,7 +579,7 @@ function restoreSearchFromCache() {
             }
             
             renderSearchResultsFromCache(JSON.parse(cachedResults));
-            if (typeof closeModal === 'function') closeModal();
+            if (typeof closeModal === 'function') closeModal(); // From ui.js
         }
     } catch (e) {
         console.error('恢复搜索状态失败:', e);
@@ -598,7 +598,6 @@ function renderSearchResultsFromCache(cachedResults) {
      if (!resultsArea || !searchResultsCountElement) {
         console.warn("resultsArea or searchResultsCountElement not found, cached results might not display correctly.");
     }
-
 
     if(resultsArea) resultsArea.classList.remove('hidden');
     if(searchResultsCountElement) searchResultsCountElement.textContent = cachedResults.length.toString();
@@ -629,44 +628,6 @@ function renderSearchResultsFromCache(cachedResults) {
     if (doubanArea) doubanArea.classList.add('hidden');
 }
 
-
-async function getVideoDetail(id, sourceCode, apiUrl = '') {
-    // This function is largely superseded by the modal flow.
-    // If it were to be used, ensure it calls playVideo with all necessary parameters, including vodId.
-    console.warn("getVideoDetail is likely deprecated in favor of showVideoEpisodesModal flow.");
-    // Example of how it might have been:
-    // showLoading('获取视频详情...');
-    // try {
-    //     let detailUrl = `/api/detail?id=${id}&source=${sourceCode}`;
-    //     if (sourceCode.startsWith('custom_') && apiUrl) {
-    //         detailUrl += `&customApi=${encodeURIComponent(apiUrl)}`;
-    //         const customInfo = APISourceManager.getCustomApiInfo(parseInt(sourceCode.replace('custom_','')));
-    //         if (customInfo && customInfo.detail) detailUrl += `&useDetail=true`;
-    //     } else if (!sourceCode.startsWith('custom_') && API_SITES[sourceCode]?.detail) {
-    //        // No need to add useDetail=true, api.js handles it
-    //     }
-    //     const response = await fetch(detailUrl);
-    //     const data = await response.json();
-    //     hideLoading();
-    //     if (data.code !== 200 || !data.episodes || data.episodes.length === 0) {
-    //         throw new Error(data.msg || '获取视频详情失败');
-    //     }
-    //     AppState.set('currentEpisodes', data.episodes);
-    //     AppState.set('currentVideoTitle', data.videoInfo?.title || '未知视频');
-    //     AppState.set('currentVideoId', data.videoInfo?.vod_id || id); // Store VOD ID
-    //     AppState.set('currentSourceName', data.videoInfo?.source_name || '');
-    //     AppState.set('currentSourceCode', sourceCode);
-    //     localStorage.setItem('currentEpisodes', JSON.stringify(data.episodes));
-    //     localStorage.setItem('currentVideoTitle', data.videoInfo?.title || '未知视频');
-    //     if (typeof addToViewingHistory === 'function') addToViewingHistory(data.videoInfo);
-    //     playVideo(data.episodes[0], data.videoInfo?.title, 0, data.videoInfo?.source_name, sourceCode, data.videoInfo?.vod_id || id);
-    // } catch (error) {
-    //     hideLoading();
-    //     showToast('获取视频详情失败: ' + error.message, 'error');
-    // }
-}
-
-
 function resetToHome() {
     const searchInput = DOMCache.get('searchInput');
     const searchResults = DOMCache.get('searchResults');
@@ -683,7 +644,7 @@ function resetToHome() {
     }
     if(resultsArea) resultsArea.classList.add('hidden');
     if (doubanArea) {
-        const showDouban = getBoolConfig('doubanEnabled', false);
+        const showDouban = getBoolConfig('doubanEnabled', false); // Assuming doubanEnabled is a config
         doubanArea.classList.toggle('hidden', !showDouban);
     }
     try {
@@ -692,44 +653,15 @@ function resetToHome() {
         sessionStorage.removeItem('searchSelectedAPIs');
     } catch (e) { console.error('清理搜索缓存失败:', e); }
     
-    if (typeof renderSearchHistory === 'function') renderSearchHistory();
+    if (typeof renderSearchHistory === 'function') renderSearchHistory(); // From ui.js
 }
-
-
-window.search = search;
-// window.getVideoDetail = getVideoDetail; 
 window.resetToHome = resetToHome;
-window.playVideo = playVideo;
-window.playPreviousEpisode = playPreviousEpisode;
-window.playNextEpisode = playNextEpisode;
-window.playFromHistory = playFromHistory; 
 
-/**
- * Creates a search result item element from a template.
- * IMPORTANT: Your main HTML (e.g., index.html) must have a <template id="search-result-template">
- * with the following structure (Tailwind CSS classes are examples):
- * <template id="search-result-template">
- * <div class="card-hover bg-gray-800 rounded-lg overflow-hidden shadow-lg cursor-pointer">
- * <img class="result-img w-full h-48 object-cover" src="" alt="">
- * <div class="p-3">
- * <h3 class="result-title text-sm font-semibold text-white truncate"></h3>
- * <p class="result-remarks text-xs text-gray-400 truncate"></p>
- * <div class="mt-1 flex items-center justify-between text-xs text-gray-500">
- * <span class="result-type"></span>
- * <span class="result-year"></span>
- * </div>
- * <div class="mt-2">
- * <span class="result-source-name bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full text-xs"></span>
- * </div>
- * </div>
- * </div>
- * </template>
- */
+
 function createResultItemUsingTemplate(item) {
     const template = document.getElementById('search-result-template');
     if (!template) {
         console.error("搜索结果模板 #search-result-template 未找到！请检查HTML。");
-        // Fallback to creating a simple text display if template is missing
         const fallbackDiv = document.createElement('div');
         fallbackDiv.className = 'p-2 border-b border-gray-700 text-sm text-gray-300';
         fallbackDiv.textContent = `${item.vod_name || '未知标题'} (${item.source_name || '未知来源'})`;
@@ -737,7 +669,7 @@ function createResultItemUsingTemplate(item) {
         fallbackDiv.dataset.name = item.vod_name || '';
         fallbackDiv.dataset.sourceCode = item.source_code || '';
         if (item.api_url) fallbackDiv.dataset.apiUrl = item.api_url;
-        fallbackDiv.onclick = handleResultClick; // Still make it clickable
+        fallbackDiv.onclick = handleResultClick; 
         return fallbackDiv;
     }
 
@@ -804,7 +736,6 @@ function createResultItemUsingTemplate(item) {
     if (sourceNameElement) {
         if (item.source_name) {
             sourceNameElement.textContent = item.source_name;
-            // Ensure class is set correctly, example:
             sourceNameElement.className = 'result-source-name bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full text-xs';
             sourceNameElement.classList.remove('hidden');
         } else {
@@ -812,23 +743,24 @@ function createResultItemUsingTemplate(item) {
         }
     } else { /* console.warn("'.result-source-name' not found in template clone"); */ }
 
-    cardElement.dataset.id = item.vod_id || '';
+    cardElement.dataset.id = item.vod_id || ''; // This is the VOD ID of the show/movie
     cardElement.dataset.name = item.vod_name || '';
     cardElement.dataset.sourceCode = item.source_code || ''; 
-    if (item.api_url) { 
+    if (item.api_url) { // This is the base URL of the custom API, if applicable
         cardElement.dataset.apiUrl = item.api_url;
     }
     cardElement.onclick = handleResultClick;
 
     return clone;
 }
+window.createResultItemUsingTemplate = createResultItemUsingTemplate; // Make global if needed by other modules, though unlikely
 
 function handleResultClick(event) {
     const card = event.currentTarget;
     const id = card.dataset.id; 
     const name = card.dataset.name;
     const sourceCode = card.dataset.sourceCode; 
-    const apiUrl = card.dataset.apiUrl || ''; 
+    const apiUrl = card.dataset.apiUrl || ''; // Base URL for custom API, if set
 
     if (typeof showVideoEpisodesModal === 'function') {
         showVideoEpisodesModal(id, name, sourceCode, apiUrl);
@@ -841,10 +773,12 @@ window.handleResultClick = handleResultClick;
 
 
 async function showVideoEpisodesModal(id, title, sourceCode, customApiUrl = '') {
+    // id is vod_id, title is show title, sourceCode is 'heimuer' or 'custom_0', 
+    // customApiUrl is the base URL if sourceCode is custom_X
     if(typeof showLoading === 'function') showLoading('加载剧集信息...');
-    AppState.set('currentVideoId', id); 
+    AppState.set('currentVideoId', id); // Store VOD ID of the show/movie
 
-    const selectedApi = APISourceManager.getSelectedApi(sourceCode);
+    const selectedApi = APISourceManager.getSelectedApi(sourceCode); // Get metadata for this source
     if (!selectedApi) {
         if(typeof hideLoading === 'function') hideLoading();
         if(typeof showToast === 'function') showToast('未找到有效的数据源信息', 'error');
@@ -852,20 +786,29 @@ async function showVideoEpisodesModal(id, title, sourceCode, customApiUrl = '') 
         return;
     }
 
+    // Construct the detail API URL that will be intercepted by api.js's handleApiRequest
     let detailFetchUrl = `/api/detail?id=${encodeURIComponent(id)}&source=${encodeURIComponent(sourceCode)}`;
+    
     if (selectedApi.isCustom) {
+        // For custom APIs, pass the base JSON URL as 'customApi' param.
+        // api.js's handleApiRequest will use this.
+        // selectedApi.url is the base JSON URL from APISourceManager.
         detailFetchUrl += `&customApi=${encodeURIComponent(selectedApi.url)}`; 
-        const customInfo = APISourceManager.getCustomApiInfo(parseInt(sourceCode.replace('custom_','')));
-        if (customInfo && customInfo.detail) { 
+        
+        // If this custom API has a specific 'detailScrapeUrl' (for HTML scraping), 
+        // signal api.js to prefer scraping by adding 'useDetail=true'.
+        if (selectedApi.detailScrapeUrl && selectedApi.detailScrapeUrl !== selectedApi.url) { 
             detailFetchUrl += `&useDetail=true`;
         }
-    }
-    // For built-in APIs with a .detail field, api.js's handleApiRequest will manage scraping.
+    } 
+    // For built-in APIs, if API_SITES[sourceCode].detail is set, api.js's handleApiRequest
+    // will automatically know to use it for scraping if necessary. No extra param needed here.
 
     try {
         const response = await fetch(detailFetchUrl); 
         if (!response.ok) {
-            throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
+            const errorText = await response.text();
+            throw new Error(`API请求失败: ${response.status} ${response.statusText}. Response: ${errorText}`);
         }
         const data = await response.json();
         if(typeof hideLoading === 'function') hideLoading();
@@ -878,28 +821,30 @@ async function showVideoEpisodesModal(id, title, sourceCode, customApiUrl = '') 
         }
 
         AppState.set('currentEpisodes', data.episodes);
-        AppState.set('currentVideoTitle', title);
-        AppState.set('currentSourceName', selectedApi.name);
+        AppState.set('currentVideoTitle', title); // Show title
+        AppState.set('currentSourceName', data.videoInfo?.source_name || selectedApi.name); // Use name from detail data if available
         AppState.set('currentSourceCode', sourceCode);
-        
+        // currentVideoId (VOD ID of the show) is already set at the start of this function
+
         localStorage.setItem('currentEpisodes', JSON.stringify(data.episodes));
         localStorage.setItem('currentVideoTitle', title);
 
-        const episodeButtonsHtml = renderEpisodeButtons(data.episodes, title, sourceCode, selectedApi.name);
-        if(typeof showModal === 'function') showModal(episodeButtonsHtml, `${title} (${selectedApi.name})`);
+        const episodeButtonsHtml = renderEpisodeButtons(data.episodes, title, sourceCode, AppState.get('currentSourceName'));
+        if(typeof showModal === 'function') showModal(episodeButtonsHtml, `${title} (${AppState.get('currentSourceName')})`);
 
     } catch (error) {
         if(typeof hideLoading === 'function') hideLoading();
-        console.error('获取剧集信息失败 (catch block):', error, `Original fetch URL for modal: ${detailFetchUrl}`);
+        console.error('获取剧集信息失败 (showVideoEpisodesModal catch block):', error, `Original fetch URL for modal: ${detailFetchUrl}`);
         if(typeof showToast === 'function') showToast(`获取剧集信息失败: ${error.message}`, 'error');
     }
 }
+window.showVideoEpisodesModal = showVideoEpisodesModal;
 
 
 function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
     if (!episodes || episodes.length === 0) return '<p class="text-center text-gray-500">暂无剧集信息</p>';
     const currentReversedState = AppState.get('episodesReversed') || false;
-    const vodId = AppState.get('currentVideoId') || ''; 
+    const vodId = AppState.get('currentVideoId') || ''; // VOD ID of the show/movie
 
     let html = `
     <div class="mb-4 flex justify-end items-center space-x-2">
@@ -951,6 +896,8 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
     });
     return html;
 }
+window.renderEpisodeButtons = renderEpisodeButtons; // Make global if needed
+
 window.copyLinks = function() { 
     const reversed = AppState.get('episodesReversed') || false;
     const episodesToCopy = AppState.get('currentEpisodes');
@@ -989,18 +936,18 @@ window.toggleEpisodeOrderUI = function() {
     const sourceCode = AppState.get('currentSourceCode');
 
     if (episodes && title && sourceCode) {
+        // Re-render only the buttons, not the entire modal content
         const newButtonsHtml = renderEpisodeButtons(episodes, title, sourceCode, sourceName || '');
+        // Extract just the content of #episodeButtonsContainer from the newly rendered HTML
         const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = newButtonsHtml;
-        const buttonsContainerFromRender = tempDiv.querySelector('#episodeButtonsContainer');
-        if (buttonsContainerFromRender) {
-            container.innerHTML = buttonsContainerFromRender.innerHTML;
+        tempDiv.innerHTML = newButtonsHtml; // This will include the controls div and the buttons container
+        const newButtonsContent = tempDiv.querySelector('#episodeButtonsContainer');
+        if (newButtonsContent) {
+            container.innerHTML = newButtonsContent.innerHTML;
         } else {
-             console.error("Could not find #episodeButtonsContainer in rendered HTML for reordering.");
+            console.error("Could not find #episodeButtonsContainer in re-rendered HTML for order toggle.");
         }
     } else {
-        console.error("Cannot re-render episode buttons: Missing state information (episodes, title, or sourceCode).");
+        console.error("Cannot re-render episode buttons for order toggle: Missing state information.");
     }
 };
-
-window.showVideoEpisodesModal = showVideoEpisodesModal;

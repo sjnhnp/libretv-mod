@@ -16,7 +16,10 @@ const APISourceManager = {
      */
     initAPICheckboxes: function () {
         const container = DOMCache.get('apiCheckboxes') || document.getElementById('apiCheckboxes');
-        if (!container) return;
+        if (!container) {
+            console.warn("[APISourceManager] API checkboxes container not found.");
+            return;
+        }
 
         container.innerHTML = '';
 
@@ -29,12 +32,14 @@ const APISourceManager = {
         // 普通API
         Object.keys(API_SITES).forEach(apiKey => {
             const api = API_SITES[apiKey];
-            if (api.adult) return;
+            if (api.adult) return; // Skip adult APIs for this section
             let box = document.createElement('div');
             box.className = 'flex items-center';
+            // Ensure AppState.get('selectedAPIs') is available and an array
+            const selectedAPIs = AppState.get('selectedAPIs') || [];
             box.innerHTML = `<input type="checkbox" id="api_${apiKey}" 
                 class="form-checkbox h-3 w-3 text-blue-600 bg-[#222] border border-[#333]" 
-                ${AppState.get('selectedAPIs').includes(apiKey) ? 'checked' : ''} data-api="${apiKey}">
+                ${selectedAPIs.includes(apiKey) ? 'checked' : ''} data-api="${apiKey}">
                 <label for="api_${apiKey}" class="ml-1 text-xs text-gray-400 truncate">${api.name}</label>`;
             container.appendChild(box);
             box.querySelector('input').addEventListener('change', () => {
@@ -57,9 +62,10 @@ const APISourceManager = {
                 const api = API_SITES[apiKey];
                 let box = document.createElement('div');
                 box.className = 'flex items-center';
+                const selectedAPIs = AppState.get('selectedAPIs') || [];
                 box.innerHTML = `<input type="checkbox" id="api_${apiKey}" 
                     class="form-checkbox h-3 w-3 text-blue-600 bg-[#222] border border-[#333] api-adult"
-                    ${AppState.get('selectedAPIs').includes(apiKey) ? 'checked' : ''} data-api="${apiKey}">
+                    ${selectedAPIs.includes(apiKey) ? 'checked' : ''} data-api="${apiKey}">
                     <label for="api_${apiKey}" class="ml-1 text-xs text-pink-400 truncate">${api.name}</label>`;
                 container.appendChild(box);
                 box.querySelector('input').addEventListener('change', () => {
@@ -78,22 +84,24 @@ const APISourceManager = {
         const customAdult = document.querySelectorAll('#customApisList .api-adult:checked');
         const hasAdult = adultBuiltin.length > 0 || customAdult.length > 0;
         const yellowToggle = DOMCache.get('yellowFilterToggle') || document.getElementById('yellowFilterToggle');
-        const row = yellowToggle?.closest('div')?.parentNode;
-        const desc = row?.querySelector('p.filter-description');
         if (!yellowToggle) return;
+
+        const row = yellowToggle.closest('div.flex.items-center.justify-between'); // More specific selector for the row
+        const desc = row ? row.querySelector('p.filter-description') : null; // Find description within that row
+
         if (hasAdult) {
             yellowToggle.checked = false;
             yellowToggle.disabled = true;
             localStorage.setItem('yellowFilterEnabled', 'false');
-            row?.classList.add('filter-disabled');
+            if (row) row.classList.add('filter-disabled');
             if (desc) desc.innerHTML = '<strong class="text-pink-300">选中黄色资源站时无法启用此过滤</strong>';
-            // 去除提示信息
-            row?.querySelector('.filter-tooltip')?.remove();
+            const tooltip = row ? row.querySelector('.filter-tooltip') : null;
+            if (tooltip) tooltip.remove();
         } else {
             yellowToggle.disabled = false;
-            row?.classList.remove('filter-disabled');
+            if (row) row.classList.remove('filter-disabled');
             if (desc) desc.textContent = '过滤"伦理片"等黄色内容';
-            row?.querySelector('.filter-tooltip')?.remove();
+            // If tooltip was removed, it stays removed unless you re-add it.
         }
     },
 
@@ -102,9 +110,12 @@ const APISourceManager = {
      */
     renderCustomAPIsList: function () {
         const container = DOMCache.get('customApisList') || document.getElementById('customApisList');
-        if (!container) return;
+        if (!container) {
+            console.warn("[APISourceManager] Custom APIs list container not found.");
+            return;
+        }
 
-        const customAPIs = AppState.get('customAPIs');
+        const customAPIs = AppState.get('customAPIs') || [];
         container.innerHTML = customAPIs.length ?
             '' : '<p class="text-xs text-gray-500 text-center my-2">未添加自定义API</p>';
 
@@ -113,19 +124,20 @@ const APISourceManager = {
             item.className = 'flex items-center justify-between p-1 mb-1 bg-[#222] rounded';
             const textColorClass = api.isAdult ? 'text-pink-400' : 'text-white';
             const adultTag = api.isAdult ? '<span class="text-xs text-pink-400 mr-1">(18+)</span>' : '';
+            const selectedAPIs = AppState.get('selectedAPIs') || [];
             item.innerHTML = `
                 <div class="flex items-center flex-1 min-w-0">
                     <input type="checkbox" id="custom_api_${idx}" 
                         class="form-checkbox h-3 w-3 text-blue-600 mr-1 ${api.isAdult ? 'api-adult' : ''}"
-                        ${AppState.get('selectedAPIs').includes('custom_' + idx) ? 'checked' : ''} data-custom-index="${idx}">
+                        ${selectedAPIs.includes('custom_' + idx) ? 'checked' : ''} data-custom-index="${idx}">
                     <div class="flex-1 min-w-0">
-                        <div class="text-xs font-medium ${textColorClass} truncate">${adultTag}${api.name}</div>
-                        <div class="text-xs text-gray-500 truncate">${api.url}</div>
+                        <div class="text-xs font-medium ${textColorClass} truncate" title="${api.name}">${adultTag}${api.name}</div>
+                        <div class="text-xs text-gray-500 truncate" title="${api.url}">${api.url}</div>
                     </div>
                 </div>
                 <div class="flex items-center">
-                    <button class="text-blue-500 hover:text-blue-700 text-xs px-1" onclick="APISourceManager.editCustomApi(${idx})">✎</button>
-                    <button class="text-red-500 hover:text-red-700 text-xs px-1" onclick="APISourceManager.removeCustomApi(${idx})">✕</button>
+                    <button class="text-blue-500 hover:text-blue-700 text-xs px-1" onclick="APISourceManager.editCustomApi(${idx})" aria-label="编辑自定义API ${api.name}">✎</button>
+                    <button class="text-red-500 hover:text-red-700 text-xs px-1" onclick="APISourceManager.removeCustomApi(${idx})" aria-label="删除自定义API ${api.name}">✕</button>
                 </div>`;
             container.appendChild(item);
             item.querySelector('input').addEventListener('change', () => {
@@ -140,7 +152,7 @@ const APISourceManager = {
      * @param {number} index - Index of the API to edit
      */
     editCustomApi: function (index) {
-        const customAPIs = AppState.get('customAPIs');
+        const customAPIs = AppState.get('customAPIs') || [];
         if (index < 0 || index >= customAPIs.length) return;
 
         const api = customAPIs[index];
@@ -148,22 +160,25 @@ const APISourceManager = {
         const urlInput = DOMCache.get('customApiUrl') || document.getElementById('customApiUrl');
         const isAdultInput = DOMCache.get('customApiIsAdult') || document.getElementById('customApiIsAdult');
 
-        // 填充表单数据
+        if (!nameInput || !urlInput || !isAdultInput) {
+            console.error("Custom API form elements not found for editing.");
+            return;
+        }
+
         nameInput.value = api.name;
         urlInput.value = api.url;
-        if (isAdultInput) isAdultInput.checked = !!api.isAdult;
+        isAdultInput.checked = !!api.isAdult;
 
-        // 显示表单
         const form = DOMCache.get('addCustomApiForm') || document.getElementById('addCustomApiForm');
         if (form) {
             form.classList.remove('hidden');
-
-            // 替换表单按钮操作
-            const buttonContainer = form.querySelector('div:last-child');
-            buttonContainer.innerHTML = `
-                <button onclick="APISourceManager.updateCustomApi(${index})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">更新</button>
-                <button onclick="APISourceManager.cancelEditCustomApi()" class="bg-[#444] hover:bg-[#555] text-white px-3 py-1 rounded text-xs">取消</button>
-            `;
+            const buttonContainer = form.querySelector('div:last-child'); // Assuming buttons are in the last div
+            if (buttonContainer) {
+                buttonContainer.innerHTML = `
+                    <button onclick="APISourceManager.updateCustomApi(${index})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">更新</button>
+                    <button onclick="APISourceManager.cancelEditCustomApi()" class="bg-[#444] hover:bg-[#555] text-white px-3 py-1 rounded text-xs">取消</button>
+                `;
+            }
         }
     },
 
@@ -172,55 +187,48 @@ const APISourceManager = {
      * @param {number} index - Index of the API to update
      */
     updateCustomApi: function (index) {
-        const customAPIs = AppState.get('customAPIs');
+        const customAPIs = AppState.get('customAPIs') || [];
         if (index < 0 || index >= customAPIs.length) return;
 
         const nameInput = DOMCache.get('customApiName') || document.getElementById('customApiName');
         const urlInput = DOMCache.get('customApiUrl') || document.getElementById('customApiUrl');
         const isAdultInput = DOMCache.get('customApiIsAdult') || document.getElementById('customApiIsAdult');
 
+        if (!nameInput || !urlInput || !isAdultInput) {
+            console.error("Custom API form elements not found for updating.");
+            return;
+        }
+
         const name = nameInput.value.trim();
         let url = urlInput.value.trim();
-        const isAdult = isAdultInput ? isAdultInput.checked : false;
+        const isAdult = isAdultInput.checked;
 
         if (!name || !url) {
-            showToast('请输入API名称和链接', 'warning');
+            if (typeof showToast === 'function') showToast('请输入API名称和链接', 'warning');
             return;
         }
-
-        // 确保URL格式正确
         if (!/^https?:\/\/.+/.test(url)) {
-            showToast('API链接格式不正确，需以http://或https://开头', 'warning');
+            if (typeof showToast === 'function') showToast('API链接格式不正确，需以http://或https://开头', 'warning');
             return;
         }
-
-        // 移除URL末尾的斜杠
         if (url.endsWith('/')) url = url.slice(0, -1);
 
-        // 更新API信息
         const updatedCustomAPIs = [...customAPIs];
-        updatedCustomAPIs[index] = { name, url, isAdult };
+        updatedCustomAPIs[index] = { name, url, isAdult }; // Ensure 'detail' is also handled if it's part of your custom API object
         AppState.set('customAPIs', updatedCustomAPIs);
         localStorage.setItem('customAPIs', JSON.stringify(updatedCustomAPIs));
 
-        // 重新渲染自定义API列表
         this.renderCustomAPIsList();
-
-        // 重新检查成人API选中状态
         this.checkAdultAPIsSelected();
-
-        // 恢复添加按钮
         this.restoreAddCustomApiButtons();
 
-        // 清空表单并隐藏
         nameInput.value = '';
         urlInput.value = '';
-        if (isAdultInput) isAdultInput.checked = false;
+        isAdultInput.checked = false;
 
         const form = DOMCache.get('addCustomApiForm') || document.getElementById('addCustomApiForm');
         if (form) form.classList.add('hidden');
-
-        showToast('已更新自定义API: ' + name, 'success');
+        if (typeof showToast === 'function') showToast('已更新自定义API: ' + name, 'success');
     },
 
     /**
@@ -229,18 +237,29 @@ const APISourceManager = {
      * @param {boolean} excludeAdult - Whether to exclude adult APIs
      */
     selectAllAPIs: function (selectAll = true, excludeAdult = false) {
-        // IMPORTANT: HTML using this function via onclick must be updated to call APISourceManager.selectAllAPIs(...)
         const checkboxes = document.querySelectorAll('#apiCheckboxes input[type="checkbox"]');
         checkboxes.forEach(box => {
-            if (excludeAdult && box.classList.contains('api-adult')) box.checked = false;
-            else box.checked = selectAll;
+            if (excludeAdult && box.classList.contains('api-adult')) {
+                box.checked = false;
+            } else {
+                box.checked = selectAll;
+            }
+        });
+        // Also handle custom API checkboxes if you want selectAll to affect them
+        const customCheckboxes = document.querySelectorAll('#customApisList input[type="checkbox"]');
+         customCheckboxes.forEach(box => {
+            if (excludeAdult && box.classList.contains('api-adult')) { // Assuming custom adult APIs also have 'api-adult'
+                box.checked = false;
+            } else {
+                box.checked = selectAll;
+            }
         });
         this.updateSelectedAPIs();
         this.checkAdultAPIsSelected();
     },
 
     /**
-     * Update selected APIs
+     * Update selected APIs in AppState and localStorage
      */
     updateSelectedAPIs: function () {
         const builtIn = Array.from(document.querySelectorAll('#apiCheckboxes input:checked')).map(input => input.dataset.api);
@@ -253,12 +272,13 @@ const APISourceManager = {
     },
 
     /**
-     * Update selected API count
+     * Update selected API count display
      */
     updateSelectedApiCount: function () {
         const countElement = DOMCache.get('selectedApiCount') || document.getElementById('selectedApiCount');
         if (countElement) {
-            countElement.textContent = AppState.get('selectedAPIs').length;
+            const selectedAPIs = AppState.get('selectedAPIs') || [];
+            countElement.textContent = selectedAPIs.length;
         }
     },
 
@@ -269,56 +289,49 @@ const APISourceManager = {
         const nameInput = DOMCache.get('customApiName') || document.getElementById('customApiName');
         const urlInput = DOMCache.get('customApiUrl') || document.getElementById('customApiUrl');
         const isAdultInput = DOMCache.get('customApiIsAdult') || document.getElementById('customApiIsAdult');
+        
+        if (!nameInput || !urlInput || !isAdultInput) {
+            console.error("Custom API form elements not found for adding.");
+            return;
+        }
 
         const name = nameInput.value.trim();
         let url = urlInput.value.trim();
-        const isAdult = isAdultInput ? isAdultInput.checked : false;
+        const isAdult = isAdultInput.checked;
 
         if (!name || !url) {
-            showToast('请输入API名称和链接', 'warning');
+            if (typeof showToast === 'function') showToast('请输入API名称和链接', 'warning');
             return;
         }
-
-        // 确保URL格式正确
         if (!/^https?:\/\/.+/.test(url)) {
-            showToast('API链接格式不正确，需以http://或https://开头', 'warning');
+            if (typeof showToast === 'function') showToast('API链接格式不正确，需以http://或https://开头', 'warning');
             return;
         }
-
-        // 移除URL末尾的斜杠
         if (url.endsWith('/')) url = url.slice(0, -1);
 
-        // 添加到自定义API列表 - 增加isAdult属性
-        const customAPIs = AppState.get('customAPIs');
-        const updatedCustomAPIs = [...customAPIs, { name, url, isAdult }];
+        const customAPIs = AppState.get('customAPIs') || [];
+        // Consider adding a 'detail' field if your custom APIs might have separate HTML scraping URLs
+        const newApiObject = { name, url, isAdult /*, detail: optionalDetailUrl */ };
+        const updatedCustomAPIs = [...customAPIs, newApiObject];
         AppState.set('customAPIs', updatedCustomAPIs);
         localStorage.setItem('customAPIs', JSON.stringify(updatedCustomAPIs));
 
-        // 默认选中新添加的API
         const newApiIndex = updatedCustomAPIs.length - 1;
-        const selectedAPIs = AppState.get('selectedAPIs');
+        const selectedAPIs = AppState.get('selectedAPIs') || [];
         const updatedSelectedAPIs = [...selectedAPIs, 'custom_' + newApiIndex];
         AppState.set('selectedAPIs', updatedSelectedAPIs);
         localStorage.setItem('selectedAPIs', JSON.stringify(updatedSelectedAPIs));
 
-        // 重新渲染自定义API列表
         this.renderCustomAPIsList();
-
-        // 更新选中的API数量
         this.updateSelectedApiCount();
-
-        // 重新检查成人API选中状态
         this.checkAdultAPIsSelected();
 
-        // 清空表单并隐藏
         nameInput.value = '';
         urlInput.value = '';
-        if (isAdultInput) isAdultInput.checked = false;
-
+        isAdultInput.checked = false;
         const form = DOMCache.get('addCustomApiForm') || document.getElementById('addCustomApiForm');
         if (form) form.classList.add('hidden');
-
-        showToast('已添加自定义API: ' + name, 'success');
+        if (typeof showToast === 'function') showToast('已添加自定义API: ' + name, 'success');
     },
 
     /**
@@ -326,28 +339,24 @@ const APISourceManager = {
      * @param {number} index - Index of the API to remove
      */
     removeCustomApi: function (index) {
-        const customAPIs = AppState.get('customAPIs');
+        const customAPIs = AppState.get('customAPIs') || [];
         if (index < 0 || index >= customAPIs.length) return;
 
         const apiName = customAPIs[index].name;
-
-        // 从列表中移除
-        const updatedCustomAPIs = [...customAPIs];
-        updatedCustomAPIs.splice(index, 1);
+        const updatedCustomAPIs = customAPIs.filter((_, i) => i !== index);
         AppState.set('customAPIs', updatedCustomAPIs);
         localStorage.setItem('customAPIs', JSON.stringify(updatedCustomAPIs));
 
-        // 从选中列表中移除
-        const selectedAPIs = AppState.get('selectedAPIs');
-        const customApiCode = 'custom_' + index;
-        const updatedSelectedAPIs = selectedAPIs.filter(api => api !== customApiCode);
+        const selectedAPIs = AppState.get('selectedAPIs') || [];
+        const customApiCodeToRemove = 'custom_' + index;
+        let finalSelectedAPIs = selectedAPIs.filter(api => api !== customApiCodeToRemove);
 
-        // 更新后续自定义API的索引
-        const finalSelectedAPIs = updatedSelectedAPIs.map(api => {
+        // Adjust indices for subsequent custom APIs in the selected list
+        finalSelectedAPIs = finalSelectedAPIs.map(api => {
             if (api.startsWith('custom_')) {
-                const apiIndex = parseInt(api.split('_')[1]);
-                if (apiIndex > index) {
-                    return 'custom_' + (apiIndex - 1);
+                const apiIdx = parseInt(api.split('_')[1]);
+                if (apiIdx > index) {
+                    return 'custom_' + (apiIdx - 1);
                 }
             }
             return api;
@@ -356,107 +365,86 @@ const APISourceManager = {
         AppState.set('selectedAPIs', finalSelectedAPIs);
         localStorage.setItem('selectedAPIs', JSON.stringify(finalSelectedAPIs));
 
-        // 重新渲染自定义API列表
         this.renderCustomAPIsList();
-
-        // 更新选中的API数量
         this.updateSelectedApiCount();
-
-        // 重新检查成人API选中状态
         this.checkAdultAPIsSelected();
-
-        showToast('已移除自定义API: ' + apiName, 'success');
+        if (typeof showToast === 'function') showToast('已移除自定义API: ' + apiName, 'success');
     },
 
     /**
-     * 取消添加自定义API
+     * Cancel adding/editing custom API
      */
-    cancelAddCustomApi: function () {
+    cancelAddCustomApi: function () { // Also serves as cancelEditCustomApi
         const form = DOMCache.get('addCustomApiForm') || document.getElementById('addCustomApiForm');
         if (form) {
             form.classList.add('hidden');
-            // 重置表单
             const nameInput = DOMCache.get('customApiName') || document.getElementById('customApiName');
             const urlInput = DOMCache.get('customApiUrl') || document.getElementById('customApiUrl');
             const isAdultInput = DOMCache.get('customApiIsAdult') || document.getElementById('customApiIsAdult');
-
             if (nameInput) nameInput.value = '';
             if (urlInput) urlInput.value = '';
             if (isAdultInput) isAdultInput.checked = false;
-
-            // 恢复默认的添加按钮
-            const buttonContainer = form.querySelector('div:last-child');
-            if (buttonContainer) {
-                buttonContainer.innerHTML = `
-                    <button onclick="addCustomApi()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">添加</button>
-                    <button onclick="cancelAddCustomApi()" class="bg-[#444] hover:bg-[#555] text-white px-3 py-1 rounded text-xs">取消</button>
-                `;
-            }
+            this.restoreAddCustomApiButtons(); // Ensure buttons are reset to "Add" state
         }
     },
-
-    /**
-     * 取消编辑自定义API
-     */
-    cancelEditCustomApi: function () {
-        // 复用取消添加的逻辑
-        this.cancelAddCustomApi();
+    
+    cancelEditCustomApi: function() {
+        this.cancelAddCustomApi(); // Re-use the same logic
     },
 
     /**
-     * Restore add custom API buttons
+     * Restore add custom API buttons to their default state
      */
     restoreAddCustomApiButtons: function () {
         const form = DOMCache.get('addCustomApiForm') || document.getElementById('addCustomApiForm');
         if (!form) return;
-
         const buttonContainer = form.querySelector('div:last-child');
-        buttonContainer.innerHTML = `
-            <button onclick="APISourceManager.addCustomApi()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">添加</button>
-            <button onclick="APISourceManager.cancelAddCustomApi()" class="bg-[#444] hover:bg-[#555] text-white px-3 py-1 rounded text-xs">取消</button>
-        `;
+        if (buttonContainer) {
+            buttonContainer.innerHTML = `
+                <button onclick="APISourceManager.addCustomApi()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">添加</button>
+                <button onclick="APISourceManager.cancelAddCustomApi()" class="bg-[#444] hover:bg-[#555] text-white px-3 py-1 rounded text-xs">取消</button>
+            `;
+        }
     },
 
     /**
-     * 根据索引获取自定义API信息
-     * @param {number} index - 自定义API索引
-     * @returns {object|null} - 自定义API信息对象或null
+     * Get custom API info by index.
+     * @param {number} index - Custom API index.
+     * @returns {object|null} - Custom API object { name, url, isAdult, detail? } or null.
      */
     getCustomApiInfo: function (index) {
-        const customAPIs = AppState.get('customAPIs'); // 从AppState获取自定义API列表
+        const customAPIs = AppState.get('customAPIs') || [];
         if (customAPIs && typeof index === 'number' && index >= 0 && index < customAPIs.length) {
-            return customAPIs[index]; // 返回格式应为 { name, url, isAdult, detail (optional) }
+            return customAPIs[index]; // Includes name, url, isAdult, and potentially 'detail' if you add it
         }
         console.warn(`getCustomApiInfo: Invalid index ${index} or customAPIs not found.`);
         return null;
     },
 
     /**
-     * 根据来源代码获取API信息
-     * @param {string} sourceCode - 来源代码 (例如 'heimuer', 'custom_0')
-     * @returns {object|null} - 包含API信息的对象 (例如 { name: 'API名称', url: 'API地址', isCustom: boolean, detailUrl (optional) }) 或 null
+     * Get API info by source code.
+     * @param {string} sourceCode - Source code (e.g., 'heimuer', 'custom_0').
+     * @returns {object|null} - API info { name, url (base for JSON), isCustom, detailScrapeUrl? }.
      */
     getSelectedApi: function (sourceCode) {
-        if (!sourceCode) {
-            return null;
-        }
+        if (!sourceCode) return null;
 
         if (sourceCode.startsWith('custom_')) {
             const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
-            const apiInfo = this.getCustomApiInfo(customIndex);
+            const apiInfo = this.getCustomApiInfo(customIndex); // This now returns the object with 'url' and potentially 'detail'
             return apiInfo ? { 
                 name: apiInfo.name, 
-                url: apiInfo.url, // This is the base API URL for search/detail JSON
+                url: apiInfo.url, // This is the base URL for JSON search/detail as per config.js
                 isCustom: true,
-                detailScrapeUrl: apiInfo.detail // URL for HTML scraping if needed
+                detailScrapeUrl: apiInfo.detail // This is the specific URL for HTML scraping, if defined for this custom API
             } : null;
         } else {
             if (typeof API_SITES !== 'undefined' && API_SITES[sourceCode]) {
                 return { 
                     name: API_SITES[sourceCode].name, 
-                    url: API_SITES[sourceCode].api, // Base API URL for search/detail JSON
+                    url: API_SITES[sourceCode].api, // Base URL for JSON search/detail from config.js
                     isCustom: false,
-                    detailScrapeUrl: API_SITES[sourceCode].detail // URL for HTML scraping if needed
+                    detailScrapeUrl: API_SITES[sourceCode].detail // URL for HTML scraping from config.js
                 };
             } else {
                 console.error("API_SITES 未定义或未找到 sourceCode:", sourceCode);
@@ -466,25 +454,25 @@ const APISourceManager = {
     }
 };
 
-
-// 导出模块
+// Export module and make specific functions globally available if called directly from HTML onclick
 window.APISourceManager = APISourceManager;
-
 
 window.selectAllAPIs = function (selectAll, excludeAdult) {
     APISourceManager.selectAllAPIs(selectAll, excludeAdult);
 };
 
-
 window.showAddCustomApiForm = function () {
     const form = DOMCache.get('addCustomApiForm') || document.getElementById('addCustomApiForm');
-    if (form) form.classList.remove('hidden');
+    if (form) {
+        APISourceManager.restoreAddCustomApiButtons(); // Ensure buttons are in "Add" mode
+        form.classList.remove('hidden');
+    }
 };
 
-window.addCustomApi = function () {
+window.addCustomApi = function () { // Called by "Add" button in the form
     APISourceManager.addCustomApi();
 };
 
-window.cancelAddCustomApi = function () {
+window.cancelAddCustomApi = function () { // Called by "Cancel" button in the form
     APISourceManager.cancelAddCustomApi();
 };
