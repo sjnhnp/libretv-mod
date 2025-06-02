@@ -780,6 +780,7 @@ function initPlayer(videoUrl, sourceCode) {
             window.vsPlayer.destroy();
         }
 
+        console.log('[Vidstack] Attempting VidstackPlayer.create()');
         VidstackPlayer.create({
             target: playerTarget, // Use the actual DOM element
             src: videoUrl,
@@ -793,13 +794,12 @@ function initPlayer(videoUrl, sourceCode) {
             muted: localStorage.getItem('vs-player-muted') === 'true',
         }).then(player => {
             window.vsPlayer = player; // Store instance globally
-            console.log('[PlayerApp] Vidstack Player instance created.');
+            console.log('[Vidstack] VidstackPlayer.create() promise resolved. Player instance:', player);
 
-            // TODO: Adapt DPlayer event listeners and control functions in subsequent steps.
-            // For now, just log that the player is ready.
-            player.addEventListener('loadedmetadata', () => { // Changed to addEventListener, event name is standard
+            player.addEventListener('loadedmetadata', () => {
+                console.log('[Vidstack] loadedmetadata event fired. Player duration:', player.duration);
                 const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
-                if (debugMode) console.log(`[Vidstack][loadedmetadata] Event triggered. Player duration: ${player.duration}`);
+                // if (debugMode) console.log(`[Vidstack][loadedmetadata] Event triggered. Player duration: ${player.duration}`); // Already logged above
 
                 const loadingEl = document.getElementById('loading');
                 if (loadingEl) {
@@ -856,22 +856,20 @@ function initPlayer(videoUrl, sourceCode) {
                 }, 100);
             });
 
-            player.addEventListener('error', (event) => { // Changed to addEventListener
-                // Vidstack's error event.detail is typically MediaErrorDetail
-                // https://vidstack.io/docs/player/api/events#error
+            player.addEventListener('error', (event) => {
                 const errorDetail = event.detail;
-                console.error('[Vidstack] Player error:', errorDetail);
+                console.error('[Vidstack] Player error event:', errorDetail); // Ensure detailed object is logged
                 const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
                 const errorMessage = errorDetail?.message || (errorDetail?.data?.message || 'Unknown error');
 
                 if (player && player.currentTime > 1 && !debugMode) {
-                     console.warn('Vidstack error ignored as video was playing for >1s:', errorMessage);
+                     console.warn('[Vidstack] Error ignored as video was playing for >1s:', errorMessage);
                      return;
                 }
                 showError('Vidstack Player error: ' + errorMessage);
             });
 
-            player.addEventListener('ended', (event) => { // Changed to addEventListener
+            player.addEventListener('ended', (event) => {
                 const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
                 if (debugMode) console.log('[Vidstack] ended');
                 videoHasEnded = true;
@@ -953,8 +951,19 @@ function initPlayer(videoUrl, sourceCode) {
                 if(typeof saveVideoSpecificProgress === 'function') saveVideoSpecificProgress();
             });
 
-            player.addEventListener('play', (event) => { // Added play event listener
-                videoHasEnded = false; // Reset ended state on play
+            player.addEventListener('play', (event) => {
+                console.log('[Vidstack] play event fired.');
+                videoHasEnded = false;
+            });
+
+            player.addEventListener('canplay', () => {
+                console.log('[Vidstack] canplay event fired. Player readyState:', player.readyState);
+                // Potentially hide loading here as well, as a fallback or primary trigger
+                // const loadingEl = document.getElementById('loading');
+                // if (loadingEl) {
+                //     loadingEl.style.display = 'none';
+                //     document.documentElement.classList.remove('show-loading');
+                // }
             });
 
             // After player is created and events are set up
