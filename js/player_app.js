@@ -971,26 +971,11 @@ function setupPlayerControls() {
         backButton.addEventListener('click', () => { window.location.href = 'index.html'; });
     }
 
-    const fullscreenButton = document.getElementById('fullscreen-button');
-    if (fullscreenButton) {
-        fullscreenButton.addEventListener('click', () => {
-            if (dp && typeof dp.toggleFullscreen === 'function') { // Use Vidstack's toggleFullscreen
-                dp.toggleFullscreen();
-            } else {
-                // Fallback for native fullscreen if Vidstack toggle fails or is not ready
-                const playerContainer = document.getElementById('dp-player'); // Targeting Vidstack's main player element
-                if (playerContainer) {
-                    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                        if (playerContainer.requestFullscreen) playerContainer.requestFullscreen().catch(err => console.error("Fallback FS error:", err));
-                        else if (playerContainer.webkitRequestFullscreen) playerContainer.webkitRequestFullscreen().catch(err => console.error("Fallback FS error (webkit):", err));
-                    } else {
-                        if (document.exitFullscreen) document.exitFullscreen().catch(err => console.error("Fallback exit FS error:", err));
-                        else if (document.webkitExitFullscreen) document.webkitExitFullscreen().catch(err => console.error("Fallback exit FS error (webkit):", err));
-                    }
-                }
-            }
-        });
-    }
+       const fullscreenButton = document.getElementById('fullscreen-button');
+        if (fullscreenButton) {
+            fullscreenButton.addEventListener('click', handleFullscreen);
+        }
+    
 
     const retryButton = document.getElementById('retry-button');
     if (retryButton) {
@@ -1128,7 +1113,12 @@ function handleKeyboardShortcuts(e) {
             dp.togglePaused(); actionText = dp.paused ? '暂停' : '播放'; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case 'ArrowUp': dp.volume = Math.min(1, dp.volume + 0.1); actionText = `音量 ${Math.round(dp.volume * 100)}%`; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case 'ArrowDown': dp.volume = Math.max(0, dp.volume - 0.1); actionText = `音量 ${Math.round(dp.volume * 100)}%`; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
-        case 'f': dp.toggleFullscreen(); actionText = '切换全屏'; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break; // 'f' for fullscreen toggle
+                case 'f':
+                    handleFullscreen();
+                    actionText = '切换全屏';
+                   e.preventDefault();
+                    if (debugMode) console.log(`Keyboard: ${actionText}`);
+                    break;
     }
     if (actionText && typeof showShortcutHint === 'function') showShortcutHint(actionText, direction); // Assuming showShortcutHint is defined
 }
@@ -1706,4 +1696,14 @@ function doEpisodeSwitch(index, url) {
     );
 }
 
+function handleFullscreen() {
+    if (!dp) return;
+    const { fullscreen } = dp;          // Vidstack v1.x API
+    const isFs = fullscreen?.active || document.fullscreenElement;
+    if (isFs) fullscreen.exit();
+    else      fullscreen.request();
+  }
+  
+
 window.playEpisode = playEpisode;
+window.copyLinks = copyLinks;
