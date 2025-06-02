@@ -918,15 +918,16 @@ function addVidstackEventListeners() {
         setTimeout(() => { isUserSeeking = false; }, 200); // Reset seeking flag after a short delay
     });
 
-    dp.on('pause', function () { // Vidstack uses 'pause'
+    dp.addEventListener('pause', function () {
         if (debugMode) console.log("[PlayerApp] Vidstack event: pause");
         saveVideoSpecificProgress();
         // saveCurrentProgress(); // Optional: also update viewing history list on pause
     });
-    dp.on('seeking', saveVideoSpecificProgress); // Compatible with iOS
-    dp.on('seeked', saveVideoSpecificProgress); // Compatible with iOS
-
-    dp.on('end', function () { // Vidstack uses 'end' for video completion
+        dp.addEventListener('seeking', saveVideoSpecificProgress); // Compatible with iOS
+        dp.addEventListener('seeked', saveVideoSpecificProgress); // Compatible with iOS
+    
+        // Vidstack uses 'ended' for video completion (note: DPlayer uses 'ended', Vidstack uses 'end')
+        dp.addEventListener('end', function () {
         videoHasEnded = true;
         saveCurrentProgress(); // Ensure final progress is saved
         clearVideoProgress(); // Clear progress for *this specific video*
@@ -942,7 +943,7 @@ function addVidstackEventListeners() {
         }
     });
 
-    dp.on('time-update', function () { // Vidstack uses 'time-update'
+    dp.addEventListener('time-update', function (event) {
         // Reset ended flag if user seeks back after video ended
         if (dp.media && dp.media.activeElement && dp.duration > 0) { // Use dp.duration
             if (isUserSeeking && dp.currentTime > dp.duration * 0.95) { // Use dp.currentTime
