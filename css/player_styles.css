@@ -1,3 +1,6 @@
+/* css/player_styles.css */
+
+/* Player-specific styles */
 /* 基本布局和播放器相关样式 */
 .player-container {
   width: 100%;
@@ -5,11 +8,39 @@
   margin: 0 auto;
 }
 
-/* 播放器区域 */
-#player {
+/* 播放器区域 - #vidstack-player-target is Vidstack Player's injection target */
+#vidstack-player-target {
+  width: 100%;
+  height: 60vh; /* Default height, can be overridden by fullscreen */
+  background: #000;
+  position: relative;
+  overflow: hidden;
+}
+
+/* === 播放器内容比例兼容主流播放器（最佳实践）=== */
+#vidstack-player-target video,
+media-player video, /* Common Vidstack internal video tag parent */
+.media-player video, /* Another common pattern */
+.vds-player video { /* Vidstack specific class often on the host */
+  display: block;
+  width: 100%; /* Ensure video fills the container */
+  height: 100%; /* Ensure video fills the container */
+  max-width: 100%; /* Redundant if width/height is 100%, but safe */
+  max-height: 100%; /* Redundant if width/height is 100%, but safe */
+  margin: 0 auto; /* Center if object-fit results in letter/pillarboxing */
+  object-fit: contain;
+  background: #000; /* Fallback for browsers not supporting object-fit well or during load */
+}
+
+/* Original content of css/player_styles.css below this line */
+/* 基本布局和播放器相关样式 */
+/* .player-container class is fine */
+
+/* 播放器区域 - This is now handled by #vidstack-player-target from prepended CSS */
+/* #player {
   width: 100%;
   height: 60vh;
-}
+} */
 
 /* 加载和错误覆盖层 */
 .loading-container,
@@ -150,26 +181,30 @@ input:checked+.slider:before {
   background: #000;
 }
 
-.player-container:-webkit-full-screen #player,
-.player-container:fullscreen #player {
+.player-container:-webkit-full-screen #vidstack-player-target,
+.player-container:fullscreen #vidstack-player-target {
   width: 100%;
   height: 100%;
+  /* Ensure Vidstack player itself takes full height in fullscreen */
+  max-height: 100vh !important;
 }
 
-/* 锁屏样式 */
-.player-locked .dplayer-controller,
-.player-locked .dplayer-mask,
-.player-locked .dplayer-video-wrap,
-.player-locked .dplayer-bar-wrap,
-.player-locked .dplayer-menu,
-.player-locked .dplayer-bezel {
+/* 锁屏样式 - Adapted for Vidstack */
+.player-locked .vds-controls, /* Common Vidstack controls container */
+.player-locked media-controls /* General Vidstack controls custom element */ {
   pointer-events: none !important;
+  opacity: 0.3 !important; /* Dimming controls for better visibility of lock */
 }
 
+/* Ensure the custom lock button itself remains interactive */
 .player-locked #lock-button {
   pointer-events: auto !important;
-  z-index: 51;
+  opacity: 1 !important;
+  z-index: 51; /* Ensure it's above other potentially still interactive elements if any */
 }
+
+/* Remove DPlayer specific video wrap style if any was here, Vidstack handles its internals. */
+/* .player-locked .dplayer-video-wrap ... */
 
 /* 选集按钮样式（未选中） */
 #episode-grid button:not(.episode-active) {

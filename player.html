@@ -10,6 +10,8 @@
     <!-- 外部样式表 -->
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/player_styles.css">
+    <link rel="stylesheet" href="https://cdn.vidstack.io/player/theme.css" />
+    <link rel="stylesheet" href="https://cdn.vidstack.io/player/video.css" />
 
     <!-- 字体和图标 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,7 +26,6 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js" defer></script>
     <!--  <script src="libs/hls.min.js" defer></script> -->
     <!--  <script src="libs/DPlayer.min.js" defer></script>  -->
-    <script src="https://cdn.jsdelivr.net/npm/dplayer/dist/DPlayer.min.js" defer></script>
     <script src="libs/sha256.min.js" defer></script>
 
     <!-- 应用脚本 -->
@@ -69,7 +70,7 @@
 
         <!-- 播放器区域 -->
         <div id="player" class="relative" role="region" aria-label="视频播放区域">
-            <div id="dplayer" class="w-full h-full"></div>
+            <div id="vidstack-player-target" class="w-full h-full"></div>
 
             <!-- 加载中提示 -->
             <div id="loading" class="loading-container" aria-live="polite">
