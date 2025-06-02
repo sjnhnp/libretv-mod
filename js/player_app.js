@@ -734,35 +734,32 @@ async function initPlayer(videoUrl, sourceCode) {
             keyShortcuts: false, // Disables built-in keyboard shortcuts
         });
 
-        // Attach HLS Provider
-        const hlsProvider = new HLSProvider({
-            // Pass Hls.js config here
-            debug: debugMode || false,
-        });
-        dp.addProvider(hlsProvider);
-
-        // Hook into HLS.js instance once it's ready within Vidstack's provider
-        hlsProvider.onHlsInstance((hlsInstance) => {
-            console.log("[Vidstack/HLS] HLS.js instance ready. Applying ad filtering patch via Hls.js config.");
-            // Override the fragment loader directly on the HLS.js instance.
-            // This is the most reliable way to inject our stripping logic client-side.
-            hlsInstance.config.loader = class CustomLoader extends hlsInstance.constructor.DefaultConfig.loader {
-                load(ctx, cfg, cbs) {
-                    if ((ctx.type === 'manifest' || ctx.type === 'level') && adFilteringEnabled) {
-                        const origOnSuccess = cbs.onSuccess;
-                        cbs.onSuccess = (response, stats, ctx2) => {
-                            // Strip ads *before* passing to original success callback
-                            response.data = stripAdsFromM3U8(response.data);
-                            origOnSuccess(response, stats, ctx2);
+        // Listen for provider changes to hook into the HLS.js instance for ad stripping
+        dp.on('provider-change', (event) => {
+            const provider = event.detail; // This is the new provider instance
+            if (provider && provider.type === 'hls' && typeof provider.onInstance === 'function') {
+                provider.onInstance((hlsInstance) => {
+                    if (hlsInstance) {
+                        console.log("[Vidstack/HLS] HLS.js instance obtained via provider.onInstance. Applying ad filtering patch.");
+                        // Override the fragment loader directly on the HLS.js instance.
+                        hlsInstance.config.loader = class CustomLoader extends hlsInstance.constructor.DefaultConfig.loader {
+                            load(ctx, cfg, cbs) {
+                                if ((ctx.type === 'manifest' || ctx.type === 'level') && adFilteringEnabled) {
+                                    const origOnSuccess = cbs.onSuccess;
+                                    cbs.onSuccess = (response, stats, ctx2) => {
+                                        // Strip ads *before* passing to original success callback
+                                        if (typeof response.data === 'string') { // Ensure data is string
+                                            response.data = stripAdsFromM3U8(response.data);
+                                        }
+                                        origOnSuccess(response, stats, ctx2);
+                                    };
+                                }
+                                super.load(ctx, cfg, cbs);
+                            }
                         };
                     }
-                    super.load(ctx, cfg, cbs);
-                }
-            };
-            // If content is already loaded, reloading src might be needed to apply the new loader.
-            // For simplicity, this patch is applied once HLS.js instance is ready.
-            // If ad filtering state changes during playback, a manual src reload would be necessary.
-            // For initial load, this should ensure ad filtering is active if enabled.
+                });
+            }
         });
 
         // Set dp to global scope
