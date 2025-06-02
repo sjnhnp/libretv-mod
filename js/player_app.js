@@ -158,40 +158,34 @@ function handleSkipIntroOutro() { // No longer takes dpInstance, uses window.vsP
     const skipIntroTime = parseInt(localStorage.getItem(SKIP_INTRO_KEY)) || 0;
 
     // Remove previous listener if it exists
-    if (player._skipIntroHandler) {
-        player.off('loaded-metadata', player._skipIntroHandler);
-        player._skipIntroHandler = null;
+    if (player._skipIntroLoadedMetadataHandler) { // Name changed in previous subtask, ensure consistency
+        player.removeEventListener('loadedmetadata', player._skipIntroLoadedMetadataHandler);
+        player._skipIntroLoadedMetadataHandler = null;
     }
-    if (player._skipIntroTimeUpdateHandler) { // Also clean up potential old timeupdate one for intro
-        player.off('time-update', player._skipIntroTimeUpdateHandler);
+    if (player._skipIntroTimeUpdateHandler) {
+        player.removeEventListener('timeupdate', player._skipIntroTimeUpdateHandler);
         player._skipIntroTimeUpdateHandler = null;
     }
 
-
     if (skipIntroTime > 0) {
-        // Handler for when metadata is loaded - for cases where video loads starting before intro time
-        player._skipIntroHandler = function () {
+        // Renaming _skipIntroHandler to _skipIntroLoadedMetadataHandler for clarity
+        player._skipIntroLoadedMetadataHandler = function () {
             if (player.duration > skipIntroTime && player.currentTime < skipIntroTime) {
                 player.currentTime = skipIntroTime;
                 if (typeof showToast === 'function') showToast(`已跳过${skipIntroTime}秒片头`, 'info');
             }
         };
-        // Handler for time updates - for cases where user seeks into the intro time
         player._skipIntroTimeUpdateHandler = function() {
             if (player.duration > skipIntroTime && player.currentTime < skipIntroTime && player.currentTime > 0 && !player.seeking) {
-                 // Check if we are in the intro segment AND not already past it due to initial loadedmetadata seek
-                 // And not currently seeking (to avoid loop if seek lands in intro)
-                if (Math.abs(player.currentTime - skipIntroTime) > 0.5) { // Avoid tiny adjustments
+                if (Math.abs(player.currentTime - skipIntroTime) > 0.5) {
                     player.currentTime = skipIntroTime;
                      if (typeof showToast === 'function') showToast(`已跳过${skipIntroTime}秒片头`, 'info');
                 }
             }
         };
 
-        player.on('loaded-metadata', player._skipIntroHandler);
-        // It might be better to use 'can-play' or 'play' to trigger initial skip if video starts before intro time
-        // For now, loaded-metadata and time-update cover most cases.
-        player.on('time-update', player._skipIntroTimeUpdateHandler);
+        player.addEventListener('loadedmetadata', player._skipIntroLoadedMetadataHandler);
+        player.addEventListener('timeupdate', player._skipIntroTimeUpdateHandler);
 
         // Immediate check in case the video is already playing and past metadata load
         if (player.currentTime > 0 && player.duration > skipIntroTime && player.currentTime < skipIntroTime) {
@@ -203,14 +197,14 @@ function handleSkipIntroOutro() { // No longer takes dpInstance, uses window.vsP
 
     // --- Skip Outro ---
     const skipOutroTime = parseInt(localStorage.getItem(SKIP_OUTRO_KEY)) || 0;
-    if (player._skipOutroHandler) {
-        player.off('time-update', player._skipOutroHandler);
-        player._skipOutroHandler = null;
+    if (player._skipOutroTimeUpdateHandler) { // Name changed to avoid conflict if logic was similar
+        player.removeEventListener('timeupdate', player._skipOutroTimeUpdateHandler);
+        player._skipOutroTimeUpdateHandler = null;
     }
 
     if (skipOutroTime > 0) {
-        player._skipOutroHandler = function () {
-            if (!player || player.seeking) return; // Added player.seeking check
+        player._skipOutroTimeUpdateHandler = function () {
+            if (!player || player.seeking) return;
             const remain = player.duration - player.currentTime;
             if (player.duration > 0 && remain <= skipOutroTime && !player.paused) {
                 if (autoplayEnabled && currentEpisodeIndex < currentEpisodes.length - 1) {
@@ -219,14 +213,13 @@ function handleSkipIntroOutro() { // No longer takes dpInstance, uses window.vsP
                     player.pause();
                     if (typeof showToast === 'function') showToast(`已跳过${skipOutroTime}秒片尾`, 'info');
                 }
-                // To prevent it from triggering multiple times for the same outro segment
-                if (player._skipOutroHandler) { // Remove listener after execution
-                    player.off('time-update', player._skipOutroHandler);
-                    player._skipOutroHandler = null;
+                if (player._skipOutroTimeUpdateHandler) {
+                    player.removeEventListener('timeupdate', player._skipOutroTimeUpdateHandler); // Use removeEventListener
+                    player._skipOutroTimeUpdateHandler = null;
                 }
             }
         };
-        player.on('time-update', player._skipOutroHandler);
+        player.addEventListener('timeupdate', player._skipOutroTimeUpdateHandler); // Use addEventListener
     }
 }
 
@@ -796,16 +789,17 @@ function initPlayer(videoUrl, sourceCode) {
                 thumbnails: '', // Placeholder for thumbnails
             }),
             autoplay: autoplayEnabled, // Use existing autoplayEnabled variable
-            volume: parseFloat(localStorage.getItem('dplayer-volume')) || 0.7, // Try to reuse volume
+            volume: parseFloat(localStorage.getItem('vs-player-volume')) || 0.7,
+            muted: localStorage.getItem('vs-player-muted') === 'true',
         }).then(player => {
             window.vsPlayer = player; // Store instance globally
             console.log('[PlayerApp] Vidstack Player instance created.');
 
             // TODO: Adapt DPlayer event listeners and control functions in subsequent steps.
             // For now, just log that the player is ready.
-            player.on('loaded-metadata', () => {
+            player.addEventListener('loadedmetadata', () => { // Changed to addEventListener, event name is standard
                 const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
-                if (debugMode) console.log(`[Vidstack][loaded-metadata] Event triggered. Player duration: ${player.duration}`);
+                if (debugMode) console.log(`[Vidstack][loadedmetadata] Event triggered. Player duration: ${player.duration}`);
 
                 const loadingEl = document.getElementById('loading');
                 if (loadingEl) {
@@ -862,18 +856,22 @@ function initPlayer(videoUrl, sourceCode) {
                 }, 100);
             });
 
-            player.on('error', (event) => {
-                console.error('[Vidstack] Player error:', event.detail);
+            player.addEventListener('error', (event) => { // Changed to addEventListener
+                // Vidstack's error event.detail is typically MediaErrorDetail
+                // https://vidstack.io/docs/player/api/events#error
+                const errorDetail = event.detail;
+                console.error('[Vidstack] Player error:', errorDetail);
                 const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
-                // Adapt DPlayer's error check: if (dp.video && dp.video.currentTime > 1)
+                const errorMessage = errorDetail?.message || (errorDetail?.data?.message || 'Unknown error');
+
                 if (player && player.currentTime > 1 && !debugMode) {
-                     console.warn('Vidstack error ignored as video was playing for >1s:', event.detail.message);
+                     console.warn('Vidstack error ignored as video was playing for >1s:', errorMessage);
                      return;
                 }
-                showError('Vidstack Player encountered an error: ' + event.detail.message);
+                showError('Vidstack Player error: ' + errorMessage);
             });
 
-            player.on('ended', () => {
+            player.addEventListener('ended', (event) => { // Changed to addEventListener
                 const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
                 if (debugMode) console.log('[Vidstack] ended');
                 videoHasEnded = true;
@@ -893,25 +891,27 @@ function initPlayer(videoUrl, sourceCode) {
                 }
             });
 
-            player.on('time-update', (event) => {
-                // console.log('[Vidstack] time-update', event.detail.currentTime);
+            player.addEventListener('timeupdate', (event) => { // Changed to addEventListener
+                // event.detail contains {currentTime, duration, …} for Vidstack
+                // Using player.currentTime directly as planned for consistency.
                 if (player && player.duration > 0) {
-                    if (isUserSeeking && player.currentTime > player.duration * 0.95) { // isUserSeeking needs to be updated
+                    if (isUserSeeking && player.currentTime > player.duration * 0.95) {
                         videoHasEnded = false;
                     }
                 }
-                // Placeholder for periodic progress saving if needed directly on time-update
-                // For now, saveVideoSpecificProgress is called on pause/seeking/seeked events
             });
 
-            player.on('volume-change', () => {
-                if (player) {
-                    localStorage.setItem('dplayer-volume', player.volume.toString());
+            player.addEventListener('volumechange', (event) => { // Changed to addEventListener
+                // event.detail contains {volume, muted} for Vidstack
+                if (player) { // player from .then() is in scope
+                    localStorage.setItem('vs-player-volume', event.detail.volume.toString());
+                    localStorage.setItem('vs-player-muted', event.detail.muted.toString());
                 }
             });
 
             // Fullscreen change handling
-            player.on('fullscreen-change', (event) => {
+            player.addEventListener('fullscreenchange', (event) => { // Changed to addEventListener, event name is standard
+                // event.detail is true (fullscreen active) or false for Vidstack
                 const isFullscreen = event.detail;
                 const fsButton = document.getElementById('fullscreen-button');
                 if (fsButton && fsButton.querySelector('svg')) {
@@ -932,15 +932,16 @@ function initPlayer(videoUrl, sourceCode) {
             });
 
             // Seeking/Seeked events for isUserSeeking flag
-            player.on('seeking', () => {
+            player.addEventListener('seeking', (event) => { // Changed to addEventListener
                 isUserSeeking = true;
-                videoHasEnded = false; // Reset on seek
+                videoHasEnded = false;
                 if(typeof saveVideoSpecificProgress === 'function') saveVideoSpecificProgress();
             });
-            player.on('seeked', () => {
+            player.addEventListener('seeked', (event) => { // Changed to addEventListener
+                 // event.detail is current time after seek for Vidstack.
                  if (player && player.duration > 0) {
-                    const timeFromEnd = player.duration - player.currentTime;
-                    if (timeFromEnd < 0.3 && isUserSeeking) { // DPlayer's logic
+                    const timeFromEnd = player.duration - player.currentTime; // Use direct player properties
+                    if (timeFromEnd < 0.3 && isUserSeeking) {
                         player.currentTime = Math.max(0, player.currentTime - 1);
                     }
                 }
@@ -948,8 +949,12 @@ function initPlayer(videoUrl, sourceCode) {
                 if(typeof saveVideoSpecificProgress === 'function') saveVideoSpecificProgress();
             });
 
-            player.on('pause', () => {
+            player.addEventListener('pause', (event) => { // Changed to addEventListener
                 if(typeof saveVideoSpecificProgress === 'function') saveVideoSpecificProgress();
+            });
+
+            player.addEventListener('play', (event) => { // Added play event listener
+                videoHasEnded = false; // Reset ended state on play
             });
 
             // After player is created and events are set up
