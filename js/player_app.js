@@ -1,5 +1,4 @@
 import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player';
-import { HLSProvider } from 'https://cdn.vidstack.io/player/providers/hls';
 
 // Add this helper function at the top of js/player_app.js
 if (typeof showToast !== 'function' || typeof showMessage !== 'function') {
