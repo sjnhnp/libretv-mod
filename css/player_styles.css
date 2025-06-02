@@ -1,7 +1,3 @@
-/* css/player_styles.css */
-
-/* 移除重复的滚动条样式，使用全局样式 */
-/* Player-specific styles */
 /* 基本布局和播放器相关样式 */
 .player-container {
   width: 100%;
@@ -9,26 +5,10 @@
   margin: 0 auto;
 }
 
-/* 播放器区域 - #player 是 Vidstack Player 的注入目标 */
+/* 播放器区域 */
 #player {
   width: 100%;
   height: 60vh;
-  background: #000;
-  position: relative;
-  overflow: hidden;
-}
-
-/* === 播放器内容比例兼容主流播放器（最佳实践）=== */
-#player video,
-media-player video,
-.media-player video,
-.vds-player video {
-  display: block;
-  max-width: 100%;
-  max-height: 100%;
-  margin: 0 auto;
-  object-fit: contain;
-  background: #000;
 }
 
 /* 加载和错误覆盖层 */
@@ -45,7 +25,6 @@ media-player video,
   background-color: rgba(0, 0, 0, 0.7);
   color: #fff;
   z-index: 100;
-  /* 确保在播放器内容之上，但在自定义控件之下（如果需要） */
   flex-direction: column;
 }
 
@@ -67,7 +46,6 @@ media-player video,
 
 .error-container {
   display: none;
-  /* JS 控制显示 */
   text-align: center;
   padding: 1rem;
 }
@@ -77,7 +55,7 @@ media-player video,
   margin-bottom: 10px;
 }
 
-/* 选集按钮样式 */
+/* 合并重复的选集按钮样式 */
 .episode-active {
   background: #3b82f6 !important;
   border-color: #60a5fa !important;
@@ -151,79 +129,49 @@ input:checked+.slider:before {
   display: flex;
   align-items: center;
   gap: .5rem;
-  z-index: 10000;
-  /* 确保在最上层 */
+  z-index: 1000;
   opacity: 0;
   transition: opacity .3s;
-  pointer-events: none;
-  /* 提示不应阻挡交互 */
 }
 
 .shortcut-hint.show {
   opacity: 1;
 }
 
-/* 全屏适配 (针对播放器容器) */
+/* 全屏适配 */
+/* Updated to target the new media-player element when player-container is fullscreen */
 .player-container:-webkit-full-screen,
 .player-container:fullscreen {
   position: fixed;
-  /* 在HTML全屏API下，通常已是fixed */
   top: 0;
   left: 0;
-  width: 100vw !important;
-  /* 确保覆盖其他样式 */
-  height: 100vh !important;
-  /* 确保覆盖其他样式 */
-  max-width: none !important;
-  /* 移除最大宽度限制 */
-  z-index: 2147483647;
-  /* 最高z-index */
+  width: 100vw;
+  height: 100vh;
+  z-index: 10000;
   background: #000;
 }
 
-.player-container:-webkit-full-screen #player,
-.player-container:fullscreen #player {
+/* Ensure media-player fills the screen when its parent is fullscreen */
+.player-container:-webkit-full-screen media-player,
+.player-container:fullscreen media-player {
   width: 100%;
   height: 100%;
 }
 
-/* 锁屏样式 (修改后，针对Vidstack) */
-/* 当 .player-container.player-locked 时，禁用其内部 Vidstack 布局/控件的交互 */
-.player-container.player-locked media-video-layout,
-.player-container.player-locked media-controls,
-.player-container.player-locked media-gesture {
-  /* 禁用 Vidstack 的内置手势 */
+/* 锁屏样式 */
+/* Updated DPlayer specific selectors to Vidstack equivalents */
+.player-locked media-controls,
+.player-locked media-outlet,
+.player-locked media-menu,
+.player-locked media-bezel {
   pointer-events: none !important;
-  opacity: 0.6 !important;
-  /* 可选：视觉上调暗以表示禁用 */
 }
 
-/* 2. 禁用自定义的外部控件条中的元素 */
-/* 针对 .player-control-bar 内的所有可交互元素 (按钮、开关等) */
-.player-container.player-locked .player-control-bar button,
-.player-container.player-locked .player-control-bar .switch {
-  /* switch 是label，其内部input被CSS隐藏，slider响应点击 */
-  pointer-events: none !important;
-  opacity: 0.5 !important;
-  /* 视觉上调暗以表示禁用 */
-}
-
-/* 3. 禁用“上一集”/“下一集”按钮 (如果它们不在 .player-control-bar 内) */
-.player-container.player-locked #prev-episode,
-.player-container.player-locked #next-episode {
-  pointer-events: none !important;
-  opacity: 0.5 !important;
-}
-
-/* 修改为更具体的选择器，并确保透明度恢复 */
-.player-container.player-locked #lock-button {
+.player-locked #lock-button {
   pointer-events: auto !important;
-  opacity: 1 !important;
-  /* 恢复正常透明度 */
-  z-index: 2147483647;
-  /* 确保在最顶层，高于可能的覆盖层 */
+  /* Vidstack default controls z-index is 20, lock button should be higher if needed */
+  z-index: 21; 
 }
-
 
 /* 选集按钮样式（未选中） */
 #episode-grid button:not(.episode-active) {
@@ -253,12 +201,12 @@ input:checked+.slider:before {
   margin-right: .25rem;
 }
 
-/* 隐藏 "选集" 二字 (如果h2在#episodes-container中) */
+/* 隐藏 "选集" 二字 */
 #episodes-container h2 {
   display: none
 }
 
-/* 让整排控件靠右 (这是自定义控件条的样式) */
+/* 让整排控件靠右 */
 .player-control-bar {
   display: flex;
   flex-wrap: wrap;
@@ -293,6 +241,7 @@ input:checked+.slider:before {
 @media (max-width: 600px) {
   .player-control-bar {
     gap: 0.25rem;
+    /* Equivalent to Tailwind's gap-1 */
   }
 
   .icon-btn {
@@ -302,14 +251,13 @@ input:checked+.slider:before {
 
 #episodes-count {
   display: none !important;
-  /* 使用 !important 确保覆盖 Tailwind 的类 (如果也用了Tailwind) */
+  /* 使用 !important 确保覆盖 Tailwind 的类 */
 }
 
 /* 优雅记住进度弹窗样式 - 放在 player_styles.css 最后 */
 #progress-restore-modal {
   position: fixed;
   z-index: 22002;
-  /* 比锁屏按钮z-index高，确保可见 */
   top: 0;
   left: 0;
   width: 100vw;
@@ -319,6 +267,7 @@ input:checked+.slider:before {
   align-items: center;
   justify-content: center;
   background: rgba(16, 22, 34, 0.45);
+  /* 大屏淡黑蒙层 */
   backdrop-filter: blur(3.5px);
   transition: background 0.28s;
 }
@@ -346,13 +295,12 @@ input:checked+.slider:before {
   min-width: 330px;
   max-width: 92vw;
   color: var(--text-color, #e6f2ff);
-  /* 允许通过CSS变量覆盖 */
   font-size: 1.07rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   border: 1.5px solid var(--primary-color, #00ccff);
-  /* 允许通过CSS变量覆盖 */
+  /* 轻度毛玻璃 */
   backdrop-filter: blur(7px) saturate(1.35);
 }
 
@@ -419,4 +367,200 @@ input:checked+.slider:before {
     max-width: 98vw;
     font-size: 0.98rem;
   }
+}
+
+/* 跳过片头和片尾下拉菜单样式*/
+
+/* 父容器：用于相对定位 */
+.skip-control-container {
+  position: relative;
+  display: inline-block;
+  /* 根据需要也可改成 block */
+}
+
+/* 下拉菜单 默认样式（隐藏） */
+#skip-control-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  /* 距离按钮底部 8px */
+  right: 0;
+  /* 贴合父容器右侧 */
+  left: auto;
+  width: clamp(200px, 60vw, 280px);
+  /* 响应式宽度 */
+  max-width: calc(100vw - 16px);
+  /* 视口宽度减去两侧各8px的安全边距 */
+  margin: 0 8px;
+  /* 小屏幕下防止紧贴屏幕边缘 */
+  box-sizing: border-box;
+  background: rgba(25, 28, 38, 0.97);
+  border-radius: 8px;
+  border: 1px solid rgba(50, 50, 60, 0.5);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  padding: 12px 14px;
+  z-index: 2222;
+
+  /* 隐藏与过渡 */
+  opacity: 0;
+  pointer-events: none;
+  transform-origin: top right;
+  transform: translateY(-8px) scale(0.97);
+  transition:
+    opacity 0.18s cubic-bezier(0.25, 0.8, 0.25, 1),
+    transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* 显示状态 */
+#skip-control-dropdown.block {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+/* 内容排版 */
+#skip-control-dropdown label {
+  display: block;
+  margin-bottom: 8px;
+  color: #c0c8e0;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+#skip-control-dropdown input[type="number"] {
+  width: 100%;
+  font-size: 0.95em;
+  padding: 8px 10px;
+  border-radius: 5px;
+  border: 1px solid #303442;
+  background: #1f222e;
+  color: #e1e6fa;
+  margin-top: 4px;
+  box-sizing: border-box;
+}
+
+#skip-control-dropdown input[type="number"]:focus {
+  outline: none;
+  border-color: #00aeff;
+  background: #2a2d3a;
+  box-shadow: 0 0 0 2px rgba(0, 174, 255, 0.3);
+}
+
+#skip-control-dropdown input[type="number"]::placeholder {
+  color: #606880;
+  opacity: 1;
+}
+
+#skip-control-dropdown button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 12px;
+  font-size: 0.9em;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-out,
+    color 0.15s ease-out,
+    transform 0.1s ease-out;
+}
+
+#skip-control-dropdown button:active {
+  transform: scale(0.98);
+}
+
+/* 应用按钮 */
+#skip-control-dropdown #apply-skip-settings {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: #fff;
+}
+
+#skip-control-dropdown #apply-skip-settings:hover {
+  background: linear-gradient(135deg, #0069d9, #004085);
+}
+
+/* 重置按钮 */
+#skip-control-dropdown #reset-skip-settings {
+  background: #4A5568;
+  color: #e0e0e0;
+}
+
+#skip-control-dropdown #reset-skip-settings:hover {
+  background: #3A4354;
+}
+
+/* 移动端调整 */
+@media (max-width: 480px) {
+  #skip-control-dropdown {
+    width: clamp(180px, 75vw, 260px);
+    max-width: calc(100vw - 16px);
+    padding: 10px 12px;
+    right: 8px;
+    /* 贴合视口右侧并留白 */
+    left: auto;
+  }
+
+  #skip-control-dropdown label {
+    font-size: 0.85em;
+  }
+
+  #skip-control-dropdown input[type="number"] {
+    font-size: 0.9em;
+    padding: 7px 9px;
+  }
+
+  #skip-control-dropdown button {
+    font-size: 0.85em;
+    padding: 8px 10px;
+  }
+}
+
+/* 1. 弹性行容器，让子 label 同一行 */
+#skip-control-dropdown .inline-fields {
+  display: flex;
+  gap: 8px;
+  /* 两列间距 */
+  margin-bottom: 8px;
+  /* 与下一行跳片尾的间距 */
+}
+
+/* 2. 让两个 label 平分一行 */
+#skip-control-dropdown .inline-fields label {
+  flex: 1;
+  /* 平分剩余宽度 */
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+  /* 覆盖全局 label 的下边距 */
+}
+
+/* 3. 复用已有的 input 样式，或按需微调宽度 */
+#skip-control-dropdown .inline-fields input {
+  width: 100%;
+  /* 填满各自的 label 宽度 */
+}
+
+/* 锁屏时也允许全屏按钮交互 */
+.allow-when-locked {
+  z-index: 10003 !important;
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  position: absolute;
+  /* 如需 */
+  top: 10px;
+  right: 20px;
+  /* 取决于页面 */
+}
+
+/* Updated selector from .player-container.controls-locked to .player-locked */
+.player-locked media-controls,
+.player-locked media-outlet, /* Controls video, but also acts as base for UI */
+.player-locked media-menu,
+.player-locked media-bezel {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.player-locked #lock-button {
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
