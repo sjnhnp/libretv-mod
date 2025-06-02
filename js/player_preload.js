@@ -1,12 +1,10 @@
-// File: js/player_preload.js
-
 /**
- * 集数预加载功能 (Episode Preloading Feature)
+ * Episode Preloading Feature
  * Relies on global variables:
  * - window.PLAYER_CONFIG (especially PLAYER_CONFIG.enablePreloading, PLAYER_CONFIG.preloadCount, PLAYER_CONFIG.debugMode)
  * - window.currentEpisodes (array of episode URLs, defined in player_app.js)
  * - window.currentEpisodeIndex (current episode index, defined in player_app.js)
- * - window.dp (DPlayer instance, defined in player_app.js)
+ * - window.dp (Vidstack Player instance, defined in player_app.js)
  * - window.playEpisode (function to play an episode, defined in player_app.js)
  */
 (function () {
@@ -26,14 +24,14 @@
     function isSlowNetwork() {
         try {
             const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-            return connection && connection.effectiveType && /2g|slow-2g/i.test(connection.effectiveType);
+            // Consider anything less than '4g' as potentially slow for preloading
+            return connection && connection.effectiveType && !['4g', '5g'].includes(connection.effectiveType);
         } catch (e) {
             return false; // Default to not slow if API is unavailable
         }
     }
 
     // Ensure global episode variables are accessible if they are not already on window scope
-    // This function might be less necessary if player_app.js correctly manages these as true globals or on window object.
     function syncGlobalEpisodes() {
         if (typeof currentEpisodes !== "undefined" && typeof window.currentEpisodes === "undefined") {
             window.currentEpisodes = currentEpisodes;
@@ -180,10 +178,12 @@
 
         // Preload when video is nearing its end
         function setupTimeUpdatePreloadListener() {
-            if (window.dp && window.dp.video && typeof window.dp.video.addEventListener === 'function' && !window.dp._preloadHooked_timeupdate) {
+            // Check for dp instance and its active media element
+            if (window.dp && window.dp.media && window.dp.media.activeElement && typeof window.dp.on === 'function' && !window.dp._preloadHooked_timeupdate) {
                 window.dp._preloadHooked_timeupdate = true;
-                window.dp.video.addEventListener('timeupdate', function () {
-                    if (window.dp.video.duration && window.dp.video.currentTime > window.dp.video.duration - 12) { // 12 seconds before end
+                window.dp.on('time-update', function () { // Use Vidstack's 'time-update' event
+                    // Check if current time is within 12 seconds of duration (and duration is known)
+                    if (window.dp.duration && window.dp.currentTime > window.dp.duration - 12) {
                         preloadNextEpisodeParts(getPreloadCount());
                     }
                 });
@@ -191,18 +191,19 @@
             }
         }
 
-        if (window.dp && window.dp.video) {
+        // Delay setup of timeupdate listener to ensure `dp` is initialized
+        if (window.dp && window.dp.media && window.dp.media.activeElement) {
             setupTimeUpdatePreloadListener();
         } else {
             let tries = 0;
             const timer = setInterval(() => {
-                if (window.dp && window.dp.video) {
+                if (window.dp && window.dp.media && window.dp.media.activeElement) {
                     setupTimeUpdatePreloadListener();
                     clearInterval(timer);
                 }
                 if (++tries > 50) { // Try for ~10 seconds
                     clearInterval(timer);
-                    if (window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode) console.warn('[Preload] DPlayer instance not found after 10s for timeupdate listener.');
+                    if (window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode) console.warn('[Preload] Vidstack instance not found after 10s for timeupdate listener.');
                 }
             }, 200);
         }
@@ -212,7 +213,7 @@
         if (episodesListContainer && !episodesListContainer._preloadHooked_click) {
             episodesListContainer._preloadHooked_click = true;
             episodesListContainer.addEventListener('click', function (e) {
-                const button = e.target.closest('button.episode-button'); // Assuming class from your player_app.js
+                const button = e.target.closest('button[data-index]'); // Using data-index from player_app.js
                 if (button) {
                     setTimeout(() => preloadNextEpisodeParts(getPreloadCount()), 200); // Delay slightly to allow main click action
                 }
@@ -239,8 +240,6 @@
     }
 
     // Hook into playEpisode function from player_app.js
-    // This requires playEpisode to be globally accessible or for this script to load after player_app.js
-    // and for player_app.js to make playEpisode assignable on window.
     function enhancePlayEpisodeForPreloading() {
         if (typeof window.playEpisode === 'function') {
             const originalPlayEpisode = window.playEpisode;

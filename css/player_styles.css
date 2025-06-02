@@ -139,6 +139,7 @@ input:checked+.slider:before {
 }
 
 /* 全屏适配 */
+/* Updated to target the new media-player element when player-container is fullscreen */
 .player-container:-webkit-full-screen,
 .player-container:fullscreen {
   position: fixed;
@@ -150,25 +151,26 @@ input:checked+.slider:before {
   background: #000;
 }
 
-.player-container:-webkit-full-screen #player,
-.player-container:fullscreen #player {
+/* Ensure media-player fills the screen when its parent is fullscreen */
+.player-container:-webkit-full-screen media-player,
+.player-container:fullscreen media-player {
   width: 100%;
   height: 100%;
 }
 
 /* 锁屏样式 */
-.player-locked .dplayer-controller,
-.player-locked .dplayer-mask,
-.player-locked .dplayer-video-wrap,
-.player-locked .dplayer-bar-wrap,
-.player-locked .dplayer-menu,
-.player-locked .dplayer-bezel {
+/* Updated DPlayer specific selectors to Vidstack equivalents */
+.player-locked media-controls,
+.player-locked media-outlet,
+.player-locked media-menu,
+.player-locked media-bezel {
   pointer-events: none !important;
 }
 
 .player-locked #lock-button {
   pointer-events: auto !important;
-  z-index: 51;
+  /* Vidstack default controls z-index is 20, lock button should be higher if needed */
+  z-index: 21; 
 }
 
 /* 选集按钮样式（未选中） */
@@ -549,7 +551,16 @@ input:checked+.slider:before {
   /* 取决于页面 */
 }
 
-.player-locked .allow-when-locked {
-  z-index: 10003 !important;
+/* Updated selector from .player-container.controls-locked to .player-locked */
+.player-locked media-controls,
+.player-locked media-outlet, /* Controls video, but also acts as base for UI */
+.player-locked media-menu,
+.player-locked media-bezel {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.player-locked #lock-button {
+  opacity: 1 !important;
   pointer-events: auto !important;
 }
