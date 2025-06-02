@@ -309,7 +309,7 @@ const AD_END_PATTERNS = [
 ];
 
 // Ad filtering enabled flag (default true, can be overridden by config.js)
-adFilteringEnabled = window.PLAYER_CONFIG?.adFilteringEnabled ?? true;
+let adFilteringEnabled = window.PLAYER_CONFIG?.adFilteringEnabled ?? true;
 
 function isMobile() {
     return /Mobile|Tablet|iPod|iPhone|iPad|Android|BlackBerry|Windows Phone/i.test(navigator.userAgent);
