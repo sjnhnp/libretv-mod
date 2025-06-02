@@ -735,7 +735,7 @@ async function initPlayer(videoUrl, sourceCode) {
         });
 
         // Listen for provider changes to hook into the HLS.js instance for ad stripping
-        dp.on('provider-change', (event) => {
+        dp.addEventListener('provider-change', (event) => {
             const provider = event.detail; // This is the new provider instance
             if (provider && provider.type === 'hls' && typeof provider.onInstance === 'function') {
                 provider.onInstance((hlsInstance) => {
@@ -786,9 +786,9 @@ function addVidstackEventListeners() {
     const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
     const playerVideoWrap = document.querySelector('#dp-player media-outlet'); // Targeting Vidstack's media outlet
 
-    dp.on('fullscreen-change', (isFullScreen) => { // Vidstack uses 'fullscreen-change' event
-        if (debugMode) console.log(`[PlayerApp] Vidstack event: fullscreen-change, isFullScreen: ${isFullScreen}`);
-        if (isFullScreen) {
+       dp.addEventListener('fullscreen-change', (event) => {
+               if (debugMode) console.log(`[PlayerApp] Vidstack event: fullscreen-change, isFullscreen: ${event.detail.isFullscreen}`);
+               if (event.detail.isFullscreen) {
             if (window.screen.orientation && window.screen.orientation.lock) {
                 window.screen.orientation.lock('landscape').catch(err => console.warn('屏幕方向锁定失败:', err));
             }
@@ -809,7 +809,7 @@ function addVidstackEventListeners() {
         }
     });
 
-    dp.on('can-play', function () { // Vidstack uses 'can-play' when media is ready to play
+    dp.addEventListener('can-play', function () {
         const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
         if (debugMode) console.log(`[PlayerApp][can-play] Event triggered. dp.media.activeElement.duration: ${dp.media.activeElement.duration}`);
 
@@ -886,7 +886,7 @@ function addVidstackEventListeners() {
         }, 100);
     });
 
-    dp.on('error', function (e) {
+    dp.addEventListener('error', function (event) {
         console.error("Vidstack Player error event:", e);
         if (dp.media && dp.media.activeElement && dp.currentTime > 1) { // Use dp.currentTime
             if (debugMode) console.log('Vidstack error ignored as video was playing.');
@@ -901,12 +901,12 @@ function addVidstackEventListeners() {
         setupDoubleClickToPlayPause(dp, playerVideoWrap);
     }
 
-    dp.on('seeking', function () { // Vidstack uses 'seeking'
+    dp.addEventListener('seeking', function () {
         if (debugMode) console.log("[PlayerApp] Vidstack event: seeking");
         isUserSeeking = true;
         videoHasEnded = false;
     });
-    dp.on('seeked', function () { // Vidstack uses 'seeked'
+    dp.addEventListener('seeked', function () {
         if (debugMode) console.log("[PlayerApp] Vidstack event: seeked");
         // Adjust if seeked very close to the end
         if (dp.media && dp.media.activeElement && dp.duration > 0) { // Use dp.duration
