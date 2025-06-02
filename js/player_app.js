@@ -4,6 +4,8 @@
 import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player';
 
 // Add this helper function at the top of js/player_app.js
+let isPageInitialized = false; // Flag to prevent multiple initializations
+
 if (typeof showToast !== 'function' || typeof showMessage !== 'function') {
     console.warn("UI notification functions (showToast/showMessage) are not available. Notifications might not work.");
 }
@@ -233,7 +235,28 @@ document.addEventListener('DOMContentLoaded', () => {
     setupSkipDropdownEvents();
 
     // 初始化其他页面功能
-    initializePageContent();
+    // Conditional initialization
+    if (!isPageInitialized) {
+        console.log('[PlayerApp] Initializing page content via DOMContentLoaded.');
+        // Existing password check logic from the old DOMContentLoaded listener
+        if (typeof window.isPasswordVerified === 'function' && typeof window.isPasswordProtected === 'function') {
+            if (window.isPasswordProtected() && !window.isPasswordVerified()) {
+                if (typeof window.showPasswordModal === 'function') window.showPasswordModal();
+                const loadingEl = document.getElementById('loading');
+                if (loadingEl) loadingEl.style.display = 'none';
+                // Do not set isPageInitialized = true here, as password might still be required.
+                // Let the passwordVerified event handle the final initialization if needed.
+                console.log('[PlayerApp] DOMContentLoaded: Password protected and not verified, delaying full init.');
+                return;
+            }
+        } else {
+             console.warn("[PlayerApp] DOMContentLoaded: Password functions (isPasswordProtected/isPasswordVerified) not found. Assuming no password protection.");
+        }
+        initializePageContent();
+        isPageInitialized = true;
+    } else {
+        console.log('[PlayerApp] Page already initialized, skipping initializePageContent via DOMContentLoaded.');
+    }
 });
 
 
@@ -425,17 +448,35 @@ document.addEventListener('DOMContentLoaded', function () {
     } else {
         console.warn("Password functions (isPasswordProtected/isPasswordVerified) not found. Assuming no password protection.");
     }
-    initializePageContent();
+    // This part of the original DOMContentLoaded listener is now integrated above.
+    // if (typeof window.isPasswordVerified === 'function' && typeof window.isPasswordProtected === 'function') {
+    //     if (window.isPasswordProtected() && !window.isPasswordVerified()) {
+    //         if (typeof window.showPasswordModal === 'function') window.showPasswordModal();
+    //         const loadingEl = document.getElementById('loading');
+    //         if (loadingEl) loadingEl.style.display = 'none';
+    //         return;
+    //     }
+    // } else {
+    //     console.warn("Password functions (isPasswordProtected/isPasswordVerified) not found. Assuming no password protection.");
+    // }
+    // initializePageContent(); // This call is now conditional within the DOMContentLoaded above
 });
 
 // Listen for password verification success event
 document.addEventListener('passwordVerified', () => {
     const loadingEl = document.getElementById('loading');
     if (loadingEl) {
-        loadingEl.style.display = 'flex';              // 原来的
-        document.documentElement.classList.add('show-loading'); // ← 新增
+        loadingEl.style.display = 'flex'; 
+        document.documentElement.classList.add('show-loading');
     }
-    initializePageContent();
+    // Conditional initialization
+    if (!isPageInitialized) {
+        console.log('[PlayerApp] Initializing page content via passwordVerified event.');
+        initializePageContent();
+        isPageInitialized = true;
+    } else {
+        console.log('[PlayerApp] Page already initialized, skipping initializePageContent via passwordVerified event.');
+    }
 });
 
 function initializePageContent() {
@@ -780,7 +821,7 @@ function initPlayer(videoUrl, sourceCode) {
             window.vsPlayer.destroy();
         }
 
-        console.log('[Vidstack] Attempting VidstackPlayer.create()');
+        console.log('[PlayerApp] Attempting VidstackPlayer.create() with video URL:', videoUrl); // Enhanced log
         VidstackPlayer.create({
             target: playerTarget, // Use the actual DOM element
             src: videoUrl,
@@ -794,12 +835,11 @@ function initPlayer(videoUrl, sourceCode) {
             muted: localStorage.getItem('vs-player-muted') === 'true',
         }).then(player => {
             window.vsPlayer = player; // Store instance globally
-            console.log('[Vidstack] VidstackPlayer.create() promise resolved. Player instance:', player);
+            console.log('[PlayerApp] VidstackPlayer.create() promise resolved. Player instance:', player); // Enhanced log
 
             player.addEventListener('loadedmetadata', () => {
-                console.log('[Vidstack] loadedmetadata event fired. Player duration:', player.duration);
+                console.log('[PlayerApp][Vidstack] loadedmetadata event fired. Player duration:', player.duration); // Enhanced log
                 const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
-                // if (debugMode) console.log(`[Vidstack][loadedmetadata] Event triggered. Player duration: ${player.duration}`); // Already logged above
 
                 const loadingEl = document.getElementById('loading');
                 if (loadingEl) {
@@ -858,12 +898,12 @@ function initPlayer(videoUrl, sourceCode) {
 
             player.addEventListener('error', (event) => {
                 const errorDetail = event.detail;
-                console.error('[Vidstack] Player error event:', errorDetail); // Ensure detailed object is logged
+                console.error('[PlayerApp][Vidstack] Player error event:', errorDetail); // Enhanced log
                 const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
                 const errorMessage = errorDetail?.message || (errorDetail?.data?.message || 'Unknown error');
 
                 if (player && player.currentTime > 1 && !debugMode) {
-                     console.warn('[Vidstack] Error ignored as video was playing for >1s:', errorMessage);
+                     console.warn('[PlayerApp][Vidstack] Error ignored as video was playing for >1s:', errorMessage); // Enhanced log
                      return;
                 }
                 showError('Vidstack Player error: ' + errorMessage);
@@ -871,7 +911,7 @@ function initPlayer(videoUrl, sourceCode) {
 
             player.addEventListener('ended', (event) => {
                 const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
-                if (debugMode) console.log('[Vidstack] ended');
+                if (debugMode) console.log('[PlayerApp][Vidstack] ended event fired.'); // Enhanced log
                 videoHasEnded = true;
                 if(typeof saveCurrentProgress === 'function') saveCurrentProgress();
                 if(typeof clearVideoProgress === 'function') clearVideoProgress();
@@ -952,18 +992,19 @@ function initPlayer(videoUrl, sourceCode) {
             });
 
             player.addEventListener('play', (event) => {
-                console.log('[Vidstack] play event fired.');
+                console.log('[PlayerApp][Vidstack] play event fired.'); // Enhanced log
                 videoHasEnded = false;
             });
 
             player.addEventListener('canplay', () => {
-                console.log('[Vidstack] canplay event fired. Player readyState:', player.readyState);
+                console.log('[PlayerApp][Vidstack] canplay event fired. Player readyState:', player.readyState); // Enhanced log
                 // Potentially hide loading here as well, as a fallback or primary trigger
-                // const loadingEl = document.getElementById('loading');
-                // if (loadingEl) {
-                //     loadingEl.style.display = 'none';
-                //     document.documentElement.classList.remove('show-loading');
-                // }
+                const loadingEl = document.getElementById('loading');
+                if (loadingEl && loadingEl.style.display !== 'none') { // Check if still visible
+                    console.log('[PlayerApp][Vidstack] Hiding loading on canplay.');
+                    loadingEl.style.display = 'none';
+                    document.documentElement.classList.remove('show-loading');
+                }
             });
 
             // After player is created and events are set up
