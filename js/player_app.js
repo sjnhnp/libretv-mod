@@ -729,7 +729,7 @@ async function initPlayer(videoUrl, sourceCode) {
         }
 
         dp = await VidstackPlayer.create({
-            target: playerContainer,
+            target: document.getElementById('player'),
             title: currentVideoTitle,
             src: videoUrl,
             autoplay: true, // Controlled by player_app.js logic
