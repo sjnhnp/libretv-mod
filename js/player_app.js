@@ -721,8 +721,7 @@ async function initPlayer(videoUrl, sourceCode) {
             return;
         }
 
-        dp = await VidstackPlayer.create({
-            target: playerContainer,
+        dp = await VidstackPlayer.hydrate(playerContainer, {
             title: currentVideoTitle,
             src: videoUrl,
             autoplay: true, // Controlled by player_app.js logic
@@ -786,9 +785,9 @@ function addVidstackEventListeners() {
     const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
     const playerVideoWrap = document.querySelector('#dp-player media-outlet'); // Targeting Vidstack's media outlet
 
-       dp.addEventListener('fullscreen-change', (event) => {
-               if (debugMode) console.log(`[PlayerApp] Vidstack event: fullscreen-change, isFullscreen: ${event.detail.isFullscreen}`);
-               if (event.detail.isFullscreen) {
+    dp.addEventListener('fullscreen-change', (event) => {
+        if (debugMode) console.log(`[PlayerApp] Vidstack event: fullscreen-change, isFullscreen: ${event.detail.isFullscreen}`);
+        if (event.detail.isFullscreen) {
             if (window.screen.orientation && window.screen.orientation.lock) {
                 window.screen.orientation.lock('landscape').catch(err => console.warn('屏幕方向锁定失败:', err));
             }
@@ -923,11 +922,11 @@ function addVidstackEventListeners() {
         saveVideoSpecificProgress();
         // saveCurrentProgress(); // Optional: also update viewing history list on pause
     });
-        dp.addEventListener('seeking', saveVideoSpecificProgress); // Compatible with iOS
-        dp.addEventListener('seeked', saveVideoSpecificProgress); // Compatible with iOS
-    
-        // Vidstack uses 'ended' for video completion (note: DPlayer uses 'ended', Vidstack uses 'end')
-        dp.addEventListener('end', function () {
+    dp.addEventListener('seeking', saveVideoSpecificProgress); // Compatible with iOS
+    dp.addEventListener('seeked', saveVideoSpecificProgress); // Compatible with iOS
+
+    // Vidstack uses 'ended' for video completion (note: DPlayer uses 'ended', Vidstack uses 'end')
+    dp.addEventListener('end', function () {
         videoHasEnded = true;
         saveCurrentProgress(); // Ensure final progress is saved
         clearVideoProgress(); // Clear progress for *this specific video*
@@ -971,11 +970,11 @@ function setupPlayerControls() {
         backButton.addEventListener('click', () => { window.location.href = 'index.html'; });
     }
 
-       const fullscreenButton = document.getElementById('fullscreen-button');
-        if (fullscreenButton) {
-            fullscreenButton.addEventListener('click', handleFullscreen);
-        }
-    
+    const fullscreenButton = document.getElementById('fullscreen-button');
+    if (fullscreenButton) {
+        fullscreenButton.addEventListener('click', handleFullscreen);
+    }
+
 
     const retryButton = document.getElementById('retry-button');
     if (retryButton) {
@@ -1113,12 +1112,12 @@ function handleKeyboardShortcuts(e) {
             dp.togglePaused(); actionText = dp.paused ? '暂停' : '播放'; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case 'ArrowUp': dp.volume = Math.min(1, dp.volume + 0.1); actionText = `音量 ${Math.round(dp.volume * 100)}%`; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case 'ArrowDown': dp.volume = Math.max(0, dp.volume - 0.1); actionText = `音量 ${Math.round(dp.volume * 100)}%`; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
-                case 'f':
-                    handleFullscreen();
-                    actionText = '切换全屏';
-                   e.preventDefault();
-                    if (debugMode) console.log(`Keyboard: ${actionText}`);
-                    break;
+        case 'f':
+            handleFullscreen();
+            actionText = '切换全屏';
+            e.preventDefault();
+            if (debugMode) console.log(`Keyboard: ${actionText}`);
+            break;
     }
     if (actionText && typeof showShortcutHint === 'function') showShortcutHint(actionText, direction); // Assuming showShortcutHint is defined
 }
@@ -1701,9 +1700,9 @@ function handleFullscreen() {
     const { fullscreen } = dp;          // Vidstack v1.x API
     const isFs = fullscreen?.active || document.fullscreenElement;
     if (isFs) fullscreen.exit();
-    else      fullscreen.request();
-  }
-  
+    else fullscreen.request();
+}
+
 
 window.playEpisode = playEpisode;
 window.copyLinks = copyLinks;
