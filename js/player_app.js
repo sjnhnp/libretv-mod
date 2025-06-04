@@ -699,6 +699,13 @@ function stripAdsFromM3U8(content) {
 
 // --- Player Initialization ---
 async function initPlayer(videoUrl, sourceCode) {
+    const playerContainer = document.getElementById('dp-player');
+    if (dp && typeof dp.destroy === 'function') {
+        try { dp.destroy(); } catch (e) { console.warn(e); }
+        dp = null;
+    }
+    if (playerContainer) playerContainer.innerHTML = '';
+
     if (!videoUrl) {
         showError("视频链接无效");
         return;
@@ -721,7 +728,8 @@ async function initPlayer(videoUrl, sourceCode) {
             return;
         }
 
-        dp = await VidstackPlayer.hydrate(playerContainer, {
+        dp = await VidstackPlayer.create({
+            target: playerContainer,
             title: currentVideoTitle,
             src: videoUrl,
             autoplay: true, // Controlled by player_app.js logic
