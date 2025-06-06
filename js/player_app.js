@@ -699,12 +699,7 @@ function stripAdsFromM3U8(content) {
 
 // --- Player Initialization ---
 async function initPlayer(videoUrl, sourceCode) {
-    const playerContainer = document.getElementById('dp-player');
-    if (dp && typeof dp.destroy === 'function') {
-        try { dp.destroy(); } catch (e) { console.warn(e); }
-        dp = null;
-    }
-    if (playerContainer) playerContainer.innerHTML = '';
+    const playerTargetElement = document.getElementById('player');
 
     if (!videoUrl) {
         showError("视频链接无效");
@@ -720,16 +715,15 @@ async function initPlayer(videoUrl, sourceCode) {
     adFilteringEnabled = window.PLAYER_CONFIG?.adFilteringEnabled ?? true;
 
     try {
-        // Vidstack expects a media-player element
-        const playerContainer = document.getElementById('dp-player'); // New ID
-        if (!playerContainer) {
-            console.error('Player container element #dp-player not found.');
+        // Check if the target element for the player exists.
+        if (!playerTargetElement) {
+            console.error('Player container element #player not found.');
             showError('播放器容器元素未找到');
             return;
         }
 
         dp = await VidstackPlayer.create({
-            target: document.getElementById('player'),
+            target: playerTargetElement, // Use the correct element
             title: currentVideoTitle,
             src: videoUrl,
             autoplay: true, // Controlled by player_app.js logic
@@ -1087,8 +1081,7 @@ function showError(message) {
         else errorElement.children[1].textContent = message; // Fallback
         errorElement.style.display = 'flex';
     }
-    if (typeof window.showMessage === 'function') window.showMessage(message, 'error'); // Use global showMessage from ui.js
-    else console.error("showMessage function not found. Error:", message);
+    showMessage(message, 'error');
 }
 
 // setupProgressBarPreciseClicks and related handlers (handleProgressBarClick, handleProgressBarTouch)
