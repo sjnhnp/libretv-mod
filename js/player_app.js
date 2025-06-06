@@ -1189,14 +1189,10 @@ function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
         }
 
         const currentTime = new Date().getTime();
-        if ((currentTime - (lastTapTimeForDoubleTap || 0)) < DOUBLE_TAP_INTERVAL) {
+        if ((currentTime - lastTapTimeForDoubleTap) < DOUBLE_TAP_INTERVAL) {
             // Double tap detected
-            if (dpInstance && typeof dpInstance.play === 'function' && typeof dpInstance.pause === 'function') {
-                if (dpInstance.state.paused) {
-                    dpInstance.play();
-                } else {
-                    dpInstance.pause();
-                }
+            if (dpInstance && typeof dpInstance.togglePaused === 'function') { // Use Vidstack's `togglePaused`
+                dpInstance.togglePaused(); // Toggle play/pause state
             }
             lastTapTimeForDoubleTap = 0; // Reset timestamp to prevent continuous triple clicks from being misjudged
         } else {
