@@ -99,6 +99,7 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', v
             sourceName: sourceName,
             sourceCode: sourceCode,
             vod_id: vodId,
+            playbackPosition: playbackPosition,   // <--- 新增
             episodes: AppState.get('currentEpisodes') || []
         };
         addToViewingHistory(videoInfoForHistory);
@@ -108,25 +109,13 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', v
     playerUrl.searchParams.set('url', url);
     playerUrl.searchParams.set('title', title);
     playerUrl.searchParams.set('index', episodeIndex.toString());
-    if (vodId) {
-        playerUrl.searchParams.set('id', vodId);
-    }
-    // const eps = AppState.get('currentEpisodes');
-    //if (Array.isArray(eps) && eps.length) {
-    //    playerUrl.searchParams.set('episodes', encodeURIComponent(JSON.stringify(eps)));
-    // }
-
-    // 注释掉这行，让URL不带 reversed 参数
-    //const currentReversedStateForPlayer = AppState.get('episodesReversed') || false;
-    // playerUrl.searchParams.set('reversed', currentReversedStateForPlayer.toString());
+    if (vodId) playerUrl.searchParams.set('id', vodId);
+    if (playbackPosition && playbackPosition > 0) playerUrl.searchParams.set('position', playbackPosition.toString());
 
     if (sourceName) playerUrl.searchParams.set('source', sourceName);
     if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
-
-    // ← 在这一行后面，插入广告过滤开关参数
     const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, false);
     playerUrl.searchParams.set('af', adOn ? '1' : '0');
-
     window.location.href = playerUrl.toString();
 }
 
@@ -210,28 +199,20 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
 
     // 从 historyItem 中获取 vod_id, sourceName, sourceCode (如果存在)
     const vodId = historyItem ? historyItem.vod_id || '' : '';
-    const actualSourceName = historyItem ? historyItem.sourceName || '' : ''; // 使用 historyItem 中的 sourceName
-    const actualSourceCode = historyItem ? historyItem.sourceCode || '' : ''; // 使用 historyItem 中的 sourceCode
+    const actualSourceName = historyItem ? historyItem.sourceName || '' : '';
+    const actualSourceCode = historyItem ? historyItem.sourceCode || '' : '';
+    const actualPlaybackPosition = historyItem ? historyItem.playbackPosition || 0 : (playbackPosition || 0);
 
     // 构建播放器 URL
     const playerUrl = new URL('player.html', window.location.origin);
-    playerUrl.searchParams.set('url', url); // 这是特定集的URL
+    playerUrl.searchParams.set('url', url);
     playerUrl.searchParams.set('title', title);
     playerUrl.searchParams.set('index', episodeIndex.toString());
 
-    if (vodId) {
-        playerUrl.searchParams.set('id', vodId); // 传递 vod_id
-    }
-    if (actualSourceName) {
-        // player_app.js 会从 URL search param 'source' 读取 sourceName
-        playerUrl.searchParams.set('source', actualSourceName);
-    }
-    if (actualSourceCode) {
-        playerUrl.searchParams.set('source_code', actualSourceCode);
-    }
-    if (playbackPosition > 0) {
-        playerUrl.searchParams.set('position', playbackPosition.toString());
-    }
+    if (vodId) playerUrl.searchParams.set('id', vodId);
+    if (actualSourceName) playerUrl.searchParams.set('source', actualSourceName);
+    if (actualSourceCode) playerUrl.searchParams.set('source_code', actualSourceCode);
+    if (actualPlaybackPosition > 0) playerUrl.searchParams.set('position', actualPlaybackPosition.toString());
 
     // 添加广告过滤参数 (PLAYER_CONFIG 和 getBoolConfig 应在 app.js 或其引用的 config.js 中可用)
     const adOn = typeof getBoolConfig !== 'undefined' && typeof PLAYER_CONFIG !== 'undefined' ?
@@ -525,7 +506,7 @@ async function performSearch(query, selectedAPIs) {
             const customApi = APISourceManager.getCustomApiInfo(customIndex);
             if (customApi) {
                 return fetch(`/api/search?wd=${encodeURIComponent(query)}&source=${apiId}&customApi=${encodeURIComponent(customApi.url)}`)
-                .then(response => response.json())
+                    .then(response => response.json())
                     .then(data => ({
                         ...data,
                         apiId: apiId,
@@ -1118,16 +1099,31 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
         const originalIndex = currentReversedState ? (episodes.length - 1 - displayIndex) : displayIndex;
         const safeVideoTitle = encodeURIComponent(videoTitle);
         const safeSourceName = encodeURIComponent(sourceName);
-
+        // 尝试取历史进度
+        let playbackPosition = 0;
+        try {
+            const history = JSON.parse(localStorage.getItem('viewingHistory') || '[]');
+            const internalId = getUniqueEpisodeId({
+                title: videoTitle,
+                sourceCode: sourceCode,
+                vod_id: vodId,
+                episodeIndex: originalIndex,
+                url: episodeUrl
+            });
+            const found = history.find(item => item.internalShowIdentifier === internalId);
+            if (found && found.playbackPosition && found.duration && found.playbackPosition < found.duration - 5) {
+                playbackPosition = found.playbackPosition;
+            }
+        } catch (e) { }
         html += `
-        <button 
-            onclick="playVideo('${episodeUrl}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}', '${vodId}')" 
-            class="episode-btn px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate"
-            data-index="${originalIndex}"
-            title="第 ${originalIndex + 1} 集" 
-        >
-            第 ${originalIndex + 1} 集      
-        </button>`;
+               <button 
+                    onclick="playVideo('${episodeUrl}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}', '${vodId}', ${playbackPosition})" 
+                    class="episode-btn px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate"
+                    data-index="${originalIndex}"
+                    title="第 ${originalIndex + 1} 集${playbackPosition > 0 ? ' (续播 ' + (Math.floor(playbackPosition / 60) + ':' + String(playbackPosition % 60).padStart(2, '0')) + ')' : ''}" 
+                >
+                    第 ${originalIndex + 1} 集${playbackPosition > 0 ? ' ▶' : ''}
+                </button>`;
     });
     html += '</div>';
 

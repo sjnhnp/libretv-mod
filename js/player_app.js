@@ -162,37 +162,40 @@ function handleSkipIntroOutro(playerInstance) {
     // Skip intro
     const skipIntroTime = parseInt(localStorage.getItem(SKIP_INTRO_KEY)) || 0;
     // Unbind old listener
-    if (video._skipIntroHandler) {
-        video.removeEventListener('loadedmetadata', video._skipIntroHandler);
-    }
+    if (video._skipIntroHandler) video.removeEventListener('loadedmetadata', video._skipIntroHandler);
     if (skipIntroTime > 0) {
         video._skipIntroHandler = function () {
-            if (video.duration > skipIntroTime && video.currentTime < skipIntroTime) {
+            // 只在视频刚开始时跳过片头
+            if (video.duration > skipIntroTime && video.currentTime < Math.max(3, skipIntroTime)) {
                 video.currentTime = skipIntroTime;
                 if (typeof showToast === 'function') showToast(`已跳过${skipIntroTime}秒片头`, 'info');
             }
         };
         video.addEventListener('loadedmetadata', video._skipIntroHandler);
+        // vidstack推荐也绑定 canplay
+        video.addEventListener('canplay', video._skipIntroHandler);
     } else {
         video._skipIntroHandler = null;
     }
 
     // Skip outro
     const skipOutroTime = parseInt(localStorage.getItem(SKIP_OUTRO_KEY)) || 0;
-    if (video._skipOutroHandler) {
-        video.removeEventListener('timeupdate', video._skipOutroHandler);
-    }
+    if (video._skipOutroHandler) video.removeEventListener('timeupdate', video._skipOutroHandler);
     if (skipOutroTime > 0) {
         video._skipOutroHandler = function () {
-            if (!video) return;
+            if (!video || video.paused || video.seeking) return;
             const remain = video.duration - video.currentTime;
-            if (remain <= skipOutroTime && !video.paused) {
+            // 只在片尾倒计时 N 秒内生效
+            if (remain <= skipOutroTime && !video._skipOutroTriggered) {
+                video._skipOutroTriggered = true;
                 if (autoplayEnabled && currentEpisodeIndex < currentEpisodes.length - 1) {
-                    playNextEpisode();
+                    setTimeout(() => { playNextEpisode(); }, 500);
                 } else {
                     video.pause();
                     if (typeof showToast === 'function') showToast(`已跳过${skipOutroTime}秒片尾`, 'info');
                 }
+            } else if (remain > skipOutroTime) {
+                video._skipOutroTriggered = false;
             }
         };
         video.addEventListener('timeupdate', video._skipOutroHandler);
@@ -613,28 +616,17 @@ function initializePageContent() {
         initPlayer(episodeUrlForPlayer, sourceCodeFromUrl); // Use `sourceCodeFromUrl`
         const finalUrlParams = new URLSearchParams(window.location.search); // Get potentially updated URL parameters
         const finalPositionToSeek = finalUrlParams.get('position');
-
-        // ★ Seek optimization: If `positionFromUrl` exists, bind `can-play` to seek, compatible with Android
-        if (positionFromUrl) {
-            let seeked = false;
-            const positionNum = parseInt(positionFromUrl, 10);
-            // Listen for Vidstack's 'can-play' event
-            if (dp) {
-                dp.on('can-play', () => {
-                    if (seeked) return;
-                    if (dp && dp.media && dp.media.activeElement && dp.duration > 0 && !isNaN(positionNum) && positionNum > 0 && positionNum < dp.duration - 1) {
-                        try {
-                            dp.currentTime = positionNum; // Use Vidstack's currentTime
-                        } catch (e) {
-                            console.error("[PlayerApp][can-play] Error setting currentTime on can-play:", e);
-                        }
-                        if (typeof showPositionRestoreHint === 'function') showPositionRestoreHint(positionNum);
-                    }
-                    seeked = true;
-                });
-            } else {
-                console.warn("[PlayerApp] DPlayer (Vidstack) instance not available to set 'can-play' listener for seek.");
-            }
+        let seeked = false;
+        const positionNum = positionFromUrl ? parseInt(positionFromUrl, 10) : (nextSeekPosition || 0);
+        if (positionNum > 0 && dp) {
+            dp.on('can-play', () => {
+                if (seeked) return;
+                if (dp && dp.media && dp.media.activeElement && dp.duration > 0 && !isNaN(positionNum) && positionNum > 0 && positionNum < dp.duration - 1) {
+                    try { dp.currentTime = positionNum; } catch (e) { }
+                    if (typeof showPositionRestoreHint === 'function') showPositionRestoreHint(positionNum);
+                }
+                seeked = true;
+            });
         }
     } else {
         showError('无效的视频链接');
@@ -1678,7 +1670,9 @@ function doEpisodeSwitch(index, url) {
     dp.pause(); // Pause before changing source
     dp.src = newEpisodeUrl; // Vidstack will handle HLS if provider is attached
     patchAndroidVideoHack();
-    if (typeof handleSkipIntroOutro === 'function' && dp) handleSkipIntroOutro(dp);
+    try {
+        if (typeof handleSkipIntroOutro === 'function' && dp) handleSkipIntroOutro(dp);
+    } catch (e) { console.warn('绑定跳片头片尾失败:', e); }
     videoHasEnded = false;
 
     // Update URL
@@ -1693,6 +1687,7 @@ function doEpisodeSwitch(index, url) {
     const adFilteringStorageKey = (PLAYER_CONFIG && PLAYER_CONFIG.adFilteringStorage) ? PLAYER_CONFIG.adFilteringStorage : 'adFilteringEnabled';
     const adFilteringActive = (typeof getBoolConfig === 'function') ? getBoolConfig(adFilteringStorageKey, false) : false;
     newUrlForBrowser.searchParams.set('af', adFilteringActive ? '1' : '0');
+    // position 仅在 history 跳转时需要，切集统一清除
     newUrlForBrowser.searchParams.delete('position');
     window.history.pushState(
         { path: newUrlForBrowser.toString(), episodeIndex: currentEpisodeIndex },
