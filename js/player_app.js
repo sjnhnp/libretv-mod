@@ -830,11 +830,6 @@ function addVidstackEventListeners() {
         }
         videoHasEnded = false; // Reset ended flag for new video
 
-        // Setup progress bar for precise clicks (if enabled/needed for Vidstack, though Vidstack handles it natively)
-        // This function is effectively disabled now as Vidstack's progress bar handles clicks natively.
-        // If `setupProgressBarPreciseClicks` were to be re-enabled, it would need to target Vidstack's DOM elements.
-
-        // Safely attempt to seek to previous playback position (nextSeekPosition)
         if (nextSeekPosition > 0 && dp && dp.media && dp.media.activeElement && dp.duration > 0) { // Use dp.duration
             if (nextSeekPosition < dp.duration - 1) { // Ensure seek position is within video duration, leaving 1s buffer
                 try {
