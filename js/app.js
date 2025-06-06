@@ -99,7 +99,9 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', v
             sourceName: sourceName,
             sourceCode: sourceCode,
             vod_id: vodId,
-            episodes: AppState.get('currentEpisodes') || []
+            episodes: AppState.get('currentEpisodes') || [],
+            timestamp: Date.now(),       // 新增：记录播放时刻
+            progress: 0                  // 新增：初始观看进度（单位：秒）
         };
         addToViewingHistory(videoInfoForHistory);
     }
@@ -525,7 +527,7 @@ async function performSearch(query, selectedAPIs) {
             const customApi = APISourceManager.getCustomApiInfo(customIndex);
             if (customApi) {
                 return fetch(`/api/search?wd=${encodeURIComponent(query)}&source=${apiId}&customApi=${encodeURIComponent(customApi.url)}`)
-                .then(response => response.json())
+                    .then(response => response.json())
                     .then(data => ({
                         ...data,
                         apiId: apiId,
