@@ -734,7 +734,9 @@ async function initPlayer(videoUrl, sourceCode) {
             muted: false,
             volume: 0.7,
             keyShortcuts: false,
-            layout: new VidstackPlayerLayout()
+            layout: new VidstackPlayerLayout({
+                gestures: { dblClick: false }
+            })
         });
 
         // Listen for provider changes to hook into the HLS.js instance for ad stripping
@@ -778,14 +780,14 @@ async function initPlayer(videoUrl, sourceCode) {
         // Add skip function
         handleSkipIntroOutro(dp);
 
-                // Override mobile play button behavior to prevent auto-fullscreen
+        // Override mobile play button behavior to prevent auto-fullscreen
         overrideMobilePlayButtonBehavior();
 
     } catch (playerError) {
         console.error("Failed to initialize Vidstack Player:", playerError);
         showError("播放器初始化失败");
     }
-}    
+}
 
 function addVidstackEventListeners() {
     if (!dp) return;
@@ -1116,7 +1118,7 @@ function handleKeyboardShortcuts(e) {
         case 'PageUp': if (typeof window.playPreviousEpisode === 'function') window.playPreviousEpisode(); actionText = '上一集'; direction = 'left'; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case 'PageDown': if (typeof window.playNextEpisode === 'function') window.playNextEpisode(); actionText = '下一集'; direction = 'right'; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case ' ': // Spacebar for play/pause
-        if (dp.state.paused) {
+            if (dp.state.paused) {
                 dp.play();
                 actionText = '播放';
             } else {
@@ -1738,9 +1740,9 @@ function overrideMobilePlayButtonBehavior() {
         playButton.addEventListener('click', (event) => {
             // Prevent the default action (which includes entering fullscreen on mobile)
             event.preventDefault();
-           event.stopPropagation();
+            event.stopPropagation();
 
-           // Manually trigger the play action
+            // Manually trigger the play action
             if (dp.state.paused) {
                 dp.play();
             }
