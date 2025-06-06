@@ -1113,7 +1113,7 @@ function handleKeyboardShortcuts(e) {
         case 'PageUp': if (typeof window.playPreviousEpisode === 'function') window.playPreviousEpisode(); actionText = '上一集'; direction = 'left'; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case 'PageDown': if (typeof window.playNextEpisode === 'function') window.playNextEpisode(); actionText = '下一集'; direction = 'right'; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case ' ': // Spacebar for play/pause
-            if (dp.state.paused()) {
+        if (dp.state.paused) {
                 dp.play();
                 actionText = '播放';
             } else {
@@ -1196,8 +1196,8 @@ function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
         const currentTime = new Date().getTime();
         if ((currentTime - (lastTapTimeForDoubleTap || 0)) < DOUBLE_TAP_INTERVAL) {
             // Double tap detected
-            if (dpInstance && typeof dpInstance.play === 'function' && typeof dpInstance.pause === 'function') {
-                if (dpInstance.state.paused()) {
+                        if (dpInstance && typeof dpInstance.play === 'function' && typeof dpInstance.pause === 'function') {
+                                if (dpInstance.state.paused) {
                     dpInstance.play();
                 } else {
                     dpInstance.pause();
