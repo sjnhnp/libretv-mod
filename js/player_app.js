@@ -1152,11 +1152,6 @@ function showShortcutHint(text, direction) {
     shortcutHintTimeout = setTimeout(() => hintElement.classList.remove('show'), 1500);
 }
 
-/**
- * Setup double-tap play/pause feature for Vidstack
- * @param {object} dpInstance Vidstack Player instance
- * @param {HTMLElement} videoWrapElement The wrapper element for the video (usually <media-outlet>)
- */
 function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
     if (!dpInstance || !videoWrapElement) {
         console.warn('[DoubleClick] Vidstack Player instance or video wrap element not provided.');
@@ -1199,8 +1194,8 @@ function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
         const currentTime = new Date().getTime();
         if ((currentTime - (lastTapTimeForDoubleTap || 0)) < DOUBLE_TAP_INTERVAL) {
             // Double tap detected
-                        if (dpInstance && typeof dpInstance.play === 'function' && typeof dpInstance.pause === 'function') {
-                                if (dpInstance.state.paused) {
+            if (dpInstance && typeof dpInstance.play === 'function' && typeof dpInstance.pause === 'function') {
+                if (dpInstance.state.paused) {
                     dpInstance.play();
                 } else {
                     dpInstance.pause();
