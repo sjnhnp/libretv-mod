@@ -1149,6 +1149,7 @@ function showShortcutHint(text, direction) {
     shortcutHintTimeout = setTimeout(() => hintElement.classList.remove('show'), 1500);
 }
 
+
 function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
     if (!dpInstance || !videoWrapElement) {
         console.warn('[DoubleClick] Vidstack Player instance or video wrap element not provided.');
