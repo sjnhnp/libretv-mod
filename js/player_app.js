@@ -1149,7 +1149,6 @@ function showShortcutHint(text, direction) {
     shortcutHintTimeout = setTimeout(() => hintElement.classList.remove('show'), 1500);
 }
 
-
 function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
     if (!dpInstance || !videoWrapElement) {
         console.warn('[DoubleClick] Vidstack Player instance or video wrap element not provided.');
@@ -1507,17 +1506,9 @@ function updateButtonStates() {
 }
 
 function saveCurrentProgress() {
-    // 增加对 duration 的严格校验
     if (!dp || !dp.media || !dp.media.activeElement || isUserSeeking || videoHasEnded || !window.addToViewingHistory) return;
-
-    const currentTime = dp.currentTime;
-    const duration = dp.duration;
-
-    // 关键修复：确保 duration 是一个有效的、大于0的数字
-    if (!duration || isNaN(duration) || duration <= 0) {
-        // 如果总时长无效，则不保存进度，避免污染历史记录
-        return;
-    }
+    const currentTime = dp.currentTime; // Use Vidstack's currentTime
+    const duration = dp.duration;     // Use Vidstack's duration
 
     // Only save if meaningful progress has been made and video hasn't practically ended
     if (currentTime > 5 && duration > 0 && currentTime < duration * 0.98) { // Check against 98% to avoid saving if "ended" event was missed

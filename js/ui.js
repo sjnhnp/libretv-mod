@@ -532,27 +532,44 @@ function addToViewingHistory(videoInfo) {
         // 使用统一工具生成「剧 + 集」级唯一键，避免同名不同集互相覆盖
         const internalShowIdentifier = getUniqueEpisodeId(videoInfo);
 
-        // 关键修复：采用更稳健的“先删除后添加”逻辑来更新条目
-        // 1. 过滤掉旧的记录（如果存在）
-        history = history.filter(item => item.internalShowIdentifier !== internalShowIdentifier);
+        const idx = history.findIndex(item => item.internalShowIdentifier === internalShowIdentifier);
 
-        // 2. 准备新的或更新后的条目
-        const newItem = {
-            title: videoInfo.title,
-            url: videoInfo.url,
-            episodeIndex: videoInfo.episodeIndex,
-            sourceName: videoInfo.sourceName,
-            sourceCode: videoInfo.sourceCode,
-            vod_id: videoInfo.vod_id,
-            internalShowIdentifier: internalShowIdentifier, // 保存这个内部标识符
-            playbackPosition: videoInfo.playbackPosition,
-            duration: videoInfo.duration,
-            timestamp: Date.now(),
-            episodes: (videoInfo.episodes && videoInfo.episodes.length > 0) ? [...videoInfo.episodes] : []
-        };
+        if (idx !== -1) { // 如果这部剧已在历史中
+            const item = history[idx];
+            // 更新为最新观看的这一集的信息
+            item.url = videoInfo.url; // 当前播放的特定集的URL
+            item.episodeIndex = videoInfo.episodeIndex;
+            item.playbackPosition = videoInfo.playbackPosition;
+            item.duration = videoInfo.duration;
+            item.timestamp = Date.now();
+            // 如果新的videoInfo提供了更完整的剧集列表，则更新
+            if (videoInfo.episodes && videoInfo.episodes.length > 0) {
+                // 简单的检查，如果长度不同或第一个元素不同，就认为需要更新（可以做得更复杂）
+                if (!item.episodes || item.episodes.length !== videoInfo.episodes.length || (item.episodes[0] !== videoInfo.episodes[0])) {
+                    item.episodes = [...videoInfo.episodes];
+                }
+            }
+            // 其他信息如 title, sourceName, sourceCode, vod_id, internalShowIdentifier 应该保持不变
+            item.sourceName = videoInfo.sourceName || item.sourceName; // 保留旧的，除非新的明确提供
 
-        // 3. 将新条目添加到历史记录的开头
-        history.unshift(newItem);
+            history.splice(idx, 1); // 移除旧条目
+            history.unshift(item);  // 将更新后的条目移到最前面
+        } else { // 如果是新的剧集条目
+            const newItem = {
+                title: videoInfo.title,
+                url: videoInfo.url,
+                episodeIndex: videoInfo.episodeIndex,
+                sourceName: videoInfo.sourceName,
+                sourceCode: videoInfo.sourceCode,
+                vod_id: videoInfo.vod_id,
+                internalShowIdentifier: internalShowIdentifier, // 保存这个内部标识符
+                playbackPosition: videoInfo.playbackPosition,
+                duration: videoInfo.duration,
+                timestamp: Date.now(),
+                episodes: (videoInfo.episodes && videoInfo.episodes.length > 0) ? [...videoInfo.episodes] : []
+            };
+            history.unshift(newItem);
+        }
 
         if (history.length > HISTORY_MAX_ITEMS) { // HISTORY_MAX_ITEMS 在 ui.js 定义 [cite: 1059]
             history.splice(HISTORY_MAX_ITEMS);
