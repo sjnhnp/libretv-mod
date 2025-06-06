@@ -778,11 +778,14 @@ async function initPlayer(videoUrl, sourceCode) {
         // Add skip function
         handleSkipIntroOutro(dp);
 
+                // Override mobile play button behavior to prevent auto-fullscreen
+        overrideMobilePlayButtonBehavior();
+
     } catch (playerError) {
         console.error("Failed to initialize Vidstack Player:", playerError);
         showError("播放器初始化失败");
     }
-}
+}    
 
 function addVidstackEventListeners() {
     if (!dp) return;
@@ -1728,6 +1731,26 @@ function handleFullscreen() {
             console.warn("Could not enter fullscreen:", err);
         });
     }
+}
+
+function overrideMobilePlayButtonBehavior() {
+    if (!isMobile() || !dp) {
+        return; // Only apply this override on mobile devices when the player exists
+    }
+
+    // Use SQuery to safely find the play button, as it's rendered by the layout
+    SQuery('media-play-button', (playButton) => {
+        playButton.addEventListener('click', (event) => {
+            // Prevent the default action (which includes entering fullscreen on mobile)
+            event.preventDefault();
+           event.stopPropagation();
+
+           // Manually trigger the play action
+            if (dp.state.paused) {
+                dp.play();
+            }
+        }, { capture: true }); // Use capture to ensure our listener runs first
+    });
 }
 
 window.playEpisode = playEpisode;
