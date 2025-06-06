@@ -83,7 +83,7 @@ function sanitizeText(text) {
  * @param {string} sourceName - 来源名称
  * @param {string} sourceCode - 来源代码
  */
-function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', vodId = '') {
+function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', vodId = '',  playbackPosition = 0) {
     if (!url) {
         showToast('无效的视频链接', 'error');
         return;
