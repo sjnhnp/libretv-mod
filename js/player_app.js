@@ -1715,7 +1715,7 @@ function handleFullscreen() {
         console.error("Fullscreen action failed: Player not initialized.");
         return;
     }
-    const isCurrentlyFullscreen = dp.state.fullscreen();
+    const isCurrentlyFullscreen = dp.state.fullscreen;
 
     if (isCurrentlyFullscreen) {
         // Use the instance method to exit fullscreen.
@@ -1729,7 +1729,6 @@ function handleFullscreen() {
         });
     }
 }
-
 
 window.playEpisode = playEpisode;
 window.copyLinks = copyLinks;
