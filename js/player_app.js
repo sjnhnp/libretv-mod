@@ -723,14 +723,14 @@ async function initPlayer(videoUrl, sourceCode) {
         }
 
         dp = await VidstackPlayer.create({
-            target: playerTargetElement, 
+            target: playerTargetElement,
             title: currentVideoTitle,
             src: videoUrl,
-            autoplay: true, 
+            autoplay: true,
             preload: 'auto',
             muted: false,
             volume: 0.7,
-            keyShortcuts: false, 
+            keyShortcuts: false,
             layout: new VidstackPlayerLayout()
         });
 
@@ -786,9 +786,10 @@ function addVidstackEventListeners() {
     const debugMode = window.PLAYER_CONFIG && window.PLAYER_CONFIG.debugMode;
     const playerVideoWrap = document.querySelector('#dp-player media-outlet'); // Targeting Vidstack's media outlet
 
-    dp.addEventListener('fullscreen-change', (event) => {
-        if (debugMode) console.log(`[PlayerApp] Vidstack event: fullscreen-change, isFullscreen: ${event.detail.isFullscreen}`);
-        if (event.detail.isFullscreen) {
+    dp.addEventListener('fullscreen-change', (event) => { // The detail object has an 'active' property
+        const isFullscreen = event.detail.active;
+        if (debugMode) console.log(`[PlayerApp] Vidstack event: fullscreen-change, isFullscreen: ${isFullscreen}`);
+        if (isFullscreen) {
             if (window.screen.orientation && window.screen.orientation.lock) {
                 window.screen.orientation.lock('landscape').catch(err => console.warn('屏幕方向锁定失败:', err));
             }
@@ -1696,11 +1697,23 @@ function doEpisodeSwitch(index, url) {
 }
 
 function handleFullscreen() {
-    if (!dp) return;
-    const { fullscreen } = dp;          // Vidstack v1.x API
-    const isFs = fullscreen?.active || document.fullscreenElement;
-    if (isFs) fullscreen.exit();
-    else fullscreen.request();
+    if (!dp) {
+        console.error("Fullscreen action failed: Player not initialized.");
+        return;
+    }
+    const isCurrentlyFullscreen = dp.state.fullscreen();
+
+    if (isCurrentlyFullscreen) {
+        // Use the instance method to exit fullscreen.
+        dp.exitFullscreen().catch(err => {
+            console.warn("Could not exit fullscreen:", err);
+        });
+    } else {
+        // Use the instance method to enter fullscreen.
+        dp.enterFullscreen().catch(err => {
+            console.warn("Could not enter fullscreen:", err);
+        });
+    }
 }
 
 
