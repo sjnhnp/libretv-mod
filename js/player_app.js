@@ -723,17 +723,15 @@ async function initPlayer(videoUrl, sourceCode) {
         }
 
         dp = await VidstackPlayer.create({
-            target: playerTargetElement, // Use the correct element
+            target: playerTargetElement, 
             title: currentVideoTitle,
             src: videoUrl,
-            autoplay: true, // Controlled by player_app.js logic
+            autoplay: true, 
             preload: 'auto',
             muted: false,
-            volume: 0.7, // Initial volume
-            // Vidstack has its own keyboard shortcuts, disable them to use custom ones.
-            // This requires Vidstack v1.x, where it supports disabling them.
-            keyShortcuts: false, // Disables built-in keyboard shortcuts
-            layout: new VidstackPlayerLayout() // <-- THIS IS THE FIX
+            volume: 0.7,
+            keyShortcuts: false, 
+            layout: new VidstackPlayerLayout()
         });
 
         // Listen for provider changes to hook into the HLS.js instance for ad stripping
