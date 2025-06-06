@@ -733,6 +733,7 @@ async function initPlayer(videoUrl, sourceCode) {
             // Vidstack has its own keyboard shortcuts, disable them to use custom ones.
             // This requires Vidstack v1.x, where it supports disabling them.
             keyShortcuts: false, // Disables built-in keyboard shortcuts
+            layout: new VidstackPlayerLayout() // <-- THIS IS THE FIX
         });
 
         // Listen for provider changes to hook into the HLS.js instance for ad stripping
