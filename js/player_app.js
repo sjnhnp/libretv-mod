@@ -722,6 +722,9 @@ async function initPlayer(videoUrl, sourceCode) {
             return;
         }
 
+        // Ensure the container is empty before creating a new player.
+        playerTargetElement.innerHTML = '';
+
         dp = await VidstackPlayer.create({
             target: playerTargetElement,
             title: currentVideoTitle,
@@ -1109,8 +1112,15 @@ function handleKeyboardShortcuts(e) {
             e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case 'PageUp': if (typeof window.playPreviousEpisode === 'function') window.playPreviousEpisode(); actionText = '上一集'; direction = 'left'; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case 'PageDown': if (typeof window.playNextEpisode === 'function') window.playNextEpisode(); actionText = '下一集'; direction = 'right'; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
-        case ' ': // Spacebar for play/pause - Vidstack uses togglePaused()
-            dp.togglePaused(); actionText = dp.paused ? '暂停' : '播放'; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
+        case ' ': // Spacebar for play/pause
+            if (dp.state.paused()) {
+                dp.play();
+                actionText = '播放';
+            } else {
+                dp.pause();
+                actionText = '暂停';
+            }
+            e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case 'ArrowUp': dp.volume = Math.min(1, dp.volume + 0.1); actionText = `音量 ${Math.round(dp.volume * 100)}%`; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case 'ArrowDown': dp.volume = Math.max(0, dp.volume - 0.1); actionText = `音量 ${Math.round(dp.volume * 100)}%`; e.preventDefault(); if (debugMode) console.log(`Keyboard: ${actionText}`); break;
         case 'f':
@@ -1184,10 +1194,14 @@ function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
         }
 
         const currentTime = new Date().getTime();
-        if ((currentTime - lastTapTimeForDoubleTap) < DOUBLE_TAP_INTERVAL) {
+        if ((currentTime - (lastTapTimeForDoubleTap || 0)) < DOUBLE_TAP_INTERVAL) {
             // Double tap detected
-            if (dpInstance && typeof dpInstance.togglePaused === 'function') { // Use Vidstack's `togglePaused`
-                dpInstance.togglePaused(); // Toggle play/pause state
+            if (dpInstance && typeof dpInstance.play === 'function' && typeof dpInstance.pause === 'function') {
+                if (dpInstance.state.paused()) {
+                    dpInstance.play();
+                } else {
+                    dpInstance.pause();
+                }
             }
             lastTapTimeForDoubleTap = 0; // Reset timestamp to prevent continuous triple clicks from being misjudged
         } else {
