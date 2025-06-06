@@ -612,25 +612,49 @@ function initializePageContent() {
     const videoTitleElement = document.getElementById('video-title');
     if (videoTitleElement) videoTitleElement.textContent = `${currentVideoTitle} (第 ${currentEpisodeIndex + 1} 集)`;
 
-    if (episodeUrlForPlayer) {
-        initPlayer(episodeUrlForPlayer, sourceCodeFromUrl); // Use `sourceCodeFromUrl`
-        const finalUrlParams = new URLSearchParams(window.location.search); // Get potentially updated URL parameters
-        const finalPositionToSeek = finalUrlParams.get('position');
-        let seeked = false;
-        const positionNum = positionFromUrl ? parseInt(positionFromUrl, 10) : (nextSeekPosition || 0);
-        if (positionNum > 0 && dp) {
-            dp.on('can-play', () => {
-                if (seeked) return;
-                if (dp && dp.media && dp.media.activeElement && dp.duration > 0 && !isNaN(positionNum) && positionNum > 0 && positionNum < dp.duration - 1) {
-                    try { dp.currentTime = positionNum; } catch (e) { }
-                    if (typeof showPositionRestoreHint === 'function') showPositionRestoreHint(positionNum);
-                }
-                seeked = true;
-            });
+        // 修复：记住进度、分集弹窗、首页续播弹窗，完全参考老代码插入
+       if (episodeUrlForPlayer) {
+            initPlayer(episodeUrlForPlayer, sourceCodeFromUrl);
+            const positionNum = positionFromUrl ? parseInt(positionFromUrl, 10) : 0;
+            let seeked = false;
+            if (positionNum > 0) {
+               // 若URL有position参数，则直接seek，无需弹窗
+                dp && dp.on && dp.on('can-play', () => {
+                    if (seeked) return;
+                    if (dp && dp.media && dp.media.activeElement && dp.duration > 0 && !isNaN(positionNum) && positionNum > 0 && positionNum < dp.duration - 1) {
+                        try { dp.currentTime = positionNum; } catch (e) {}
+                   if (typeof showPositionRestoreHint === 'function') showPositionRestoreHint(positionNum);
+                    }
+                    seeked = true;
+                });
+            } else {
+                // 没有position参数，则检查 localStorage 分集进度（参考老代码）
+               try {
+                    const showId = getShowIdentifier(false);
+                    const progresses = JSON.parse(localStorage.getItem('videoSpecificEpisodeProgresses') || '{}');
+                    // 以当前集为key
+                    const progressToRestore = progresses && progresses[showId] && progresses[showId][currentEpisodeIndex] ? parseInt(progresses[showId][currentEpisodeIndex]) : 0;
+                    if (progressToRestore > 5 && dp && dp.on) {
+                        let popupHandled = false;
+                        dp.on('can-play', () => {
+                           if (popupHandled) return;
+                            popupHandled = true;
+                            showProgressRestoreModal({
+                                title: '继续播放？',
+                                content: `您上次看到 <span style="color:#00ccff">${formatPlayerTime(progressToRestore)}</span>，是否继续？`,
+                                confirmText: '继续播放',
+                                cancelText: '从头播放'
+                            }).then(resume => {
+                                if (resume && dp && dp.currentTime < progressToRestore && dp.duration > progressToRestore)
+                                    dp.currentTime = progressToRestore;
+                            });
+                        });
+                    }
+                } catch (e) {}
+            }
+        } else {
+            showError('无效的视频链接');
         }
-    } else {
-        showError('无效的视频链接');
-    }
 
     updateEpisodeInfo();
     // Use requestAnimationFrame for initial render to ensure DOM is ready
