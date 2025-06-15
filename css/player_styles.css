@@ -634,20 +634,3 @@ input:checked+.slider:before {
   margin-bottom: 8px; /* 菜单与按钮的间距 */
   transform-origin: bottom center; /* 动画基点改为底部中心 */
 }
-
-/* 修复Android中央按钮+控制条自动隐藏 */
-.player-container.hide-controller .dplayer-controller,
-.player-container.hide-controller .dplayer-bar-wrap,
-.player-container.hide-controller .dplayer-play-icon,
-.player-container.hide-controller .dplayer-video-wrap.dplayer-paused .dplayer-play-icon {
-    opacity: 0 !important;
-    transform: translateY(40px) !important;
-    pointer-events: none !important;
-}
-
-.player-container .dplayer-controller,
-.player-container .dplayer-bar-wrap,
-.player-container .dplayer-play-icon {
-    transition: all 0.3s ease !important;
-    pointer-events: auto !important;
-}
