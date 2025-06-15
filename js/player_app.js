@@ -2064,7 +2064,6 @@ async function switchLine(newSourceCode) {
         if (loadingEl) loadingEl.style.display = 'none';
     }
 }
-// end
 
 /**
  * 设置控制条自动隐藏（包括中央播放按钮）- 已修复版本
@@ -2144,4 +2143,5 @@ function setupControlsAutoHide(dpInstance) {
 
     // 初始状态
     resetHideTimer();
+
 }
