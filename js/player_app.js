@@ -1830,8 +1830,9 @@ window.playEpisode = playEpisode;
 
 /**
  * 设置线路切换功能 (优化版)
- * 增加了 touchend 事件处理，以兼容移动端设备。
- * 使用 guard flag (_lineSwitchListenerAttached) 确保事件监听器只绑定一次。
+ * - 增加了 touchend 事件处理，以兼容移动端设备。
+ * - 动态判断菜单弹出方向（向上或向下）。
+ * - 使用 guard flag 确保事件监听器只绑定一次。
  */
 function setupLineSwitching() {
     const button = document.getElementById('line-switch-button');
@@ -1847,12 +1848,11 @@ function setupLineSwitching() {
     const updateAndToggleMenu = (event) => {
         event.stopPropagation();
 
-        // 动态生成菜单内容，以确保高亮状态永远是正确的
+        // 动态生成菜单内容
         const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
         const selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '[]');
         const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
-
-        dropdown.innerHTML = ''; // 每次点击都清空重建
+        dropdown.innerHTML = '';
 
         const availableSources = [];
         if (selectedAPIs.length > 0) {
@@ -1865,7 +1865,6 @@ function setupLineSwitching() {
                 } else if (window.API_SITES && window.API_SITES[sourceCode]) {
                     apiInfo = { name: window.API_SITES[sourceCode].name };
                 }
-
                 if (apiInfo.name) {
                     availableSources.push({ name: apiInfo.name, code: sourceCode });
                 }
@@ -1877,9 +1876,9 @@ function setupLineSwitching() {
                 const item = document.createElement('button');
                 item.textContent = source.name;
                 item.dataset.sourceCode = source.code;
-                item.className = 'w-full text-left px-3 py-2 rounded text-sm transition-colors'; // Tailwind classes
+                item.className = 'w-full text-left px-3 py-2 rounded text-sm transition-colors';
                 if (source.code === currentSourceCode) {
-                    item.classList.add('line-active'); // 高亮当前线路
+                    item.classList.add('line-active');
                     item.disabled = true;
                 }
                 dropdown.appendChild(item);
@@ -1888,6 +1887,26 @@ function setupLineSwitching() {
             dropdown.innerHTML = `<div class="text-center text-sm text-gray-500 py-2">无可用线路</div>`;
         }
 
+        // --- 新增：动态定位逻辑 ---
+        // 仅在准备显示菜单时计算位置
+        if (dropdown.classList.contains('hidden')) {
+            const buttonRect = button.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - buttonRect.bottom;
+
+            // 使用辅助类来测量高度，避免闪烁
+            dropdown.classList.add('measure-height');
+            const dropdownHeight = dropdown.offsetHeight;
+            dropdown.classList.remove('measure-height');
+
+            // 如果下方空间不足，且上方空间足够，则向上弹出
+            if (spaceBelow < (dropdownHeight + 10) && buttonRect.top > dropdownHeight) {
+                dropdown.classList.add('dropdown-top');
+            } else {
+                dropdown.classList.remove('dropdown-top');
+            }
+        }
+        // --- 动态定位逻辑结束 ---
+
         // 切换菜单的可见性
         dropdown.classList.toggle('hidden');
     };
@@ -1895,15 +1914,14 @@ function setupLineSwitching() {
     // 3. 为桌面端和移动端绑定事件
     button.addEventListener('click', updateAndToggleMenu);
     button.addEventListener('touchend', (e) => {
-        e.preventDefault(); // 关键：阻止 touchend 后触发 click 事件，避免双重 toggle
+        e.preventDefault();
         updateAndToggleMenu(e);
     });
 
     // 4. 设置 flag，表示监听器已附加
     button._lineSwitchListenerAttached = true;
 
-    // 5. 为下拉菜单和文档本身绑定一次性事件（用于选择和点击外部关闭）
-    // 使用 guard flag 确保这些也只绑定一次
+    // 5. 为下拉菜单和文档本身绑定一次性事件
     if (!dropdown._actionListener) {
         dropdown.addEventListener('click', (e) => {
             const target = e.target.closest('button[data-source-code]');
@@ -1914,7 +1932,6 @@ function setupLineSwitching() {
         });
         dropdown._actionListener = true;
     }
-
     if (!document._docClickListenerForLineSwitch) {
         document.addEventListener('click', (e) => {
             if (!dropdown.classList.contains('hidden') && !button.contains(e.target) && !dropdown.contains(e.target)) {

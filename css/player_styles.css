@@ -615,4 +615,23 @@ input:checked+.slider:before {
   font-weight: bold;
 }
 
+/* 用于 JS 测量高度而不引起闪烁的辅助类 */
+.measure-height {
+  visibility: hidden !important;
+  display: block !important;
+}
+
+/* 原始下拉菜单的动画基点 */
+#line-switch-dropdown {
+  transform-origin: top center;
+}
+
+/* 新增：当菜单需要向上弹出时的样式 */
+#line-switch-dropdown.dropdown-top {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 8px; /* 菜单与按钮的间距 */
+  transform-origin: bottom center; /* 动画基点改为底部中心 */
+}
 /* END: 线路切换菜单样式 */
