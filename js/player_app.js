@@ -2073,78 +2073,75 @@ async function switchLine(newSourceCode) {
 function setupControlsAutoHide(dpInstance) {
     if (!dpInstance) return;
 
-    const CONTROLS_HIDE_DELAY = 3000; // 3秒后无操作则隐藏控制条
+    const CONTROLS_HIDE_DELAY = 3000; // 3秒后隐藏控制条
     let hideControlsTimeout;
+    let isHidingIntentionally = false; // 标记用户是否主动点击隐藏
     const playerContainer = dpInstance.container;
 
     if (!playerContainer) return;
 
-    // 核心功能1：显示控制条，并设置一个计时器来再次隐藏它们
-    const showControlsAndSetHideTimer = () => {
-        if (isScreenLocked) return; // 锁屏状态下不操作
-
-        clearTimeout(hideControlsTimeout);
-        playerContainer.classList.remove('dplayer-hide-controller');
-
-        // 只有在视频播放时，才设置“自动隐藏”的计时器
-        if (dpInstance.video && !dpInstance.video.paused) {
-            hideControlsTimeout = setTimeout(() => {
-                // 再次检查，以防在延时期间锁屏
-                if (!isScreenLocked) {
-                    playerContainer.classList.add('dplayer-hide-controller');
-                }
-            }, CONTROLS_HIDE_DELAY);
-        }
-    };
-
-    // 核心功能2：立即隐藏控制条，并清除计时器
-    const hideControlsImmediately = () => {
-        if (isScreenLocked) return; // 锁屏状态下不操作
-        clearTimeout(hideControlsTimeout);
-        playerContainer.classList.add('dplayer-hide-controller');
-    };
-
-    // 视频区域的单击事件处理程序
-    const handleVideoClick = () => {
+    // 重置隐藏计时器
+    function resetHideTimer() {
         if (isScreenLocked) return;
 
-        // 注意：双击播放/暂停由 `setupDoubleClickToPlayPause` 在 'touchend' 事件上独立处理。
-        // DPlayer 的 'video_click' 事件非常适合处理单击逻辑。
+        clearTimeout(hideControlsTimeout);
+        isHidingIntentionally = false;
 
-        if (playerContainer.classList.contains('dplayer-hide-controller')) {
-            // 情况一：如果控制条是隐藏的 -> 调用显示功能
-            showControlsAndSetHideTimer();
-        } else {
-            // 情况二：如果控制条是可见的 -> 调用立即隐藏功能
-            hideControlsImmediately();
+        // 显示控制条
+        playerContainer.classList.remove('dplayer-hide-controller');
+
+        // 设置新的隐藏计时器
+        hideControlsTimeout = setTimeout(() => {
+            if (dpInstance.video && !dpInstance.video.paused) {
+                playerContainer.classList.add('dplayer-hide-controller');
+            }
+        }, CONTROLS_HIDE_DELAY);
+    }
+
+    // 立即隐藏控制条（用户主动点击隐藏）
+    function hideControlsImmediately() {
+        clearTimeout(hideControlsTimeout);
+        playerContainer.classList.add('dplayer-hide-controller');
+        isHidingIntentionally = true;
+    }
+
+    // ===== 核心点击处理逻辑 =====
+    function handlePlayerInteraction(e) {
+        // 如果是控制条上的操作，不处理（避免点击按钮时隐藏控制条）
+        if (e.target.closest('.dplayer-controller, .dplayer-play-icon')) {
+            return;
         }
-    };
 
-    // ===== 统一事件绑定 =====
+        // 如果控制条当前是可见的
+        if (!playerContainer.classList.contains('dplayer-hide-controller')) {
+            // 用户主动点击隐藏
+            hideControlsImmediately();
+        } else {
+            // 控制条是隐藏的，显示并开始倒计时
+            resetHideTimer();
+        }
+    }
 
-    // 1. 为单击事件绑定我们的主处理函数
-    dpInstance.off('video_click'); // 先解绑，防止重复
-    dpInstance.on('video_click', handleVideoClick);
+    // ===== 事件监听 =====
+    // 视频区域点击（使用DPlayer原生事件）
+    dpInstance.on('video_click', handlePlayerInteraction);
 
-    // 2. 桌面端：鼠标移动时，显示控制条并重置计时器
-    playerContainer.addEventListener('mousemove', showControlsAndSetHideTimer);
+    // 鼠标移动显示控制条
+    playerContainer.addEventListener('mousemove', resetHideTimer);
 
-    // 3. 播放器状态事件，确保UI行为一致
-    dpInstance.on('play', showControlsAndSetHideTimer);
+    // 播放器事件处理
+    dpInstance.on('play', resetHideTimer);
 
     dpInstance.on('pause', () => {
         clearTimeout(hideControlsTimeout);
-        playerContainer.classList.remove('dplayer-hide-controller'); // 暂停时，应始终显示控制条
+        playerContainer.classList.remove('dplayer-hide-controller');
     });
 
-    dpInstance.on('seeked', showControlsAndSetHideTimer);
-    dpInstance.on('fullscreen', showControlsAndSetHideTimer);
-    dpInstance.on('fullscreen_cancel', showControlsAndSetHideTimer);
+    dpInstance.on('seeked', resetHideTimer);
 
-    // 4. 初始化播放器UI状态
-    if (dpInstance.video && !dpInstance.video.paused) {
-        showControlsAndSetHideTimer(); // 如果视频已在播放，启动计时器
-    } else {
-        playerContainer.classList.remove('dplayer-hide-controller'); // 如果初始是暂停状态，确保控制条可见
-    }
+    dpInstance.on('fullscreen', resetHideTimer);
+    dpInstance.on('fullscreen_cancel', resetHideTimer);
+
+    // 初始状态
+    resetHideTimer();
 }
