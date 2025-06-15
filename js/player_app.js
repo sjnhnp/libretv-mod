@@ -2056,6 +2056,7 @@ function setupControlsAutoHide(dpInstance) {
 
     const CONTROLS_HIDE_DELAY = 3000; // 3秒后隐藏控制条
     let hideControlsTimeout;
+    let isHidingIntentionally = false; // 标记用户是否主动点击隐藏
     const playerContainer = dpInstance.container;
 
     if (!playerContainer) return;
@@ -2065,8 +2066,12 @@ function setupControlsAutoHide(dpInstance) {
         if (isScreenLocked) return;
 
         clearTimeout(hideControlsTimeout);
+        isHidingIntentionally = false;
+
+        // 显示控制条
         playerContainer.classList.remove('dplayer-hide-controller');
 
+        // 设置新的隐藏计时器
         hideControlsTimeout = setTimeout(() => {
             if (dpInstance.video && !dpInstance.video.paused) {
                 playerContainer.classList.add('dplayer-hide-controller');
@@ -2074,39 +2079,35 @@ function setupControlsAutoHide(dpInstance) {
         }, CONTROLS_HIDE_DELAY);
     }
 
-    // 立即隐藏控制条
+    // 立即隐藏控制条（用户主动点击隐藏）
     function hideControlsImmediately() {
         clearTimeout(hideControlsTimeout);
         playerContainer.classList.add('dplayer-hide-controller');
+        isHidingIntentionally = true;
     }
 
     // ===== 核心点击处理逻辑 =====
-    let lastInteractionTime = 0;
-    const INTERACTION_COOLDOWN = 300; // 300ms事件冷却
+    function handlePlayerInteraction(e) {
+        // 如果是控制条上的操作，不处理（避免点击按钮时隐藏控制条）
+        if (e.target.closest('.dplayer-controller, .dplayer-play-icon')) {
+            return;
+        }
 
-    function handlePlayerInteraction() {
-        const now = Date.now();
-
-        // 防止快速重复点击
-        if (now - lastInteractionTime < INTERACTION_COOLDOWN) return;
-        lastInteractionTime = now;
-
-        // 如果控制条当前是可见的，则隐藏
+        // 如果控制条当前是可见的
         if (!playerContainer.classList.contains('dplayer-hide-controller')) {
+            // 用户主动点击隐藏
             hideControlsImmediately();
         } else {
-            // 控制条是隐藏的，则显示并开始倒计时
+            // 控制条是隐藏的，显示并开始倒计时
             resetHideTimer();
         }
     }
 
-    // ===== 统一事件监听 =====
-    // 只使用DPlayer的video_click事件（避免重复监听）
-    dpInstance.off('video_click'); // 先移除可能存在的旧监听器
+    // ===== 事件监听 =====
+    // 视频区域点击（使用DPlayer原生事件）
     dpInstance.on('video_click', handlePlayerInteraction);
 
-    // ===== 其他必要事件处理 =====
-    // 鼠标移动显示控制条（桌面端）
+    // 鼠标移动显示控制条
     playerContainer.addEventListener('mousemove', resetHideTimer);
 
     // 播放器事件处理
