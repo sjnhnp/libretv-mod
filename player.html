@@ -121,19 +121,22 @@
 
         <div class="p-4 bg-gray-900 rounded-lg mx-4 mb-4">
             <div class="player-control-bar">
-
-                 <div class="relative line-switch-container">
+                <!-- START: 线路切换功能 -->
+                <div class="relative line-switch-container">
                     <button id="line-switch-button" title="切换线路"
                         class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors flex items-center gap-1 px-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                         </svg>
                         <span class="text-sm">线路</span>
                     </button>
-                    <div id="line-switch-dropdown" class="hidden">
+                    <div id="line-switch-dropdown">
                         <!-- 线路列表将由JS动态填充 -->
                     </div>
                 </div>
+                <!-- END: 线路切换功能 -->
 
                 <div class="flex items-center gap-2">
                     <span id="autoplay-label" class="control-label">自动播放</span>
@@ -163,7 +166,7 @@
                     </button>
 
                     <div id="skip-control-dropdown"
-                        class="hidden absolute top-10 right-0 bg-gray-900 rounded shadow-lg p-3 w-56">
+                        class="absolute top-10 right-0 bg-gray-900 rounded shadow-lg p-3 w-56">
                         <!-- 1+2：跳片头(秒) + 输入框 同行 -->
                         <div class="flex items-center mb-2">
                             <label for="skip-intro-input" class="text-gray-300 text-sm mr-2">

@@ -84,14 +84,9 @@ function setupSkipControls() {
     }
 
     // 显示 / 隐藏菜单
-    skipButton.addEventListener('click', () => {
-        if (dropdown.classList.contains('hidden')) {
-            dropdown.classList.remove('hidden');
-            dropdown.classList.add('block');
-        } else {
-            dropdown.classList.add('hidden');
-            dropdown.classList.remove('block');
-        }
+    skipButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('block');
     });
 
 
@@ -106,7 +101,7 @@ function setupSkipControls() {
         if (typeof showToast === 'function') {
             showToast('跳过时间设置已保存', 'success');
         }
-        dropdown.classList.remove('active'); // 收起设置框
+        dropdown.classList.remove('block'); // 收起设置框
     });
 
     // 重置时间
@@ -135,14 +130,10 @@ function setupSkipDropdownEvents() {
         const skipButton = document.getElementById('skip-control-button');
         if (!skipButton || !dropdown) return;
 
-        if (skipButton.contains(event.target)) {
-            // 已由 setupSkipControls 单独处理
-        } else if (!dropdown.contains(event.target)) {
-            dropdown.classList.add('hidden');
+        if (!skipButton.contains(event.target) && !dropdown.contains(event.target)) {
             dropdown.classList.remove('block');
         }
     });
-
 }
 
 // 自动跳过片头和片尾
@@ -192,20 +183,6 @@ function handleSkipIntroOutro(dpInstance) {
     }
 }
 
-
-// 初始化跳过功能
-document.addEventListener('DOMContentLoaded', () => {
-    // 初始化 UI 控件
-    setupSkipControls();
-
-    // 新增 Dropdown 菜单显示/隐藏的事件处理
-    setupSkipDropdownEvents();
-
-    // 初始化其他页面功能
-    initializePageContent();
-});
-
-
 /**
  * 展示自定义的“记住进度恢复”弹窗，并Promise化回调
  * @param {Object} opts 配置对象：title,content,confirmText,cancelText
@@ -250,7 +227,7 @@ function showProgressRestoreModal(opts) {
 }
 
 // --- 模块内变量 ---
-let isNavigatingToEpisode = false;   // 正在换集时置 true，避免误保存
+let isNavigatingToEpisode = false;   // 正在换集时置 true，避免误保存
 let currentVideoTitle = '';
 let currentEpisodeIndex = 0;
 let currentEpisodes = [];
@@ -299,7 +276,7 @@ const AD_START_PATTERNS = [
 const AD_END_PATTERNS = [
     /#EXT-X-DATERANGE:.*CLASS="content"/i,
     /#EXT-X-SCTE35-IN/i,
-    /#EXT-X-DISCONTINUITY/i,   // 保险：有些源用 DISCONTINUITY 结束广告
+    /#EXT-X-DISCONTINUITY/i,   // 保险：有些源用 DISCONTINUITY 结束广告
 ];
 
 // ==== 全局开关：是否去广告（缺省 true，可被 config.js 覆盖） ====
@@ -382,36 +359,43 @@ function setupRememberEpisodeProgressToggle() {
     });
 }
 
+// 统一的初始化函数
+function initializeApp() {
+    setupSkipControls();
+    setupSkipDropdownEvents();
+    initializePageContent();
+}
+
+// 唯一的 DOMContentLoaded 入口
 document.addEventListener('DOMContentLoaded', function () {
-    // Existing password check and initializePageContent call
     if (typeof window.isPasswordVerified === 'function' && typeof window.isPasswordProtected === 'function') {
         if (window.isPasswordProtected() && !window.isPasswordVerified()) {
             if (typeof window.showPasswordModal === 'function') window.showPasswordModal();
             const loadingEl = document.getElementById('loading');
             if (loadingEl) loadingEl.style.display = 'none';
-            return;
+            return; // 等待密码验证
         }
-    } else {
-        console.warn("Password functions (isPasswordProtected/isPasswordVerified) not found. Assuming no password protection.");
     }
-    initializePageContent();
+    // 如果不需要密码或已验证，则直接初始化
+    initializeApp();
 });
 
-// Listen for password verification success event
+// 密码验证成功后的入口
 document.addEventListener('passwordVerified', () => {
     const loadingEl = document.getElementById('loading');
     if (loadingEl) {
-        loadingEl.style.display = 'flex';              // 原来的
-        document.documentElement.classList.add('show-loading'); // ← 新增
+        loadingEl.style.display = 'flex';
+        document.documentElement.classList.add('show-loading');
     }
-    initializePageContent();
+    initializeApp();
 });
+
 
 function initializePageContent() {
     if (!testLocalStorageAvailable()) {
         showMessage('当前浏览器本地存储不可用，播放进度记忆将失效', 'warning');
     }
-    //  console.log('[PlayerApp Debug] initializePageContent starting...');
+    //  console.log('[PlayerApp Debug] initializePageContent starting...');
     const urlParams = new URLSearchParams(window.location.search);
     let episodeUrlForPlayer = urlParams.get('url'); // 先用 let，后续可能修改
     let title = urlParams.get('title');
@@ -422,7 +406,7 @@ function initializePageContent() {
             let prev, cur = str;
             do { prev = cur; cur = decodeURIComponent(cur); } while (cur !== prev);
             return cur;
-        } catch { return str; }   // 遇到非法编码就放弃
+        } catch { return str; }   // 遇到非法编码就放弃
     }
     title = title ? fullyDecode(title) : '';
     const sourceCodeFromUrl = urlParams.get('source_code'); // 重命名以区分
@@ -448,17 +432,17 @@ function initializePageContent() {
         if (episodesListParam) {
             try {
                 currentEpisodes = JSON.parse(decodeURIComponent(episodesListParam));
-                //  console.log("[PlayerApp] Episodes loaded from URL parameter.");
+                //  console.log("[PlayerApp] Episodes loaded from URL parameter.");
             } catch (e) {
                 console.warn("[PlayerApp] Failed to parse episodes from URL, falling back to localStorage.", e);
                 currentEpisodes = episodesSource ? JSON.parse(episodesSource) : [];
             }
         } else if (episodesSource) {
             currentEpisodes = JSON.parse(episodesSource);
-            //  console.log("[PlayerApp] Episodes loaded from localStorage.");
+            //  console.log("[PlayerApp] Episodes loaded from localStorage.");
         } else {
             currentEpisodes = [];
-            //  console.log("[PlayerApp] No episode data found in URL or localStorage.");
+            //  console.log("[PlayerApp] No episode data found in URL or localStorage.");
         }
         window.currentEpisodes = currentEpisodes; // Expose globally
 
@@ -640,11 +624,11 @@ function initializePageContent() {
     // Use requestAnimationFrame for initial render to ensure DOM is ready
     requestAnimationFrame(() => {
         renderEpisodes();
-        //   console.log('[PlayerApp] renderEpisodes called via requestAnimationFrame in initializePageContent');
+        //   console.log('[PlayerApp] renderEpisodes called via requestAnimationFrame in initializePageContent');
     });
     updateButtonStates();
     updateOrderButton();
-    setupLineSwitching(); 
+    setupLineSwitching(); // <--- 新增：调用线路切换设置函数
 
     setTimeout(() => {
         setupProgressBarPreciseClicks();
@@ -779,9 +763,9 @@ function initPlayer(videoUrl, sourceCode) {
                             video.removeChild(video.firstChild);
                         }
                         // Setting src to empty or calling load() can help reset the media element's internal state.
-                        _tempUrlForCustomHls         // This is important to prevent the browser from holding onto the previous stream.
+                        _tempUrlForCustomHls         // This is important to prevent the browser from holding onto the previous stream.
                         video.src = ""; // Setting to empty can sometimes help clear buffers
-                        video.load();   // This tells the browser to discard the current media resource state.
+                        video.load();   // This tells the browser to discard the current media resource state.
 
                         // 3. Create and configure the new HLS instance
                         console.log("[CustomHLS] Creating new HLS.js instance.");
@@ -1005,13 +989,13 @@ function addDPlayerEventListeners() {
         videoHasEnded = true;
         saveCurrentProgress(); // Ensure final progress is saved
         clearVideoProgress(); // Clear progress for *this specific video*
-        if (!autoplayEnabled) return;       // 用户关掉了自动连播
-        const nextIdx = currentEpisodeIndex + 1;   // 始终 +1（上一条回复已统一）
+        if (!autoplayEnabled) return;       // 用户关掉了自动连播
+        const nextIdx = currentEpisodeIndex + 1;   // 始终 +1（上一条回复已统一）
         if (nextIdx < currentEpisodes.length) {
             setTimeout(() => {
                 // 再确认一下确实播完 & 没有人在拖动
                 if (videoHasEnded && !isUserSeeking) playEpisode(nextIdx);
-            }, 1000);                       // 1 s 延迟，防误触
+            }, 1000);                       // 1 s 延迟，防误触
         } else {
             if (debugMode) console.log('[PlayerApp] 已到最后一集，自动连播停止');
         }
@@ -1093,11 +1077,11 @@ function setupPlayerControls() {
                 const loadingEl = document.getElementById('loading'); if (loadingEl) loadingEl.style.display = 'flex';
                 _tempUrlForCustomHls = videoUrlRetry;
                 if (dp && dp.video) {
-                    //  console.log("[PlayerApp] Retrying: Switching video.");
+                    //  console.log("[PlayerApp] Retrying: Switching video.");
                     dp.switchVideo({ url: videoUrlRetry, type: 'hls' });
                     dp.play();
                 } else {
-                    //    console.log("[PlayerApp] Retrying: Re-initializing player.");
+                    //    console.log("[PlayerApp] Retrying: Re-initializing player.");
                     initPlayer(videoUrlRetry, sourceCodeRetry);
                 }
             } else {
@@ -1494,7 +1478,7 @@ function renderEpisodes() {
     }
 
     const order = [...Array(currentEpisodes.length).keys()];
-    if (episodesReversed) order.reverse();          // 倒序显示
+    if (episodesReversed) order.reverse();          // 倒序显示
 
     order.forEach(idx => {
         const btn = document.createElement('button');
@@ -1503,7 +1487,7 @@ function renderEpisodes() {
             ? 'p-2 rounded episode-active'
             : 'p-2 rounded bg-[#222] hover:bg-[#333] text-gray-300';
         btn.textContent = idx + 1;
-        btn.dataset.index = idx;                  // 关键：把真实下标写到 data 上
+        btn.dataset.index = idx;                  // 关键：把真实下标写到 data 上
         grid.appendChild(btn);
     });
 
@@ -1580,7 +1564,7 @@ function toggleEpisodeOrder() {
     episodesReversed = !episodesReversed;
     localStorage.setItem('episodesReversed', episodesReversed.toString());
     updateOrderButton(); // 更新排序按钮的视觉状态
-    renderEpisodes();    // 重新渲染集数列表以反映新的排序
+    renderEpisodes();    // 重新渲染集数列表以反映新的排序
 }
 
 function updateOrderButton() {
@@ -1588,13 +1572,13 @@ function updateOrderButton() {
     if (!icon) return;
     // 清空原 path 后填充新图标
     icon.innerHTML = episodesReversed
-        ? '<polyline points="18 15 12 9 6 15"></polyline>'  // ⬆️  倒序
-        : '<polyline points="6 9 12 15 18 9"></polyline>';  // ⬇️  正序
+        ? '<polyline points="18 15 12 9 6 15"></polyline>'  // ⬆️  倒序
+        : '<polyline points="6 9 12 15 18 9"></polyline>';  // ⬇️  正序
 }
 
 function playPreviousEpisode() {
     if (!currentEpisodes.length) return;
-    const prevIdx = currentEpisodeIndex - 1;          // 无论正序 / 倒序都减 1
+    const prevIdx = currentEpisodeIndex - 1;          // 无论正序 / 倒序都减 1
     if (prevIdx >= 0) {
         playEpisode(prevIdx);
     } else showMessage('已经是第一集了', 'info');
@@ -1603,7 +1587,7 @@ window.playPreviousEpisode = playPreviousEpisode;
 
 function playNextEpisode() {
     if (!currentEpisodes.length) return;
-    const nextIdx = currentEpisodeIndex + 1;          // 始终加 1
+    const nextIdx = currentEpisodeIndex + 1;          // 始终加 1
     if (nextIdx < currentEpisodes.length) {
         playEpisode(nextIdx);
     } else showMessage('已经是最后一集了', 'info');
@@ -1841,13 +1825,11 @@ function setupLineSwitching() {
     button.addEventListener('click', (e) => {
         e.stopPropagation();
         dropdown.classList.toggle('block');
-        dropdown.classList.toggle('hidden');
     });
 
     // 点击页面其他地方隐藏下拉菜单
     document.addEventListener('click', (e) => {
         if (!button.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.classList.add('hidden');
             dropdown.classList.remove('block');
         }
     });
@@ -1894,7 +1876,6 @@ function setupLineSwitching() {
         if (target && !target.disabled) {
             const newSourceCode = target.dataset.sourceCode;
             switchLine(newSourceCode);
-            dropdown.classList.add('hidden');
             dropdown.classList.remove('block');
         }
     });
@@ -1940,14 +1921,14 @@ async function switchLine(newSourceCode) {
         if (isCustom) {
             searchUrl += `&customApi=${encodeURIComponent(apiInfo.url)}`;
         }
-        
+
         const searchRes = await fetch(searchUrl);
         const searchData = await searchRes.json();
 
         if (searchData.code !== 200 || !searchData.list || searchData.list.length === 0) {
             throw new Error(`在线路“${apiInfo.name}”上未找到《${currentVideoTitle}》`);
         }
-        
+
         // 简单匹配第一个结果，可以优化为更精确的匹配
         const newVodId = searchData.list[0].vod_id;
         if (!newVodId) throw new Error("新线路返回的数据中缺少视频ID");
