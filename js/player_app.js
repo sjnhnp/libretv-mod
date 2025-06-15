@@ -1989,7 +1989,7 @@ async function switchLine(newSourceCode) {
 
         // 更新UI
         renderEpisodes();
-        setupLineSwitching(); // 重新渲染线路列表以更新active状态
+       // setupLineSwitching(); // 重新渲染线路列表以更新active状态
         showMessage(`已切换到线路: ${apiInfo.name}`, 'success');
 
     } catch (err) {
