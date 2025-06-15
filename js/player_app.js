@@ -1832,97 +1832,70 @@ window.playEpisode = playEpisode;
 /**
  * 设置线路切换功能
  */
-// File: js/player_app.js
-
-/**
- * 设置线路切换功能 (带有最终诊断功能)
- */
 function setupLineSwitching() {
-        const button = document.getElementById('line-switch-button');
-        const dropdown = document.getElementById('line-switch-dropdown');
-        if (!button || !dropdown) return;
-    
-        // --- START: 数据诊断代码 ---
-        // 这段代码只会在页面加载时运行一次，用于帮助我们检查数据问题。
-        if (!window.lineSwitchDataLogged) {
-            console.log("==============================================");
-            console.log("线路切换功能 - 数据诊断信息");
-            console.log("----------------------------------------------");
-            try {
-                const selectedAPIs_raw = localStorage.getItem('selectedAPIs');
-                console.log("1. 从 localStorage 读取的 'selectedAPIs' (原始文本):", selectedAPIs_raw);
-                console.log("2. 解析后的 'selectedAPIs' 数组:", JSON.parse(selectedAPIs_raw || '[]'));
-            } catch (e) {
-                console.error("!!! 解析 'selectedAPIs' 时出错:", e);
-            }
-            // 检查 window.API_SITES 是否在全局范围中可用
-            if (typeof window.API_SITES !== 'undefined') {
-                console.log("3. 页面加载时的 'window.API_SITES' 配置对象:", window.API_SITES);
-            } else {
-                console.error("!!! 关键错误: 'window.API_SITES' 对象未定义。请检查 js/config.js 是否正确加载。");
-            }
-            console.log("==============================================");
-            window.lineSwitchDataLogged = true; // 标记为已诊断，防止重复输出
-        }
-        // --- END: 数据诊断代码 ---
-    
-        // 点击按钮时，填充并显示菜单
-        button.addEventListener('click', (e) => {
-            e.stopPropagation();
-            
-            const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
-            const selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '[]');
-            const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
-            
-            dropdown.innerHTML = '';
-            
-            if (selectedAPIs.length > 0) {
-                selectedAPIs.forEach(sourceCode => {
-                    let apiInfo = {};
-                    if (sourceCode.startsWith('custom_')) {
-                        const index = parseInt(sourceCode.replace('custom_', ''));
-                        const customApi = customAPIs[index];
-                        if (customApi) apiInfo = { name: customApi.name };
-                    } else if (window.API_SITES && window.API_SITES[sourceCode]) {
-                        apiInfo = { name: window.API_SITES[sourceCode].name };
-                    }
-    
-                    if (apiInfo.name) {
-                        const item = document.createElement('button');
-                        item.textContent = apiInfo.name;
-                        item.dataset.sourceCode = sourceCode;
-                        if (sourceCode === currentSourceCode) {
-                            item.classList.add('line-active');
-                            item.disabled = true;
-                        }
-                        dropdown.appendChild(item);
+    const button = document.getElementById('line-switch-button');
+    const dropdown = document.getElementById('line-switch-dropdown');
+    if (!button || !dropdown) return;
+
+    // 每次点击按钮时，都重新生成菜单内容，以确保高亮状态正确
+    button.addEventListener('click', (e) => {
+        e.stopPropagation();
+
+        // 1. 获取最新数据
+        const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
+        const selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '[]');
+        const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
+
+        // 2. 清空并重新填充菜单
+        dropdown.innerHTML = '';
+
+        if (selectedAPIs.length > 0) {
+            selectedAPIs.forEach(sourceCode => {
+                let apiInfo = {};
+                if (sourceCode.startsWith('custom_')) {
+                    const index = parseInt(sourceCode.replace('custom_', ''));
+                    const customApi = customAPIs[index];
+                    if (customApi) apiInfo = { name: customApi.name };
+                } else if (window.API_SITES && window.API_SITES[sourceCode]) {
+                    apiInfo = { name: window.API_SITES[sourceCode].name };
+                }
+
+                if (apiInfo.name) {
+                    const item = document.createElement('button');
+                    item.textContent = apiInfo.name;
+                    item.dataset.sourceCode = sourceCode;
+                    // JS不再负责样式，只负责添加一个高亮类
+                    if (sourceCode === currentSourceCode) {
+                        item.classList.add('line-active');
+                        item.disabled = true;
                     }
-                });
-            }
-            
-            if (dropdown.children.length === 0) {
-                dropdown.innerHTML = `<div class="text-center text-sm text-gray-500 py-2 px-1">无可用线路或数据不匹配</div>`;
-            }
-    
-            dropdown.classList.toggle('hidden');
-        });
-    
-        // 点击菜单项进行切换
-        dropdown.addEventListener('click', (e) => {
-            const target = e.target.closest('button[data-source-code]');
-            if (target && !target.disabled) {
-                dropdown.classList.add('hidden');
-                switchLine(target.dataset.sourceCode);
-            }
-        });
-    
-        // 点击页面其他地方隐藏下拉菜单
-        document.addEventListener('click', (e) => {
-            if (!dropdown.classList.contains('hidden') && !button.contains(e.target) && !dropdown.contains(e.target)) {
-                dropdown.classList.add('hidden');
-            }
-        });
-    }
+                    dropdown.appendChild(item);
+                }
+            });
+        } else {
+            dropdown.innerHTML = `<div class="text-center text-sm text-gray-500 py-2">无可用线路</div>`;
+        }
+
+        // 3. 切换显示/隐藏
+        dropdown.classList.toggle('hidden');
+    });
+
+    // 点击菜单项进行切换
+    dropdown.addEventListener('click', (e) => {
+        const target = e.target.closest('button[data-source-code]');
+        if (target && !target.disabled) {
+            dropdown.classList.add('hidden');
+            switchLine(target.dataset.sourceCode); // 调用您原来的切换函数
+        }
+    });
+
+    // 点击页面其他地方隐藏下拉菜单
+    document.addEventListener('click', (e) => {
+        if (!dropdown.classList.contains('hidden') && !button.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+}
 
 /**
  * 切换线路的核心逻辑
