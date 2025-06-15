@@ -840,7 +840,7 @@ function initPlayer(videoUrl, sourceCode) {
         // 安卓特殊hack，防止右半屏菜单
         patchAndroidVideoHack();
         // 移动端控制条自动隐藏
-        setupControlsAutoHide();
+        setupControlsAutoHide(dp); 
         // 添加跳过功能
         handleSkipIntroOutro(dp);
     } catch (playerError) {
