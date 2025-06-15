@@ -1275,9 +1275,6 @@ function showShortcutHint(text, direction) {
  * @param {object} dpInstance DPlayer 实例
  * @param {HTMLElement} videoWrapElement 视频的包装元素 (通常是 .dplayer-video-wrap)
  */
-// 在 js/player_app.js 中找到 setupDoubleClickToPlayPause 函数
-// 修改为以下内容：
-
 function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
     if (!dpInstance || !videoWrapElement) {
         console.warn('[DoubleClick] DPlayer instance or video wrap element not provided.');
@@ -1288,19 +1285,20 @@ function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
         return; // 防止重复绑定监听器
     }
 
-    // 定义需要排除的控件选择器
-    const controlSelectors = [
-        '.dplayer-controller', // DPlayer 主控制条区域
-        '.dplayer-setting',    // 设置菜单
-        '.dplayer-comment',    // 弹幕相关（如果启用并可交互）
-        '.dplayer-notice',     // 播放器通知
-        '#episode-grid button' // 外部的选集按钮
-    ];
-
     videoWrapElement.addEventListener('touchend', function (e) {
         if (isScreenLocked) { // isScreenLocked 是您代码中已有的全局变量
-            return; // 屏幕锁定时，不响应
+            return; // 屏幕锁定时，不响应双击
         }
+
+        // 选择器数组，用于判断触摸是否发生在DPlayer的控件上
+        const controlSelectors = [
+            '.dplayer-controller', // DPlayer 主控制条区域
+            '.dplayer-setting',    // 设置菜单
+            '.dplayer-comment',    // 弹幕相关（如果启用并可交互）
+            '.dplayer-notice',     // 播放器通知
+            '#episode-grid button',// 外部的选集按钮
+            // 可以根据需要添加其他自定义的、位于 videoWrapElement 内的交互控件选择器
+        ];
 
         let tappedOnControl = false;
         for (const selector of controlSelectors) {
@@ -1322,34 +1320,15 @@ function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
             if (dpInstance && typeof dpInstance.toggle === 'function') {
                 dpInstance.toggle(); // 切换播放/暂停状态
             }
-            lastTapTimeForDoubleTap = 0;
-
-            // 双击后显示控制条
-            const playerContainer = document.querySelector('.player-container');
-            if (playerContainer) {
-                playerContainer.classList.remove('dplayer-hide-controller');
-                // 重置隐藏计时器
-                if (typeof dpInstance.resetHideTimer === 'function') {
-                    dpInstance.resetHideTimer(true);
-                }
-            }
+            lastTapTimeForDoubleTap = 0; // 重置时间戳，防止连续三次点击被误判
         } else {
-            // 单击：显示控制条（如果当前是隐藏的）
-            const playerContainer = document.querySelector('.player-container');
-            if (playerContainer && playerContainer.classList.contains('dplayer-hide-controller')) {
-                playerContainer.classList.remove('dplayer-hide-controller');
-                if (typeof dpInstance.resetHideTimer === 'function') {
-                    dpInstance.resetHideTimer(true);
-                }
-            }
+            // 单击 (或者是双击的第一次点击)
             lastTapTimeForDoubleTap = currentTime;
         }
     }, { passive: true }); // 使用 passive: true 明确表示我们不阻止默认的单击行为
 
     videoWrapElement._doubleTapListenerAttached = true; // 添加标记，表示已绑定
 }
-
-
 
 function setupLongPressSpeedControl() {
     if (!dp) return;
