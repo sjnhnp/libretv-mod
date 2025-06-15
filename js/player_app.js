@@ -1273,8 +1273,8 @@ function showShortcutHint(text, direction) {
  * - 单击时，主动调用DPlayer的API来显示/隐藏控件，并触发其自动隐藏计时器。
  */
 function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
-    if (!dpInstance || !videoWrapElement) {
-        console.warn('[DoubleClick] DPlayer instance or video wrap element not provided.');
+    if (!dpInstance || !videoWrapElement || !dpInstance.timer) {
+        console.warn('[DoubleClick] DPlayer instance or its timer is not ready.');
         return;
     }
 
@@ -1290,12 +1290,12 @@ function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
     videoWrapElement.addEventListener('touchend', function (e) {
         if (isScreenLocked) return;
 
-        // 如果直接点击在DPlayer的控制条上，则不处理，让DPlayer自己响应
+        // 如果直接点击在DPlayer的控制条上，则不处理
         if (e.target.closest('.dplayer-controller')) {
             return;
         }
-
-        // 我们接管视频区域的点击，所以阻止默认行为以避免冲突
+        
+        // 接管视频区域的点击，阻止默认行为以避免冲突
         e.preventDefault();
 
         const currentTime = new Date().getTime();
@@ -1313,14 +1313,22 @@ function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
             singleTapTimeout = setTimeout(() => {
                 // 300毫秒后，如果没有后续点击，则确认为单击
                 const dplayerElement = dpInstance.container;
-
+                
                 // 判断当前控件是否是隐藏状态
                 if (dplayerElement.classList.contains('dplayer-hide-controller')) {
-                    // 如果是隐藏的，调用 show() 来显示它，并启动自动隐藏计时器
+                    // 如果是隐藏的，调用 show() 来显示它
                     dpInstance.controller.show();
+                    // 并且【手动启动】DPlayer的自动隐藏计时器
+                    if (dpInstance.timer && typeof dpInstance.timer.start === 'function') {
+                        dpInstance.timer.start();
+                    }
                 } else {
                     // 如果是显示的，调用 hide() 将其立即隐藏
                     dpInstance.controller.hide();
+                    // 并且【手动停止】计时器，因为控件已被主动隐藏
+                    if (dpInstance.timer && typeof dpInstance.timer.stop === 'function') {
+                        dpInstance.timer.stop();
+                    }
                 }
                 lastTapTime = 0; // 单击动作完成，重置计时
             }, DOUBLE_TAP_TIMEOUT);
@@ -1329,7 +1337,6 @@ function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
 
     videoWrapElement._doubleTapListenerAttached = true; // 标记已绑定
 }
-
 
 function setupLongPressSpeedControl() {
     if (!dp) return;
