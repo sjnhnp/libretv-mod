@@ -2046,23 +2046,3 @@ async function switchLine(newSourceCode) {
     }
 }
 // end
-
-// Add CSS classes for control visibility
-const playerControls = document.querySelector('.dplayer-controller');
-if(playerControls) {
-  playerControls.classList.add('auto-hide-controls');
-}
-
-function showControls() {
-  if(playerControls) {
-    playerControls.classList.remove('hidden');
-    clearTimeout(controlsTimer);
-    controlsTimer = setTimeout(() => {
-      playerControls.classList.add('hidden'); 
-    }, 3000);
-  }
-}
-
-// Show controls on touch/mouse events
-dp.on('touchstart', showControls);
-dp.on('mousemove', showControls);

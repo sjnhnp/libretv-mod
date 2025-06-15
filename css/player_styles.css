@@ -635,13 +635,3 @@ input:checked+.slider:before {
   transform-origin: bottom center; /* 动画基点改为底部中心 */
 }
 /* END: 线路切换菜单样式 */
-
-
-.auto-hide-controls {
-  opacity: 1;
-  transition: opacity 0.3s;
-}
-
-.auto-hide-controls.hidden {
-  opacity: 0;
-}
