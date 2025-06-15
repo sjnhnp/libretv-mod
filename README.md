@@ -1,7 +1,7 @@
 # LibreTV-Enhanced (一个增强版分支)
 
-Deploy with Vercel:https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2F<你的用户名>%2F<你的仓库名>
-Deploy to Cloudflare Pages:https://deploy.workers.cloudflare.com/?url=https://github.com/<你的用户名>/<你的仓库名>
+- Deploy with Vercel:https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2F<你的用户名>%2F<你的仓库名>
+- Deploy to Cloudflare Pages:https://deploy.workers.cloudflare.com/?url=https://github.com/<你的用户名>/<你的仓库名>
 
 这是一个基于 [**LibreSpark/LibreTV**](https://github.com/LibreSpark/LibreTV) 的深度优化分支，在保留其核心功能的基础上，进行了大量代码重构，并增加了多项提升用户体验的实用功能。
 
