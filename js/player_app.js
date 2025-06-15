@@ -2055,9 +2055,7 @@ function setupControlsAutoHide(dpInstance) {
     if (!dpInstance) return;
 
     const CONTROLS_HIDE_DELAY = 3000; // 3秒后隐藏控制条
-    const CLICK_DEADZONE = 300; // 点击识别时间（300ms）
     let hideControlsTimeout;
-    let touchStartTime = 0;
     const playerContainer = dpInstance.container;
 
     if (!playerContainer) return;
@@ -2067,11 +2065,8 @@ function setupControlsAutoHide(dpInstance) {
         if (isScreenLocked) return;
 
         clearTimeout(hideControlsTimeout);
-
-        // 显示控制条
         playerContainer.classList.remove('dplayer-hide-controller');
 
-        // 设置新的隐藏计时器
         hideControlsTimeout = setTimeout(() => {
             if (dpInstance.video && !dpInstance.video.paused) {
                 playerContainer.classList.add('dplayer-hide-controller');
@@ -2086,7 +2081,16 @@ function setupControlsAutoHide(dpInstance) {
     }
 
     // ===== 核心点击处理逻辑 =====
-    function handlePlayerClick() {
+    let lastInteractionTime = 0;
+    const INTERACTION_COOLDOWN = 300; // 300ms事件冷却
+
+    function handlePlayerInteraction() {
+        const now = Date.now();
+
+        // 防止快速重复点击
+        if (now - lastInteractionTime < INTERACTION_COOLDOWN) return;
+        lastInteractionTime = now;
+
         // 如果控制条当前是可见的，则隐藏
         if (!playerContainer.classList.contains('dplayer-hide-controller')) {
             hideControlsImmediately();
@@ -2096,34 +2100,13 @@ function setupControlsAutoHide(dpInstance) {
         }
     }
 
-    // ===== 触摸事件处理 =====
-    playerContainer.addEventListener('touchstart', (e) => {
-        touchStartTime = Date.now();
-        // 立即显示控制条（用于长按情况）
-        resetHideTimer();
-    });
+    // ===== 统一事件监听 =====
+    // 只使用DPlayer的video_click事件（避免重复监听）
+    dpInstance.off('video_click'); // 先移除可能存在的旧监听器
+    dpInstance.on('video_click', handlePlayerInteraction);
 
-    playerContainer.addEventListener('touchend', (e) => {
-        const touchDuration = Date.now() - touchStartTime;
-
-        // 短按（单击）处理
-        if (touchDuration < CLICK_DEADZONE) {
-            // 延迟一点处理，确保不会与touchstart冲突
-            setTimeout(() => {
-                handlePlayerClick();
-            }, 50);
-        }
-        // 长按情况已在touchstart中处理
-    });
-
-    // ===== 视频点击事件（DPlayer原生） =====
-    dpInstance.on('video_click', () => {
-        // 使用与touchend相同的处理逻辑
-        handlePlayerClick();
-    });
-
-    // ===== 其他事件处理 =====
-    // 鼠标移动显示控制条
+    // ===== 其他必要事件处理 =====
+    // 鼠标移动显示控制条（桌面端）
     playerContainer.addEventListener('mousemove', resetHideTimer);
 
     // 播放器事件处理
@@ -2142,5 +2125,4 @@ function setupControlsAutoHide(dpInstance) {
     // 初始状态
     resetHideTimer();
 }
-
 
