@@ -2047,76 +2047,86 @@ async function switchLine(newSourceCode) {
 }
 // end
 
-// ===== 在文件末尾添加以下新函数 =====
 /**
  * 设置控制条自动隐藏（包括中央播放按钮）
  * @param {Object} dpInstance - DPlayer 实例
  */
 function setupControlsAutoHide(dpInstance) {
     if (!dpInstance) return;
-
+    
     const CONTROLS_HIDE_DELAY = 3000; // 3秒后隐藏控制条
     let hideControlsTimeout;
-    const playerContainer = document.querySelector('.player-container');
-
+    
+    // 获取DPlayer容器元素
+    const playerContainer = dpInstance.container;
     if (!playerContainer) return;
-
+    
     // 确保初始状态正确
-    playerContainer.classList.remove('hide-controller');
-
+    playerContainer.classList.remove('dplayer-hide-controller');
+    
     // 重置隐藏计时器
     function resetHideTimer() {
         if (isScreenLocked) return; // 锁屏时不隐藏
-
+        
         clearTimeout(hideControlsTimeout);
+        
         // 显示控制条和中央按钮
-        playerContainer.classList.remove('hide-controller');
-
+        playerContainer.classList.remove('dplayer-hide-controller');
+        
         // 设置新的隐藏计时器
         hideControlsTimeout = setTimeout(() => {
-            // 只有在播放状态下才隐藏（暂停时保持显示）
+            // 只有在播放状态下才隐藏
             if (dpInstance.video && !dpInstance.video.paused) {
-                playerContainer.classList.add('hide-controller');
+                // 模拟点击事件来触发DPlayer自带的隐藏逻辑
+                simulateClickOnPlayer();
             }
         }, CONTROLS_HIDE_DELAY);
     }
-
+    
+    /**
+     * 在播放器区域模拟点击事件
+     * 这会触发DPlayer自带的控制条隐藏逻辑
+     */
+    function simulateClickOnPlayer() {
+        const videoWrap = document.querySelector('.dplayer-video-wrap');
+        if (videoWrap) {
+            // 创建鼠标事件
+            const clickEvent = new MouseEvent('click', {
+                view: window,
+                bubbles: true,
+                cancelable: true
+            });
+            
+            // 派发事件
+            videoWrap.dispatchEvent(clickEvent);
+        }
+    }
+    
     // 初始重置计时器
     resetHideTimer();
-
+    
     // 监听播放器区域的交互事件
     const events = ['mousemove', 'mousedown', 'touchstart', 'touchmove', 'touchend'];
     events.forEach(event => {
         playerContainer.addEventListener(event, resetHideTimer);
     });
-
+    
     // 播放器事件处理
-    dpInstance.on('play', () => {
-        resetHideTimer();
-        // 延迟添加隐藏类，确保播放按钮正确隐藏
-        setTimeout(() => playerContainer.classList.add('hide-controller'), CONTROLS_HIDE_DELAY);
-    });
-
+    dpInstance.on('play', resetHideTimer);
+    
     dpInstance.on('pause', () => {
-        // 暂停时强制显示控制条和播放按钮
+        // 暂停时强制显示控制条
         clearTimeout(hideControlsTimeout);
-        playerContainer.classList.remove('hide-controller');
+        playerContainer.classList.remove('dplayer-hide-controller');
     });
-
+    
     dpInstance.on('seeked', resetHideTimer);
-
+    
     // 全屏切换时重置
     dpInstance.on('fullscreen', resetHideTimer);
     dpInstance.on('fullscreen_cancel', resetHideTimer);
-
-    // 视频点击事件处理
-    const videoWrap = document.querySelector('.dplayer-video-wrap');
-    if (videoWrap) {
-        videoWrap.addEventListener('click', (e) => {
-            // 如果是中央按钮被点击，不重置计时器（由播放/暂停事件处理）
-            if (!e.target.closest('.dplayer-play-icon')) {
-                resetHideTimer();
-            }
-        });
-    }
+    
+    // 视频点击事件处理 - 使用DPlayer自带逻辑
+    dpInstance.on('video_click', resetHideTimer);
 }
+
