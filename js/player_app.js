@@ -2055,23 +2055,23 @@ function setupControlsAutoHide(dpInstance) {
     if (!dpInstance) return;
     
     const CONTROLS_HIDE_DELAY = 3000; // 3秒后隐藏控制条
-    const TOUCH_HOLD_DELAY = 300; // 触摸保持时间（300ms）
     let hideControlsTimeout;
-    let touchStartTime = 0;
+    let isHidingIntentionally = false; // 标记用户是否主动点击隐藏
     const playerContainer = dpInstance.container;
     
     if (!playerContainer) return;
     
-    // 确保初始状态正确
-    playerContainer.classList.remove('dplayer-hide-controller');
-    
-    // 重置隐藏计时器（无延迟）
+    // 重置隐藏计时器
     function resetHideTimer() {
         if (isScreenLocked) return;
         
         clearTimeout(hideControlsTimeout);
+        isHidingIntentionally = false;
+        
+        // 显示控制条
         playerContainer.classList.remove('dplayer-hide-controller');
         
+        // 设置新的隐藏计时器
         hideControlsTimeout = setTimeout(() => {
             if (dpInstance.video && !dpInstance.video.paused) {
                 playerContainer.classList.add('dplayer-hide-controller');
@@ -2079,45 +2079,38 @@ function setupControlsAutoHide(dpInstance) {
         }, CONTROLS_HIDE_DELAY);
     }
     
-    // 延迟重置隐藏计时器（用于触摸事件）
-    function delayedResetHideTimer() {
+    // 立即隐藏控制条（用户主动点击隐藏）
+    function hideControlsImmediately() {
         clearTimeout(hideControlsTimeout);
-        playerContainer.classList.remove('dplayer-hide-controller');
-        
-        // 延迟开始隐藏倒计时
-        setTimeout(() => {
-            resetHideTimer();
-        }, TOUCH_HOLD_DELAY);
+        playerContainer.classList.add('dplayer-hide-controller');
+        isHidingIntentionally = true;
     }
     
-    // ===== 触摸事件处理 =====
-    playerContainer.addEventListener('touchstart', (e) => {
-        touchStartTime = Date.now();
+    // ===== 核心点击处理逻辑 =====
+    function handlePlayerInteraction(e) {
+        // 如果是控制条上的操作，不处理（避免点击按钮时隐藏控制条）
+        if (e.target.closest('.dplayer-controller, .dplayer-play-icon')) {
+            return;
+        }
         
-        // 立即显示控制条
-        playerContainer.classList.remove('dplayer-hide-controller');
-    });
-    
-    playerContainer.addEventListener('touchend', (e) => {
-        const touchDuration = Date.now() - touchStartTime;
-        
-        // 区分短按和长按
-        if (touchDuration < TOUCH_HOLD_DELAY) {
-            // 短按（单击）：延迟重置计时器
-            delayedResetHideTimer();
+        // 如果控制条当前是可见的
+        if (!playerContainer.classList.contains('dplayer-hide-controller')) {
+            // 用户主动点击隐藏
+            hideControlsImmediately();
         } else {
-            // 长按：立即重置计时器
+            // 控制条是隐藏的，显示并开始倒计时
             resetHideTimer();
         }
-    });
+    }
     
-    // ===== 鼠标/指针事件处理 =====
-    const mouseEvents = ['mousemove', 'mousedown'];
-    mouseEvents.forEach(event => {
-        playerContainer.addEventListener(event, resetHideTimer);
-    });
+    // ===== 事件监听 =====
+    // 视频区域点击（使用DPlayer原生事件）
+    dpInstance.on('video_click', handlePlayerInteraction);
     
-    // ===== 播放器事件处理 =====
+    // 鼠标移动显示控制条
+    playerContainer.addEventListener('mousemove', resetHideTimer);
+    
+    // 播放器事件处理
     dpInstance.on('play', resetHideTimer);
     
     dpInstance.on('pause', () => {
@@ -2130,6 +2123,7 @@ function setupControlsAutoHide(dpInstance) {
     dpInstance.on('fullscreen', resetHideTimer);
     dpInstance.on('fullscreen_cancel', resetHideTimer);
     
-    dpInstance.on('video_click', delayedResetHideTimer);
+    // 初始状态
+    resetHideTimer();
 }
 
