@@ -2048,8 +2048,7 @@ async function switchLine(newSourceCode) {
 // end
 
 /**
- * 设置控制条自动隐藏
- * @param {Object} dpInstance - DPlayer 实例
+ * 设置控制条自动隐藏（包括中央播放按钮）
  */
 function setupControlsAutoHide(dpInstance) {
     if (!dpInstance) return;
@@ -2065,7 +2064,7 @@ function setupControlsAutoHide(dpInstance) {
         if (isScreenLocked) return; // 锁屏时不隐藏
         
         clearTimeout(hideControlsTimeout);
-        // 显示控制条
+        // 显示控制条和中央按钮
         playerContainer.classList.remove('hide-controller');
         
         // 设置新的隐藏计时器
@@ -2091,4 +2090,15 @@ function setupControlsAutoHide(dpInstance) {
     // 全屏切换时重置
     dpInstance.on('fullscreen', resetHideTimer);
     dpInstance.on('fullscreen_cancel', resetHideTimer);
+    
+    // 视频点击事件（防止中央按钮干扰）
+    const videoWrap = document.querySelector('.dplayer-video-wrap');
+    if (videoWrap) {
+        videoWrap.addEventListener('click', (e) => {
+            // 如果是中央按钮被点击，不重置计时器
+            if (!e.target.closest('.dplayer-play-icon')) {
+                resetHideTimer();
+            }
+        });
+    }
 }
