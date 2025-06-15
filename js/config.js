@@ -17,6 +17,8 @@ const SITE_CONFIG = {
     version: '1.0.3' 
 };
 
+window.SITE_CONFIG = SITE_CONFIG; // <-- 新增此行，使其全局可用
+
 // API站点配置（已更新 api 字段以包含完整路径）
 const API_SITES = { 
     jmzy: { api: 'https://api.jmzy.com/api.php/provide/vod', name: '金马资源' },
@@ -41,6 +43,8 @@ const API_SITES = {
     wwzy: { api: 'https://wwzy.tv/api.php/provide/vod', name: '旺旺短剧' },
     ikun: { api: 'https://ikunzyapi.com/api.php/provide/vod', name: 'iKun资源' } 
 };
+
+window.API_SITES = API_SITES; // <-- 新增此行，使其全局可用
 
 // 聚合搜索配置 (与 renew.txt 原有保持一致)
 const AGGREGATED_SEARCH_CONFIG = { 
