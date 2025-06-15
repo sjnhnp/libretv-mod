@@ -268,8 +268,6 @@ let nextSeekPosition = 0; // Stores the position to seek to for the next episode
 let _tempUrlForCustomHls = ''; // Temporary holder for the URL if DPlayer options are stale in customType
 let lastTapTimeForDoubleTap = 0;
 let vodIdForPlayer = ''; // 新增全局变量存储从URL获取的 VOD ID
-// Add timer to auto-hide controls
-let controlsTimer;
 
 // ✨ 新实现：统一在这里生成『剧集级』或『全集级』标识
 function getShowIdentifier(perEpisode = true) {
@@ -836,13 +834,15 @@ function initPlayer(videoUrl, sourceCode) {
         if (debugMode) console.log("[PlayerApp] DPlayer instance created.");
 
         // Add DPlayer event listeners
+
         addDPlayerEventListeners();
 
         // 安卓特殊hack，防止右半屏菜单
         patchAndroidVideoHack();
+        // 移动端控制条自动隐藏
+        setupControlsAutoHide();
         // 添加跳过功能
         handleSkipIntroOutro(dp);
-
     } catch (playerError) {
         console.error("Failed to initialize DPlayer:", playerError);
         showError("播放器初始化失败");
@@ -2046,3 +2046,49 @@ async function switchLine(newSourceCode) {
     }
 }
 // end
+
+/**
+ * 设置控制条自动隐藏
+ * @param {Object} dpInstance - DPlayer 实例
+ */
+function setupControlsAutoHide(dpInstance) {
+    if (!dpInstance) return;
+    
+    const CONTROLS_HIDE_DELAY = 3000; // 3秒后隐藏控制条
+    let hideControlsTimeout;
+    const playerContainer = document.querySelector('.player-container');
+    
+    if (!playerContainer) return;
+    
+    // 重置隐藏计时器
+    function resetHideTimer() {
+        if (isScreenLocked) return; // 锁屏时不隐藏
+        
+        clearTimeout(hideControlsTimeout);
+        // 显示控制条
+        playerContainer.classList.remove('hide-controller');
+        
+        // 设置新的隐藏计时器
+        hideControlsTimeout = setTimeout(() => {
+            playerContainer.classList.add('hide-controller');
+        }, CONTROLS_HIDE_DELAY);
+    }
+    
+    // 初始重置计时器
+    resetHideTimer();
+    
+    // 监听播放器区域的交互事件
+    const events = ['mousemove', 'mousedown', 'touchstart', 'touchmove', 'touchend'];
+    events.forEach(event => {
+        playerContainer.addEventListener(event, resetHideTimer);
+    });
+    
+    // 播放器事件也重置计时器
+    dpInstance.on('play', resetHideTimer);
+    dpInstance.on('pause', resetHideTimer);
+    dpInstance.on('seeked', resetHideTimer);
+    
+    // 全屏切换时重置
+    dpInstance.on('fullscreen', resetHideTimer);
+    dpInstance.on('fullscreen_cancel', resetHideTimer);
+}

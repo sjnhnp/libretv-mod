@@ -635,3 +635,23 @@ input:checked+.slider:before {
   transform-origin: bottom center; /* 动画基点改为底部中心 */
 }
 /* END: 线路切换菜单样式 */
+
+/* 在文件末尾添加以下样式 */
+.player-container.hide-controller .dplayer-controller,
+.player-container.hide-controller .dplayer-bar-wrap {
+    opacity: 0 !important;
+    transform: translateY(40px) !important;
+    pointer-events: none !important;
+}
+
+.player-container .dplayer-controller,
+.player-container .dplayer-bar-wrap {
+    transition: all 0.3s ease !important;
+}
+
+/* 确保播放按钮在控制条隐藏时仍然可见 */
+.player-container.hide-controller .dplayer-play-icon {
+    opacity: 1 !important;
+    transform: none !important;
+    pointer-events: auto !important;
+}
