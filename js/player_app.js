@@ -84,7 +84,8 @@ function setupSkipControls() {
     }
 
     // 显示 / 隐藏菜单
-    skipButton.addEventListener('click', () => {
+    button.addEventListener('click', (e) => {
+        e.stopPropagation();
         if (dropdown.classList.contains('hidden')) {
             dropdown.classList.remove('hidden');
             dropdown.classList.add('block');
@@ -93,7 +94,6 @@ function setupSkipControls() {
             dropdown.classList.remove('block');
         }
     });
-
 
     // 应用设置按钮
     applyBtn.addEventListener('click', () => {
@@ -644,7 +644,7 @@ function initializePageContent() {
     });
     updateButtonStates();
     updateOrderButton();
-    setupLineSwitching(); 
+    setupLineSwitching();
 
     setTimeout(() => {
         setupProgressBarPreciseClicks();
@@ -1940,14 +1940,14 @@ async function switchLine(newSourceCode) {
         if (isCustom) {
             searchUrl += `&customApi=${encodeURIComponent(apiInfo.url)}`;
         }
-        
+
         const searchRes = await fetch(searchUrl);
         const searchData = await searchRes.json();
 
         if (searchData.code !== 200 || !searchData.list || searchData.list.length === 0) {
             throw new Error(`在线路“${apiInfo.name}”上未找到《${currentVideoTitle}》`);
         }
-        
+
         // 简单匹配第一个结果，可以优化为更精确的匹配
         const newVodId = searchData.list[0].vod_id;
         if (!newVodId) throw new Error("新线路返回的数据中缺少视频ID");
