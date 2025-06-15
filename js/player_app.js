@@ -1989,7 +1989,7 @@ async function switchLine(newSourceCode) {
 
         // 更新UI
         renderEpisodes();
-       // setupLineSwitching(); // 重新渲染线路列表以更新active状态
+        // setupLineSwitching(); // 重新渲染线路列表以更新active状态
         showMessage(`已切换到线路: ${apiInfo.name}`, 'success');
 
     } catch (err) {
@@ -1998,4 +1998,3 @@ async function switchLine(newSourceCode) {
         if (loadingEl) loadingEl.style.display = 'none';
     }
 }
-// END: 新增线路切换功能相关函数

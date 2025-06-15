@@ -561,6 +561,7 @@ input:checked+.slider:before {
 }
 
 #line-switch-dropdown {
+  display: block; 
   position: absolute;
   top: 100%;
   /* <-- 修改这里：从按钮下方弹出 */
@@ -615,13 +616,3 @@ input:checked+.slider:before {
 }
 
 /* END: 线路切换菜单样式 */
-
-/* 默认隐藏 */
-#line-switch-dropdown {
-  display: none;
-}
-
-/* 只要不是 .hidden，就强制显示为 block */
-#line-switch-dropdown:not(.hidden) {
-  display: block;
-}
