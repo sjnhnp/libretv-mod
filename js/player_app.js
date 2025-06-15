@@ -2129,4 +2129,3 @@ function setupControlsAutoHide(dpInstance) {
     // 视频点击事件处理 - 使用DPlayer自带逻辑
     dpInstance.on('video_click', resetHideTimer);
 }
-

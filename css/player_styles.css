@@ -634,9 +634,8 @@ input:checked+.slider:before {
   margin-bottom: 8px; /* 菜单与按钮的间距 */
   transform-origin: bottom center; /* 动画基点改为底部中心 */
 }
-/* END: 线路切换菜单样式 */
 
-/* 在文件末尾添加以下样式 */
+/* 修复Android中央按钮+控制条自动隐藏 */
 .player-container.hide-controller .dplayer-controller,
 .player-container.hide-controller .dplayer-bar-wrap,
 .player-container.hide-controller .dplayer-play-icon,
