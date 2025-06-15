@@ -1837,15 +1837,61 @@ function setupLineSwitching() {
     const dropdown = document.getElementById('line-switch-dropdown');
     if (!button || !dropdown) return;
 
-    // 点击按钮显示/隐藏下拉菜单
+    const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
+   
+    // 渲染菜单内容
+    const renderMenu = () => {
+        const selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '[]');
+        const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
+        
+        dropdown.innerHTML = ''; // 清空
+        
+        if (selectedAPIs.length === 0) {
+            dropdown.innerHTML = `<div class="p-3 text-sm text-gray-400 text-center">无可用线路</div>`;
+            return;
+        }
+
+        selectedAPIs.forEach(sourceCode => {
+            let apiInfo = {};
+            if (sourceCode.startsWith('custom_')) {
+                const index = parseInt(sourceCode.replace('custom_', ''));
+                const customApi = customAPIs[index];
+                if (customApi) apiInfo = { name: customApi.name };
+            } else if (window.API_SITES && window.API_SITES[sourceCode]) {
+                apiInfo = { name: window.API_SITES[sourceCode].name };
+            }
+
+            if (apiInfo.name) {
+                const item = document.createElement('button');
+                item.type = 'button';
+                // 直接在这里使用Tailwind CSS类名来定义按钮样式
+                const isActive = sourceCode === currentSourceCode;
+                item.className = `block w-full text-left px-3 py-2 text-sm transition-colors ${ 
+                    isActive 
+                    ? 'bg-blue-600 text-white font-semibold' 
+                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                }`;
+                item.textContent = apiInfo.name;
+                item.dataset.sourceCode = sourceCode;
+                if (isActive) item.disabled = true;
+                dropdown.appendChild(item);
+            }
+        });
+    };
+
+    // 点击按钮时，渲染内容并切换显示状态
     button.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (dropdown.classList.contains('hidden')) {
-            dropdown.classList.remove('hidden');
-            dropdown.classList.add('block');
-        } else {
-            dropdown.classList.add('hidden');
-            dropdown.classList.remove('block');
+        renderMenu(); // 每次点击都重新渲染，确保状态最新
+        dropdown.classList.toggle('hidden');
+    });
+
+    // 点击菜单项进行切换
+    dropdown.addEventListener('click', (e) => {
+        const target = e.target.closest('button[data-source-code]');
+        if (target && !target.disabled) {
+            dropdown.classList.add('hidden'); // 立即隐藏菜单
+            switchLine(target.dataset.sourceCode); // 调用您原来的切换函数
         }
     });
 
@@ -1853,54 +1899,6 @@ function setupLineSwitching() {
     document.addEventListener('click', (e) => {
         if (!button.contains(e.target) && !dropdown.contains(e.target)) {
             dropdown.classList.add('hidden');
-            dropdown.classList.remove('block');
-        }
-    });
-
-    // 从localStorage获取数据源信息
-    const selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '[]');
-    const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
-    const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
-
-    dropdown.innerHTML = ''; // 清空
-    const fragment = document.createDocumentFragment();
-
-    selectedAPIs.forEach(sourceCode => {
-        let apiInfo = {};
-        if (sourceCode.startsWith('custom_')) {
-            const index = parseInt(sourceCode.replace('custom_', ''));
-            const customApi = customAPIs[index];
-            if (customApi) {
-                apiInfo = { name: customApi.name, url: customApi.url };
-            }
-        } else {
-            if (window.API_SITES && window.API_SITES[sourceCode]) {
-                apiInfo = { name: window.API_SITES[sourceCode].name, url: window.API_SITES[sourceCode].api };
-            }
-        }
-
-        if (apiInfo.name) {
-            const lineButton = document.createElement('button');
-            lineButton.textContent = apiInfo.name;
-            lineButton.dataset.sourceCode = sourceCode;
-            if (sourceCode === currentSourceCode) {
-                lineButton.classList.add('line-active');
-                lineButton.disabled = true;
-            }
-            fragment.appendChild(lineButton);
-        }
-    });
-
-    dropdown.appendChild(fragment);
-
-    // 使用事件委托处理点击事件
-    dropdown.addEventListener('click', (e) => {
-        const target = e.target.closest('button[data-source-code]');
-        if (target && !target.disabled) {
-            const newSourceCode = target.dataset.sourceCode;
-            switchLine(newSourceCode);
-            dropdown.classList.add('hidden');
-            dropdown.classList.remove('block');
         }
     });
 }
