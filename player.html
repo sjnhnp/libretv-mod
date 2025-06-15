@@ -120,6 +120,21 @@
         <!-- Position 3, 5: Controls and Lock Button -->
 
         <div class="p-4 bg-gray-900 rounded-lg mx-4 mb-4">
+            <div class="flex items-center gap-2 relative" id="line-switcher-container">
+                <button id="line-switcher-btn"
+                    class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors"
+                    aria-label="切换线路" type="button">
+                    <span id="line-switcher-label">线路</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div id="line-switcher-dropdown"
+                    class="absolute z-[2222] top-full left-0 mt-2 w-36 max-h-72 overflow-y-auto bg-gray-900 rounded-md shadow-lg border border-gray-700 hidden">
+                    <!-- JS填充 -->
+                </div>
+            </div>
             <div class="player-control-bar">
                 <div class="flex items-center gap-2">
                     <span id="autoplay-label" class="control-label">自动播放</span>

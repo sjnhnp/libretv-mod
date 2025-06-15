@@ -1826,3 +1826,220 @@ function doEpisodeSwitch(index, url) {
 }
 
 window.playEpisode = playEpisode;
+
+// ====== 线路切换功能实现 ======
+
+/**
+ * 获取当前已选API源列表（包括自定义API）
+ * 返回数组: [{code, name, url, isCustom}]
+ */
+function getSelectedLineSources() {
+    // 读取首页localStorage保存的selectedAPIs和customAPIs
+    let selectedAPIs = [];
+    try {
+        selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '[]');
+    } catch { }
+    let customAPIs = [];
+    try {
+        customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
+    } catch { }
+
+    const result = [];
+    for (const code of selectedAPIs) {
+        if (code.startsWith('custom_')) {
+            const idx = parseInt(code.replace('custom_', ''), 10);
+            const apiItem = customAPIs[idx];
+            if (apiItem)
+                result.push({ code, name: apiItem.name, url: apiItem.url, isCustom: true });
+        } else if (typeof API_SITES !== 'undefined' && API_SITES[code]) {
+            result.push({ code, name: API_SITES[code].name, url: API_SITES[code].api, isCustom: false });
+        }
+    }
+    return result;
+}
+
+/**
+ * 渲染线路下拉菜单
+ */
+function renderLineSwitcherMenu(currentSourceCode) {
+    const dropdown = document.getElementById('line-switcher-dropdown');
+    if (!dropdown) return;
+
+    const lines = getSelectedLineSources();
+    if (!lines.length) {
+        dropdown.innerHTML = `<div class="p-3 text-gray-400 text-center">暂无可用线路</div>`;
+        return;
+    }
+
+    dropdown.innerHTML = '';
+    lines.forEach(line => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = "block w-full text-left px-4 py-2 text-sm hover:bg-blue-600 hover:text-white transition-colors " +
+            (line.code === currentSourceCode ? 'bg-blue-700 text-white font-bold' : 'text-gray-200');
+        item.textContent = line.name;
+        item.dataset.lineCode = line.code;
+        if (line.code === currentSourceCode) item.disabled = true;
+        item.onclick = (e) => {
+            dropdown.classList.add('hidden');
+            switchLineTo(line.code);
+        };
+        dropdown.appendChild(item);
+    });
+}
+
+/**
+ * 初始化线路切换相关事件
+ */
+function setupLineSwitcher() {
+    const btn = document.getElementById('line-switcher-btn');
+    const dropdown = document.getElementById('line-switcher-dropdown');
+    if (!btn || !dropdown) return;
+
+    // 当前线路高亮
+    let currentSourceCode = new URLSearchParams(window.location.search).get('source_code') || '';
+    renderLineSwitcherMenu(currentSourceCode);
+
+    btn.addEventListener('click', e => {
+        e.stopPropagation();
+        // 每次打开都刷新内容和当前高亮
+        currentSourceCode = new URLSearchParams(window.location.search).get('source_code') || '';
+        renderLineSwitcherMenu(currentSourceCode);
+        dropdown.classList.toggle('hidden');
+    });
+
+    // 点外部关闭
+    document.addEventListener('click', function (e) {
+        if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+}
+
+/**
+ * 切换到指定线路(code)，并保持当前集和播放进度
+ */
+async function switchLineTo(targetSourceCode) {
+    // 1. 当前剧集ID、集数index，已在全局变量里
+    // 2. 获取vod_id（如果有），否则用title+其它标识
+    // 3. 查找该线路的API信息
+    const lines = getSelectedLineSources();
+    const targetLine = lines.find(l => l.code === targetSourceCode);
+    if (!targetLine) {
+        if (typeof showMessage === 'function') showMessage('未找到目标线路', 'error');
+        return;
+    }
+
+    // 4. 取当前剧集的vod_id和title
+    const urlParams = new URLSearchParams(window.location.search);
+    const vodId = urlParams.get('id') || window.vodIdForPlayer || '';
+    const videoTitle = window.currentVideoTitle || document.title.replace(/ - .*/, '');
+    const currentEpIdx = window.currentEpisodeIndex || 0;
+
+    // 5. 查询目标线路该剧的详情，获取所有集数
+    let detailApiUrl = `/api/detail?source=${encodeURIComponent(targetLine.code)}`;
+    if (vodId) detailApiUrl += `&id=${encodeURIComponent(vodId)}`;
+    // 自定义API要加customApi参数
+    if (targetLine.isCustom && targetLine.url) {
+        detailApiUrl += `&customApi=${encodeURIComponent(targetLine.url)}`;
+    }
+
+    // --- 兼容没有vod_id的情况：用title在该API搜一遍，找最相似的名字的剧（简化逻辑） ---
+    let episodes = [];
+    let matchedVodId = vodId;
+    let videoInfo = {};
+    let fetchFailed = false;
+    let fetchErrorMsg = '';
+
+    if (!vodId) {
+        // 如果没有vod_id，降级为用title搜索
+        try {
+            const searchApiUrl = targetLine.isCustom
+                ? `/api/search?wd=${encodeURIComponent(videoTitle)}&source=${encodeURIComponent(targetLine.code)}&customApi=${encodeURIComponent(targetLine.url)}`
+                : `/api/search?wd=${encodeURIComponent(videoTitle)}&source=${encodeURIComponent(targetLine.code)}`;
+            const resp = await fetch(searchApiUrl);
+            const data = await resp.json();
+            if (data && Array.isArray(data.list) && data.list.length > 0) {
+                // 简单用第一个匹配（可优化为更智能的相似度匹配）
+                matchedVodId = data.list[0].vod_id;
+            }
+        } catch (e) {
+            fetchFailed = true;
+            fetchErrorMsg = '切换线路时搜索失败';
+        }
+        if (matchedVodId) {
+            detailApiUrl += `&id=${encodeURIComponent(matchedVodId)}`;
+        } else {
+            fetchFailed = true;
+            fetchErrorMsg = '切换线路时未能匹配到相应剧集';
+        }
+    }
+
+    // --- 获取详情 ---
+    if (!fetchFailed) {
+        try {
+            const resp = await fetch(detailApiUrl);
+            const data = await resp.json();
+            if (data && Array.isArray(data.episodes) && data.episodes.length > 0) {
+                episodes = data.episodes;
+                videoInfo = data.videoInfo || {};
+            } else {
+                fetchFailed = true;
+                fetchErrorMsg = data.msg || '该线路无对应剧集';
+            }
+        } catch (e) {
+            fetchFailed = true;
+            fetchErrorMsg = '切换线路时获取详情失败';
+        }
+    }
+    if (fetchFailed) {
+        if (typeof showMessage === 'function') showMessage(fetchErrorMsg, 'error');
+        else if (typeof showToast === 'function') showToast(fetchErrorMsg, 'error');
+        return;
+    }
+
+    // --- 确定切换到的集数idx，并获取目标剧集所有集数 ---
+    let toEpIdx = currentEpIdx;
+    // 如果目标线路集数比当前少，则兜底为最后一集
+    if (toEpIdx >= episodes.length) toEpIdx = episodes.length - 1;
+
+    // --- 记住当前播放进度 ---
+    let playbackPosition = 0;
+    // 尝试用dp.video，否则用localStorage
+    try {
+        if (window.dp && window.dp.video && !isNaN(window.dp.video.currentTime)) {
+            playbackPosition = Math.floor(window.dp.video.currentTime);
+        }
+    } catch { }
+    if (!playbackPosition && typeof localStorage !== 'undefined') {
+        const progressKey = `videoProgress_${videoTitle}_${targetSourceCode}_ep${toEpIdx}`;
+        playbackPosition = parseInt(localStorage.getItem(progressKey) || '0', 10) || 0;
+    }
+
+    // --- 跳转并切换 ---
+    // 1. 更新localStorage的当前集数、全部集数
+    localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
+    localStorage.setItem('currentVideoTitle', videoTitle);
+    localStorage.setItem('currentEpisodeIndex', toEpIdx.toString());
+
+    // 2. 构建player.html新的URL参数
+    const url = new URL(window.location.origin + window.location.pathname);
+    url.searchParams.set('url', episodes[toEpIdx]);
+    url.searchParams.set('title', videoTitle);
+    url.searchParams.set('index', toEpIdx.toString());
+    url.searchParams.set('source', targetLine.name);
+    url.searchParams.set('source_code', targetLine.code);
+    if (matchedVodId) url.searchParams.set('id', matchedVodId);
+    if (playbackPosition > 0) url.searchParams.set('position', playbackPosition.toString());
+    // 保持广告过滤参数
+    const af = new URLSearchParams(window.location.search).get('af');
+    if (af) url.searchParams.set('af', af);
+
+    // 3. 跳转（刷新页面）
+    window.location.href = url.toString();
+}
+
+// DOMContentLoaded后初始化
+document.addEventListener('DOMContentLoaded', function () {
+    setupLineSwitcher();
+});
