@@ -553,3 +553,68 @@ input:checked+.slider:before {
   z-index: 10003 !important;
   pointer-events: auto !important;
 }
+
+/* START: 新增线路切换菜单样式 */
+.line-switch-container {
+  position: relative;
+  display: inline-block;
+}
+
+#line-switch-dropdown {
+  position: absolute;
+  bottom: calc(100% + 8px); /* 从按钮上方弹出 */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 150px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(25, 28, 38, 0.97);
+  border-radius: 8px;
+  border: 1px solid rgba(50, 50, 60, 0.5);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  padding: 8px;
+  z-index: 2223;
+  opacity: 0;
+  pointer-events: none;
+  transform-origin: bottom center;
+  transform: translateX(-50%) translateY(8px) scale(0.97);
+  transition:
+      opacity 0.18s cubic-bezier(0.25, 0.8, 0.25, 1),
+      transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+#line-switch-dropdown.block {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+#line-switch-dropdown button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 4px;
+  text-align: left;
+  font-size: 0.9em;
+  color: #c0c8e0;
+  background-color: transparent;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+#line-switch-dropdown button:last-child {
+  margin-bottom: 0;
+}
+
+#line-switch-dropdown button:hover {
+  background-color: #303442;
+}
+
+#line-switch-dropdown button.line-active {
+  background-color: #007bff;
+  color: #fff;
+  font-weight: bold;
+}
+/* END: 新增线路切换菜单样式 */
