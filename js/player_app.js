@@ -1828,27 +1828,33 @@ function doEpisodeSwitch(index, url) {
 
 window.playEpisode = playEpisode;
 
-// START: 新增线路切换功能相关函数
 /**
- * 设置线路切换功能
+ * 设置线路切换功能 (优化版)
+ * 增加了 touchend 事件处理，以兼容移动端设备。
+ * 使用 guard flag (_lineSwitchListenerAttached) 确保事件监听器只绑定一次。
  */
 function setupLineSwitching() {
     const button = document.getElementById('line-switch-button');
     const dropdown = document.getElementById('line-switch-dropdown');
     if (!button || !dropdown) return;
 
-    // 每次点击按钮时，都重新生成菜单内容，以确保高亮状态正确
-    button.addEventListener('click', (e) => {
-        e.stopPropagation();
+    // 1. 使用 guard flag 防止重复绑定事件监听器
+    if (button._lineSwitchListenerAttached) {
+        return;
+    }
 
-        // 1. 获取最新数据
+    // 2. 封装核心的菜单更新和显示/隐藏逻辑
+    const updateAndToggleMenu = (event) => {
+        event.stopPropagation();
+
+        // 动态生成菜单内容，以确保高亮状态永远是正确的
         const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
         const selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '[]');
         const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
 
-        // 2. 清空并重新填充菜单
-        dropdown.innerHTML = '';
+        dropdown.innerHTML = ''; // 每次点击都清空重建
 
+        const availableSources = [];
         if (selectedAPIs.length > 0) {
             selectedAPIs.forEach(sourceCode => {
                 let apiInfo = {};
@@ -1861,40 +1867,62 @@ function setupLineSwitching() {
                 }
 
                 if (apiInfo.name) {
-                    const item = document.createElement('button');
-                    item.textContent = apiInfo.name;
-                    item.dataset.sourceCode = sourceCode;
-                    // JS不再负责样式，只负责添加一个高亮类
-                    if (sourceCode === currentSourceCode) {
-                        item.classList.add('line-active');
-                        item.disabled = true;
-                    }
-                    dropdown.appendChild(item);
+                    availableSources.push({ name: apiInfo.name, code: sourceCode });
                 }
+            });
+        }
+
+        if (availableSources.length > 0) {
+            availableSources.forEach(source => {
+                const item = document.createElement('button');
+                item.textContent = source.name;
+                item.dataset.sourceCode = source.code;
+                item.className = 'w-full text-left px-3 py-2 rounded text-sm transition-colors'; // Tailwind classes
+                if (source.code === currentSourceCode) {
+                    item.classList.add('line-active'); // 高亮当前线路
+                    item.disabled = true;
+                }
+                dropdown.appendChild(item);
             });
         } else {
             dropdown.innerHTML = `<div class="text-center text-sm text-gray-500 py-2">无可用线路</div>`;
         }
 
-        // 3. 切换显示/隐藏
+        // 切换菜单的可见性
         dropdown.classList.toggle('hidden');
+    };
+
+    // 3. 为桌面端和移动端绑定事件
+    button.addEventListener('click', updateAndToggleMenu);
+    button.addEventListener('touchend', (e) => {
+        e.preventDefault(); // 关键：阻止 touchend 后触发 click 事件，避免双重 toggle
+        updateAndToggleMenu(e);
     });
 
-    // 点击菜单项进行切换
-    dropdown.addEventListener('click', (e) => {
-        const target = e.target.closest('button[data-source-code]');
-        if (target && !target.disabled) {
-            dropdown.classList.add('hidden');
-            switchLine(target.dataset.sourceCode); // 调用您原来的切换函数
-        }
-    });
+    // 4. 设置 flag，表示监听器已附加
+    button._lineSwitchListenerAttached = true;
 
-    // 点击页面其他地方隐藏下拉菜单
-    document.addEventListener('click', (e) => {
-        if (!dropdown.classList.contains('hidden') && !button.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.classList.add('hidden');
-        }
-    });
+    // 5. 为下拉菜单和文档本身绑定一次性事件（用于选择和点击外部关闭）
+    // 使用 guard flag 确保这些也只绑定一次
+    if (!dropdown._actionListener) {
+        dropdown.addEventListener('click', (e) => {
+            const target = e.target.closest('button[data-source-code]');
+            if (target && !target.disabled) {
+                dropdown.classList.add('hidden');
+                switchLine(target.dataset.sourceCode);
+            }
+        });
+        dropdown._actionListener = true;
+    }
+
+    if (!document._docClickListenerForLineSwitch) {
+        document.addEventListener('click', (e) => {
+            if (!dropdown.classList.contains('hidden') && !button.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+        document._docClickListenerForLineSwitch = true;
+    }
 }
 
 /**
