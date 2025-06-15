@@ -834,13 +834,15 @@ function initPlayer(videoUrl, sourceCode) {
         if (debugMode) console.log("[PlayerApp] DPlayer instance created.");
 
         // Add DPlayer event listeners
+
         addDPlayerEventListeners();
 
         // 安卓特殊hack，防止右半屏菜单
         patchAndroidVideoHack();
+        // 移动端控制条自动隐藏
+        setupControlsAutoHide(dp);
         // 添加跳过功能
         handleSkipIntroOutro(dp);
-
     } catch (playerError) {
         console.error("Failed to initialize DPlayer:", playerError);
         showError("播放器初始化失败");
@@ -1273,6 +1275,9 @@ function showShortcutHint(text, direction) {
  * @param {object} dpInstance DPlayer 实例
  * @param {HTMLElement} videoWrapElement 视频的包装元素 (通常是 .dplayer-video-wrap)
  */
+// 在 js/player_app.js 中找到 setupDoubleClickToPlayPause 函数
+// 修改为以下内容：
+
 function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
     if (!dpInstance || !videoWrapElement) {
         console.warn('[DoubleClick] DPlayer instance or video wrap element not provided.');
@@ -1283,20 +1288,19 @@ function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
         return; // 防止重复绑定监听器
     }
 
+    // 定义需要排除的控件选择器
+    const controlSelectors = [
+        '.dplayer-controller', // DPlayer 主控制条区域
+        '.dplayer-setting',    // 设置菜单
+        '.dplayer-comment',    // 弹幕相关（如果启用并可交互）
+        '.dplayer-notice',     // 播放器通知
+        '#episode-grid button' // 外部的选集按钮
+    ];
+
     videoWrapElement.addEventListener('touchend', function (e) {
         if (isScreenLocked) { // isScreenLocked 是您代码中已有的全局变量
-            return; // 屏幕锁定时，不响应双击
+            return; // 屏幕锁定时，不响应
         }
-
-        // 选择器数组，用于判断触摸是否发生在DPlayer的控件上
-        const controlSelectors = [
-            '.dplayer-controller', // DPlayer 主控制条区域
-            '.dplayer-setting',    // 设置菜单
-            '.dplayer-comment',    // 弹幕相关（如果启用并可交互）
-            '.dplayer-notice',     // 播放器通知
-            '#episode-grid button',// 外部的选集按钮
-            // 可以根据需要添加其他自定义的、位于 videoWrapElement 内的交互控件选择器
-        ];
 
         let tappedOnControl = false;
         for (const selector of controlSelectors) {
@@ -1318,17 +1322,34 @@ function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
             if (dpInstance && typeof dpInstance.toggle === 'function') {
                 dpInstance.toggle(); // 切换播放/暂停状态
             }
-            lastTapTimeForDoubleTap = 0; // 重置时间戳，防止连续三次点击被误判
+            lastTapTimeForDoubleTap = 0;
+
+            // 双击后显示控制条
+            const playerContainer = document.querySelector('.player-container');
+            if (playerContainer) {
+                playerContainer.classList.remove('dplayer-hide-controller');
+                // 重置隐藏计时器
+                if (typeof dpInstance.resetHideTimer === 'function') {
+                    dpInstance.resetHideTimer(true);
+                }
+            }
         } else {
-            // 单击 (或者是双击的第一次点击)
+            // 单击：显示控制条（如果当前是隐藏的）
+            const playerContainer = document.querySelector('.player-container');
+            if (playerContainer && playerContainer.classList.contains('dplayer-hide-controller')) {
+                playerContainer.classList.remove('dplayer-hide-controller');
+                if (typeof dpInstance.resetHideTimer === 'function') {
+                    dpInstance.resetHideTimer(true);
+                }
+            }
             lastTapTimeForDoubleTap = currentTime;
         }
-        // DPlayer 自己的单击事件会处理UI显隐，我们这里不需要额外操作
-        // 也不要在这里调用 e.preventDefault() 或 e.stopPropagation()，除非有非常明确的理由
     }, { passive: true }); // 使用 passive: true 明确表示我们不阻止默认的单击行为
 
     videoWrapElement._doubleTapListenerAttached = true; // 添加标记，表示已绑定
 }
+
+
 
 function setupLongPressSpeedControl() {
     if (!dp) return;
@@ -2042,4 +2063,85 @@ async function switchLine(newSourceCode) {
         showError(err.message || "切换线路失败，请重试");
         if (loadingEl) loadingEl.style.display = 'none';
     }
+}
+
+/**
+ * 设置控制条自动隐藏（包括中央播放按钮）- 已修复版本
+ * @param {Object} dpInstance - DPlayer 实例
+ */
+function setupControlsAutoHide(dpInstance) {
+    if (!dpInstance) return;
+
+    const CONTROLS_HIDE_DELAY = 3000; // 3秒后隐藏控制条
+    let hideControlsTimeout;
+    let isHidingIntentionally = false; // 标记用户是否主动点击隐藏
+    const playerContainer = dpInstance.container;
+
+    if (!playerContainer) return;
+
+    // 重置隐藏计时器
+    function resetHideTimer() {
+        if (isScreenLocked) return;
+
+        clearTimeout(hideControlsTimeout);
+        isHidingIntentionally = false;
+
+        // 显示控制条
+        playerContainer.classList.remove('dplayer-hide-controller');
+
+        // 设置新的隐藏计时器
+        hideControlsTimeout = setTimeout(() => {
+            if (dpInstance.video && !dpInstance.video.paused) {
+                playerContainer.classList.add('dplayer-hide-controller');
+            }
+        }, CONTROLS_HIDE_DELAY);
+    }
+
+    // 立即隐藏控制条（用户主动点击隐藏）
+    function hideControlsImmediately() {
+        clearTimeout(hideControlsTimeout);
+        playerContainer.classList.add('dplayer-hide-controller');
+        isHidingIntentionally = true;
+    }
+
+    // ===== 核心点击处理逻辑 =====
+    function handlePlayerInteraction(e) {
+        // 如果是控制条上的操作，不处理（避免点击按钮时隐藏控制条）
+        if (e.target.closest('.dplayer-controller, .dplayer-play-icon')) {
+            return;
+        }
+
+        // 如果控制条当前是可见的
+        if (!playerContainer.classList.contains('dplayer-hide-controller')) {
+            // 用户主动点击隐藏
+            hideControlsImmediately();
+        } else {
+            // 控制条是隐藏的，显示并开始倒计时
+            resetHideTimer();
+        }
+    }
+
+    // ===== 事件监听 =====
+    // 视频区域点击（使用DPlayer原生事件）
+    dpInstance.on('video_click', handlePlayerInteraction);
+
+    // 鼠标移动显示控制条
+    playerContainer.addEventListener('mousemove', resetHideTimer);
+
+    // 播放器事件处理
+    dpInstance.on('play', resetHideTimer);
+
+    dpInstance.on('pause', () => {
+        clearTimeout(hideControlsTimeout);
+        playerContainer.classList.remove('dplayer-hide-controller');
+    });
+
+    dpInstance.on('seeked', resetHideTimer);
+
+    dpInstance.on('fullscreen', resetHideTimer);
+    dpInstance.on('fullscreen_cancel', resetHideTimer);
+
+    // 初始状态
+    resetHideTimer();
+
 }
