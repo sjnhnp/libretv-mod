@@ -1,10 +1,15 @@
-- 绑定kv spacename：LIBRETV_PROXY_KV
-- cloudflare pages 部署方法见[上游](https://github.com/LibreSpark/LibreTV)
+- 上游：[Libretv](https://github.com/LibreSpark/LibreTV)
+- cf绑定
+  - kv spacename：LIBRETV_PROXY_KV
+  - 密码：PASSWORD
+- cloudflare pages / vercel 部署方法见[上游](https://github.com/LibreSpark/LibreTV)
   
 与[上游](https://github.com/LibreSpark/LibreTV)主要差异
 
-- 首页-设置-预加载集数开关
-- 代码优化/瘦身，重构
+- 首页
+  - 设置：预加载集数开关
+  - m3u8电视直播超链接，[项目地址](https://github.com/sjnhnp/m3u-player)
+- 代码重构
 - 播放页：
   - 依然使用dplayer
   - 记住进度：每一集，独立于观看历史进度
@@ -13,7 +18,18 @@
   - 跳过片头和片尾，自定义时间（秒）
   - 播放器双击：暂停/播放
   - 锁屏下，右上角全屏按钮+F快捷键全屏
+  - 播放页按钮：返回，用户体验是立即回到搜索结果
+  - 若集数只有1集，则隐藏集数区域
+  - 不同线路无缝切换：保持**播放进度**
+  - **Android播放器区域操作说明：**
+  ```
+    - 单击触摸，无触发行为。
+    - 单击触摸中央按钮位置，触发：暂停/播放，显示中央按钮+控制条
+    - 长按播放器区域其它位置，触发：显示中央按钮+控制条
+    - 长按右边区域：快进2x，松开后自动回复1x
+  ```
 - 观看历史
   - 保留观看过的每个集数
 - 首页集数弹窗，播放同样可以按每集进度进入
 - 豆瓣热门推荐的搜索结果，不计入搜索历史。
+
