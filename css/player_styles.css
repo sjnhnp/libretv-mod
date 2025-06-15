@@ -639,7 +639,8 @@ input:checked+.slider:before {
 /* 在文件末尾添加以下样式 */
 .player-container.hide-controller .dplayer-controller,
 .player-container.hide-controller .dplayer-bar-wrap,
-.player-container.hide-controller .dplayer-play-icon {
+.player-container.hide-controller .dplayer-play-icon,
+.player-container.hide-controller .dplayer-video-wrap.dplayer-paused .dplayer-play-icon {
     opacity: 0 !important;
     transform: translateY(40px) !important;
     pointer-events: none !important;
