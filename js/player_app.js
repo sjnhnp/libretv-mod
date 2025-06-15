@@ -1266,12 +1266,11 @@ function showShortcutHint(text, direction) {
     shortcutHintTimeout = setTimeout(() => hintElement.classList.remove('show'), 1500);
 }
 
-// 在 js/player_app.js 文件中，可以放在 setupLongPressSpeedControl 函数的上方或下方
-
 /**
- * 设置双击播放/暂停功能
- * @param {object} dpInstance DPlayer 实例
- * @param {HTMLElement} videoWrapElement 视频的包装元素 (通常是 .dplayer-video-wrap)
+ * 设置双击播放/暂停功能 (优化版)
+ * - 解决了移动端控件无法自动隐藏的问题。
+ * - 通过setTimeout区分单击和双击。
+ * - 单击时，主动调用DPlayer的API来显示/隐藏控件，并触发其自动隐藏计时器。
  */
 function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
     if (!dpInstance || !videoWrapElement) {
@@ -1279,56 +1278,58 @@ function setupDoubleClickToPlayPause(dpInstance, videoWrapElement) {
         return;
     }
 
+    // 使用 guard flag 防止重复绑定
     if (videoWrapElement._doubleTapListenerAttached) {
-        return; // 防止重复绑定监听器
+        return;
     }
 
+    let singleTapTimeout = null;
+    let lastTapTime = 0;
+    const DOUBLE_TAP_TIMEOUT = 300; // 双击间隔阈值(毫秒)
+
     videoWrapElement.addEventListener('touchend', function (e) {
-        if (isScreenLocked) { // isScreenLocked 是您代码中已有的全局变量
-            return; // 屏幕锁定时，不响应双击
+        if (isScreenLocked) return;
+
+        // 如果直接点击在DPlayer的控制条上，则不处理，让DPlayer自己响应
+        if (e.target.closest('.dplayer-controller')) {
+            return;
         }
 
-        // 选择器数组，用于判断触摸是否发生在DPlayer的控件上
-        const controlSelectors = [
-            '.dplayer-controller', // DPlayer 主控制条区域
-            '.dplayer-setting',    // 设置菜单
-            '.dplayer-comment',    // 弹幕相关（如果启用并可交互）
-            '.dplayer-notice',     // 播放器通知
-            '#episode-grid button',// 外部的选集按钮
-            // 可以根据需要添加其他自定义的、位于 videoWrapElement 内的交互控件选择器
-        ];
-
-        let tappedOnControl = false;
-        for (const selector of controlSelectors) {
-            if (e.target.closest(selector)) {
-                tappedOnControl = true;
-                break;
-            }
-        }
-
-        if (tappedOnControl) {
-            // 如果点击发生在控件上，则重置lastTapTimeForDoubleTap，避免影响下一次真正的视频区域点击
-            lastTapTimeForDoubleTap = 0;
-            return; // 不执行双击播放/暂停逻辑
-        }
+        // 我们接管视频区域的点击，所以阻止默认行为以避免冲突
+        e.preventDefault();
 
         const currentTime = new Date().getTime();
-        if ((currentTime - lastTapTimeForDoubleTap) < DOUBLE_TAP_INTERVAL) {
-            // 检测到双击
-            if (dpInstance && typeof dpInstance.toggle === 'function') {
-                dpInstance.toggle(); // 切换播放/暂停状态
-            }
-            lastTapTimeForDoubleTap = 0; // 重置时间戳，防止连续三次点击被误判
-        } else {
-            // 单击 (或者是双击的第一次点击)
-            lastTapTimeForDoubleTap = currentTime;
-        }
-        // DPlayer 自己的单击事件会处理UI显隐，我们这里不需要额外操作
-        // 也不要在这里调用 e.preventDefault() 或 e.stopPropagation()，除非有非常明确的理由
-    }, { passive: true }); // 使用 passive: true 明确表示我们不阻止默认的单击行为
+        const tapLength = currentTime - lastTapTime;
 
-    videoWrapElement._doubleTapListenerAttached = true; // 添加标记，表示已绑定
+        if (tapLength < DOUBLE_TAP_TIMEOUT && tapLength > 0) {
+            // --- 检测到双击 ---
+            clearTimeout(singleTapTimeout); // 取消待处理的单击事件
+            lastTapTime = 0; // 重置计时
+            dpInstance.toggle(); // 切换播放/暂停
+
+        } else {
+            // --- 这是第一次单击 ---
+            lastTapTime = currentTime;
+            singleTapTimeout = setTimeout(() => {
+                // 300毫秒后，如果没有后续点击，则确认为单击
+                const dplayerElement = dpInstance.container;
+
+                // 判断当前控件是否是隐藏状态
+                if (dplayerElement.classList.contains('dplayer-hide-controller')) {
+                    // 如果是隐藏的，调用 show() 来显示它，并启动自动隐藏计时器
+                    dpInstance.controller.show();
+                } else {
+                    // 如果是显示的，调用 hide() 将其立即隐藏
+                    dpInstance.controller.hide();
+                }
+                lastTapTime = 0; // 单击动作完成，重置计时
+            }, DOUBLE_TAP_TIMEOUT);
+        }
+    });
+
+    videoWrapElement._doubleTapListenerAttached = true; // 标记已绑定
 }
+
 
 function setupLongPressSpeedControl() {
     if (!dp) return;
