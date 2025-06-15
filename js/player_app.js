@@ -84,8 +84,7 @@ function setupSkipControls() {
     }
 
     // 显示 / 隐藏菜单
-    button.addEventListener('click', (e) => {
-        e.stopPropagation();
+    skipButton.addEventListener('click', () => {
         if (dropdown.classList.contains('hidden')) {
             dropdown.classList.remove('hidden');
             dropdown.classList.add('block');
@@ -94,6 +93,7 @@ function setupSkipControls() {
             dropdown.classList.remove('block');
         }
     });
+
 
     // 应用设置按钮
     applyBtn.addEventListener('click', () => {
@@ -1840,8 +1840,13 @@ function setupLineSwitching() {
     // 点击按钮显示/隐藏下拉菜单
     button.addEventListener('click', (e) => {
         e.stopPropagation();
-        dropdown.classList.toggle('block');
-        dropdown.classList.toggle('hidden');
+        if (dropdown.classList.contains('hidden')) {
+            dropdown.classList.remove('hidden');
+            dropdown.classList.add('block');
+        } else {
+            dropdown.classList.add('hidden');
+            dropdown.classList.remove('block');
+        }
     });
 
     // 点击页面其他地方隐藏下拉菜单
