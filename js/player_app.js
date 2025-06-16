@@ -2029,7 +2029,7 @@ async function switchLine(newSourceCode) {
 }
 
 /**
- * 设置控制条自动隐藏（包括中央播放按钮）- 已修复版本
+ * 设置控制条自动隐藏（包括中央播放按钮）- 最终修复版
  * @param {Object} dpInstance - DPlayer 实例
  */
 // js/player_app.js
@@ -2044,7 +2044,7 @@ function setupControlsAutoHide(dpInstance) {
     const CONTROLS_HIDE_DELAY = 3000;
     let hideControlsTimeout;
     const playerContainer = dpInstance.container;
-    const videoWrapElement = playerContainer.querySelector('.dplayer-video-wrap'); // 获取视频包装元素
+    const videoWrapElement = playerContainer.querySelector('.dplayer-video-wrap');
 
     if (!playerContainer || !videoWrapElement) return;
 
@@ -2070,7 +2070,7 @@ function setupControlsAutoHide(dpInstance) {
         document.addEventListener('touchend', endDrag);
         document.addEventListener('touchcancel', endDrag);
     }
-
+    
     // --- 重置隐藏计时器 ---
     function resetHideTimer() {
         if (isScreenLocked || isDraggingProgressBar) return;
@@ -2079,7 +2079,9 @@ function setupControlsAutoHide(dpInstance) {
         playerContainer.classList.remove('dplayer-hide-controller');
 
         hideControlsTimeout = setTimeout(() => {
-            if (dpInstance.video && !dpInstance.video.paused) {
+            // --- 核心修改点: 移除了 !dpInstance.video.paused 判断 ---
+            // 现在无论播放还是暂停，计时器到期后都会尝试隐藏控制条。
+            if (dpInstance.video) { // 仅需确保 video 元素存在
                 playerContainer.classList.add('dplayer-hide-controller');
             }
         }, CONTROLS_HIDE_DELAY);
@@ -2097,10 +2099,10 @@ function setupControlsAutoHide(dpInstance) {
             }
 
             const currentTime = new Date().getTime();
-            if ((currentTime - lastTapTimeForDoubleTap) < 300) { // DOUBLE_TAP_INTERVAL
+            if ((currentTime - lastTapTimeForDoubleTap) < 300) {
                 if (dpInstance && typeof dpInstance.toggle === 'function') {
                     dpInstance.toggle();
-                    resetHideTimer(); // <-- 核心修改：双击后立即显示UI并重置计时器
+                    resetHideTimer(); // 双击后立即显示UI并重置计时器
                 }
                 lastTapTimeForDoubleTap = 0;
             } else {
@@ -2114,6 +2116,7 @@ function setupControlsAutoHide(dpInstance) {
     playerContainer.addEventListener('mousemove', resetHideTimer);
     dpInstance.on('play', resetHideTimer);
     dpInstance.on('pause', () => {
+        // 这个处理器确保了用户通过UI按钮点击暂停时，控制条能保持可见
         clearTimeout(hideControlsTimeout);
         playerContainer.classList.remove('dplayer-hide-controller');
     });
