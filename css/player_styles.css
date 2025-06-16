@@ -670,22 +670,6 @@ header {
   padding: 6px 0; /* 增加垂直内边距 */
 }
 
-/* 视频标题使用相同字体大小 */
-#video-title {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  max-width: 56%; /* 稍微减少宽度 */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 1rem; /* 与返回按钮相同的字体大小 */
-  font-weight: 500; /* 使用中等粗细，与返回按钮更接近 */
-  padding: 0 8px;
-  text-align: center;
-}
-
 /* 全屏按钮样式调整 */
 #fullscreen-button {
   display: flex;
@@ -706,11 +690,6 @@ header {
 
 /* 响应式微调 */
 @media (max-width: 640px) {
-  #video-title {
-    max-width: 50%; /* 小屏幕上给标题更多空间 */
-    padding: 0 4px;
-  }
-  
   header {
     padding: 12px 8px;
     height: 52px;

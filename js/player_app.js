@@ -642,8 +642,6 @@ function initializePageContent() {
 
     // --- 更新页面标题和视频标题元素 ---
     document.title = `${currentVideoTitle} - 第 ${currentEpisodeIndex + 1} 集 - ${siteName}`;
-    const videoTitleElement = document.getElementById('video-title');
-    if (videoTitleElement) videoTitleElement.textContent = `${currentVideoTitle} (第 ${currentEpisodeIndex + 1} 集)`;
 
     if (episodeUrlForPlayer) {
         initPlayer(episodeUrlForPlayer, sourceCodeFromUrl); // 使用 sourceCodeFromUrl
@@ -1751,8 +1749,6 @@ function doEpisodeSwitch(index, url) {
     // 更新UI
     const siteName = (window.SITE_CONFIG && window.SITE_CONFIG.name) ? window.SITE_CONFIG.name : '播放器';
     document.title = `${currentVideoTitle} - 第 ${currentEpisodeIndex + 1} 集 - ${siteName}`;
-    const videoTitleElement = document.getElementById('video-title');
-    if (videoTitleElement) videoTitleElement.textContent = `${currentVideoTitle} (第 ${currentEpisodeIndex + 1} 集)`;
     if (typeof updateEpisodeInfo === 'function') updateEpisodeInfo();
     if (typeof renderEpisodes === 'function') renderEpisodes();
     if (typeof updateButtonStates === 'function') updateButtonStates();
