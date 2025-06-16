@@ -87,6 +87,12 @@ function setupSkipControls() {
     skipButton.addEventListener('click', (event) => {
         event.stopPropagation(); // 阻止事件冒泡，防止被 document 的点击事件立即关闭
 
+        // 在打开跳过菜单前，先关闭线路菜单
+        const lineDropdown = document.getElementById('line-switch-dropdown');
+        if (lineDropdown) {
+            lineDropdown.classList.add('hidden'); // 线路菜单使用 .hidden 类来隐藏
+        }
+
         const isCurrentlyVisible = dropdown.classList.contains('block');
 
         if (isCurrentlyVisible) {
@@ -1878,6 +1884,11 @@ function setupLineSwitching() {
     const updateAndToggleMenu = (event) => {
         event.stopPropagation();
 
+        // 在打开线路菜单前，先关闭跳过菜单
+        const skipDropdown = document.getElementById('skip-control-dropdown');
+        if (skipDropdown) {
+            skipDropdown.classList.remove('block'); // 跳过菜单使用 .block 类来显示
+        }
         // 动态生成菜单内容
         const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
 

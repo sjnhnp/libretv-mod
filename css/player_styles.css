@@ -384,7 +384,7 @@ input:checked+.slider:before {
   right: 0;
   /* 贴合父容器右侧 */
   left: auto;
-  width: clamp(180px, 60vw, 220px);
+  width: clamp(150px, 50vw, 190px);
   /* 响应式宽度 */
   max-width: calc(100vw - 16px);
   /* 视口宽度减去两侧各8px的安全边距 */
@@ -503,7 +503,7 @@ input:checked+.slider:before {
 /* 移动端调整 */
 @media (max-width: 480px) {
   #skip-control-dropdown {
-    width: clamp(180px, 75vw, 260px);
+    width: clamp(130px, 50vw, 180px);
     max-width: calc(100vw - 16px);
     padding: 10px 12px;
     right: 8px;
