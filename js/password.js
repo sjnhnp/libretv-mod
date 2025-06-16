@@ -1,6 +1,7 @@
 // 密码保护功能
 
-// ========== 配置项校验 ==========
+// 在文件顶部添加一个全局变量来跟踪验证目的
+window.verifyingPurpose = 'main'; // 'main' 或 'settings'
 
 // 只从全局读取，不再声明const，避免重复
 const PASSWORD_CONFIG = window.PASSWORD_CONFIG;
@@ -39,6 +40,23 @@ function isPasswordVerified() {
 // 全局导出，用于外部判断
 window.isPasswordProtected = isPasswordProtected;
 window.isPasswordVerified = isPasswordVerified;
+
+/**
+ * 校验输入密码是否正确（异步SHA-256）
+ * @param {string} password - 用户输入的密码
+ * @param {string} correctHash - 正确的密码哈希
+ */
+async function verifyPassword(password, correctHash) { // 修改此函数
+    if (!correctHash) return false;
+
+    try {
+        const inputHash = await sha256(password);
+        return inputHash === correctHash;
+    } catch (error) {
+        console.error('SHA-256 计算失败:', error);
+        return false;
+    }
+}
 
 /**
  * 校验输入密码是否正确（异步SHA-256）
@@ -111,13 +129,29 @@ function hidePasswordError() {
 /**
  * 密码提交事件处理（失败清空并refocus）
  */
-async function handlePasswordSubmit() {
+async function handlePasswordSubmit() { 
     const input = document.getElementById('passwordInput');
     const pwd = input ? input.value.trim() : '';
-    if (await verifyPassword(pwd)) {
+    const purpose = window.verifyingPurpose || 'main';
+
+    const targetHash = purpose === 'settings'
+        ? window.__ENV__?.SETTINGS_PASSWORD
+        : window.__ENV__?.PASSWORD;
+
+    if (await verifyPassword(pwd, targetHash)) {
         hidePasswordError();
         hidePasswordModal();
-        document.dispatchEvent(new CustomEvent('passwordVerified'));
+        if (purpose === 'main') {
+            localStorage.setItem(PASSWORD_CONFIG.localStorageKey, JSON.stringify({
+                verified: true,
+                timestamp: Date.now(),
+                passwordHash: targetHash
+            }));
+            document.dispatchEvent(new CustomEvent('passwordVerified'));
+        } else if (purpose === 'settings') {
+            // 验证成功后，分发一个自定义事件
+            document.dispatchEvent(new CustomEvent('settingsPasswordVerified'));
+        }
     } else {
         showPasswordError();
         if (input) {
