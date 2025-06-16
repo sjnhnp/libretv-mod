@@ -2028,10 +2028,8 @@ async function switchLine(newSourceCode) {
     }
 }
 
-// sjnhnp/libretv/libretv-mod-test/js/player_app.js
-
 /**
- * 设置控制条自动隐藏 - Overlay 最终稳定版
+ * 设置控制条自动隐藏 - 统一事件处理最终稳定版
  * @param {Object} dpInstance - DPlayer 实例
  */
 function setupControlsAutoHide(dpInstance) {
@@ -2040,14 +2038,9 @@ function setupControlsAutoHide(dpInstance) {
     const CONTROLS_HIDE_DELAY = 3000;
     let hideControlsTimeout;
     const playerContainer = dpInstance.container;
-    
-    // --- 修改点：现在我们的交互目标是 overlay ---
-    const overlay = document.getElementById('click-overlay');
-    
-    if (!playerContainer || !overlay) {
-        console.error("Player container or click overlay not found.");
-        return;
-    }
+    const videoWrapElement = playerContainer.querySelector('.dplayer-video-wrap');
+
+    if (!playerContainer || !videoWrapElement) return;
 
     let isDraggingProgressBar = false;
 
@@ -2074,35 +2067,43 @@ function setupControlsAutoHide(dpInstance) {
         document.addEventListener('touchcancel', endDrag);
     }
 
-    // 2. 统一的单击/双击事件处理器 (绑定到 overlay)
-    if (!overlay._unifiedClickListener) {
+    // 2. 统一的单击/双击事件处理器 (最终版)
+    if (!videoWrapElement._unifiedClickListener) {
         let clickTimeout = null;
         
-        overlay.addEventListener('click', function (e) {
+        // 我们监听 'click' 事件，并阻止其默认行为，以完全控制交互
+        videoWrapElement.addEventListener('click', function (e) {
             if (isScreenLocked) return;
+
+            // 关键：阻止 DPlayer 自身的任何默认单击/双击行为
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (e.target.closest('.dplayer-controller, .dplayer-setting, .dplayer-play-icon')) {
+                return;
+            }
 
             if (clickTimeout) {
                 // --- 检测到双击 ---
                 clearTimeout(clickTimeout);
                 clickTimeout = null;
                 dpInstance.toggle();
-                resetHideTimer();
+                resetHideTimer(); // 双击后，显示UI并启动自动隐藏计时
             } else {
                 // --- 这是第一次点击 ---
                 clickTimeout = setTimeout(() => {
-                    // --- 单击动作：切换控制条显示/隐藏 ---
-                    if (playerContainer.classList.contains('dplayer-hide-controller')) {
-                        resetHideTimer();
-                    } else {
-                        clearTimeout(hideControlsTimeout);
-                        playerContainer.classList.add('dplayer-hide-controller');
-                    }
-                    clickTimeout = null;
-                }, 250);
-            }
-        });
+                    // --- 单击动作 (250毫秒内没有第二次点击，则执行) ---
+                    
+                    // 核心修改：不再使用 toggle，而是明确地显示UI并重置计时器
+                    // 这解决了“单击后立即隐藏”的问题，因为我们只执行“显示”操作
+                    resetHideTimer();
 
-        overlay._unifiedClickListener = true;
+                    clickTimeout = null;
+                }, 250); // 250毫秒窗口时间
+            }
+        }, true);
+
+        videoWrapElement._unifiedClickListener = true;
     }
 
     // 3. 其他标准事件监听 (保持不变)
