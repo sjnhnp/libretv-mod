@@ -639,8 +639,6 @@ function initializePageContent() {
 
     // --- 更新页面标题和视频标题元素 ---
     document.title = `${currentVideoTitle} - 第 ${currentEpisodeIndex + 1} 集 - ${siteName}`;
-    const videoTitleElement = document.getElementById('video-title');
-    if (videoTitleElement) videoTitleElement.textContent = `${currentVideoTitle} (第 ${currentEpisodeIndex + 1} 集)`;
 
     if (episodeUrlForPlayer) {
         initPlayer(episodeUrlForPlayer, sourceCodeFromUrl); // 使用 sourceCodeFromUrl
@@ -1744,8 +1742,6 @@ function doEpisodeSwitch(index, url) {
     // 更新UI
     const siteName = (window.SITE_CONFIG && window.SITE_CONFIG.name) ? window.SITE_CONFIG.name : '播放器';
     document.title = `${currentVideoTitle} - 第 ${currentEpisodeIndex + 1} 集 - ${siteName}`;
-    const videoTitleElement = document.getElementById('video-title');
-    if (videoTitleElement) videoTitleElement.textContent = `${currentVideoTitle} (第 ${currentEpisodeIndex + 1} 集)`;
     if (typeof updateEpisodeInfo === 'function') updateEpisodeInfo();
     if (typeof renderEpisodes === 'function') renderEpisodes();
     if (typeof updateButtonStates === 'function') updateButtonStates();
@@ -2063,45 +2059,45 @@ function setupControlsAutoHide(dpInstance) {
         let lastTap = 0;
         let tapCount = 0;
         let singleTapTimeout;
-
+        
         const handleSingleTap = () => {
             const isControlsVisible = !playerContainer.classList.contains('dplayer-hide-controller');
-
+            
             // 如果是移动端且控制条已显示，则立即隐藏控制条
             if (isMobile() && isControlsVisible) {
                 clearTimeout(hideControlsTimeout);
                 playerContainer.classList.add('dplayer-hide-controller');
                 return;
             }
-
+            
             // 否则显示控制条并重置计时
             resetHideTimer();
         };
-
+        
         const handleDoubleTap = () => {
             dpInstance.toggle();
             resetHideTimer();
         };
-
-        videoWrapElement.addEventListener('touchstart', function (e) {
+        
+        videoWrapElement.addEventListener('touchstart', function(e) {
             if (isScreenLocked) return;
-
+            
             e.preventDefault();
             e.stopPropagation();
-
+            
             const now = Date.now();
             const timeDiff = now - lastTap;
             lastTap = now;
-
+            
             if (timeDiff < 300) {
                 tapCount++;
             } else {
                 tapCount = 1;
             }
-
+            
             // 清除之前设置的单击超时
             if (singleTapTimeout) clearTimeout(singleTapTimeout);
-
+            
             if (tapCount === 1) {
                 // 设置单个点击的超时
                 singleTapTimeout = setTimeout(() => {
@@ -2116,20 +2112,20 @@ function setupControlsAutoHide(dpInstance) {
                 tapCount = 0;
             }
         }, { passive: false }); // 使用 passive: false 以确保 preventDefault() 有效
-
+        
         // 保留桌面端单击处理
-        videoWrapElement.addEventListener('click', function (e) {
+        videoWrapElement.addEventListener('click', function(e) {
             if (isScreenLocked) return;
-
+            
             e.preventDefault();
             e.stopPropagation();
-
+            
             if (e.target.closest('.dplayer-controller, .dplayer-setting, .dplayer-play-icon')) {
                 return;
             }
-
+            
             const isControlsVisible = !playerContainer.classList.contains('dplayer-hide-controller');
-
+            
             // 移动端使用触摸逻辑
             if (!isMobile()) {
                 if (isControlsVisible) {

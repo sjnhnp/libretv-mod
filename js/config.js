@@ -6,6 +6,7 @@ const MAX_HISTORY_ITEMS = 5;
 // 密码保护配置
 window.PASSWORD_CONFIG = window.PASSWORD_CONFIG || {  
     localStorageKey: 'passwordVerified', 
+    settingsLocalStorageKey: 'settingsPasswordVerified', // 设置按钮密码
     verificationTTL: 90 * 24 * 60 * 60 * 1000, // 90天验证有效期 
 };
 // 网站信息配置
