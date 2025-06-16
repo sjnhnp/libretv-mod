@@ -2032,12 +2032,6 @@ async function switchLine(newSourceCode) {
  * 设置控制条自动隐藏（包括中央播放按钮）- 最终修复版
  * @param {Object} dpInstance - DPlayer 实例
  */
-// js/player_app.js
-
-/**
- * 设置控制条自动隐藏（包括中央播放按钮）- 最终修复版
- * @param {Object} dpInstance - DPlayer 实例
- */
 function setupControlsAutoHide(dpInstance) {
     if (!dpInstance) return;
 
@@ -2048,10 +2042,27 @@ function setupControlsAutoHide(dpInstance) {
 
     if (!playerContainer || !videoWrapElement) return;
 
-    // --- 跟踪进度条拖动状态 ---
+    // --- 状态标志 ---
     let isDraggingProgressBar = false;
-    const progressBar = playerContainer.querySelector('.dplayer-bar-wrap');
 
+    // --- 核心函数：重置隐藏计时器 ---
+    function resetHideTimer() {
+        // 如果屏幕被锁定或正在拖动进度条，则不执行任何操作
+        if (isScreenLocked || isDraggingProgressBar) return;
+
+        clearTimeout(hideControlsTimeout);
+        playerContainer.classList.remove('dplayer-hide-controller');
+
+        hideControlsTimeout = setTimeout(() => {
+            // 只有在视频播放时才自动隐藏
+            if (dpInstance.video && !dpInstance.video.paused) {
+                playerContainer.classList.add('dplayer-hide-controller');
+            }
+        }, CONTROLS_HIDE_DELAY);
+    }
+
+    // --- 1. 进度条拖动逻辑 (保持不变) ---
+    const progressBar = playerContainer.querySelector('.dplayer-bar-wrap');
     if (progressBar) {
         const startDrag = () => {
             isDraggingProgressBar = true;
@@ -2071,27 +2082,12 @@ function setupControlsAutoHide(dpInstance) {
         document.addEventListener('touchcancel', endDrag);
     }
     
-    // --- 重置隐藏计时器 ---
-    function resetHideTimer() {
-        if (isScreenLocked || isDraggingProgressBar) return;
-
-        clearTimeout(hideControlsTimeout);
-        playerContainer.classList.remove('dplayer-hide-controller');
-
-        hideControlsTimeout = setTimeout(() => {
-            // --- 核心修改点: 移除了 !dpInstance.video.paused 判断 ---
-            // 现在无论播放还是暂停，计时器到期后都会尝试隐藏控制条。
-            if (dpInstance.video) { // 仅需确保 video 元素存在
-                playerContainer.classList.add('dplayer-hide-controller');
-            }
-        }, CONTROLS_HIDE_DELAY);
-    }
-
-    // --- 双击播放/暂停逻辑 ---
+    // --- 2. 双击播放/暂停逻辑 (重构) ---
     if (!videoWrapElement._doubleTapListenerAttached) {
         let lastTapTimeForDoubleTap = 0;
         videoWrapElement.addEventListener('touchend', function (e) {
             if (isScreenLocked) return;
+            
             const controlSelectors = ['.dplayer-controller', '.dplayer-setting', '.dplayer-notice', '#episode-grid button'];
             if (controlSelectors.some(selector => e.target.closest(selector))) {
                 lastTapTimeForDoubleTap = 0;
@@ -2100,19 +2096,27 @@ function setupControlsAutoHide(dpInstance) {
 
             const currentTime = new Date().getTime();
             if ((currentTime - lastTapTimeForDoubleTap) < 300) {
-                if (dpInstance && typeof dpInstance.toggle === 'function') {
-                    dpInstance.toggle();
-                    resetHideTimer(); // 双击后立即显示UI并重置计时器
-                }
-                lastTapTimeForDoubleTap = 0;
+                // --- 这是双击 ---
+                // a. 切换播放状态
+                dpInstance.toggle();
+
+                // b. 立即显示UI，并设置一个无条件隐藏的计时器
+                clearTimeout(hideControlsTimeout);
+                playerContainer.classList.remove('dplayer-hide-controller');
+                hideControlsTimeout = setTimeout(() => {
+                    playerContainer.classList.add('dplayer-hide-controller');
+                }, CONTROLS_HIDE_DELAY);
+                
+                lastTapTimeForDoubleTap = 0; // 重置计时
             } else {
+                // --- 这是单击 ---
                 lastTapTimeForDoubleTap = currentTime;
             }
         }, { passive: true });
         videoWrapElement._doubleTapListenerAttached = true;
     }
 
-    // --- 其他事件监听 ---
+    // --- 3. 其他标准事件监听 (保持不变) ---
     playerContainer.addEventListener('mousemove', resetHideTimer);
     dpInstance.on('play', resetHideTimer);
     dpInstance.on('pause', () => {
