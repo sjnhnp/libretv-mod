@@ -1849,9 +1849,33 @@ function setupLineSwitching() {
         event.stopPropagation();
 
         // 动态生成菜单内容
-        const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
-        const selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || JSON.stringify(window.DEFAULT_SELECTED_APIS));
-        const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
+        const currentSourceCode = new URLSearchParams(window.location.search).get('source_code')
+
+        // ------- 从 localStorage 获取用户选中的线路，若无则 fallback 到全局 DEFAULT_SELECTED_APIS -------
+        let selectedAPIs = [];
+        try {
+            const raw = localStorage.getItem('selectedAPIs');
+            // raw 可能为 null、"[]"、"[…]"，用三元表达式避免 parse(null)
+            selectedAPIs = raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            // parse 错误也当成空
+            selectedAPIs = [];
+        }
+        // 如果读出来不是数组或数组长度为 0，就用默认列表
+        if (!Array.isArray(selectedAPIs) || selectedAPIs.length === 0) {
+            selectedAPIs = (window.DEFAULT_SELECTED_APIS || []).slice();
+        }
+        
+        // 同理，从 localStorage 读取自定义 API 列表
+        let customAPIs = [];
+        try {
+            const rawCustom = localStorage.getItem('customAPIs');
+            customAPIs = rawCustom ? JSON.parse(rawCustom) : [];
+        } catch (e) {
+            customAPIs = [];
+        }
+        if (!Array.isArray(customAPIs)) customAPIs = [];
+
         dropdown.innerHTML = '';
 
         const availableSources = [];
