@@ -83,17 +83,45 @@ function setupSkipControls() {
         return;
     }
 
-    // 显示 / 隐藏菜单
-    skipButton.addEventListener('click', () => {
-        if (dropdown.classList.contains('hidden')) {
-            dropdown.classList.remove('hidden');
-            dropdown.classList.add('block');
-        } else {
-            dropdown.classList.add('hidden');
+    // 显示 / 隐藏菜单 (替换原有逻辑)
+    skipButton.addEventListener('click', (event) => {
+        event.stopPropagation(); // 阻止事件冒泡，防止被 document 的点击事件立即关闭
+
+        const isCurrentlyVisible = dropdown.classList.contains('block');
+
+        if (isCurrentlyVisible) {
             dropdown.classList.remove('block');
+        } else {
+            // --- 核心：定位逻辑 ---
+            const buttonRect = skipButton.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - buttonRect.bottom;
+
+            // 为了在不引起页面闪烁的情况下测量高度，
+            // 我们临时让菜单在布局中可见但视觉上隐藏。
+            // 'hidden' class 会导致 display:none，使 offsetHeight 为 0，所以我们先移除它。
+            dropdown.classList.remove('hidden');
+            dropdown.style.visibility = 'hidden'; // 使用 visibility 替代 display
+            dropdown.classList.add('block'); // 添加 'block' 以应用其尺寸相关的样式
+
+            const dropdownHeight = dropdown.offsetHeight;
+
+            // 测量完毕，恢复初始状态
+            dropdown.classList.remove('block');
+            dropdown.style.visibility = '';
+
+            // 判断方向
+            if ((spaceBelow < (dropdownHeight + 10)) && (buttonRect.top > dropdownHeight)) {
+                // 如果下方空间不足，且上方空间足够，则向上弹出
+                dropdown.classList.add('dropdown-top');
+            } else {
+                // 否则，使用默认的向下弹出
+                dropdown.classList.remove('dropdown-top');
+            }
+
+            // 最终显示菜单
+            dropdown.classList.add('block');
         }
     });
-
 
     // 应用设置按钮
     applyBtn.addEventListener('click', () => {
@@ -130,19 +158,21 @@ function setupSkipControls() {
 }
 
 function setupSkipDropdownEvents() {
+    // 替换原有逻辑
     document.addEventListener('click', (event) => {
         const dropdown = document.getElementById('skip-control-dropdown');
         const skipButton = document.getElementById('skip-control-button');
-        if (!skipButton || !dropdown) return;
 
-        if (skipButton.contains(event.target)) {
-            // 已由 setupSkipControls 单独处理
-        } else if (!dropdown.contains(event.target)) {
-            dropdown.classList.add('hidden');
+        // 如果下拉菜单不存在或本就是隐藏的，则无需处理
+        if (!dropdown || !dropdown.classList.contains('block')) {
+            return;
+        }
+
+        // 如果点击发生在按钮或下拉菜单自身之外的区域，则隐藏下拉菜单
+        if (!skipButton.contains(event.target) && !dropdown.contains(event.target)) {
             dropdown.classList.remove('block');
         }
     });
-
 }
 
 // 自动跳过片头和片尾
@@ -2111,7 +2141,7 @@ function setupControlsAutoHide(dpInstance) {
 
     // ===== 事件监听 =====
     // 视频区域点击（使用DPlayer原生事件）
-   // dpInstance.on('video_click', handlePlayerInteraction);
+    // dpInstance.on('video_click', handlePlayerInteraction);
 
     // 获取视频的包装容器
     //const videoWrap = playerContainer.querySelector('.dplayer-video-wrap');
