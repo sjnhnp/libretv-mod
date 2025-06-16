@@ -1852,18 +1852,14 @@ function setupLineSwitching() {
         const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
 
         let selectedAPIsRaw = localStorage.getItem('selectedAPIs');
-
-        // 如果 localStorage 中没有数据，则主动创建并存入
-        if (selectedAPIsRaw === null) {
-            // 优先尝试从 config.js 的全局变量获取，如果失败则使用内置的硬编码后备列表
-            const defaultAPIs = window.DEFAULT_SELECTED_APIS || ["heimuer", "tyyszy", "jmzy", "bfzy", "dyttzy"];
-
-            // 存入 localStorage，这样下次加载就无需再执行此逻辑
-            selectedAPIsRaw = JSON.stringify(defaultAPIs);
+        // 如果 localStorage 中没有数据，则使用全局配置创建并存入
+        if (selectedAPIsRaw === null && window.DEFAULT_SELECTED_APIS) {
+            selectedAPIsRaw = JSON.stringify(window.DEFAULT_SELECTED_APIS);
             localStorage.setItem('selectedAPIs', selectedAPIsRaw);
         }
-
-        const selectedAPIs = JSON.parse(selectedAPIsRaw);
+        // 如果依然为空（例如config.js加载失败），则使用空数组以防报错
+        const selectedAPIs = JSON.parse(selectedAPIsRaw || '[]');
+        
         const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
         dropdown.innerHTML = '';
 
