@@ -7,9 +7,6 @@ window.verifyingPurpose = 'main'; // 'main' 或 'settings'
 const PASSWORD_CONFIG = window.PASSWORD_CONFIG;
 if (!PASSWORD_CONFIG) {
     console.warn('PASSWORD_CONFIG 未定义，密码功能默认关闭');
-    // 可选兜底（如果你担心某些页面不引入config.js）
-    // window.PASSWORD_CONFIG = { localStorageKey: 'passwordVerified', verificationTTL: 12*60*60*1000 };
-    // 或强制return，停止执行
 }
 /**
  * 检查是否设置了密码保护（依赖 window.__ENV__ 挂载的 PASSWORD SHA256 哈希）
@@ -46,37 +43,12 @@ window.isPasswordVerified = isPasswordVerified;
  * @param {string} password - 用户输入的密码
  * @param {string} correctHash - 正确的密码哈希
  */
-async function verifyPassword(password, correctHash) { // 修改此函数
+async function verifyPassword(password, correctHash) {
     if (!correctHash) return false;
 
     try {
         const inputHash = await sha256(password);
         return inputHash === correctHash;
-    } catch (error) {
-        console.error('SHA-256 计算失败:', error);
-        return false;
-    }
-}
-
-/**
- * 校验输入密码是否正确（异步SHA-256）
- */
-async function verifyPassword(password) {
-    const correctHash = window.__ENV__?.PASSWORD;
-    if (!correctHash) return false;
-
-    try {
-        // 直接调用本地 sha256 函数
-        const inputHash = await sha256(password);
-        const isValid = inputHash === correctHash;
-        if (isValid) {
-            localStorage.setItem(PASSWORD_CONFIG.localStorageKey, JSON.stringify({
-                verified: true,
-                timestamp: Date.now(),
-                passwordHash: correctHash
-            }));
-        }
-        return isValid;
     } catch (error) {
         console.error('SHA-256 计算失败:', error);
         return false;
@@ -129,7 +101,7 @@ function hidePasswordError() {
 /**
  * 密码提交事件处理（失败清空并refocus）
  */
-async function handlePasswordSubmit() { 
+async function handlePasswordSubmit() {
     const input = document.getElementById('passwordInput');
     const pwd = input ? input.value.trim() : '';
     const purpose = window.verifyingPurpose || 'main';
