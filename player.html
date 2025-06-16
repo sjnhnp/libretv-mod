@@ -39,9 +39,8 @@
 <body class="bg-black text-white font-sans min-h-screen">
     <div class="player-container relative">
         <!-- 顶部导航栏 - Position 1: Video Title -->
-        <header class="flex items-center justify-center p-4">
-            <button id="back-button"
-                class="flex-shrink-0 flex items-center gap-2 text-white hover:text-blue-400 transition-colors"
+        <header class="flex items-center justify-between p-4">
+            <button id="back-button" class="flex items-center gap-2 text-white hover:text-blue-400 transition-colors"
                 aria-label="返回">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -52,19 +51,21 @@
                 <span>返回</span>
             </button>
 
+            <!-- Position 1: Video Title -->
             <h1 id="video-title" class="text-xl font-bold text-center flex-1 mx-4 truncate">加载中...</h1>
 
-            <button id="fullscreen-button"
-                class="flex-shrink-0 text-white hover:text-blue-400 allow-when-locked transition-colors"
-                aria-label="全屏">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    class="feather feather-maximize" aria-hidden="true">
-                    <path
-                        d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
-                    </path>
-                </svg>
-            </button>
+            <div class="flex items-center gap-4">
+                <button id="fullscreen-button"
+                    class="text-white hover:text-blue-400 allow-when-locked transition-colors" aria-label="全屏">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="feather feather-maximize" aria-hidden="true">
+                        <path
+                            d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
+                        </path>
+                    </svg>
+                </button>
+            </div>
         </header>
 
         <!-- 播放器区域 -->
