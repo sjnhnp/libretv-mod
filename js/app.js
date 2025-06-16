@@ -276,20 +276,30 @@ document.addEventListener('DOMContentLoaded', function () {
     restoreSearchFromCache();
 });
 
+// js/app.js
+
 /**
  * 初始化应用状态
- * 从localStorage加载初始状态并设置到AppState
+ * 从localStorage加载初始状态并设置到AppState，如果localStorage为空则写入默认值
  */
 function initializeAppState() {
-    // 使用AppState.initialize方法初始化状态
+    const defaultAPIs = '["heimuer", "tyyszy", "jmzy", "bfzy", "dyttzy"]';
+    const selectedAPIsRaw = localStorage.getItem('selectedAPIs');
+
+    // 初始化 AppState
     AppState.initialize({
-        'selectedAPIs': JSON.parse(localStorage.getItem('selectedAPIs') || '["heimuer", "tyyszy", "jmzy", "bfzy", "dyttzy"]'),
+        'selectedAPIs': JSON.parse(selectedAPIsRaw || defaultAPIs),
         'customAPIs': JSON.parse(localStorage.getItem('customAPIs') || '[]'),
         'currentEpisodeIndex': 0,
         'currentEpisodes': [],
         'currentVideoTitle': '',
         'episodesReversed': false
     });
+
+    // 关键修复：如果localStorage中没有selectedAPIs，则将默认值写入
+    if (selectedAPIsRaw === null) {
+        localStorage.setItem('selectedAPIs', defaultAPIs);
+    }
 }
 
 /**
