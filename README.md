@@ -52,6 +52,37 @@
 - **变量名称 (Variable name):** `SETTINGS_PASSWORD`
 - **密钥值 (text):** 首页设置按钮密码保护
 
+### 配置修改 
+```
+1、file：js/config.js
+
+// 预加载集数开关
+const DEFAULTS = { 
+    enablePreloading: true, // 预加载 
+    preloadCount: 2,       // 预加载集数 
+    debugMode: false      // 调试模式 
+};
+
+//默认数据源
+const DEFAULT_SELECTED_APIS = 
+
+//去广告开关
+filterAds: false, // 是否启用广告过滤，默认关闭
+adFilteringEnabled: getBoolConfig('adFilteringEnabled', false), //默认关闭
+
+2、file：douban.js
+
+//豆瓣热门默认开启关闭，若需要默认开启，修改两个false为true。
+  const isEnabled = utils.storage.get(CONFIG.STORAGE_KEYS.ENABLED, false) === true;
+  doubanToggle.checked = isEnabled;
+
+  // 如果是首次加载且 localStorage 中没有设置过，则强制写入 true
+  if (localStorage.getItem(CONFIG.STORAGE_KEYS.ENABLED) === null) {
+    utils.storage.set(CONFIG.STORAGE_KEYS.ENABLED, false);
+  }
+
+```
+
 ## 许可证 (License)
 
 本项目遵循与上游项目相同的许可证。
