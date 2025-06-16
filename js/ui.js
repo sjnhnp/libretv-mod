@@ -24,26 +24,28 @@ function actuallyToggleSettingsPanel() {
  * 设置面板开关 - 增加了密码验证逻辑
  * @param {Event} e 事件对象
  */
+// js/ui.js
+
 function toggleSettings(e) {
     e?.stopPropagation();
 
     const settingsPasswordHash = window.__ENV__?.SETTINGS_PASSWORD;
     const isProtected = settingsPasswordHash && settingsPasswordHash.length === 64 && !/^0+$/.test(settingsPasswordHash);
 
-    if (isProtected) {
-        window.verifyingPurpose = 'settings'; // 设置验证目的
+    if (isProtected && typeof isSettingsPasswordVerified === 'function' && !isSettingsPasswordVerified()) {
+        window.verifyingPurpose = 'settings';
         const modal = getElement('passwordModal');
         const title = getElement('passwordModalTitle');
         const p = modal?.querySelector('p');
-        
+
         if (title) title.textContent = "设置项验证";
         if (p) p.textContent = "请输入密码以访问设置";
-        
+
         if (typeof showPasswordModal === 'function') {
             showPasswordModal();
         }
     } else {
-        // 如果没有设置密码，直接打开
+        // 如果没有设置密码，或者已经验证通过，直接打开
         actuallyToggleSettingsPanel();
     }
 }

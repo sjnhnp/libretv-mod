@@ -39,6 +39,25 @@ window.isPasswordProtected = isPasswordProtected;
 window.isPasswordVerified = isPasswordVerified;
 
 /**
+ * 检查用户是否已通过“设置”的密码验证
+ */
+function isSettingsPasswordVerified() {
+    try {
+        const settingsHash = window.__ENV__?.SETTINGS_PASSWORD;
+        if (!settingsHash || /^0+$/.test(settingsHash)) return true; // 如果未设置密码，则视为通过
+
+        const raw = localStorage.getItem(PASSWORD_CONFIG.settingsLocalStorageKey) || '{}';
+        const { verified, timestamp, passwordHash } = JSON.parse(raw);
+
+        // 检查通过、未过期、且为当前设置密码的哈希
+        return !!(verified && timestamp && passwordHash === settingsHash && Date.now() < timestamp + PASSWORD_CONFIG.verificationTTL);
+    } catch (e) {
+        console.error('设置密码验证状态判断异常:', e);
+        return false;
+    }
+}
+
+/**
  * 校验输入密码是否正确（异步SHA-256）
  * @param {string} password - 用户输入的密码
  * @param {string} correctHash - 正确的密码哈希
@@ -77,9 +96,16 @@ async function sha256(message) {
 }
 
 // ========== 密码弹窗及错误提示 ==========
+
 function showPasswordModal() {
     const modal = document.getElementById('passwordModal');
     if (modal) {
+        const input = document.getElementById('passwordInput');
+        if (input) {
+            input.value = ''; // 清空输入框
+        }
+        hidePasswordError(); // 确保错误提示是隐藏的
+        
         modal.style.display = 'flex';
         setTimeout(() => document.getElementById('passwordInput')?.focus(), 80);
     }
@@ -121,7 +147,11 @@ async function handlePasswordSubmit() {
             }));
             document.dispatchEvent(new CustomEvent('passwordVerified'));
         } else if (purpose === 'settings') {
-            // 验证成功后，分发一个自定义事件
+            localStorage.setItem(PASSWORD_CONFIG.settingsLocalStorageKey, JSON.stringify({
+                verified: true,
+                timestamp: Date.now(),
+                passwordHash: targetHash
+            }));
             document.dispatchEvent(new CustomEvent('settingsPasswordVerified'));
         }
     } else {
