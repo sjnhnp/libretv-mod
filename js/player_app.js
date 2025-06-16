@@ -1,6 +1,5 @@
 // File: js/player_app.js
 
-// Add this helper function at the top of js/player_app.js
 if (typeof showToast !== 'function' || typeof showMessage !== 'function') {
     console.warn("UI notification functions (showToast/showMessage) are not available. Notifications might not work.");
 }
@@ -103,7 +102,7 @@ function setupSkipControls() {
             const spaceBelow = window.innerHeight - buttonRect.bottom;
 
             // 为了在不引起页面闪烁的情况下测量高度，
-            // 我们临时让菜单在布局中可见但视觉上隐藏。
+            // 临时让菜单在布局中可见但视觉上隐藏。
             // 'hidden' class 会导致 display:none，使 offsetHeight 为 0，所以我们先移除它。
             dropdown.classList.remove('hidden');
             dropdown.style.visibility = 'hidden'; // 使用 visibility 替代 display
@@ -228,7 +227,6 @@ function handleSkipIntroOutro(dpInstance) {
     }
 }
 
-
 // 初始化跳过功能
 document.addEventListener('DOMContentLoaded', () => {
     // 初始化 UI 控件
@@ -240,7 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 初始化其他页面功能
     initializePageContent();
 });
-
 
 /**
  * 展示自定义的“记住进度恢复”弹窗，并Promise化回调
@@ -853,7 +850,6 @@ function initPlayer(videoUrl, sourceCode) {
                             // console.log(`[CustomHLS] Level loaded. Bitrate: ${data.bitrate}`);
                         });
 
-
                         // 5. Attach HLS to the media element and load the source
                         console.log(`[CustomHLS] Attaching media element to new HLS instance.`);
                         hls.attachMedia(video);
@@ -870,9 +866,7 @@ function initPlayer(videoUrl, sourceCode) {
         if (debugMode) console.log("[PlayerApp] DPlayer instance created.");
 
         // Add DPlayer event listeners
-
         addDPlayerEventListeners();
-
         // 安卓特殊hack，防止右半屏菜单
         patchAndroidVideoHack();
         // 移动端控制条自动隐藏
@@ -1000,7 +994,6 @@ function addDPlayerEventListeners() {
                 // console.log("[PlayerApp][loadedmetadata][timeout] 视频已在播放中或不处于可检查暂停的状态。");
             }
         }, 100);
-        // ---- 修改核心结束 ----
     });
 
     dp.on('error', function (e) {
@@ -1871,7 +1864,6 @@ function setupLineSwitching() {
             dropdown.innerHTML = `<div class="text-center text-sm text-gray-500 py-2">无可用线路</div>`;
         }
 
-        // --- 新增：动态定位逻辑 ---
         // 仅在准备显示菜单时计算位置
         if (dropdown.classList.contains('hidden')) {
             const buttonRect = button.getBoundingClientRect();
@@ -1889,7 +1881,6 @@ function setupLineSwitching() {
                 dropdown.classList.remove('dropdown-top');
             }
         }
-        // --- 动态定位逻辑结束 ---
 
         // 切换菜单的可见性
         dropdown.classList.toggle('hidden');
@@ -2029,7 +2020,7 @@ async function switchLine(newSourceCode) {
 }
 
 /**
- * 设置控制条自动隐藏 - 统一事件处理最终稳定版
+ * 设置控制条自动隐藏 - 统一移动端触摸事件处理
  * @param {Object} dpInstance - DPlayer 实例
  */
 function setupControlsAutoHide(dpInstance) {
@@ -2072,45 +2063,45 @@ function setupControlsAutoHide(dpInstance) {
         let lastTap = 0;
         let tapCount = 0;
         let singleTapTimeout;
-        
+
         const handleSingleTap = () => {
             const isControlsVisible = !playerContainer.classList.contains('dplayer-hide-controller');
-            
+
             // 如果是移动端且控制条已显示，则立即隐藏控制条
             if (isMobile() && isControlsVisible) {
                 clearTimeout(hideControlsTimeout);
                 playerContainer.classList.add('dplayer-hide-controller');
                 return;
             }
-            
+
             // 否则显示控制条并重置计时
             resetHideTimer();
         };
-        
+
         const handleDoubleTap = () => {
             dpInstance.toggle();
             resetHideTimer();
         };
-        
-        videoWrapElement.addEventListener('touchstart', function(e) {
+
+        videoWrapElement.addEventListener('touchstart', function (e) {
             if (isScreenLocked) return;
-            
+
             e.preventDefault();
             e.stopPropagation();
-            
+
             const now = Date.now();
             const timeDiff = now - lastTap;
             lastTap = now;
-            
+
             if (timeDiff < 300) {
                 tapCount++;
             } else {
                 tapCount = 1;
             }
-            
+
             // 清除之前设置的单击超时
             if (singleTapTimeout) clearTimeout(singleTapTimeout);
-            
+
             if (tapCount === 1) {
                 // 设置单个点击的超时
                 singleTapTimeout = setTimeout(() => {
@@ -2125,20 +2116,20 @@ function setupControlsAutoHide(dpInstance) {
                 tapCount = 0;
             }
         }, { passive: false }); // 使用 passive: false 以确保 preventDefault() 有效
-        
+
         // 保留桌面端单击处理
-        videoWrapElement.addEventListener('click', function(e) {
+        videoWrapElement.addEventListener('click', function (e) {
             if (isScreenLocked) return;
-            
+
             e.preventDefault();
             e.stopPropagation();
-            
+
             if (e.target.closest('.dplayer-controller, .dplayer-setting, .dplayer-play-icon')) {
                 return;
             }
-            
+
             const isControlsVisible = !playerContainer.classList.contains('dplayer-hide-controller');
-            
+
             // 移动端使用触摸逻辑
             if (!isMobile()) {
                 if (isControlsVisible) {
