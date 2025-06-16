@@ -2028,8 +2028,10 @@ async function switchLine(newSourceCode) {
     }
 }
 
+// js/player_app.js
+
 /**
- * 设置控制条自动隐藏（包括中央播放按钮）- 统一事件处理最终版
+ * 设置控制条自动隐藏 - 统一事件处理最终稳定版
  * @param {Object} dpInstance - DPlayer 实例
  */
 function setupControlsAutoHide(dpInstance) {
@@ -2042,15 +2044,12 @@ function setupControlsAutoHide(dpInstance) {
 
     if (!playerContainer || !videoWrapElement) return;
 
-    // --- 状态标志 ---
     let isDraggingProgressBar = false;
 
-    // --- 核心函数：重置隐藏计时器 ---
     function resetHideTimer() {
         if (isScreenLocked || isDraggingProgressBar) return;
         clearTimeout(hideControlsTimeout);
         playerContainer.classList.remove('dplayer-hide-controller');
-
         hideControlsTimeout = setTimeout(() => {
             if (dpInstance.video && !dpInstance.video.paused) {
                 playerContainer.classList.add('dplayer-hide-controller');
@@ -2058,38 +2057,30 @@ function setupControlsAutoHide(dpInstance) {
         }, CONTROLS_HIDE_DELAY);
     }
 
-    // --- 1. 进度条拖动逻辑 ---
+    // 1. 进度条拖动逻辑 (保持不变)
     const progressBar = playerContainer.querySelector('.dplayer-bar-wrap');
     if (progressBar) {
-        const startDrag = () => {
-            isDraggingProgressBar = true;
-            clearTimeout(hideControlsTimeout);
-        };
-        const endDrag = () => {
-            if (isDraggingProgressBar) {
-                isDraggingProgressBar = false;
-                resetHideTimer();
-            }
-        };
+        const startDrag = () => { isDraggingProgressBar = true; clearTimeout(hideControlsTimeout); };
+        const endDrag = () => { if (isDraggingProgressBar) { isDraggingProgressBar = false; resetHideTimer(); } };
         progressBar.addEventListener('mousedown', startDrag);
         document.addEventListener('mouseup', endDrag);
         progressBar.addEventListener('touchstart', startDrag, { passive: true });
         document.addEventListener('touchend', endDrag);
         document.addEventListener('touchcancel', endDrag);
     }
-    
-    // --- 2. 统一的单击/双击事件处理器 (替换所有旧的点击和触摸逻辑) ---
+
+    // 2. 统一的单击/双击事件处理器 (最终版)
     if (!videoWrapElement._unifiedClickListener) {
         let clickTimeout = null;
         
+        // 我们监听 'click' 事件，并阻止其默认行为，以完全控制交互
         videoWrapElement.addEventListener('click', function (e) {
             if (isScreenLocked) return;
 
-            // 阻止DPlayer自身的默认点击行为，消除冲突
+            // 关键：阻止 DPlayer 自身的任何默认单击/双击行为
             e.preventDefault();
             e.stopPropagation();
 
-            // 忽略在DPlayer原生控件上的点击
             if (e.target.closest('.dplayer-controller, .dplayer-setting, .dplayer-play-icon')) {
                 return;
             }
@@ -2098,37 +2089,26 @@ function setupControlsAutoHide(dpInstance) {
                 // --- 检测到双击 ---
                 clearTimeout(clickTimeout);
                 clickTimeout = null;
-                
-                // 执行双击动作：切换播放/暂停
                 dpInstance.toggle();
-                
-                // 强制显示UI，并设置自动隐藏
-                // 这一步与之前相同，但现在没有事件冲突了
-                resetHideTimer();
-
+                resetHideTimer(); // 双击后，显示UI并启动自动隐藏计时
             } else {
                 // --- 这是第一次点击 ---
                 clickTimeout = setTimeout(() => {
-                    // --- 单击动作（250毫秒内没有第二次点击，则执行） ---
+                    // --- 单击动作 (250毫秒内没有第二次点击，则执行) ---
                     
-                    // 切换控制条的显示/隐藏状态
-                    if (playerContainer.classList.contains('dplayer-hide-controller')) {
-                        // 如果是隐藏的，则显示并开始计时
-                        resetHideTimer();
-                    } else {
-                        // 如果是显示的，则立即隐藏
-                        clearTimeout(hideControlsTimeout);
-                        playerContainer.classList.add('dplayer-hide-controller');
-                    }
+                    // 核心修改：不再使用 toggle，而是明确地显示UI并重置计时器
+                    // 这解决了“单击后立即隐藏”的问题，因为我们只执行“显示”操作
+                    resetHideTimer();
+
                     clickTimeout = null;
-                }, 250); // 250毫秒的窗口时间来判断是单击还是双击
+                }, 250); // 250毫秒窗口时间
             }
-        }, true); // 使用捕获阶段以优先处理事件
+        }, true);
 
         videoWrapElement._unifiedClickListener = true;
     }
 
-    // --- 3. 其他标准事件监听 ---
+    // 3. 其他标准事件监听 (保持不变)
     playerContainer.addEventListener('mousemove', resetHideTimer);
     dpInstance.on('play', resetHideTimer);
     dpInstance.on('pause', () => {
