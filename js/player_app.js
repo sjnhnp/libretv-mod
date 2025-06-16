@@ -1850,7 +1850,8 @@ function setupLineSwitching() {
 
         // 动态生成菜单内容
         const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
-        const selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '[]');
+        const defaultAPIs = '["heimuer", "tyyszy", "jmzy", "bfzy", "dyttzy"]';
+        const selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || defaultAPIs);
         const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
         dropdown.innerHTML = '';
 
