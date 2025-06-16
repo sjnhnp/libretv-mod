@@ -649,18 +649,3 @@ input:checked+.slider:before {
   transform-origin: bottom center; /* 动画基点改为底部中心 */
 }
 /* END: 线路切换菜单样式 */
-
-/* 新增：为 DPlayer 容器和交互层设置正确定位 */
-#dplayer {
-    position: relative; /* 关键：使其成为子元素绝对定位的参考点 */
-}
-
-#click-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    /* z-index 确保它在视频之上，但在播放器UI控件之下 */
-    z-index: 20;
-}
