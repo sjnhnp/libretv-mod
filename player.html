@@ -69,15 +69,21 @@
         </header>
 
         <!-- 播放器区域 -->
-        <div id="player" class="relative" role="region" aria-label="视频播放区域">
-            <div id="dplayer" class="w-full h-full">
 <div id="player" class="relative" role="region" aria-label="视频播放区域">
-    <div id="dplayer" class="w-full h-full"></div>
+    
+    <div id="dplayer" class="w-full h-full">
+        <div id="click-overlay"></div>
+    </div>
 
-    <div id="click-overlay"></div>
     <div id="loading" class="loading-container" aria-live="polite">
-                
-            </div>
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <div class="mt-4">加载中...</div>
+    </div>
+
+    <div id="error" class="error-container" aria-live="assertive">
+        </div>
+
+</div>
             <!-- 加载中提示 -->
             <div id="loading" class="loading-container" aria-live="polite">
                 <div class="loading-spinner" aria-hidden="true"></div>
