@@ -2111,8 +2111,14 @@ function setupControlsAutoHide(dpInstance) {
 
     // ===== 事件监听 =====
     // 视频区域点击（使用DPlayer原生事件）
-    dpInstance.on('video_click', handlePlayerInteraction);
+   // dpInstance.on('video_click', handlePlayerInteraction);
 
+    // 获取视频的包装容器
+    //const videoWrap = playerContainer.querySelector('.dplayer-video-wrap');
+    //if (videoWrap) {
+    // 为容器绑定一个标准的 click 事件
+    //  videoWrap.addEventListener('click', handlePlayerInteraction);
+    //}
 
     // 鼠标移动显示控制条
     playerContainer.addEventListener('mousemove', resetHideTimer);
