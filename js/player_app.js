@@ -2101,50 +2101,19 @@ async function switchLine(newSourceCode) {
 function setupControlsAutoHide(dpInstance) {
     if (!dpInstance) return;
 
-    const CONTROLS_HIDE_DELAY = 3000; // 3秒后隐藏控制条
+    const CONTROLS_HIDE_DELAY = 3000;
     let hideControlsTimeout;
     const playerContainer = dpInstance.container;
+    const videoWrapElement = playerContainer.querySelector('.dplayer-video-wrap');
 
-    if (!playerContainer) return;
+    if (!playerContainer || !videoWrapElement) return;
 
-    // --- 新增代码块: 用于跟踪进度条拖动状态 ---
     let isDraggingProgressBar = false;
-    const progressBar = playerContainer.querySelector('.dplayer-bar-wrap');
 
-    if (progressBar) {
-        const startDrag = () => {
-            isDraggingProgressBar = true;
-            clearTimeout(hideControlsTimeout); // 开始拖动时，立即清除隐藏计时器
-        };
-        const endDrag = () => {
-            if (isDraggingProgressBar) {
-                isDraggingProgressBar = false;
-                resetHideTimer(); // 拖动结束后，重新开始计时
-            }
-        };
-
-        // 监听鼠标和触摸事件
-        progressBar.addEventListener('mousedown', startDrag);
-        document.addEventListener('mouseup', endDrag); // 在整个文档上监听松开事件
-
-        progressBar.addEventListener('touchstart', startDrag, { passive: true });
-        document.addEventListener('touchend', endDrag);
-        document.addEventListener('touchcancel', endDrag); // 触摸取消时也应结束拖动
-    }
-    // --- 新增代码块结束 ---
-
-
-    // 重置隐藏计时器
     function resetHideTimer() {
-        // --- 修改点: 正在拖动或屏幕锁定时，不执行任何操作 ---
         if (isScreenLocked || isDraggingProgressBar) return;
-
         clearTimeout(hideControlsTimeout);
-
-        // 显示控制条
         playerContainer.classList.remove('dplayer-hide-controller');
-
-        // 设置新的隐藏计时器
         hideControlsTimeout = setTimeout(() => {
             if (dpInstance.video && !dpInstance.video.paused) {
                 playerContainer.classList.add('dplayer-hide-controller');
@@ -2152,33 +2121,112 @@ function setupControlsAutoHide(dpInstance) {
         }, CONTROLS_HIDE_DELAY);
     }
 
-    // (此部分大部分保留，但移除了原有的 video_click 处理，以避免冲突)
-    function handlePlayerInteraction(e) {
-        if (e.target.closest('.dplayer-controller, .dplayer-play-icon')) {
-            return;
-        }
-
-        if (!playerContainer.classList.contains('dplayer-hide-controller')) {
-            clearTimeout(hideControlsTimeout);
-            playerContainer.classList.add('dplayer-hide-controller');
-        } else {
-            resetHideTimer();
-        }
+    // 进度条拖动逻辑
+    const progressBar = playerContainer.querySelector('.dplayer-bar-wrap');
+    if (progressBar) {
+        const startDrag = () => { isDraggingProgressBar = true; clearTimeout(hideControlsTimeout); };
+        const endDrag = () => { if (isDraggingProgressBar) { isDraggingProgressBar = false; resetHideTimer(); } };
+        progressBar.addEventListener('mousedown', startDrag);
+        document.addEventListener('mouseup', endDrag);
+        progressBar.addEventListener('touchstart', startDrag, { passive: true });
+        document.addEventListener('touchend', endDrag);
+        document.addEventListener('touchcancel', endDrag);
     }
 
-    // 鼠标移动显示控制条
+    // 修改点这里！修复双击播放/暂停问题 + 单击立即隐藏控制条功能
+    if (!videoWrapElement._unifiedClickListener) {
+        let lastTap = 0;
+        let tapCount = 0;
+        let singleTapTimeout;
+        
+        const handleSingleTap = () => {
+            const isControlsVisible = !playerContainer.classList.contains('dplayer-hide-controller');
+            
+            // 如果是移动端且控制条已显示，则立即隐藏控制条
+            if (isMobile() && isControlsVisible) {
+                clearTimeout(hideControlsTimeout);
+                playerContainer.classList.add('dplayer-hide-controller');
+                return;
+            }
+            
+            // 否则显示控制条并重置计时
+            resetHideTimer();
+        };
+        
+        const handleDoubleTap = () => {
+            dpInstance.toggle();
+            resetHideTimer();
+        };
+        
+        videoWrapElement.addEventListener('touchstart', function(e) {
+            if (isScreenLocked) return;
+            
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const now = Date.now();
+            const timeDiff = now - lastTap;
+            lastTap = now;
+            
+            if (timeDiff < 300) {
+                tapCount++;
+            } else {
+                tapCount = 1;
+            }
+            
+            // 清除之前设置的单击超时
+            if (singleTapTimeout) clearTimeout(singleTapTimeout);
+            
+            if (tapCount === 1) {
+                // 设置单个点击的超时
+                singleTapTimeout = setTimeout(() => {
+                    if (tapCount === 1) {
+                        handleSingleTap();
+                    }
+                    tapCount = 0;
+                }, 300);
+            } else if (tapCount === 2) {
+                clearTimeout(singleTapTimeout);
+                handleDoubleTap();
+                tapCount = 0;
+            }
+        }, { passive: false }); // 使用 passive: false 以确保 preventDefault() 有效
+        
+        // 保留桌面端单击处理
+        videoWrapElement.addEventListener('click', function(e) {
+            if (isScreenLocked) return;
+            
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (e.target.closest('.dplayer-controller, .dplayer-setting, .dplayer-play-icon')) {
+                return;
+            }
+            
+            const isControlsVisible = !playerContainer.classList.contains('dplayer-hide-controller');
+            
+            // 移动端使用触摸逻辑
+            if (!isMobile()) {
+                if (isControlsVisible) {
+                    clearTimeout(hideControlsTimeout);
+                    playerContainer.classList.add('dplayer-hide-controller');
+                } else {
+                    resetHideTimer();
+                }
+            }
+        }, true);
+
+        videoWrapElement._unifiedClickListener = true;
+    }
+
+    // 其他标准事件监听
     playerContainer.addEventListener('mousemove', resetHideTimer);
-
-    // 播放器事件处理
     dpInstance.on('play', resetHideTimer);
-
     dpInstance.on('pause', () => {
         clearTimeout(hideControlsTimeout);
         playerContainer.classList.remove('dplayer-hide-controller');
     });
-
     dpInstance.on('seeked', resetHideTimer);
-
     dpInstance.on('fullscreen', resetHideTimer);
     dpInstance.on('fullscreen_cancel', resetHideTimer);
 
