@@ -503,7 +503,7 @@ input:checked+.slider:before {
 /* 移动端调整 */
 @media (max-width: 480px) {
   #skip-control-dropdown {
-    width: clamp(180px, 75vw, 260px);
+    width: clamp(130px, 50vw, 180px);
     max-width: calc(100vw - 16px);
     padding: 10px 12px;
     right: 8px;
