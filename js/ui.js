@@ -136,15 +136,6 @@ function togglePanel(panelIdToShow, panelIdToHide, onShowCallback) {
 // =============== UI相关函数 =============================
 
 /**
- * 设置面板开关
- * @param {Event} e 事件对象
- */
-function toggleSettings(e) {
-    e?.stopPropagation();
-    togglePanel('settingsPanel', 'historyPanel');
-}
-
-/**
  * 历史面板开关
  * @param {Event} e 事件对象
  */
