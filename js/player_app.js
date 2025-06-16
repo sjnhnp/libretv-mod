@@ -2031,7 +2031,7 @@ async function switchLine(newSourceCode) {
 // js/player_app.js
 
 /**
- * 设置控制条自动隐藏 - 统一事件处理最终稳定版
+ * 设置控制条自动隐藏 - 最终 toggle 修复版
  * @param {Object} dpInstance - DPlayer 实例
  */
 function setupControlsAutoHide(dpInstance) {
@@ -2057,7 +2057,7 @@ function setupControlsAutoHide(dpInstance) {
         }, CONTROLS_HIDE_DELAY);
     }
 
-    // 1. 进度条拖动逻辑 (保持不变)
+    // 1. 进度条拖动逻辑 (已修复并保留)
     const progressBar = playerContainer.querySelector('.dplayer-bar-wrap');
     if (progressBar) {
         const startDrag = () => { isDraggingProgressBar = true; clearTimeout(hideControlsTimeout); };
@@ -2073,11 +2073,9 @@ function setupControlsAutoHide(dpInstance) {
     if (!videoWrapElement._unifiedClickListener) {
         let clickTimeout = null;
         
-        // 我们监听 'click' 事件，并阻止其默认行为，以完全控制交互
         videoWrapElement.addEventListener('click', function (e) {
             if (isScreenLocked) return;
 
-            // 关键：阻止 DPlayer 自身的任何默认单击/双击行为
             e.preventDefault();
             e.stopPropagation();
 
@@ -2091,15 +2089,22 @@ function setupControlsAutoHide(dpInstance) {
                 clickTimeout = null;
                 dpInstance.toggle();
                 resetHideTimer(); // 双击后，显示UI并启动自动隐藏计时
+
             } else {
                 // --- 这是第一次点击 ---
                 clickTimeout = setTimeout(() => {
                     // --- 单击动作 (250毫秒内没有第二次点击，则执行) ---
                     
-                    // 核心修改：不再使用 toggle，而是明确地显示UI并重置计时器
-                    // 这解决了“单击后立即隐藏”的问题，因为我们只执行“显示”操作
-                    resetHideTimer();
-
+                    // 核心修复：恢复完整的切换(toggle)逻辑
+                    if (playerContainer.classList.contains('dplayer-hide-controller')) {
+                        // 如果当前是隐藏的，则调用 resetHideTimer 来显示并启动计时
+                        resetHideTimer();
+                    } else {
+                        // 如果当前是显示的，则立即隐藏
+                        clearTimeout(hideControlsTimeout);
+                        playerContainer.classList.add('dplayer-hide-controller');
+                    }
+                    
                     clickTimeout = null;
                 }, 250); // 250毫秒窗口时间
             }
