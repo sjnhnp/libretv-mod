@@ -2029,7 +2029,7 @@ async function switchLine(newSourceCode) {
 }
 
 /**
- * 设置控制条自动隐藏（包括中央播放按钮）- 最终修复版
+ * 设置控制条自动隐藏（包括中央播放按钮）- 统一事件处理最终版
  * @param {Object} dpInstance - DPlayer 实例
  */
 function setupControlsAutoHide(dpInstance) {
@@ -2047,21 +2047,18 @@ function setupControlsAutoHide(dpInstance) {
 
     // --- 核心函数：重置隐藏计时器 ---
     function resetHideTimer() {
-        // 如果屏幕被锁定或正在拖动进度条，则不执行任何操作
         if (isScreenLocked || isDraggingProgressBar) return;
-
         clearTimeout(hideControlsTimeout);
         playerContainer.classList.remove('dplayer-hide-controller');
 
         hideControlsTimeout = setTimeout(() => {
-            // 只有在视频播放时才自动隐藏
             if (dpInstance.video && !dpInstance.video.paused) {
                 playerContainer.classList.add('dplayer-hide-controller');
             }
         }, CONTROLS_HIDE_DELAY);
     }
 
-    // --- 1. 进度条拖动逻辑 (保持不变) ---
+    // --- 1. 进度条拖动逻辑 ---
     const progressBar = playerContainer.querySelector('.dplayer-bar-wrap');
     if (progressBar) {
         const startDrag = () => {
@@ -2074,7 +2071,6 @@ function setupControlsAutoHide(dpInstance) {
                 resetHideTimer();
             }
         };
-
         progressBar.addEventListener('mousedown', startDrag);
         document.addEventListener('mouseup', endDrag);
         progressBar.addEventListener('touchstart', startDrag, { passive: true });
@@ -2082,45 +2078,60 @@ function setupControlsAutoHide(dpInstance) {
         document.addEventListener('touchcancel', endDrag);
     }
     
-    // --- 2. 双击播放/暂停逻辑 (重构) ---
-    if (!videoWrapElement._doubleTapListenerAttached) {
-        let lastTapTimeForDoubleTap = 0;
-        videoWrapElement.addEventListener('touchend', function (e) {
+    // --- 2. 统一的单击/双击事件处理器 (替换所有旧的点击和触摸逻辑) ---
+    if (!videoWrapElement._unifiedClickListener) {
+        let clickTimeout = null;
+        
+        videoWrapElement.addEventListener('click', function (e) {
             if (isScreenLocked) return;
-            
-            const controlSelectors = ['.dplayer-controller', '.dplayer-setting', '.dplayer-notice', '#episode-grid button'];
-            if (controlSelectors.some(selector => e.target.closest(selector))) {
-                lastTapTimeForDoubleTap = 0;
+
+            // 阻止DPlayer自身的默认点击行为，消除冲突
+            e.preventDefault();
+            e.stopPropagation();
+
+            // 忽略在DPlayer原生控件上的点击
+            if (e.target.closest('.dplayer-controller, .dplayer-setting, .dplayer-play-icon')) {
                 return;
             }
 
-            const currentTime = new Date().getTime();
-            if ((currentTime - lastTapTimeForDoubleTap) < 300) {
-                // --- 这是双击 ---
-                // a. 切换播放状态
-                dpInstance.toggle();
-
-                // b. 立即显示UI，并设置一个无条件隐藏的计时器
-                clearTimeout(hideControlsTimeout);
-                playerContainer.classList.remove('dplayer-hide-controller');
-                hideControlsTimeout = setTimeout(() => {
-                    playerContainer.classList.add('dplayer-hide-controller');
-                }, CONTROLS_HIDE_DELAY);
+            if (clickTimeout) {
+                // --- 检测到双击 ---
+                clearTimeout(clickTimeout);
+                clickTimeout = null;
                 
-                lastTapTimeForDoubleTap = 0; // 重置计时
+                // 执行双击动作：切换播放/暂停
+                dpInstance.toggle();
+                
+                // 强制显示UI，并设置自动隐藏
+                // 这一步与之前相同，但现在没有事件冲突了
+                resetHideTimer();
+
             } else {
-                // --- 这是单击 ---
-                lastTapTimeForDoubleTap = currentTime;
+                // --- 这是第一次点击 ---
+                clickTimeout = setTimeout(() => {
+                    // --- 单击动作（250毫秒内没有第二次点击，则执行） ---
+                    
+                    // 切换控制条的显示/隐藏状态
+                    if (playerContainer.classList.contains('dplayer-hide-controller')) {
+                        // 如果是隐藏的，则显示并开始计时
+                        resetHideTimer();
+                    } else {
+                        // 如果是显示的，则立即隐藏
+                        clearTimeout(hideControlsTimeout);
+                        playerContainer.classList.add('dplayer-hide-controller');
+                    }
+                    clickTimeout = null;
+                }, 250); // 250毫秒的窗口时间来判断是单击还是双击
             }
-        }, { passive: true });
-        videoWrapElement._doubleTapListenerAttached = true;
+        }, true); // 使用捕获阶段以优先处理事件
+
+        videoWrapElement._unifiedClickListener = true;
     }
 
-    // --- 3. 其他标准事件监听 (保持不变) ---
+    // --- 3. 其他标准事件监听 ---
     playerContainer.addEventListener('mousemove', resetHideTimer);
     dpInstance.on('play', resetHideTimer);
     dpInstance.on('pause', () => {
-        // 这个处理器确保了用户通过UI按钮点击暂停时，控制条能保持可见
         clearTimeout(hideControlsTimeout);
         playerContainer.classList.remove('dplayer-hide-controller');
     });
