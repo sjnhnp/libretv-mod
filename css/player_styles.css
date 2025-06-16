@@ -384,7 +384,7 @@ input:checked+.slider:before {
   right: 0;
   /* 贴合父容器右侧 */
   left: auto;
-  width: clamp(180px, 60vw, 220px);
+  width: clamp(100px, 40vw, 150px);
   /* 响应式宽度 */
   max-width: calc(100vw - 16px);
   /* 视口宽度减去两侧各8px的安全边距 */
