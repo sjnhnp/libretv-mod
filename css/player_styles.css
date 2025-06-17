@@ -555,3 +555,9 @@ header {
     object-fit: contain !important;
   }
 }
+
+/* 锁屏遮罩样式 */
+/* 当 .player-locked 应用时，显示遮罩 */
+.player-container.player-locked #lock-overlay {
+  display: block; /* 或者 display: flex; */
+}

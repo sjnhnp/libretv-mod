@@ -690,12 +690,19 @@ function copyLinks() {
 
 function toggleLockScreen() {
     isScreenLocked = !isScreenLocked;
-    const playerContainer = document.querySelector('.player-container'); // 获取最外层的容器
-    const lockButton = document.getElementById('lock-button');
+
+    const lockOverlay = document.getElementById('lock-overlay');
     const lockIcon = document.getElementById('lock-icon');
 
+    // 通过切换 'hidden' class 来控制遮罩层的显示和隐藏
+    if (lockOverlay) {
+        lockOverlay.classList.toggle('hidden', !isScreenLocked);
+    }
+
+    // 切换所有需要屏蔽的控件的 pointer-events
+    // 这里我们直接用CSS处理，JS只管显示/隐藏遮罩
+    const playerContainer = document.querySelector('.player-container');
     if (playerContainer) {
-        // 使用 class 来控制锁定状态，这会更可靠地应用CSS规则
         playerContainer.classList.toggle('player-locked', isScreenLocked);
     }
 
@@ -708,7 +715,7 @@ function toggleLockScreen() {
                 <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
             `;
         } else {
-            // 设置为“锁定”图标（原始图标）
+            // 设置为“锁定”图标
             lockIcon.innerHTML = `
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
