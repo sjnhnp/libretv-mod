@@ -12,10 +12,21 @@
   position: relative;
 }
 
-media-player {
+/* 修正：确保 Vidstack 播放器和其内部 video 元素正确缩放 */
+#player, media-player {
   width: 100%;
   height: 100%;
 }
+
+/* * 核心修正：
+  * 使用 Vidstack 官方推荐的 CSS 变量来设置视频的缩放模式。
+  * `contain` 能确保视频完整显示，即使播放器和视频的宽高比不同，
+  * 它会自动产生黑边（letterboxing），而不是裁切画面。
+*/
+media-player {
+  --media-object-fit: contain;
+}
+
 
 /* 加载和错误覆盖层 */
 .loading-container,
@@ -61,7 +72,7 @@ media-player {
   margin-bottom: 10px;
 }
 
-/* 合并重复的选集按钮样式 */
+/* 选集按钮样式 */
 .episode-active {
   background: #3b82f6 !important;
   border-color: #60a5fa !important;
@@ -132,7 +143,7 @@ input:checked+.slider:before {
   padding: 1rem 2rem;
   border-radius: .5rem;
   font-size: 1.5rem;
-  display: flex;
+  display: none;
   align-items: center;
   gap: .5rem;
   z-index: 1000;
@@ -141,31 +152,15 @@ input:checked+.slider:before {
 }
 
 .shortcut-hint.show {
+  display: flex;
   opacity: 1;
 }
 
-/* 全屏适配 */
-.player-container:fullscreen-within {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 10000;
-  background: #000;
-}
-
-.player-container:fullscreen-within #player-region,
-.player-container:fullscreen-within media-player {
-  width: 100%;
-  height: 100%;
-}
-
-
-/* 锁屏样式 */
-.player-locked .media-controls {
-  pointer-events: none !important;
-  opacity: 0 !important;
+/* 锁屏样式 - 适配 Vidstack */
+.player-locked .vds-controls {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.2s ease-out;
 }
 
 .player-locked #lock-button {
@@ -215,35 +210,28 @@ input:checked+.slider:before {
   align-items: center;
 }
 
-/* 900px and below */
 @media (max-width: 900px) {
   .player-control-bar {
     gap: 0.8rem;
   }
-
   .icon-btn {
     padding: 0.6rem;
   }
 }
 
-/* 768px and below */
 @media (max-width: 768px) {
   .player-control-bar {
     gap: 0.6rem;
   }
-
   .icon-btn {
     padding: 0.5rem;
   }
 }
 
-/* 600px and below */
 @media (max-width: 600px) {
   .player-control-bar {
     gap: 0.25rem;
-    /* Equivalent to Tailwind's gap-1 */
   }
-
   .icon-btn {
     padding: 0.2rem;
   }
@@ -251,10 +239,8 @@ input:checked+.slider:before {
 
 #episodes-count {
   display: none !important;
-  /* 使用 !important 确保覆盖 Tailwind 的类 */
 }
 
-/* 优雅记住进度弹窗样式 */
 #progress-restore-modal {
   position: fixed;
   z-index: 22002;
@@ -263,7 +249,6 @@ input:checked+.slider:before {
   width: 100vw;
   height: 100vh;
   display: none;
-  /* 默认隐藏 */
   align-items: center;
   justify-content: center;
   background: rgba(16, 22, 34, 0.45);
@@ -280,7 +265,6 @@ input:checked+.slider:before {
   from {
     opacity: 0;
   }
-
   to {
     opacity: 1;
   }
@@ -374,9 +358,9 @@ input:checked+.slider:before {
 }
 
 #skip-control-dropdown {
-    display: none; /* Use display none to hide */
+    display: none;
     position: absolute;
-    bottom: 100%; /* Position above the button */
+    bottom: 100%;
     right: 0;
     width: clamp(150px, 50vw, 190px);
     background: rgba(25, 28, 38, 0.97);
@@ -385,7 +369,7 @@ input:checked+.slider:before {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
     padding: 12px 14px;
     z-index: 2222;
-    margin-bottom: 8px; /* Space between button and dropdown */
+    margin-bottom: 8px;
 }
 
 #skip-control-dropdown:not(.hidden) {
@@ -456,7 +440,7 @@ input:checked+.slider:before {
 #line-switch-dropdown {
   display: none;
   position: absolute;
-  bottom: 100%; /* Position above the button */
+  bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
   margin-bottom: 8px;
