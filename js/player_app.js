@@ -286,7 +286,7 @@ function doEpisodeSwitch(index, url) {
     updateUIForNewEpisode();
     updateBrowserHistory(url);
 
-    document.getElementById('loading').style.display = 'flex';
+    // document.getElementById('loading').style.display = 'flex';
 
     if (player) {
         player.src = { src: url, type: 'application/x-mpegurl' };
@@ -353,7 +353,7 @@ function doEpisodeSwitch(index, url) {
         }
 
         if (episodeUrlForPlayer) {
-            document.getElementById('loading').style.display = 'flex';
+            // document.getElementById('loading').style.display = 'flex';
             await initPlayer(episodeUrlForPlayer, currentVideoTitle);
         } else {
             showError('没有可播放的视频链接。');
@@ -874,7 +874,7 @@ async function switchLine(newSourceCode) {
     const loadingEl = document.getElementById('loading');
     const errorEl = document.getElementById('error');
 
-    if (loadingEl) loadingEl.style.display = 'flex';
+    // if (loadingEl) loadingEl.style.display = 'flex';
     if (errorEl) errorEl.style.display = 'none';
 
     try {
