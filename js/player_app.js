@@ -947,58 +947,6 @@ function playPreviousEpisode() {
     }
 }
 
-function setupLongPressSpeedControl(playerInstance) {
-    if (!playerInstance) return;
-
-    // Vidstack player 元素本身就可以作为事件目标
-    const playerElement = playerInstance.el;
-    if (!playerElement) return;
-
-    let longPressTimer = null;
-    let originalSpeed = 1.0;
-    let speedChangedByLongPress = false;
-
-    playerElement.addEventListener('touchstart', function (e) {
-        if (isScreenLocked) return;
-
-        const touchX = e.touches[0].clientX;
-        const rect = playerElement.getBoundingClientRect();
-
-        if (touchX > rect.left + rect.width / 2) {
-            originalSpeed = playerInstance.playbackRate;
-            if (longPressTimer) clearTimeout(longPressTimer);
-            speedChangedByLongPress = false;
-
-            longPressTimer = setTimeout(() => {
-                if (isScreenLocked || playerInstance.paused) {
-                    speedChangedByLongPress = false;
-                    return;
-                }
-                playerInstance.playbackRate = 2.0;
-                speedChangedByLongPress = true;
-                showMessage('播放速度: 2.0x', 'info', 1000);
-            }, 300);
-        } else {
-            if (longPressTimer) clearTimeout(longPressTimer);
-            speedChangedByLongPress = false;
-        }
-    }, { passive: true });
-
-    const endLongPress = function () {
-        if (longPressTimer) clearTimeout(longPressTimer);
-        longPressTimer = null;
-
-        if (speedChangedByLongPress) {
-            playerInstance.playbackRate = originalSpeed;
-            showMessage(`播放速度: ${originalSpeed.toFixed(1)}x`, 'info', 1000);
-        }
-        speedChangedByLongPress = false;
-    };
-
-    playerElement.addEventListener('touchend', endLongPress);
-    playerElement.addEventListener('touchcancel', endLongPress);
-}
-
 // 添加记住进度开关的提示
 function setupRememberEpisodeProgressToggle() {
     const toggle = document.getElementById('remember-episode-progress-toggle');
