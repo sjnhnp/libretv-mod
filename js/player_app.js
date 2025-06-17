@@ -194,24 +194,6 @@ function addPlayerEventListeners() {
         }
     });
 
-    // ==================== 在这里添加以下代码 ====================
-    player.addEventListener('source-change', () => {
-        // 如果在全屏状态下切换了视频源
-        if (player.isFullscreen) {
-            // 这是一个强制同步状态的技巧：先退出，再立即重新进入全屏。
-            // 这会给用户带来一次短暂的闪烁，但能确保全屏状态和控制按钮恢复正常。
-            player.exitFullscreen().then(() => {
-                // 等待退出完成后再重新进入，避免冲突
-                player.enterFullscreen();
-            }).catch(e => {
-                console.warn('强制同步全屏状态时出错:', e);
-                // 即使退出失败，也尝试重新进入
-                player.enterFullscreen();
-            });
-        }
-    });
-    // ========================================================
-
     player.addEventListener('loaded-metadata', () => {
         document.getElementById('loading').style.display = 'none';
         videoHasEnded = false;
