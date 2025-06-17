@@ -168,6 +168,7 @@ async function initPlayer(videoUrl, title) {
             src: { src: videoUrl, type: 'application/x-mpegurl' },
             title: title,
             autoplay: true,
+            userIdleDelay: Infinity,
         });
 
         window.player = player;
