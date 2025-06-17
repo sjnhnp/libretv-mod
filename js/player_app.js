@@ -182,7 +182,17 @@ async function initPlayer(videoUrl, title) {
             // 移动端：Vidstack 需要调用自己的 enterFullscreen，否则 player.isFullscreen 不同步（按钮图标/内部状态会乱）
             player.enterFullscreen?.();
         }
+        
         // iOS Safari 下，也许你还需要判断 video 元素的全屏（可选）
+        const videoEl = playerContainer.querySelector('video');
+        if (videoEl) {
+            videoEl.addEventListener('webkitbeginfullscreen', () => {
+                // 切换按钮图标为全屏
+            });
+            videoEl.addEventListener('webkitendfullscreen', () => {
+                // 切换按钮图标为非全屏
+            });
+        }
 
     } catch (error) {
         console.error("Vidstack Player 创建失败:", error);
