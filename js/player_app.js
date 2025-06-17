@@ -169,7 +169,8 @@ async function initPlayer(videoUrl, title) {
             title: title,
             autoplay: true,
             controls: true,
-            playsinline: true,
+            playsInline: true,
+            crossOrigin: true,
         });
         window.player = player;
         addPlayerEventListeners();
