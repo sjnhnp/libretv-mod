@@ -398,6 +398,7 @@ function updateUIForNewEpisode() {
     renderEpisodes();
     updateButtonStates();
 }
+
 function updateBrowserHistory(newEpisodeUrl) {
     const newUrlForBrowser = new URL(window.location.href);
     newUrlForBrowser.searchParams.set('url', newEpisodeUrl);
@@ -405,6 +406,7 @@ function updateBrowserHistory(newEpisodeUrl) {
     newUrlForBrowser.searchParams.delete('position');
     window.history.pushState({ path: newUrlForBrowser.toString(), episodeIndex: currentEpisodeIndex }, '', newUrlForBrowser.toString());
 }
+
 function setupPlayerControls() {
     const backButton = document.getElementById('back-button');
     if (backButton) backButton.addEventListener('click', () => { window.location.href = 'index.html'; });
@@ -440,7 +442,17 @@ function setupPlayerControls() {
     if (orderBtn) orderBtn.addEventListener('click', toggleEpisodeOrder);
 
     const lockButton = document.getElementById('lock-button');
-    if (lockButton) lockButton.addEventListener('click', toggleLockScreen);
+    if (lockButton) {
+        lockButton.addEventListener('click', toggleLockScreen);
+        const lockIcon = document.getElementById('lock-icon');
+        if (lockIcon) {
+            // 默认是解锁状态，显示“闭合的锁”
+            lockIcon.innerHTML = `
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            `;
+        }
+    }
 }
 
 function handleKeyboardShortcuts(e) {
