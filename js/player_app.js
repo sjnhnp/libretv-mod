@@ -392,6 +392,7 @@ function updateUIForNewEpisode() {
     renderEpisodes();
     updateButtonStates();
 }
+
 function updateBrowserHistory(newEpisodeUrl) {
     const newUrlForBrowser = new URL(window.location.href);
     newUrlForBrowser.searchParams.set('url', newEpisodeUrl);
@@ -399,6 +400,7 @@ function updateBrowserHistory(newEpisodeUrl) {
     newUrlForBrowser.searchParams.delete('position');
     window.history.pushState({ path: newUrlForBrowser.toString(), episodeIndex: currentEpisodeIndex }, '', newUrlForBrowser.toString());
 }
+
 function setupPlayerControls() {
     const backButton = document.getElementById('back-button');
     if (backButton) backButton.addEventListener('click', () => { window.location.href = 'index.html'; });
@@ -406,7 +408,14 @@ function setupPlayerControls() {
     const fullscreenButton = document.getElementById('fullscreen-button');
     if (fullscreenButton) {
         fullscreenButton.addEventListener('click', () => {
-            if (player) player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
+            // 修正：始终用真实全屏状态判断
+            const playerRegion = document.getElementById('player-region');
+            const isActuallyFullscreen = document.fullscreenElement === playerRegion;
+            if (!isActuallyFullscreen) {
+                playerRegion.requestFullscreen?.();
+            } else {
+                document.exitFullscreen?.();
+            }
         });
     }
     const retryButton = document.getElementById('retry-button');
