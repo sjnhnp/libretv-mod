@@ -1000,4 +1000,6 @@ function setupRememberEpisodeProgressToggle() {
 window.playNextEpisode = playNextEpisode;
 window.playPreviousEpisode = playPreviousEpisode;
 window.copyLinks = copyLinks;
+window.toggleEpisodeOrder = toggleEpisodeOrder;
+window.toggleLockScreen = toggleLockScreen;
 
