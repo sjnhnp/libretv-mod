@@ -148,26 +148,6 @@ function showProgressRestoreModal(opts) {
     });
 }
 
-// 新增专用函数绑定全屏按钮
-function bindFullscreenButton() {
-        const fullscreenButton = document.getElementById('fullscreen-button');
-        if (!fullscreenButton) return;
-        
-        // 克隆按钮以清除旧事件监听
-        const newButton = fullscreenButton.cloneNode(true);
-        fullscreenButton.parentNode.replaceChild(newButton, fullscreenButton);
-        
-        // 添加新的事件监听
-        newButton.addEventListener('click', () => {
-            if (player) {
-                player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
-            }
-        });
-        
-        // 更新按钮ID引用
-        document.getElementById('fullscreen-button').id = 'fullscreen-button';
-    }
-
 // --- 播放器核心逻辑 ---
 
 async function initPlayer(videoUrl, title) {
@@ -179,7 +159,6 @@ async function initPlayer(videoUrl, title) {
 
     if (player) {
         player.destroy();
-        bindFullscreenButton();
         player = null;
     }
 
@@ -193,7 +172,6 @@ async function initPlayer(videoUrl, title) {
         });
         window.player = player;
         addPlayerEventListeners();
-        bindFullscreenButton();
         handleSkipIntroOutro(player);
 
     } catch (error) {
@@ -393,7 +371,6 @@ function setupAllUI() {
     setupRememberEpisodeProgressToggle();
     document.addEventListener('keydown', handleKeyboardShortcuts);
     window.addEventListener('beforeunload', () => {
-        bindFullscreenButton();
         saveCurrentProgress();
         saveVideoSpecificProgress();
     });
@@ -423,7 +400,12 @@ function setupPlayerControls() {
     const backButton = document.getElementById('back-button');
     if (backButton) backButton.addEventListener('click', () => { window.location.href = 'index.html'; });
 
-    bindFullscreenButton();
+    const fullscreenButton = document.getElementById('fullscreen-button');
+    if (fullscreenButton) {
+        fullscreenButton.addEventListener('click', () => {
+            if (player) player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
+        });
+    }
     const retryButton = document.getElementById('retry-button');
     if (retryButton) {
         retryButton.addEventListener('click', () => {
