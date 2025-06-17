@@ -38,7 +38,7 @@ function showToast(message, type = 'info', duration = 3000) {
         'warning': 'bg-yellow-500'
     };
     const bgColor = bgColors[type] || bgColors.info;
-    
+
     toast.className = `fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${bgColor} text-white z-[10001] pointer-events-none`;
     toastMessage.textContent = message;
 
@@ -99,15 +99,53 @@ function getShowIdentifier(perEpisode = true) {
     const sc = urlParams.get('source_code') || 'unknown_source';
     const vid = vodIdForPlayer || urlParams.get('id') || '';
     const ep = perEpisode ? `_ep${currentEpisodeIndex}` : '';
-    
+
     if (vid) return `${currentVideoTitle}_${sc}_${vid}${ep}`;
-    
+
     // Fallback if no vod_id is available
     const raw = currentEpisodes[currentEpisodeIndex] || '';
     if (!raw) return `${currentVideoTitle}_${sc}${ep}`; // Fallback if no episodes either
-    
+
     const urlKey = raw.split('/').pop().split(/[?#]/)[0] || (raw.length > 32 ? raw.slice(-32) : raw);
     return `${currentVideoTitle}_${sc}_${urlKey}${ep}`;
+}
+
+// 恢复「记住进度」弹窗函数
+function showProgressRestoreModal(opts) {
+    return new Promise(resolve => {
+        const modal = document.getElementById("progress-restore-modal");
+        const contentDiv = modal?.querySelector('.progress-modal-content');
+        const titleDiv = modal?.querySelector('.progress-modal-title');
+        const btnCancel = modal?.querySelector('#progress-restore-cancel');
+        const btnConfirm = modal?.querySelector('#progress-restore-confirm');
+        if (!modal || !contentDiv || !titleDiv || !btnCancel || !btnConfirm) return resolve(false);
+
+        titleDiv.textContent = opts.title || "继续播放？";
+        contentDiv.innerHTML = opts.content || "";
+        btnCancel.textContent = opts.cancelText || "取消";
+        btnConfirm.textContent = opts.confirmText || "确定";
+
+        function close(result) {
+            modal.style.display = 'none'; // 使用 style.display
+            document.body.style.overflow = "";
+            btnCancel.onclick = btnConfirm.onclick = null;
+            document.removeEventListener("keydown", handler);
+            resolve(result);
+        }
+
+        btnCancel.onclick = () => close(false);
+        btnConfirm.onclick = () => close(true);
+
+        function handler(e) {
+            if (e.key === "Escape") close(false);
+            if (e.key === "Enter") close(true);
+        }
+
+        modal.style.display = 'flex'; // 使用 style.display
+        setTimeout(() => btnConfirm.focus(), 120);
+        document.addEventListener("keydown", handler);
+        document.body.style.overflow = "hidden";
+    });
 }
 
 // --- 播放器核心逻辑 ---
@@ -144,31 +182,31 @@ async function initPlayer(videoUrl, title) {
 
 function addPlayerEventListeners() {
     if (!player) return;
-    
+
     player.addEventListener('fullscreen-change', (event) => {
         const isFullscreen = event.detail;
         const fsButton = document.getElementById('fullscreen-button');
         if (fsButton) {
             fsButton.innerHTML = isFullscreen ?
-             `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-minimize"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>` :
-             `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-maximize"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`;
+                `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-minimize"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>` :
+                `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-maximize"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`;
             fsButton.setAttribute('aria-label', isFullscreen ? '退出全屏' : '全屏');
         }
     });
-    
+
     player.addEventListener('loaded-metadata', () => {
         document.getElementById('loading').style.display = 'none';
         videoHasEnded = false;
 
         // 重新应用跳过功能
         handleSkipIntroOutro(player);
-        
+
         if (nextSeekPosition > 0 && player.duration > 0 && nextSeekPosition < player.duration) {
             player.currentTime = nextSeekPosition;
             showMessage(`已从 ${formatPlayerTime(nextSeekPosition)} 继续播放`, 'info');
         }
         nextSeekPosition = 0;
-        
+
         saveToHistory();
         startProgressSaveInterval();
         isNavigatingToEpisode = false;
@@ -188,7 +226,7 @@ function addPlayerEventListeners() {
             }, 1000);
         }
     });
-    
+
     player.addEventListener('seeking', () => { isUserSeeking = true; });
     player.addEventListener('seeked', () => {
         setTimeout(() => { isUserSeeking = false; }, 200);
@@ -197,7 +235,7 @@ function addPlayerEventListeners() {
     player.addEventListener('pause', saveVideoSpecificProgress);
 }
 
-function playEpisode(index) {
+async function playEpisode(index) {
     if (isNavigatingToEpisode || index < 0 || index >= currentEpisodes.length) {
         return;
     }
@@ -207,20 +245,46 @@ function playEpisode(index) {
     }
     
     isNavigatingToEpisode = true;
-    nextSeekPosition = 0;
     
+    const rememberOn = localStorage.getItem(REMEMBER_EPISODE_PROGRESS_ENABLED_KEY) !== 'false';
+    if (rememberOn) {
+        const showId = getShowIdentifier(false);
+        const allProgress = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
+        const savedProgress = allProgress[showId]?.[index];
+
+        if (savedProgress && savedProgress > 5) {
+            const wantsToResume = await showProgressRestoreModal({
+                 title: "继续播放？",
+                 content: `发现《${currentVideoTitle}》第 ${index + 1} 集的播放记录，<br>是否从 <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> 继续播放？`,
+                 confirmText: "继续播放",
+                 cancelText: "从头播放"
+            });
+
+            if (wantsToResume) {
+                nextSeekPosition = savedProgress;
+            } else {
+                clearVideoProgressForEpisode(index);
+                nextSeekPosition = 0;
+            }
+        } else {
+            nextSeekPosition = 0;
+        }
+    } else {
+         nextSeekPosition = 0;
+    }
+
     doEpisodeSwitch(index, currentEpisodes[index]);
 }
 
 function doEpisodeSwitch(index, url) {
     currentEpisodeIndex = index;
     window.currentEpisodeIndex = index;
-    
+
     updateUIForNewEpisode();
     updateBrowserHistory(url);
 
     document.getElementById('loading').style.display = 'flex';
-    
+
     if (player) {
         player.src = { src: url, type: 'application/x-mpegurl' };
         player.play().catch(e => console.warn("Autoplay after episode switch was prevented.", e));
@@ -233,7 +297,7 @@ function doEpisodeSwitch(index, url) {
     document.addEventListener('DOMContentLoaded', async () => {
         const urlParams = new URLSearchParams(window.location.search);
         let episodeUrlForPlayer = urlParams.get('url');
-        
+
         function fullyDecode(str) {
             try {
                 let prev, cur = str;
@@ -243,7 +307,8 @@ function doEpisodeSwitch(index, url) {
         }
         currentVideoTitle = urlParams.get('title') ? fullyDecode(urlParams.get('title')) : '视频播放';
         currentEpisodeIndex = parseInt(urlParams.get('index') || '0', 10);
-        
+        vodIdForPlayer = urlParams.get('id') || '';
+
         try {
             currentEpisodes = JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
             if (!episodeUrlForPlayer && currentEpisodes[currentEpisodeIndex]) {
@@ -252,7 +317,7 @@ function doEpisodeSwitch(index, url) {
         } catch {
             currentEpisodes = [];
         }
-        
+
         window.currentEpisodes = currentEpisodes;
         window.currentEpisodeIndex = currentEpisodeIndex;
 
@@ -261,6 +326,29 @@ function doEpisodeSwitch(index, url) {
         const positionFromUrl = urlParams.get('position');
         if (positionFromUrl) {
             nextSeekPosition = parseInt(positionFromUrl);
+        } else {
+            const rememberOn = localStorage.getItem(REMEMBER_EPISODE_PROGRESS_ENABLED_KEY) !== 'false';
+            if (rememberOn) {
+                const showId = getShowIdentifier(false);
+                const allProgress = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
+                const savedProgress = allProgress[showId]?.[currentEpisodeIndex];
+
+                if (savedProgress && savedProgress > 5) {
+                    const wantsToResume = await showProgressRestoreModal({
+                        title: "继续播放？",
+                        content: `发现《${currentVideoTitle}》第 ${currentEpisodeIndex + 1} 集的播放记录，<br>是否从 <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> 继续播放？`,
+                        confirmText: "继续播放",
+                        cancelText: "从头播放"
+                    });
+
+                    if (wantsToResume) {
+                        nextSeekPosition = savedProgress;
+                    } else {
+                        clearVideoProgressForEpisode(currentEpisodeIndex);
+                        nextSeekPosition = 0;
+                    }
+                }
+            }
         }
 
         if (episodeUrlForPlayer) {
@@ -281,6 +369,7 @@ function setupAllUI() {
     setupLineSwitching();
     setupSkipControls();
     setupSkipDropdownEvents();
+    setupRememberEpisodeProgressToggle();
     document.addEventListener('keydown', handleKeyboardShortcuts);
     window.addEventListener('beforeunload', () => {
         saveCurrentProgress();
@@ -294,7 +383,7 @@ function setupAllUI() {
     });
 }
 
-function updateUIForNewEpisode() { 
+function updateUIForNewEpisode() {
     const siteName = (window.SITE_CONFIG && window.SITE_CONFIG.name) ? window.SITE_CONFIG.name : '播放器';
     document.title = `${currentVideoTitle} - 第 ${currentEpisodeIndex + 1} 集 - ${siteName}`;
     updateEpisodeInfo();
@@ -315,19 +404,19 @@ function setupPlayerControls() {
     const fullscreenButton = document.getElementById('fullscreen-button');
     if (fullscreenButton) {
         fullscreenButton.addEventListener('click', () => {
-            if(player) player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
+            if (player) player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
         });
     }
-     const retryButton = document.getElementById('retry-button');
+    const retryButton = document.getElementById('retry-button');
     if (retryButton) {
         retryButton.addEventListener('click', () => {
             if (player) {
                 const currentSrc = player.currentSrc;
                 if (currentSrc) {
-                     document.getElementById('error').style.display = 'none';
-                     document.getElementById('loading').style.display = 'flex';
-                     player.src = currentSrc;
-                     player.play();
+                    document.getElementById('error').style.display = 'none';
+                    document.getElementById('loading').style.display = 'flex';
+                    player.src = currentSrc;
+                    player.play();
                 }
             }
         });
@@ -346,10 +435,10 @@ function setupPlayerControls() {
     if (lockButton) lockButton.addEventListener('click', toggleLockScreen);
 }
 
-function handleKeyboardShortcuts(e) { 
+function handleKeyboardShortcuts(e) {
     if (!player || (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName))) return;
     if (isScreenLocked && !['f', 'F', 'Escape'].includes(e.key)) return;
-    
+
     let actionText = '';
 
     switch (e.key) {
@@ -363,7 +452,7 @@ function handleKeyboardShortcuts(e) {
             break;
         case ' ':
             player.paused ? player.play() : player.pause();
-            actionText = player.paused ? '播放' : '暂停'; 
+            actionText = player.paused ? '播放' : '暂停';
             break;
         case 'ArrowUp':
             player.volume = Math.min(1, player.volume + 0.1);
@@ -570,7 +659,7 @@ function copyLinks() {
     });
 }
 
-function toggleLockScreen() { 
+function toggleLockScreen() {
     isScreenLocked = !isScreenLocked;
     const playerEl = document.querySelector('media-player');
     const lockButton = document.getElementById('lock-button');
@@ -578,7 +667,7 @@ function toggleLockScreen() {
 
     if (playerEl) {
         playerEl.toggleAttribute('data-locked', isScreenLocked);
-        if(player) player.controls.disabled = isScreenLocked;
+        if (player) player.controls.disabled = isScreenLocked;
     }
 
     if (lockButton && lockIcon) {
@@ -683,7 +772,7 @@ function setupLineSwitching() {
         event.stopPropagation();
         const skipDropdown = document.getElementById('skip-control-dropdown');
         if (skipDropdown) skipDropdown.classList.add('hidden');
-        
+
         const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
         let selectedAPIsRaw = localStorage.getItem('selectedAPIs');
         if (selectedAPIsRaw === null && window.DEFAULT_SELECTED_APIS) {
@@ -692,7 +781,7 @@ function setupLineSwitching() {
         const selectedAPIs = JSON.parse(selectedAPIsRaw || '[]');
         const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
         dropdown.innerHTML = '';
-        
+
         const availableSources = [];
         if (selectedAPIs.length > 0) {
             selectedAPIs.forEach(sourceCode => {
@@ -709,7 +798,7 @@ function setupLineSwitching() {
                 }
             });
         }
-        
+
         if (availableSources.length > 0) {
             availableSources.forEach(source => {
                 const item = document.createElement('button');
@@ -733,7 +822,7 @@ function setupLineSwitching() {
 
     button.addEventListener('click', updateAndToggleMenu);
     button._lineSwitchListenerAttached = true;
-    
+
     if (!dropdown._actionListener) {
         dropdown.addEventListener('click', (e) => {
             const target = e.target.closest('button[data-source-code]');
@@ -794,10 +883,10 @@ async function switchLine(newSourceCode) {
         const detailRes = await fetch(detailUrl);
         const detailData = await detailRes.json();
         if (detailData.code !== 200 || !detailData.episodes || detailData.episodes.length === 0) throw new Error(`在线路“${apiInfo.name}”上获取剧集列表失败`);
-        
+
         const newEpisodes = detailData.episodes;
         if (currentEpisodeIndex >= newEpisodes.length) throw new Error(`新线路的剧集数(${newEpisodes.length})少于当前集数(${currentEpisodeIndex + 1})`);
-        
+
         const newEpisodeUrl = newEpisodes[currentEpisodeIndex];
         currentEpisodes = newEpisodes;
         window.currentEpisodes = newEpisodes;
@@ -824,22 +913,22 @@ async function switchLine(newSourceCode) {
     }
 }
 
-function playNextEpisode() { 
-    if(currentEpisodeIndex < currentEpisodes.length - 1) {
-        playEpisode(currentEpisodeIndex + 1); 
+function playNextEpisode() {
+    if (currentEpisodeIndex < currentEpisodes.length - 1) {
+        playEpisode(currentEpisodeIndex + 1);
     }
 }
 function playPreviousEpisode() {
-    if(currentEpisodeIndex > 0) {
+    if (currentEpisodeIndex > 0) {
         playEpisode(currentEpisodeIndex - 1);
     }
 }
 
 function setupLongPressSpeedControl(playerInstance) {
     if (!playerInstance) return;
-    
+
     // Vidstack player 元素本身就可以作为事件目标
-    const playerElement = playerInstance.el; 
+    const playerElement = playerInstance.el;
     if (!playerElement) return;
 
     let longPressTimer = null;
@@ -885,6 +974,27 @@ function setupLongPressSpeedControl(playerInstance) {
 
     playerElement.addEventListener('touchend', endLongPress);
     playerElement.addEventListener('touchcancel', endLongPress);
+}
+
+// 添加记住进度开关的提示
+function setupRememberEpisodeProgressToggle() {
+    const toggle = document.getElementById('remember-episode-progress-toggle');
+    if (!toggle) return;
+
+    const savedSetting = localStorage.getItem(REMEMBER_EPISODE_PROGRESS_ENABLED_KEY);
+    toggle.checked = savedSetting !== 'false';
+
+    toggle.addEventListener('change', function (event) {
+        const isChecked = event.target.checked;
+        localStorage.setItem(REMEMBER_EPISODE_PROGRESS_ENABLED_KEY, isChecked.toString());
+        
+        const messageText = isChecked ? '将记住本视频的各集播放进度' : '将不再记住本视频的各集播放进度';
+        showMessage(messageText, 'info');
+
+        if (!isChecked) {
+            clearCurrentVideoAllEpisodeProgresses();
+        }
+    });
 }
 
 window.playNextEpisode = playNextEpisode;
