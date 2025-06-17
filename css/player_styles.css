@@ -526,17 +526,3 @@ header {
 #fullscreen-button svg {
   vertical-align: middle;
 }
-
-/* 移动端样式：隐藏播放器顶部和底部的导航栏 */
-@media (max-width: 768px) {
-
-  /* 隐藏顶部的返回和全屏按钮栏 (区域1) */
-  .player-container>header {
-    display: none;
-  }
-
-  /* 隐藏上一集/下一集控制栏 (区域2) */
-  #episode-navigation-bar {
-    display: none;
-  }
-}
