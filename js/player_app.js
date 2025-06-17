@@ -284,18 +284,11 @@ function doEpisodeSwitch(index, url) {
     updateUIForNewEpisode();
     updateBrowserHistory(url);
 
-    const loadingEl = document.getElementById('loading');
-    if (loadingEl) loadingEl.style.display = 'flex';
+    document.getElementById('loading').style.display = 'flex';
 
     if (player) {
-        // 可选：先暂停旧片段
-        player.pause();
-        // 更新 src，保留原有的事件和 fullscreen 绑定
         player.src = { src: url, type: 'application/x-mpegurl' };
-        // 播放新片源
-        player.play().catch(e => {
-            console.warn("Autoplay after episode switch was prevented.", e);
-        });
+        player.play().catch(e => console.warn("Autoplay after episode switch was prevented.", e));
     }
 }
 
