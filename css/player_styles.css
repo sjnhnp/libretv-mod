@@ -12,7 +12,7 @@
   position: relative;
 }
 
-/* 修正：确保 Vidstack 播放器和其内部 video 元素正确缩放 */
+/* 确保 Vidstack 播放器和其内部 video 元素正确缩放 */
 #player,
 media-player {
   width: 100%;
@@ -24,10 +24,13 @@ media-player {
   * `contain` 能确保视频完整显示，即使播放器和视频的宽高比不同，
   * 它会自动产生黑边（letterboxing），而不是裁切画面。
 */
-media-player {
-  --media-object-fit: contain;
+.client-desktop media-player {
+  --media-object-fit: cover;
 }
 
+:not(.client-desktop) media-player {
+  --media-object-fit: contain;
+}
 
 /* 加载和错误覆盖层 */
 .loading-container,
