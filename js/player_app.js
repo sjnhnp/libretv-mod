@@ -149,6 +149,7 @@ function showProgressRestoreModal(opts) {
 }
 
 // --- 播放器核心逻辑 ---
+
 async function initPlayer(videoUrl, title) {
     const playerContainer = document.getElementById('player');
     if (!playerContainer) {
@@ -160,8 +161,6 @@ async function initPlayer(videoUrl, title) {
         player.destroy();
         player = null;
     }
-
-    playerContainer.innerHTML = '';
 
     try {
         player = await VidstackPlayer.create({
@@ -176,37 +175,17 @@ async function initPlayer(videoUrl, title) {
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
 
-        // **同步全屏状态**
-        const playerRegion = document.getElementById('player-region');
-        // 判断：页面是全屏，且全屏的是 player-region
-        if (document.fullscreenElement === playerRegion) {
-            // 移动端：Vidstack 需要调用自己的 enterFullscreen，否则 player.isFullscreen 不同步（按钮图标/内部状态会乱）
-            player.enterFullscreen?.();
-        }
-
-        // iOS Safari 下，也许你还需要判断 video 元素的全屏（可选）
-        const videoEl = playerContainer.querySelector('video');
-        if (videoEl) {
-            videoEl.addEventListener('webkitbeginfullscreen', () => {
-                // 切换按钮图标为全屏
-            });
-            videoEl.addEventListener('webkitendfullscreen', () => {
-                // 切换按钮图标为非全屏
-            });
-        }
-
     } catch (error) {
         console.error("Vidstack Player 创建失败:", error);
         showError("播放器初始化失败");
     }
 }
 
-
 function addPlayerEventListeners() {
     if (!player) return;
 
     player.addEventListener('fullscreen-change', (event) => {
-        const isFullscreen = document.fullscreenElement === document.getElementById('player-region');
+        const isFullscreen = event.detail;
         const fsButton = document.getElementById('fullscreen-button');
         if (fsButton) {
             fsButton.innerHTML = isFullscreen ?
@@ -295,10 +274,11 @@ async function playEpisode(index) {
     } else {
         nextSeekPosition = 0;
     }
-    await doEpisodeSwitch(index, currentEpisodes[index]);
+
+    doEpisodeSwitch(index, currentEpisodes[index]);
 }
 
-async function doEpisodeSwitch(index, url) {
+function doEpisodeSwitch(index, url) {
     currentEpisodeIndex = index;
     window.currentEpisodeIndex = index;
 
@@ -307,9 +287,9 @@ async function doEpisodeSwitch(index, url) {
 
     document.getElementById('loading').style.display = 'flex';
 
-    // 调用 initPlayer 重建播放器
     if (player) {
-        await initPlayer(url, currentVideoTitle);
+        player.src = { src: url, type: 'application/x-mpegurl' };
+        player.play().catch(e => console.warn("Autoplay after episode switch was prevented.", e));
     }
 }
 
@@ -410,7 +390,6 @@ function updateUIForNewEpisode() {
     renderEpisodes();
     updateButtonStates();
 }
-
 function updateBrowserHistory(newEpisodeUrl) {
     const newUrlForBrowser = new URL(window.location.href);
     newUrlForBrowser.searchParams.set('url', newEpisodeUrl);
@@ -418,7 +397,6 @@ function updateBrowserHistory(newEpisodeUrl) {
     newUrlForBrowser.searchParams.delete('position');
     window.history.pushState({ path: newUrlForBrowser.toString(), episodeIndex: currentEpisodeIndex }, '', newUrlForBrowser.toString());
 }
-
 function setupPlayerControls() {
     const backButton = document.getElementById('back-button');
     if (backButton) backButton.addEventListener('click', () => { window.location.href = 'index.html'; });
@@ -426,12 +404,7 @@ function setupPlayerControls() {
     const fullscreenButton = document.getElementById('fullscreen-button');
     if (fullscreenButton) {
         fullscreenButton.addEventListener('click', () => {
-            if (!player) return;
-            if (!player.isFullscreen) {
-                player.enterFullscreen();
-            } else {
-                player.exitFullscreen();
-            }
+            if (player) player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
         });
     }
     const retryButton = document.getElementById('retry-button');
@@ -970,6 +943,58 @@ function playPreviousEpisode() {
     if (currentEpisodeIndex > 0) {
         playEpisode(currentEpisodeIndex - 1);
     }
+}
+
+function setupLongPressSpeedControl(playerInstance) {
+    if (!playerInstance) return;
+
+    // Vidstack player 元素本身就可以作为事件目标
+    const playerElement = playerInstance.el;
+    if (!playerElement) return;
+
+    let longPressTimer = null;
+    let originalSpeed = 1.0;
+    let speedChangedByLongPress = false;
+
+    playerElement.addEventListener('touchstart', function (e) {
+        if (isScreenLocked) return;
+
+        const touchX = e.touches[0].clientX;
+        const rect = playerElement.getBoundingClientRect();
+
+        if (touchX > rect.left + rect.width / 2) {
+            originalSpeed = playerInstance.playbackRate;
+            if (longPressTimer) clearTimeout(longPressTimer);
+            speedChangedByLongPress = false;
+
+            longPressTimer = setTimeout(() => {
+                if (isScreenLocked || playerInstance.paused) {
+                    speedChangedByLongPress = false;
+                    return;
+                }
+                playerInstance.playbackRate = 2.0;
+                speedChangedByLongPress = true;
+                showMessage('播放速度: 2.0x', 'info', 1000);
+            }, 300);
+        } else {
+            if (longPressTimer) clearTimeout(longPressTimer);
+            speedChangedByLongPress = false;
+        }
+    }, { passive: true });
+
+    const endLongPress = function () {
+        if (longPressTimer) clearTimeout(longPressTimer);
+        longPressTimer = null;
+
+        if (speedChangedByLongPress) {
+            playerInstance.playbackRate = originalSpeed;
+            showMessage(`播放速度: ${originalSpeed.toFixed(1)}x`, 'info', 1000);
+        }
+        speedChangedByLongPress = false;
+    };
+
+    playerElement.addEventListener('touchend', endLongPress);
+    playerElement.addEventListener('touchcancel', endLongPress);
 }
 
 // 添加记住进度开关的提示
