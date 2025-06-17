@@ -160,6 +160,9 @@ function addPlayerEventListeners() {
         document.getElementById('loading').style.display = 'none';
         videoHasEnded = false;
 
+        // 重新应用跳过功能
+        handleSkipIntroOutro(player);
+        
         if (nextSeekPosition > 0 && player.duration > 0 && nextSeekPosition < player.duration) {
             player.currentTime = nextSeekPosition;
             showMessage(`已从 ${formatPlayerTime(nextSeekPosition)} 继续播放`, 'info');
