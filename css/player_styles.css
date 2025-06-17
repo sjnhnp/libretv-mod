@@ -538,24 +538,19 @@ header {
 }
 
 /* ———————————— 仅在移动端 生效 ———————————— */
-@media screen and (max-width: 900px) {
-  /* 1. 播放器外层不再死绑 60vh，由 video 自行撑高 */
+@media (max-width: 900px) {
+  /* 让容器随宽度按 16:9 比例撑高 */
   #player-region {
-    height: auto !important;
+    width: 100%;
+    height: auto !important;       /* 保持 auto */
+    aspect-ratio: 16/9;            /* 一开始就按 16:9 算高 */
+    background-color: transparent; /* 去掉黑底 */
   }
-
-  /* 2. 播放器背景透明，消除 container 黑底 */
-  #player,
-  media-player {
-    background-color: transparent !important;
-  }
-
-  /* 3. video 全宽、高度自适应，保持原始比例并完整显示 */
+  /* video 同步自适应 */
   #player video,
   media-player video {
     width: 100% !important;
-    height: auto !important;
+    height: 100% !important;
     object-fit: contain !important;
-    margin: 0 auto;
   }
 }
