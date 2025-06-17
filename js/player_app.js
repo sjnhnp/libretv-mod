@@ -194,6 +194,24 @@ function addPlayerEventListeners() {
         }
     });
 
+    // ==================== 在这里添加以下代码 ====================
+    player.addEventListener('source-change', () => {
+        // 如果在全屏状态下切换了视频源
+        if (player.isFullscreen) {
+            // 这是一个强制同步状态的技巧：先退出，再立即重新进入全屏。
+            // 这会给用户带来一次短暂的闪烁，但能确保全屏状态和控制按钮恢复正常。
+            player.exitFullscreen().then(() => {
+                // 等待退出完成后再重新进入，避免冲突
+                player.enterFullscreen();
+            }).catch(e => {
+                console.warn('强制同步全屏状态时出错:', e);
+                // 即使退出失败，也尝试重新进入
+                player.enterFullscreen();
+            });
+        }
+    });
+    // ========================================================
+
     player.addEventListener('loaded-metadata', () => {
         document.getElementById('loading').style.display = 'none';
         videoHasEnded = false;
@@ -240,13 +258,13 @@ async function playEpisode(index) {
     if (isNavigatingToEpisode || index < 0 || index >= currentEpisodes.length) {
         return;
     }
-    
+
     if (player && player.currentTime > 5) {
         saveVideoSpecificProgress();
     }
-    
+
     isNavigatingToEpisode = true;
-    
+
     const rememberOn = localStorage.getItem(REMEMBER_EPISODE_PROGRESS_ENABLED_KEY) !== 'false';
     if (rememberOn) {
         const showId = getShowIdentifier(false);
@@ -255,10 +273,10 @@ async function playEpisode(index) {
 
         if (savedProgress && savedProgress > 5) {
             const wantsToResume = await showProgressRestoreModal({
-                 title: "继续播放？",
-                 content: `发现《${currentVideoTitle}》第 ${index + 1} 集的播放记录，<br>是否从 <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> 继续播放？`,
-                 confirmText: "继续播放",
-                 cancelText: "从头播放"
+                title: "继续播放？",
+                content: `发现《${currentVideoTitle}》第 ${index + 1} 集的播放记录，<br>是否从 <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> 继续播放？`,
+                confirmText: "继续播放",
+                cancelText: "从头播放"
             });
 
             if (wantsToResume) {
@@ -271,7 +289,7 @@ async function playEpisode(index) {
             nextSeekPosition = 0;
         }
     } else {
-         nextSeekPosition = 0;
+        nextSeekPosition = 0;
     }
 
     doEpisodeSwitch(index, currentEpisodes[index]);
@@ -554,10 +572,10 @@ function clearVideoProgressForEpisode(episodeIndex) {
     try {
         const showId = getShowIdentifier(false);
         let allProgress = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
-        
+
         if (allProgress[showId] && allProgress[showId][episodeIndex] !== undefined) {
             delete allProgress[showId][episodeIndex];
-            
+
             const keys = Object.keys(allProgress[showId]);
             if (keys.length === 0 || (keys.length === 1 && keys[0] === 'lastPlayedEpisodeIndex')) {
                 delete allProgress[showId];
@@ -1007,7 +1025,7 @@ function setupRememberEpisodeProgressToggle() {
     toggle.addEventListener('change', function (event) {
         const isChecked = event.target.checked;
         localStorage.setItem(REMEMBER_EPISODE_PROGRESS_ENABLED_KEY, isChecked.toString());
-        
+
         const messageText = isChecked ? '将记住本视频的各集播放进度' : '将不再记住本视频的各集播放进度';
         showMessage(messageText, 'info');
 
