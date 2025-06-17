@@ -168,9 +168,8 @@ async function initPlayer(videoUrl, title) {
             src: { src: videoUrl, type: 'application/x-mpegurl' },
             title: title,
             autoplay: true,
-            userIdleDelay: Infinity,
         });
-
+        player.controls.show();
         window.player = player;
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
