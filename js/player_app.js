@@ -162,6 +162,9 @@ async function initPlayer(videoUrl, title) {
         player = null;
     }
 
+    // +++ 新增此行，确保容器被清空 +++
+    playerContainer.innerHTML = ''; 
+
     try {
         player = await VidstackPlayer.create({
             target: playerContainer,
@@ -179,6 +182,7 @@ async function initPlayer(videoUrl, title) {
         showError("播放器初始化失败");
     }
 }
+
 
 function addPlayerEventListeners() {
     if (!player) return;
@@ -285,7 +289,7 @@ async function doEpisodeSwitch(index, url) {
 
     document.getElementById('loading').style.display = 'flex';
 
-    // 直接调用 initPlayer 重建播放器，而不是只改变 src
+    // 调用 initPlayer 重建播放器
     if (player) {
         await initPlayer(url, currentVideoTitle);
     }
