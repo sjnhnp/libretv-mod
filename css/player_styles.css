@@ -698,21 +698,3 @@ header {
     font-size: 0.95rem; /* 小屏幕轻微调整 */
   }
 }
-
-/* ———————————— 仅在移动端 生效 ———————————— */
-@media (max-width: 900px) {
-  /* 让容器随宽度按 16:9 比例撑高 */
-  #player-region {
-    width: 100%;
-    height: auto !important;       /* 保持 auto */
-    aspect-ratio: 16/9;            /* 一开始就按 16:9 算高 */
-    background-color: transparent; /* 去掉黑底 */
-  }
-  /* video 同步自适应 */
-  #player video,
-  media-player video {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: contain !important;
-  }
-}
