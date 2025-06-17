@@ -578,11 +578,9 @@ input:checked+.slider:before {
   display: block; 
   position: absolute;
   top: 100%;
-  /* <-- 修改这里：从按钮下方弹出 */
   left: 50%;
   transform: translateX(-50%);
   margin-top: 8px;
-  /* <-- 修改这里：向下留出8px的间距 */
 
   width: 150px;
   max-height: 200px;
@@ -698,5 +696,23 @@ header {
   #back-button {
     gap: 6px;
     font-size: 0.95rem; /* 小屏幕轻微调整 */
+  }
+}
+
+/* ———————————— 仅在移动端 生效 ———————————— */
+@media (max-width: 900px) {
+  /* 让容器随宽度按 16:9 比例撑高 */
+  #player-region {
+    width: 100%;
+    height: auto !important;       /* 保持 auto */
+    aspect-ratio: 16/9;            /* 一开始就按 16:9 算高 */
+    background-color: transparent; /* 去掉黑底 */
+  }
+  /* video 同步自适应 */
+  #player video,
+  media-player video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
   }
 }
