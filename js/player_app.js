@@ -149,7 +149,6 @@ function showProgressRestoreModal(opts) {
 }
 
 // --- 播放器核心逻辑 ---
-
 async function initPlayer(videoUrl, title) {
     const playerContainer = document.getElementById('player');
     if (!playerContainer) {
@@ -162,8 +161,7 @@ async function initPlayer(videoUrl, title) {
         player = null;
     }
 
-    // 确保容器被清空
-    playerContainer.innerHTML = ''; 
+    playerContainer.innerHTML = '';
 
     try {
         player = await VidstackPlayer.create({
@@ -177,6 +175,15 @@ async function initPlayer(videoUrl, title) {
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
 
+        // **同步全屏状态**
+        const playerRegion = document.getElementById('player-region');
+        // 判断：页面是全屏，且全屏的是 player-region
+        if (document.fullscreenElement === playerRegion) {
+            // 移动端：Vidstack 需要调用自己的 enterFullscreen，否则 player.isFullscreen 不同步（按钮图标/内部状态会乱）
+            player.enterFullscreen?.();
+        }
+        // iOS Safari 下，也许你还需要判断 video 元素的全屏（可选）
+
     } catch (error) {
         console.error("Vidstack Player 创建失败:", error);
         showError("播放器初始化失败");
@@ -188,7 +195,7 @@ function addPlayerEventListeners() {
     if (!player) return;
 
     player.addEventListener('fullscreen-change', (event) => {
-        const isFullscreen = event.detail;
+        const isFullscreen = document.fullscreenElement === document.getElementById('player-region');
         const fsButton = document.getElementById('fullscreen-button');
         if (fsButton) {
             fsButton.innerHTML = isFullscreen ?
@@ -408,7 +415,6 @@ function setupPlayerControls() {
     const fullscreenButton = document.getElementById('fullscreen-button');
     if (fullscreenButton) {
         fullscreenButton.addEventListener('click', () => {
-            // 修正：始终用真实全屏状态判断
             const playerRegion = document.getElementById('player-region');
             const isActuallyFullscreen = document.fullscreenElement === playerRegion;
             if (!isActuallyFullscreen) {
