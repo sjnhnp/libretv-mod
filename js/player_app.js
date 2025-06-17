@@ -169,7 +169,6 @@ async function initPlayer(videoUrl, title) {
             title: title,
             autoplay: true,
         });
-        player.controls.show();
         window.player = player;
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
