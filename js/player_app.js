@@ -182,7 +182,7 @@ async function initPlayer(videoUrl, title) {
             // 移动端：Vidstack 需要调用自己的 enterFullscreen，否则 player.isFullscreen 不同步（按钮图标/内部状态会乱）
             player.enterFullscreen?.();
         }
-        
+
         // iOS Safari 下，也许你还需要判断 video 元素的全屏（可选）
         const videoEl = playerContainer.querySelector('video');
         if (videoEl) {
@@ -294,10 +294,10 @@ async function playEpisode(index) {
     } else {
         nextSeekPosition = 0;
     }
-    await doEpisodeSwitch(index, currentEpisodes[index]); 
+    await doEpisodeSwitch(index, currentEpisodes[index]);
 }
 
-async function doEpisodeSwitch(index, url) { 
+async function doEpisodeSwitch(index, url) {
     currentEpisodeIndex = index;
     window.currentEpisodeIndex = index;
 
@@ -425,12 +425,11 @@ function setupPlayerControls() {
     const fullscreenButton = document.getElementById('fullscreen-button');
     if (fullscreenButton) {
         fullscreenButton.addEventListener('click', () => {
-            const playerRegion = document.getElementById('player-region');
-            const isActuallyFullscreen = document.fullscreenElement === playerRegion;
-            if (!isActuallyFullscreen) {
-                playerRegion.requestFullscreen?.();
+            if (!player) return;
+            if (!player.isFullscreen) {
+                player.enterFullscreen();
             } else {
-                document.exitFullscreen?.();
+                player.exitFullscreen();
             }
         });
     }
