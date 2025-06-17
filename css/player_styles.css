@@ -536,3 +536,26 @@ header {
 #fullscreen-button svg {
   vertical-align: middle;
 }
+
+/* 一、容器高度交给视频自己撑，去掉 60vh */
+#player-region {
+  height: auto !important;
+}
+
+/* 二、video 自适应高度并铺满，去掉上下黑条 */
+#player video,
+media-player video {
+  width: 100%;
+  height: auto;
+  /* 如果不介意裁剪，用 cover，能保证没有 letter-box */
+  object-fit: cover !important;
+  /* 如果你想保留 16:9 等比例，也可以改成：
+     aspect-ratio: 16 / 9;
+  */
+}
+
+/* 三、播放器背景设成透明（可选） */
+#player,
+media-player {
+  background-color: transparent !important;
+}
