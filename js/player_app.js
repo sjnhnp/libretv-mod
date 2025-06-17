@@ -273,11 +273,10 @@ async function playEpisode(index) {
     } else {
         nextSeekPosition = 0;
     }
-
-    doEpisodeSwitch(index, currentEpisodes[index]);
+    await doEpisodeSwitch(index, currentEpisodes[index]); 
 }
 
-function doEpisodeSwitch(index, url) {
+async function doEpisodeSwitch(index, url) { 
     currentEpisodeIndex = index;
     window.currentEpisodeIndex = index;
 
@@ -286,9 +285,9 @@ function doEpisodeSwitch(index, url) {
 
     document.getElementById('loading').style.display = 'flex';
 
+    // 直接调用 initPlayer 重建播放器，而不是只改变 src
     if (player) {
-        player.src = { src: url, type: 'application/x-mpegurl' };
-        player.play().catch(e => console.warn("Autoplay after episode switch was prevented.", e));
+        await initPlayer(url, currentVideoTitle);
     }
 }
 
