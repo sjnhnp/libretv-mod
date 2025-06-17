@@ -175,9 +175,11 @@ input:checked+.slider:before {
 }
 
 .player-container.player-locked #lock-button {
-  opacity: 1 !important; /* 确保锁屏按钮本身总是可见的 */
+  opacity: 1 !important;
+  /* 确保锁屏按钮本身总是可见的 */
   pointer-events: auto !important;
-  z-index: 51; /* 确保它在最上层，可以被点击 */
+  z-index: 51;
+  /* 确保它在最上层，可以被点击 */
 }
 
 /* 选集按钮样式（未选中） */
@@ -540,13 +542,18 @@ header {
 
 /* ———————————— 仅在移动端 生效 ———————————— */
 @media (max-width: 900px) {
+
   /* 让容器随宽度按 16:9 比例撑高 */
   #player-region {
     width: 100%;
-    height: auto !important;       /* 保持 auto */
-    aspect-ratio: 16/9;            /* 一开始就按 16:9 算高 */
-    background-color: transparent; /* 去掉黑底 */
+    height: auto !important;
+    /* 保持 auto */
+    aspect-ratio: 16/9;
+    /* 一开始就按 16:9 算高 */
+    background-color: transparent;
+    /* 去掉黑底 */
   }
+
   /* video 同步自适应 */
   #player video,
   media-player video {
@@ -554,10 +561,4 @@ header {
     height: 100% !important;
     object-fit: contain !important;
   }
-}
-
-/* 锁屏遮罩样式 */
-/* 当 .player-locked 应用时，显示遮罩 */
-.player-container.player-locked #lock-overlay {
-  display: block; /* 或者 display: flex; */
 }
