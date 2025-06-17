@@ -77,16 +77,16 @@ function showMessage(text, type = 'info', duration = 3000) {
 function showError(message) {
     const loadingEl = document.getElementById('loading');
     // if (loadingEl) loadingEl.style.display = 'none'; // 这行可以移除或保留
-    
+
     const errorElement = document.getElementById('error');
     if (errorElement) {
         const errorTextElement = errorElement.querySelector('.text-xl.font-bold');
         if (errorTextElement) errorTextElement.textContent = message;
         errorElement.style.display = 'flex';
-        
+
         // 确保父容器 #loading 是可见的，才能显示出 #error
         if (loadingEl) {
-            loadingEl.classList.remove('hidden'); 
+            loadingEl.classList.remove('hidden');
             loadingEl.style.display = 'flex';
         }
     }
@@ -690,19 +690,34 @@ function copyLinks() {
 
 function toggleLockScreen() {
     isScreenLocked = !isScreenLocked;
-    const playerEl = document.querySelector('media-player');
+    const playerContainer = document.querySelector('.player-container'); // 获取最外层的容器
     const lockButton = document.getElementById('lock-button');
     const lockIcon = document.getElementById('lock-icon');
 
-    if (playerEl) {
-        playerEl.toggleAttribute('data-locked', isScreenLocked);
-        if (player) player.controls.disabled = isScreenLocked;
+    if (playerContainer) {
+        // 使用 class 来控制锁定状态，这会更可靠地应用CSS规则
+        playerContainer.classList.toggle('player-locked', isScreenLocked);
     }
 
-    if (lockButton && lockIcon) {
-        lockIcon.innerHTML = isScreenLocked ? `...unlock icon svg...` : `...lock icon svg...`;
-        showMessage(isScreenLocked ? '屏幕已锁定' : '屏幕已解锁', 'info');
+    // 更新图标的 SVG 内容
+    if (lockIcon) {
+        if (isScreenLocked) {
+            // 设置为“解锁”图标
+            lockIcon.innerHTML = `
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+            `;
+        } else {
+            // 设置为“锁定”图标（原始图标）
+            lockIcon.innerHTML = `
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            `;
+        }
     }
+
+    // 显示状态提示
+    showMessage(isScreenLocked ? '屏幕已锁定' : '屏幕已解锁', 'info');
 }
 
 function handleSkipIntroOutro(playerInstance) {
