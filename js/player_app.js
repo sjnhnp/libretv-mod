@@ -220,6 +220,7 @@ function addPlayerEventListeners() {
     player.addEventListener('end', () => {
         videoHasEnded = true;
         saveCurrentProgress();
+        clearVideoProgressForEpisode(currentEpisodeIndex);
         if (autoplayEnabled && currentEpisodeIndex < currentEpisodes.length - 1) {
             setTimeout(() => {
                 if (videoHasEnded && !isUserSeeking) playNextEpisode();
@@ -551,16 +552,37 @@ function startProgressSaveInterval() {
     }, 8000);
 }
 
-function clearVideoProgress() {
-    const progressKey = `videoProgress_${getVideoId()}`;
+function clearVideoProgressForEpisode(episodeIndex) {
     try {
-        localStorage.removeItem(progressKey);
-    } catch (e) { console.error('清除 localStorage 播放进度记录失败', e); }
+        const showId = getShowIdentifier(false);
+        let allProgress = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
+        
+        if (allProgress[showId] && allProgress[showId][episodeIndex] !== undefined) {
+            delete allProgress[showId][episodeIndex];
+            
+            const keys = Object.keys(allProgress[showId]);
+            if (keys.length === 0 || (keys.length === 1 && keys[0] === 'lastPlayedEpisodeIndex')) {
+                delete allProgress[showId];
+            }
+
+            localStorage.setItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY, JSON.stringify(allProgress));
+        }
+    } catch (e) {
+        console.error(`清除第 ${episodeIndex + 1} 集的进度失败:`, e);
+    }
 }
 
-function getVideoId() {
-    const sourceCode = new URLSearchParams(window.location.search).get('source_code') || 'unknown';
-    return `${encodeURIComponent(currentVideoTitle)}_${sourceCode}_ep${window.currentEpisodeIndex}`;
+function clearCurrentVideoAllEpisodeProgresses() {
+    try {
+        const showId = getShowIdentifier(false);
+        let allProgress = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
+        if (allProgress[showId]) {
+            delete allProgress[showId];
+            localStorage.setItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY, JSON.stringify(allProgress));
+        }
+    } catch (e) {
+        console.error('清除当前视频所有集数进度失败:', e);
+    }
 }
 
 function renderEpisodes() {
