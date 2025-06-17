@@ -13,7 +13,8 @@
 }
 
 /* 修正：确保 Vidstack 播放器和其内部 video 元素正确缩放 */
-#player, media-player {
+#player,
+media-player {
   width: 100%;
   height: 100%;
 }
@@ -158,9 +159,9 @@ input:checked+.slider:before {
 
 /* 锁屏样式 - 适配 Vidstack */
 .player-locked .vds-controls {
-    opacity: 0 !important;
-    pointer-events: none !important;
-    transition: opacity 0.2s ease-out;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.2s ease-out;
 }
 
 .player-locked #lock-button {
@@ -214,6 +215,7 @@ input:checked+.slider:before {
   .player-control-bar {
     gap: 0.8rem;
   }
+
   .icon-btn {
     padding: 0.6rem;
   }
@@ -223,6 +225,7 @@ input:checked+.slider:before {
   .player-control-bar {
     gap: 0.6rem;
   }
+
   .icon-btn {
     padding: 0.5rem;
   }
@@ -232,6 +235,7 @@ input:checked+.slider:before {
   .player-control-bar {
     gap: 0.25rem;
   }
+
   .icon-btn {
     padding: 0.2rem;
   }
@@ -265,6 +269,7 @@ input:checked+.slider:before {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -358,22 +363,22 @@ input:checked+.slider:before {
 }
 
 #skip-control-dropdown {
-    display: none;
-    position: absolute;
-    bottom: 100%;
-    right: 0;
-    width: clamp(150px, 50vw, 190px);
-    background: rgba(25, 28, 38, 0.97);
-    border-radius: 8px;
-    border: 1px solid rgba(50, 50, 60, 0.5);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
-    padding: 12px 14px;
-    z-index: 2222;
-    margin-bottom: 8px;
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  width: clamp(150px, 50vw, 190px);
+  background: rgba(25, 28, 38, 0.97);
+  border-radius: 8px;
+  border: 1px solid rgba(50, 50, 60, 0.5);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  padding: 12px 14px;
+  z-index: 2222;
+  margin-bottom: 8px;
 }
 
 #skip-control-dropdown:not(.hidden) {
-    display: block;
+  display: block;
 }
 
 #skip-control-dropdown label {
@@ -456,7 +461,7 @@ input:checked+.slider:before {
 }
 
 #line-switch-dropdown:not(.hidden) {
-    display: block;
+  display: block;
 }
 
 #line-switch-dropdown button {
@@ -520,4 +525,18 @@ header {
 #back-button svg,
 #fullscreen-button svg {
   vertical-align: middle;
+}
+
+/* 移动端样式：隐藏播放器顶部和底部的导航栏 */
+@media (max-width: 768px) {
+
+  /* 隐藏顶部的返回和全屏按钮栏 (区域1) */
+  .player-container>header {
+    display: none;
+  }
+
+  /* 隐藏上一集/下一集控制栏 (区域2) */
+  #episode-navigation-bar {
+    display: none;
+  }
 }
