@@ -162,7 +162,7 @@ async function initPlayer(videoUrl, title) {
         player = null;
     }
 
-    // +++ 新增此行，确保容器被清空 +++
+    // 确保容器被清空
     playerContainer.innerHTML = ''; 
 
     try {
