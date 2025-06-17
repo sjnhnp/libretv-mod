@@ -693,29 +693,26 @@ function toggleLockScreen() {
 
     const lockOverlay = document.getElementById('lock-overlay');
     const lockIcon = document.getElementById('lock-icon');
+    const playerContainer = document.querySelector('.player-container');
 
-    // 通过切换 'hidden' class 来控制遮罩层的显示和隐藏
+    // 切换遮罩层和锁定状态的 class
     if (lockOverlay) {
         lockOverlay.classList.toggle('hidden', !isScreenLocked);
     }
-
-    // 切换所有需要屏蔽的控件的 pointer-events
-    // 这里我们直接用CSS处理，JS只管显示/隐藏遮罩
-    const playerContainer = document.querySelector('.player-container');
     if (playerContainer) {
         playerContainer.classList.toggle('player-locked', isScreenLocked);
     }
 
-    // 更新图标的 SVG 内容
+    // 根据新的锁定状态，更新图标
     if (lockIcon) {
         if (isScreenLocked) {
-            // 设置为“解锁”图标
+            // 当前是锁定状态，显示“打开的锁”图标，提示用户可以解锁
             lockIcon.innerHTML = `
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
             `;
         } else {
-            // 设置为“锁定”图标
+            // 当前是解锁状态，显示“闭合的锁”图标，提示用户可以锁定
             lockIcon.innerHTML = `
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
