@@ -76,12 +76,19 @@ function showMessage(text, type = 'info', duration = 3000) {
 
 function showError(message) {
     const loadingEl = document.getElementById('loading');
-    if (loadingEl) loadingEl.style.display = 'none';
+    // if (loadingEl) loadingEl.style.display = 'none'; // 这行可以移除或保留
+    
     const errorElement = document.getElementById('error');
     if (errorElement) {
         const errorTextElement = errorElement.querySelector('.text-xl.font-bold');
         if (errorTextElement) errorTextElement.textContent = message;
         errorElement.style.display = 'flex';
+        
+        // 确保父容器 #loading 是可见的，才能显示出 #error
+        if (loadingEl) {
+            loadingEl.classList.remove('hidden'); 
+            loadingEl.style.display = 'flex';
+        }
     }
     showMessage(message, 'error');
 }
