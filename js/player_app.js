@@ -3,6 +3,12 @@
 // 动态导入 VidstackPlayer
 import { VidstackPlayer } from 'https://cdn.vidstack.io/player.core';
 
+// --- 常量定义 ---
+const SKIP_INTRO_KEY = 'skipIntroTime';
+const SKIP_OUTRO_KEY = 'skipOutroTime';
+const REMEMBER_EPISODE_PROGRESS_ENABLED_KEY = 'playerRememberEpisodeProgressEnabled';
+const VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY = 'videoSpecificEpisodeProgresses';
+
 // --- 全局变量 ---
 let player = null; // Vidstack player instance
 let isNavigatingToEpisode = false;
