@@ -94,6 +94,22 @@ function formatPlayerTime(seconds) {
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+function getShowIdentifier(perEpisode = true) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sc = urlParams.get('source_code') || 'unknown_source';
+    const vid = vodIdForPlayer || urlParams.get('id') || '';
+    const ep = perEpisode ? `_ep${currentEpisodeIndex}` : '';
+    
+    if (vid) return `${currentVideoTitle}_${sc}_${vid}${ep}`;
+    
+    // Fallback if no vod_id is available
+    const raw = currentEpisodes[currentEpisodeIndex] || '';
+    if (!raw) return `${currentVideoTitle}_${sc}${ep}`; // Fallback if no episodes either
+    
+    const urlKey = raw.split('/').pop().split(/[?#]/)[0] || (raw.length > 32 ? raw.slice(-32) : raw);
+    return `${currentVideoTitle}_${sc}_${urlKey}${ep}`;
+}
+
 // --- 播放器核心逻辑 ---
 
 async function initPlayer(videoUrl, title) {
