@@ -548,7 +548,7 @@ media-player video {
   width: 100%;
   height: auto;
   /* 如果不介意裁剪，用 cover，能保证没有 letter-box */
-  object-fit: cover !important;
+
   /* 如果你想保留 16:9 等比例，也可以改成：
      aspect-ratio: 16 / 9;
   */
