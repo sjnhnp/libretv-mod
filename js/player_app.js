@@ -11,6 +11,7 @@ const VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY = 'videoSpecificEpisodeProgresses';
 
 // --- 全局变量 ---
 let player = null; // Vidstack player instance
+let fullscreenEventHandlersBound = false; // 跟踪是否已绑定全屏事件
 let isNavigatingToEpisode = false;
 let currentVideoTitle = '';
 let currentEpisodeIndex = 0;
@@ -174,10 +175,45 @@ async function initPlayer(videoUrl, title) {
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
 
+        // 绑定全屏事件监听（仅首次初始化或重新初始化时）
+        if (!fullscreenEventHandlersBound) {
+            player.addEventListener('fullscreen-change', handleFullscreenChange);
+            fullscreenEventHandlersBound = true;
+        }
+
+        // 更新全屏按钮状态
+        updateFullscreenButtonState(player.isFullscreen);
+
     } catch (error) {
         console.error("Vidstack Player 创建失败:", error);
         showError("播放器初始化失败");
     }
+}
+
+// 单独的全屏变化处理函数
+function handleFullscreenChange(event) {
+    updateFullscreenButtonState(event.detail);
+
+    // 在Android上添加额外的状态同步
+    if (/android/i.test(navigator.userAgent)) {
+        // 确保HTML元素的全屏状态与播放器一致
+        document.documentElement.classList.toggle(
+            'fullscreen-mode',
+            event.detail
+        );
+    }
+}
+
+// 更新全屏按钮状态的函数
+function updateFullscreenButtonState(isFullscreen) {
+    const fsButton = document.getElementById('fullscreen-button');
+    if (!fsButton) return;
+
+    fsButton.innerHTML = isFullscreen ?
+        `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-minimize"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>` :
+        `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-maximize"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`;
+
+    fsButton.setAttribute('aria-label', isFullscreen ? '退出全屏' : '全屏');
 }
 
 function addPlayerEventListeners() {
@@ -290,6 +326,18 @@ function doEpisodeSwitch(index, url) {
         player.src = { src: url, type: 'application/x-mpegurl' };
         player.play().catch(e => console.warn("Autoplay after episode switch was prevented.", e));
     }
+
+    // 确保退出全屏状态
+    if (player && player.isFullscreen) {
+        try {
+            player.exitFullscreen();
+        } catch (error) {
+            console.warn('退出全屏时出错:', error);
+        }
+    }
+
+    // 重置全屏按钮状态
+    updateFullscreenButtonState(false);
 }
 
 (async function initializePage() {
@@ -389,6 +437,7 @@ function updateUIForNewEpisode() {
     renderEpisodes();
     updateButtonStates();
 }
+
 function updateBrowserHistory(newEpisodeUrl) {
     const newUrlForBrowser = new URL(window.location.href);
     newUrlForBrowser.searchParams.set('url', newEpisodeUrl);
@@ -396,6 +445,7 @@ function updateBrowserHistory(newEpisodeUrl) {
     newUrlForBrowser.searchParams.delete('position');
     window.history.pushState({ path: newUrlForBrowser.toString(), episodeIndex: currentEpisodeIndex }, '', newUrlForBrowser.toString());
 }
+
 function setupPlayerControls() {
     const backButton = document.getElementById('back-button');
     if (backButton) backButton.addEventListener('click', () => { window.location.href = 'index.html'; });
@@ -403,9 +453,21 @@ function setupPlayerControls() {
     const fullscreenButton = document.getElementById('fullscreen-button');
     if (fullscreenButton) {
         fullscreenButton.addEventListener('click', () => {
-            if (player) player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
+            if (!player) return;
+            try {
+                // Toggle 全屏状态
+                if (player.isFullscreen) {
+                    player.exitFullscreen();
+                } else {
+                    player.enterFullscreen();
+                }
+            } catch (error) {
+                console.error('操作全屏时出错:', error);
+                showMessage('全屏操作失败，请重试', 'error');
+            }
         });
     }
+
     const retryButton = document.getElementById('retry-button');
     if (retryButton) {
         retryButton.addEventListener('click', () => {
