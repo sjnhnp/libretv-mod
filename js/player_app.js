@@ -445,7 +445,14 @@ function setupPlayerControls() {
     const fullscreenButton = document.getElementById('fullscreen-button');
     if (fullscreenButton) {
         fullscreenButton.addEventListener('click', () => {
-            if (player) player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
+            if (player) {
+                // 始终使用 player.state.fullscreen 读取状态
+                if (player.state.fullscreen) {
+                    player.exitFullscreen().catch(err => console.error("退出全屏失败:", err));
+                } else {
+                    player.enterFullscreen().catch(err => console.error("进入全屏失败:", err));
+                }
+            }
         });
     }
 
@@ -524,13 +531,11 @@ function handleKeyboardShortcuts(e) {
         case 'f':
         case 'F':
             e.preventDefault();
-            // 使用 player.state.fullscreen 来获取正确的全屏状态
             if (player.state.fullscreen) {
                 player.exitFullscreen().catch(err => console.error("退出全屏失败:", err));
             } else {
                 player.enterFullscreen().catch(err => console.error("进入全屏失败:", err));
             }
-            // actionText 可以保持不变，因为 Vidstack 会触发事件来更新UI
             actionText = '切换全屏';
             break;
 
