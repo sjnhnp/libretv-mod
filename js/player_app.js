@@ -207,6 +207,27 @@ function addPlayerEventListeners() {
         }
     });
 
+      // —— 以下开始新增 —— 
+      // 拦截内置控件的“请求进入全屏”事件，交给 API 处理
+      player.addEventListener('media-enter-fullscreen-request', async (event) => {
+        event.preventDefault();
+        try {
+          await player.enterFullscreen();
+        } catch (e) {
+          console.error('enterFullscreen failed:', e);
+        }
+      });
+    
+      // 拦截内置控件的“请求退出全屏”事件，交给 API 处理
+      player.addEventListener('media-exit-fullscreen-request', async (event) => {
+        event.preventDefault();
+        try {
+          await player.exitFullscreen();
+        } catch (e) {
+          console.error('exitFullscreen failed:', e);
+        }
+      });
+
     player.addEventListener('loaded-metadata', () => {
         document.getElementById('loading').style.display = 'none';
         videoHasEnded = false;
@@ -779,7 +800,7 @@ function toggleLockScreen() {
     // 1. 使用 Vidstack API 禁用/启用键盘快捷键
     player.keyDisabled = isScreenLocked;
     // 2. 使用 Vidstack API 隐藏/显示其自带的全部UI控件
-   //  player.controls = !isScreenLocked;
+    player.controls = !isScreenLocked;
 
     // 仅用CSS类来标记状态，以便我们自己的按钮可以响应
     if (playerContainer) {
