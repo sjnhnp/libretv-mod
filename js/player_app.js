@@ -444,9 +444,17 @@ function setupPlayerControls() {
 
     const fullscreenButton = document.getElementById('fullscreen-button');
     if (fullscreenButton) {
-        fullscreenButton.addEventListener('click', () => {
-            if (player && player.remote) {
-                player.remote.toggleFullscreen('prefer-media');
+        fullscreenButton.addEventListener('click', async () => {
+            if (player) {
+                try {
+                    if (player.state.fullscreen) {
+                        await player.exitFullscreen();
+                    } else {
+                        await player.enterFullscreen();
+                    }
+                } catch (e) {
+                    showMessage('全屏操作失败', 'error');
+                }
             }
         });
     }
@@ -470,7 +478,7 @@ function setupPlayerControls() {
     if (lockButton) lockButton.addEventListener('click', toggleLockScreen);
 }
 
-function handleKeyboardShortcuts(e) {
+async function handleKeyboardShortcuts(e) {
     // 入口检查：播放器不存在，或焦点在输入框内，则不处理
     if (!player || (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName))) return;
 
@@ -526,9 +534,17 @@ function handleKeyboardShortcuts(e) {
         case 'f':
         case 'F':
             e.preventDefault();
-            if (player && player.remote) {
-                player.remote.toggleFullscreen('prefer-media');
-                actionText = '切换全屏';
+            if (player) {
+                try {
+                    if (player.state.fullscreen) {
+                        await player.exitFullscreen();
+                    } else {
+                        await player.enterFullscreen();
+                    }
+                    actionText = '切换全屏';
+                } catch (e) {
+                    showToast('全屏操作失败', 'error', 1600);
+                }
             }
             break;
 
