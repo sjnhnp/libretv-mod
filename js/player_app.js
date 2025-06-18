@@ -767,12 +767,8 @@ function toggleLockScreen() {
     const playerContainer = document.querySelector('.player-container');
     const lockIcon = document.getElementById('lock-icon');
 
-    // --- 核心改动 ---
     // 1. 使用 Vidstack API 禁用/启用键盘快捷键
     player.keyDisabled = isScreenLocked;
-    // 2. 使用 Vidstack API 隐藏/显示其自带的全部UI控件
-    player.controls = !isScreenLocked;
-    // --- 核心改动结束 ---
 
     // 仅用CSS类来标记状态，以便我们自己的按钮可以响应
     if (playerContainer) {

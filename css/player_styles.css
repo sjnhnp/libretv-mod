@@ -556,3 +556,12 @@ header {
     object-fit: contain !important;
   }
 }
+
+/* 当播放器锁定时，通过CSS隐藏Vidstack的内置UI，而不是通过JS销毁它们 */
+/* 这样可以保持组件状态不丢失 */
+.player-container.player-locked .vds-controls {
+  pointer-events: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
+}
