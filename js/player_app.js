@@ -774,7 +774,14 @@ function toggleLockScreen() {
     // 2. 使用 Vidstack API 隐藏/显示其自带的全部UI控件
     // player.controls = !isScreenLocked;
 
-    // 仅用CSS类来标记状态，以便我们自己的按钮可以响应
+        // 2. 使用新的 Layout API 来隐藏/显示 Vidstack 的全部控制项
+    if (isScreenLocked) {
+        player.controls.hide(); // 命令 Layout 隐藏所有控件
+    } else {
+        player.controls.show(); // 命令 Layout 显示所有控件
+    }
+
+    // 3. 仅用CSS类来标记状态，以便我们自己的按钮可以响应 (此部分逻辑保持不变)
     if (playerContainer) {
         playerContainer.classList.toggle('player-locked', isScreenLocked);
     }
