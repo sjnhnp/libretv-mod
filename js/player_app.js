@@ -183,6 +183,7 @@ async function initPlayer(videoUrl, title) {
             playsInline: true,
             crossOrigin: true,
         });
+        player.keyDisabled = true;
         window.player = player;
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
@@ -469,54 +470,76 @@ function setupPlayerControls() {
 }
 
 function handleKeyboardShortcuts(e) {
+    // 入口检查：播放器不存在，或焦点在输入框内，则不处理
     if (!player || (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName))) return;
-    if (isScreenLocked && !['f', 'F', 'Escape'].includes(e.key)) return;
+
+    // 锁屏状态下的特殊处理：只允许全屏(f/F)和退出(Escape)键通过
+    if (isScreenLocked && !['f', 'F', 'Escape'].includes(e.key)) {
+        // 如果是锁屏状态，且按下的不是允许的键，则直接阻止并返回
+        e.preventDefault();
+        return;
+    }
 
     let actionText = '';
 
     switch (e.key) {
         case 'ArrowLeft':
-            player.currentTime -= 5;
-            actionText = '后退 5s';
+            e.preventDefault(); // 阻止默认行为，如页面滚动
+            if (e.altKey) { // Fix 3: Mac Option + Left = 上一集
+                playPreviousEpisode();
+                actionText = '上一集';
+            } else {
+                player.currentTime -= 5;
+                actionText = '后退 5s';
+            }
             break;
+
         case 'ArrowRight':
-            player.currentTime += 5;
-            actionText = '前进 5s';
+            e.preventDefault();
+            if (e.altKey) { // Fix 3: Mac Option + Right = 下一集
+                playNextEpisode();
+                actionText = '下一集';
+            } else {
+                player.currentTime += 5;
+                actionText = '前进 5s';
+            }
             break;
-        case ' ':
+
+        case ' ': // 空格键
+            e.preventDefault();
             player.paused ? player.play() : player.pause();
             actionText = player.paused ? '播放' : '暂停';
             break;
+
         case 'ArrowUp':
+            e.preventDefault();
             player.volume = Math.min(1, player.volume + 0.1);
             actionText = `音量 ${Math.round(player.volume * 100)}%`;
             break;
+
         case 'ArrowDown':
+            e.preventDefault();
             player.volume = Math.max(0, player.volume - 0.1);
             actionText = `音量 ${Math.round(player.volume * 100)}%`;
             break;
+
         case 'f':
-        case 'F':
-            // 【核心修改】
-            if (isScreenLocked) {
-                // 当屏幕锁定时，我们需要临时“解锁”键盘以允许命令通过
-                player.keyDisabled = false;
-
-                // 执行全屏切换操作
-                player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
-
-                // 立即将键盘重新锁定
-                player.keyDisabled = true;
-            } else {
-                // 当屏幕未锁定时，行为保持不变
-                player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
-            }
+        case 'F': // Fix 1: 统一处理 f 和 F
+            e.preventDefault();
+            // 因为我们完全接管了快捷键，所以不再需要临时开关 keyDisabled
+            player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
             actionText = '切换全屏';
+            break;
+
+        case 'm':
+        case 'M': // Fix 2: 增加 m/M 键静音功能
+            e.preventDefault();
+            player.muted = !player.muted;
+            actionText = player.muted ? '静音' : '取消静音';
             break;
     }
 
     if (actionText) {
-        e.preventDefault();
         showToast(actionText, 'info', 1500);
     }
 }
