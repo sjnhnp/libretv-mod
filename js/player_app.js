@@ -445,9 +445,7 @@ function setupPlayerControls() {
     const fullscreenButton = document.getElementById('fullscreen-button');
     if (fullscreenButton) {
         fullscreenButton.addEventListener('click', () => {
-            // 【修改】直接模拟点击 Vidstack 的内部按钮
-            const vidstackFullscreenButton = player?.el?.querySelector('media-fullscreen-button');
-            vidstackFullscreenButton?.click();
+            if (player) player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
         });
     }
 
@@ -529,11 +527,13 @@ function handleKeyboardShortcuts(e) {
         case 'f':
         case 'F':
             e.preventDefault();
-            // 【修改】直接模拟点击 Vidstack 的内部按钮
-            const vidstackFullscreenButton = player?.el?.querySelector('media-fullscreen-button');
-            vidstackFullscreenButton?.click();
-
-            showToast('切换全屏', 'info', 1500);
+            // 【修正1】使用标准的 dispatchEvent API，解决 "is not a function" 错误
+            if (player.isFullscreen) {
+                player.dispatchEvent(new Event('media-exit-fullscreen-request'));
+            } else {
+                player.dispatchEvent(new Event('media-enter-fullscreen-request'));
+            }
+            actionText = '切换全屏';
             break;
 
         case 'm':
