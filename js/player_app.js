@@ -475,7 +475,6 @@ function handleKeyboardShortcuts(e) {
 
     // 锁屏状态下的特殊处理：只允许全屏(f/F)和退出(Escape)键通过
     if (isScreenLocked && !['f', 'F', 'Escape'].includes(e.key)) {
-        // 如果是锁屏状态，且按下的不是允许的键，则直接阻止并返回
         e.preventDefault();
         return;
     }
@@ -484,8 +483,8 @@ function handleKeyboardShortcuts(e) {
 
     switch (e.key) {
         case 'ArrowLeft':
-            e.preventDefault(); // 阻止默认行为，如页面滚动
-            if (e.altKey) { // Fix 3: Mac Option + Left = 上一集
+            e.preventDefault();
+            if (e.altKey) {
                 playPreviousEpisode();
                 actionText = '上一集';
             } else {
@@ -496,7 +495,7 @@ function handleKeyboardShortcuts(e) {
 
         case 'ArrowRight':
             e.preventDefault();
-            if (e.altKey) { // Fix 3: Mac Option + Right = 下一集
+            if (e.altKey) {
                 playNextEpisode();
                 actionText = '下一集';
             } else {
@@ -507,6 +506,7 @@ function handleKeyboardShortcuts(e) {
 
         case ' ': // 空格键
             e.preventDefault();
+            // 对于播放/暂停，直接修改属性是安全且常见的
             player.paused ? player.play() : player.pause();
             actionText = player.paused ? '播放' : '暂停';
             break;
@@ -524,15 +524,21 @@ function handleKeyboardShortcuts(e) {
             break;
 
         case 'f':
-        case 'F': // Fix 1: 统一处理 f 和 F
+        case 'F':
             e.preventDefault();
-            // 因为我们完全接管了快捷键，所以不再需要临时开关 keyDisabled
-            player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
+            // 【核心修正】使用请求事件来切换全屏
+            if (player.isFullscreen) {
+                // 发送“退出全屏”请求
+                player.dispatch('media-exit-fullscreen-request');
+            } else {
+                // 发送“进入全屏”请求
+                player.dispatch('media-enter-fullscreen-request');
+            }
             actionText = '切换全屏';
             break;
 
         case 'm':
-        case 'M': // Fix 2: 增加 m/M 键静音功能
+        case 'M':
             e.preventDefault();
             player.muted = !player.muted;
             actionText = player.muted ? '静音' : '取消静音';
