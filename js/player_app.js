@@ -177,6 +177,7 @@ async function initPlayer(videoUrl, title) {
             src: { src: videoUrl, type: 'application/x-mpegurl' },
             title: title,
             autoplay: true,
+            layout: new PlyrLayout(),
             controls: true,
             playsInline: true,
             crossOrigin: true,
