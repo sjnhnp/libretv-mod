@@ -706,6 +706,30 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
         searchArea.classList.remove('hidden');
     }
     getElement('doubanArea')?.classList.add('hidden');
+
+    // 缓存搜索结果到 sessionStorage
+    try {
+        const searchInput = DOMCache.get('searchInput');
+        const query = searchInput ? searchInput.value.trim() : '';
+
+        if (query && allResults.length > 0) {
+            // 缓存搜索关键词
+            sessionStorage.setItem('searchQuery', query);
+
+            // 缓存搜索结果
+            sessionStorage.setItem('searchResults', JSON.stringify(allResults));
+
+            // 缓存当前的API选择状态
+            const selectedAPIs = AppState.get('selectedAPIs');
+            if (selectedAPIs) {
+                sessionStorage.setItem('searchSelectedAPIs', JSON.stringify(selectedAPIs));
+            }
+
+            console.log('[缓存] 搜索结果已保存到 sessionStorage');
+        }
+    } catch (e) {
+        console.error('缓存搜索结果失败:', e);
+    }
 }
 
 function restoreSearchFromCache() {
