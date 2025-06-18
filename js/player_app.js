@@ -23,6 +23,7 @@ let progressSaveInterval = null;
 let isScreenLocked = false;
 let nextSeekPosition = 0;
 let vodIdForPlayer = '';
+let lastFailedAction = null;
 
 // --- 实用工具函数 ---
 
@@ -409,6 +410,7 @@ function updateUIForNewEpisode() {
     renderEpisodes();
     updateButtonStates();
 }
+
 function updateBrowserHistory(newEpisodeUrl) {
     const newUrlForBrowser = new URL(window.location.href);
     newUrlForBrowser.searchParams.set('url', newEpisodeUrl);
@@ -416,6 +418,7 @@ function updateBrowserHistory(newEpisodeUrl) {
     newUrlForBrowser.searchParams.delete('position');
     window.history.pushState({ path: newUrlForBrowser.toString(), episodeIndex: currentEpisodeIndex }, '', newUrlForBrowser.toString());
 }
+
 function setupPlayerControls() {
     const backButton = document.getElementById('back-button');
     if (backButton) backButton.addEventListener('click', () => { window.location.href = 'index.html'; });
@@ -426,19 +429,11 @@ function setupPlayerControls() {
             if (player) player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
         });
     }
+
+    // retry-button 的点击事件绑定到新的智能重试函数
     const retryButton = document.getElementById('retry-button');
     if (retryButton) {
-        retryButton.addEventListener('click', () => {
-            if (player) {
-                const currentSrc = player.currentSrc;
-                if (currentSrc) {
-                    document.getElementById('error').style.display = 'none';
-                    document.getElementById('loading').style.display = 'flex';
-                    player.src = currentSrc;
-                    player.play();
-                }
-            }
-        });
+        retryButton.addEventListener('click', retryLastAction);
     }
 
     const prevEpisodeBtn = document.getElementById('prev-episode');
@@ -970,8 +965,16 @@ async function switchLine(newSourceCode) {
         showMessage(`已切换到线路: ${apiInfo.name}`, 'success');
 
     } catch (err) {
+        // 在捕获到错误时，记录失败的操作
         console.error("切换线路失败:", err);
-        showError(err.message || "切换线路失败，请重试");
+        lastFailedAction = { type: 'switchLine', payload: newSourceCode }; // 记录失败类型和参数
+
+        // 动态生成更具体的错误信息
+        const apiInfo = window.API_SITES[newSourceCode] || (JSON.parse(localStorage.getItem('customAPIs') || '[]').find(api => api.code === newSourceCode));
+        const lineName = apiInfo ? apiInfo.name : '未知线路';
+        const errorMessage = `在线路“${lineName}”上未找到《${currentVideoTitle}》`;
+
+        showError(errorMessage); // showError现在只负责显示
         if (loadingEl) loadingEl.style.display = 'none';
     }
 }
@@ -1006,6 +1009,42 @@ function setupRememberEpisodeProgressToggle() {
             clearCurrentVideoAllEpisodeProgresses();
         }
     });
+}
+
+/**
+ * 重试上一次失败的操作
+ */
+function retryLastAction() {
+    const errorEl = document.getElementById('error');
+    if (errorEl) errorEl.style.display = 'none';
+
+    if (!lastFailedAction) {
+        // 默认行为：如果没有任何失败记录，则尝试重载当前视频
+        if (player && player.currentSrc) {
+            console.log("重试：重新加载当前视频源。");
+            player.src = player.currentSrc;
+            player.play();
+        }
+        return;
+    }
+
+    // 根据失败类型执行不同的重试逻辑
+    if (lastFailedAction.type === 'switchLine') {
+        const sourceToRetry = lastFailedAction.payload;
+        console.log(`重试：切换到线路 ${sourceToRetry}`);
+        // 清空失败记录，然后重试
+        lastFailedAction = null;
+        switchLine(sourceToRetry);
+    }
+    // 未来可以扩展其他失败类型，如 'initialPlay'
+    else {
+        console.log("重试：未知操作类型，执行默认重载。");
+        lastFailedAction = null;
+        if (player && player.currentSrc) {
+            player.src = player.currentSrc;
+            player.play();
+        }
+    }
 }
 
 window.playNextEpisode = playNextEpisode;
