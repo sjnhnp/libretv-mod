@@ -221,6 +221,17 @@ function addPlayerEventListeners() {
         isNavigatingToEpisode = false;
     });
 
+    // 当屏幕锁定时，阻止右键菜单的默认行为
+    player.addEventListener('contextmenu', (event) => {
+        // 检查我们的全局锁屏状态变量
+        if (isScreenLocked) {
+            // 阻止浏览器默认的右键菜单弹出
+            event.preventDefault();
+            // (可选) 给用户一个友好的提示
+            showMessage('屏幕已锁定，请先解锁', 'info', 2000);
+        }
+    });
+
     player.addEventListener('error', (event) => {
         console.error("Vidstack Player Error:", event.detail);
         showError('播放器遇到错误，请检查视频源');
