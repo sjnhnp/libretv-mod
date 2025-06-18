@@ -497,7 +497,20 @@ function handleKeyboardShortcuts(e) {
             break;
         case 'f':
         case 'F':
-            player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
+            // 【核心修改】
+            if (isScreenLocked) {
+                // 当屏幕锁定时，我们需要临时“解锁”键盘以允许命令通过
+                player.keyDisabled = false;
+
+                // 执行全屏切换操作
+                player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
+
+                // 立即将键盘重新锁定
+                player.keyDisabled = true;
+            } else {
+                // 当屏幕未锁定时，行为保持不变
+                player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
+            }
             actionText = '切换全屏';
             break;
     }
