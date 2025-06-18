@@ -479,7 +479,6 @@ function handleKeyboardShortcuts(e) {
     }
 
     let actionText = '';
-    const canPlay = player.canPlay; // 获取一次媒体就绪状态
 
     switch (e.key) {
         case 'ArrowLeft':
@@ -487,7 +486,7 @@ function handleKeyboardShortcuts(e) {
             if (e.altKey) {
                 playPreviousEpisode();
                 actionText = '上一集';
-            } else if (canPlay) { // 【修正2】增加 canPlay 检查
+            } else {
                 player.currentTime -= 5;
                 actionText = '后退 5s';
             }
@@ -498,7 +497,7 @@ function handleKeyboardShortcuts(e) {
             if (e.altKey) {
                 playNextEpisode();
                 actionText = '下一集';
-            } else if (canPlay) { // 【修正2】增加 canPlay 检查
+            } else {
                 player.currentTime += 5;
                 actionText = '前进 5s';
             }
@@ -506,10 +505,8 @@ function handleKeyboardShortcuts(e) {
 
         case ' ': // 空格键
             e.preventDefault();
-            if (canPlay) { // 【修正2】增加 canPlay 检查，解决 "media not ready" 错误
-                player.paused ? player.play() : player.pause();
-                actionText = player.paused ? '播放' : '暂停';
-            }
+            player.paused ? player.play() : player.pause();
+            actionText = player.paused ? '播放' : '暂停';
             break;
 
         case 'ArrowUp':
@@ -527,7 +524,6 @@ function handleKeyboardShortcuts(e) {
         case 'f':
         case 'F':
             e.preventDefault();
-            // 【修正1】使用标准的 dispatchEvent API，解决 "is not a function" 错误
             if (player.isFullscreen) {
                 player.dispatchEvent(new Event('media-exit-fullscreen-request'));
             } else {
