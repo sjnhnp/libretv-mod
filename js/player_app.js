@@ -1,5 +1,5 @@
 // 动态导入 VidstackPlayer
-import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player';
+import { PlyrLayout, VidstackPlayer } from 'https://cdn.vidstack.io/player';
 
 // --- 常量定义 ---
 const SKIP_INTRO_KEY = 'skipIntroTime';
@@ -177,7 +177,7 @@ async function initPlayer(videoUrl, title) {
             src: { src: videoUrl, type: 'application/x-mpegurl' },
             title: title,
             autoplay: true,
-            layout: new VidstackPlayerLayout(),
+            layout: new PlyrLayout(),
            // controls: true,
             playsInline: true,
             crossOrigin: true,
@@ -774,14 +774,7 @@ function toggleLockScreen() {
     // 2. 使用 Vidstack API 隐藏/显示其自带的全部UI控件
     // player.controls = !isScreenLocked;
 
-        // 2. 使用新的 Layout API 来隐藏/显示 Vidstack 的全部控制项
-    if (isScreenLocked) {
-        player.controls.hide(); // 命令 Layout 隐藏所有控件
-    } else {
-        player.controls.show(); // 命令 Layout 显示所有控件
-    }
-
-    // 3. 仅用CSS类来标记状态，以便我们自己的按钮可以响应 (此部分逻辑保持不变)
+    // 仅用CSS类来标记状态，以便我们自己的按钮可以响应
     if (playerContainer) {
         playerContainer.classList.toggle('player-locked', isScreenLocked);
     }
