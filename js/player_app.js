@@ -689,17 +689,27 @@ function copyLinks() {
 }
 
 function toggleLockScreen() {
+    // 1. 安全检查，确保播放器实例存在
+    if (!player) {
+        console.warn("播放器未初始化，无法锁定屏幕。");
+        return;
+    }
+
     isScreenLocked = !isScreenLocked;
-    const playerContainer = document.querySelector('.player-container'); // 获取最外层的容器
+    const playerContainer = document.querySelector('.player-container');
     const lockButton = document.getElementById('lock-button');
     const lockIcon = document.getElementById('lock-icon');
 
+    // 2. 【核心改动】绑定 Vidstack 的 keyDisabled 属性
+    // 当屏幕锁定时，禁用播放器的键盘快捷键；解锁时，重新启用。
+    player.keyDisabled = isScreenLocked;
+
     if (playerContainer) {
-        // 使用 class 来控制锁定状态，这会更可靠地应用CSS规则
+        // 3. 切换CSS类，这个逻辑保持不变，它负责隐藏UI控件
         playerContainer.classList.toggle('player-locked', isScreenLocked);
     }
 
-    // 更新图标的 SVG 内容
+    // 更新图标的 SVG 内容 (此部分逻辑保持不变)
     if (lockIcon) {
         if (isScreenLocked) {
             // 设置为“解锁”图标
@@ -716,7 +726,7 @@ function toggleLockScreen() {
         }
     }
 
-    // 显示状态提示
+    // 显示状态提示 (此部分逻辑保持不变)
     showMessage(isScreenLocked ? '屏幕已锁定' : '屏幕已解锁', 'info');
 }
 
