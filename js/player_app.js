@@ -206,27 +206,6 @@ function addPlayerEventListeners() {
         }
     });
 
-    // —— 以下开始新增 —— 
-    // 拦截内置控件的“请求进入全屏”事件，交给 API 处理
-    player.addEventListener('media-enter-fullscreen-request', async (event) => {
-        event.preventDefault();
-        try {
-            await player.enterFullscreen();
-        } catch (e) {
-            console.error('enterFullscreen failed:', e);
-        }
-    });
-
-    // 拦截内置控件的“请求退出全屏”事件，交给 API 处理
-    player.addEventListener('media-exit-fullscreen-request', async (event) => {
-        event.preventDefault();
-        try {
-            await player.exitFullscreen();
-        } catch (e) {
-            console.error('exitFullscreen failed:', e);
-        }
-    });
-
     player.addEventListener('loaded-metadata', () => {
         document.getElementById('loading').style.display = 'none';
         videoHasEnded = false;
