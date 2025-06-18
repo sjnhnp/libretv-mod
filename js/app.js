@@ -83,7 +83,7 @@ function sanitizeText(text) {
  * @param {string} sourceName - 来源名称
  * @param {string} sourceCode - 来源代码
  */
-function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', vodId = '') {
+function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', vodId = '', year = '', typeName = '') {
     if (!url) {
         showToast('无效的视频链接', 'error');
         return;
@@ -111,17 +111,11 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', v
     if (vodId) {
         playerUrl.searchParams.set('id', vodId);
     }
-    // const eps = AppState.get('currentEpisodes');
-    //if (Array.isArray(eps) && eps.length) {
-    //    playerUrl.searchParams.set('episodes', encodeURIComponent(JSON.stringify(eps)));
-    // }
-
-    // 注释掉这行，让URL不带 reversed 参数
-    //const currentReversedStateForPlayer = AppState.get('episodesReversed') || false;
-    // playerUrl.searchParams.set('reversed', currentReversedStateForPlayer.toString());
 
     if (sourceName) playerUrl.searchParams.set('source', sourceName);
     if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
+    if (year) playerUrl.searchParams.set('year', year);
+    if (typeName) playerUrl.searchParams.set('typeName', typeName);
 
     // ← 在这一行后面，插入广告过滤开关参数
     const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, false);
@@ -536,7 +530,7 @@ async function performSearch(query, selectedAPIs) {
             const customApi = APISourceManager.getCustomApiInfo(customIndex);
             if (customApi) {
                 return fetch(`/api/search?wd=${encodeURIComponent(query)}&source=${apiId}&customApi=${encodeURIComponent(customApi.url)}`)
-                .then(response => response.json())
+                    .then(response => response.json())
                     .then(data => ({
                         ...data,
                         apiId: apiId,
@@ -1002,6 +996,8 @@ function createResultItemUsingTemplate(item) {
     cardElement.dataset.id = item.vod_id || '';
     cardElement.dataset.name = item.vod_name || '';
     cardElement.dataset.sourceCode = item.source_code || '';
+    cardElement.dataset.year = item.vod_year || '';
+    cardElement.dataset.typeName = item.type_name || '';
     if (item.api_url) {
         cardElement.dataset.apiUrl = item.api_url;
     }
@@ -1017,9 +1013,13 @@ function handleResultClick(event) {
     const name = card.dataset.name;
     const sourceCode = card.dataset.sourceCode;
     const apiUrl = card.dataset.apiUrl || '';
+    // 【新增】读取年份和类型
+    const year = card.dataset.year;
+    const typeName = card.dataset.typeName;
 
     if (typeof showVideoEpisodesModal === 'function') {
-        showVideoEpisodesModal(id, name, sourceCode, apiUrl);
+        // 【修改】将年份和类型传递下去
+        showVideoEpisodesModal(id, name, sourceCode, apiUrl, year, typeName);
     } else {
         console.error('showVideoEpisodesModal function not found!');
         showToast('无法加载剧集信息', 'error');
@@ -1038,7 +1038,7 @@ window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
  */
 // 在 app.js 中
 
-async function showVideoEpisodesModal(id, title, sourceCode) {
+async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeName) {
     showLoading('加载剧集信息...');
 
     // 确保 APISourceManager 和 getSelectedApi 方法可用
@@ -1082,6 +1082,8 @@ async function showVideoEpisodesModal(id, title, sourceCode) {
         AppState.set('currentVideoTitle', title);
         AppState.set('currentSourceName', selectedApi.name);
         AppState.set('currentSourceCode', sourceCode);
+        AppState.set('currentVideoYear', year); 
+        AppState.set('currentVideoTypeName', typeName); 
 
         // ← 在这里，紧接着写入 localStorage，player.html 会读取这两项
         localStorage.setItem('currentEpisodes', JSON.stringify(data.episodes));
@@ -1101,6 +1103,8 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
     if (!episodes || episodes.length === 0) return '<p class="text-center text-gray-500">暂无剧集信息</p>';
     const currentReversedState = AppState.get('episodesReversed') || false;
     const vodId = AppState.get('currentVideoId') || '';
+    const year = AppState.get('currentVideoYear') || '';
+    const typeName = AppState.get('currentVideoTypeName') || '';
 
     let html = `
     <div class="mb-4 flex justify-end items-center space-x-2">
@@ -1132,7 +1136,7 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
 
         html += `
         <button 
-            onclick="playVideo('${episodeUrl}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}', '${vodId}')" 
+            onclick="playVideo('${episodeUrl}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}', '${vodId}', '${year}', '${typeName}')" 
             class="episode-btn px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate"
             data-index="${originalIndex}"
             title="第 ${originalIndex + 1} 集" 

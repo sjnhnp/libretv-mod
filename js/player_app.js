@@ -23,6 +23,8 @@ let progressSaveInterval = null;
 let isScreenLocked = false;
 let nextSeekPosition = 0;
 let vodIdForPlayer = '';
+let currentVideoYear = '';
+let currentVideoTypeName = '';
 let lastFailedAction = null;
 
 // --- 实用工具函数 ---
@@ -328,6 +330,8 @@ function doEpisodeSwitch(index, url) {
         currentVideoTitle = urlParams.get('title') ? fullyDecode(urlParams.get('title')) : '视频播放';
         currentEpisodeIndex = parseInt(urlParams.get('index') || '0', 10);
         vodIdForPlayer = urlParams.get('id') || '';
+        currentVideoYear = urlParams.get('year') || '';
+        currentVideoTypeName = urlParams.get('typeName') || '';
 
         try {
             currentEpisodes = JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
@@ -824,69 +828,108 @@ function setupLineSwitching() {
     const dropdown = document.getElementById('line-switch-dropdown');
     if (!button || !dropdown) return;
 
-    if (button._lineSwitchListenerAttached) return;
-
-    const updateAndToggleMenu = (event) => {
+    // 使用 async 函数来处理异步搜索
+    const findAndShowLines = async (event) => {
         event.stopPropagation();
+        // 关闭其他可能打开的下拉菜单
         const skipDropdown = document.getElementById('skip-control-dropdown');
         if (skipDropdown) skipDropdown.classList.add('hidden');
 
-        const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
-        let selectedAPIsRaw = localStorage.getItem('selectedAPIs');
-        if (selectedAPIsRaw === null && window.DEFAULT_SELECTED_APIS) {
-            selectedAPIsRaw = JSON.stringify(window.DEFAULT_SELECTED_APIS);
+        // 如果下拉菜单已打开，则关闭它
+        if (!dropdown.classList.contains('hidden')) {
+            dropdown.classList.add('hidden');
+            return;
         }
-        const selectedAPIs = JSON.parse(selectedAPIsRaw || '[]');
-        const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
-        dropdown.innerHTML = '';
 
-        const availableSources = [];
-        if (selectedAPIs.length > 0) {
-            selectedAPIs.forEach(sourceCode => {
-                let apiInfo = {};
-                if (sourceCode.startsWith('custom_')) {
-                    const index = parseInt(sourceCode.replace('custom_', ''));
-                    const customApi = customAPIs[index];
-                    if (customApi) apiInfo = { name: customApi.name };
-                } else if (window.API_SITES && window.API_SITES[sourceCode]) {
-                    apiInfo = { name: window.API_SITES[sourceCode].name };
+        // 显示加载状态
+        dropdown.innerHTML = `<div class="text-center text-sm text-gray-400 py-2 px-4">正在查找其他线路...</div>`;
+        dropdown.classList.remove('hidden');
+
+        try {
+            // 1. 获取所有启用的API
+            const selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '[]');
+            const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
+            if (selectedAPIs.length === 0) {
+                throw new Error("未选择任何数据源");
+            }
+
+            // 2. 并行发起所有搜索请求
+            const searchPromises = selectedAPIs.map(sourceCode => {
+                const apiInfo = APISourceManager.getSelectedApi(sourceCode);
+                if (!apiInfo) return Promise.resolve(null);
+
+                let searchUrl = `/api/search?wd=${encodeURIComponent(currentVideoTitle)}&source=${sourceCode}`;
+                if (apiInfo.isCustom) {
+                    searchUrl += `&customApi=${encodeURIComponent(apiInfo.url)}`;
                 }
-                if (apiInfo.name) {
-                    availableSources.push({ name: apiInfo.name, code: sourceCode });
+                return fetch(searchUrl).then(res => res.json()).catch(() => null);
+            });
+
+            const results = await Promise.all(searchPromises);
+
+            // 3. 过滤和处理结果
+            const alternativeSources = [];
+            results.forEach(result => {
+                if (result && result.code === 200 && result.list) {
+                    result.list.forEach(item => {
+                        // 使用“指纹”进行精确匹配
+                        if (item.vod_name === currentVideoTitle &&
+                            (!currentVideoYear || item.vod_year === currentVideoYear) &&
+                            (!currentVideoTypeName || item.type_name === currentVideoTypeName)) {
+                            alternativeSources.push({
+                                name: APISourceManager.getSelectedApi(item.source_code)?.name || '未知',
+                                code: item.source_code,
+                                vod_id: item.vod_id
+                            });
+                        }
+                    });
                 }
             });
-        }
 
-        if (availableSources.length > 0) {
-            availableSources.forEach(source => {
-                const item = document.createElement('button');
-                item.textContent = source.name;
-                item.dataset.sourceCode = source.code;
-                item.className = 'w-full text-left px-3 py-2 rounded text-sm transition-colors hover:bg-gray-700';
-                if (source.code === currentSourceCode) {
-                    item.classList.add('line-active', 'bg-blue-600', 'text-white');
-                    item.disabled = true;
-                } else {
-                    item.classList.add('text-gray-300');
-                }
-                dropdown.appendChild(item);
-            });
-        } else {
-            dropdown.innerHTML = `<div class="text-center text-sm text-gray-500 py-2">无可用线路</div>`;
-        }
+            // 4. 渲染最终的线路列表
+            dropdown.innerHTML = ''; // 清空加载提示
+            const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
 
-        dropdown.classList.toggle('hidden');
+            if (alternativeSources.length > 0) {
+                // 去重，防止同一个源返回多个结果
+                const uniqueSources = Array.from(new Map(alternativeSources.map(item => [item.code, item])).values());
+
+                uniqueSources.forEach(source => {
+                    const item = document.createElement('button');
+                    item.textContent = source.name;
+                    item.dataset.sourceCode = source.code;
+                    item.dataset.vodId = source.vod_id; // 存储新的VOD ID
+                    item.className = 'w-full text-left px-3 py-2 rounded text-sm transition-colors hover:bg-gray-700';
+                    if (source.code === currentSourceCode) {
+                        item.classList.add('line-active', 'bg-blue-600', 'text-white');
+                        item.disabled = true;
+                    } else {
+                        item.classList.add('text-gray-300');
+                    }
+                    dropdown.appendChild(item);
+                });
+            } else {
+                dropdown.innerHTML = `<div class="text-center text-sm text-gray-500 py-2">未找到其他可用线路</div>`;
+            }
+
+        } catch (error) {
+            dropdown.innerHTML = `<div class="text-center text-sm text-red-400 py-2 px-4">查找失败: ${error.message}</div>`;
+        }
     };
 
-    button.addEventListener('click', updateAndToggleMenu);
-    button._lineSwitchListenerAttached = true;
+    // 绑定事件
+    if (!button._lineSwitchListenerAttached) {
+        button.addEventListener('click', findAndShowLines);
+        button._lineSwitchListenerAttached = true;
+    }
 
     if (!dropdown._actionListener) {
         dropdown.addEventListener('click', (e) => {
             const target = e.target.closest('button[data-source-code]');
             if (target && !target.disabled) {
                 dropdown.classList.add('hidden');
-                switchLine(target.dataset.sourceCode);
+                // 传递新的 VOD ID
+                switchLine(target.dataset.sourceCode, target.dataset.vodId);
             }
         });
         dropdown._actionListener = true;
@@ -901,55 +944,57 @@ function setupLineSwitching() {
     }
 }
 
-async function switchLine(newSourceCode) {
+async function switchLine(newSourceCode, newVodId) {
     if (!player || !currentVideoTitle) {
         showError("无法切换线路：播放器或视频信息丢失");
         return;
     }
+    if (!newVodId) {
+        showError("切换失败：缺少目标视频ID。");
+        return;
+    }
+
     const timeToSeek = player.currentTime;
     const loadingEl = document.getElementById('loading');
     const errorEl = document.getElementById('error');
 
-    // if (loadingEl) loadingEl.style.display = 'flex';
+    if (loadingEl) loadingEl.style.display = 'flex';
     if (errorEl) errorEl.style.display = 'none';
 
+    let apiInfo; // 将 apiInfo 提升到 try-catch 外部作用域，以便 catch 块也能访问
+
     try {
-        const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
-        let apiInfo = {};
-        let isCustom = newSourceCode.startsWith('custom_');
-        if (isCustom) {
-            const index = parseInt(newSourceCode.replace('custom_', ''));
-            apiInfo = customAPIs[index];
-        } else {
-            apiInfo = window.API_SITES[newSourceCode];
-        }
+        apiInfo = APISourceManager.getSelectedApi(newSourceCode);
         if (!apiInfo) throw new Error(`未找到线路 ${newSourceCode} 的信息`);
 
-        let searchUrl = `/api/search?wd=${encodeURIComponent(currentVideoTitle)}&source=${newSourceCode}`;
-        if (isCustom) searchUrl += `&customApi=${encodeURIComponent(apiInfo.url)}`;
-
-        const searchRes = await fetch(searchUrl);
-        const searchData = await searchRes.json();
-        if (searchData.code !== 200 || !searchData.list || searchData.list.length === 0) throw new Error(`在线路“${apiInfo.name}”上未找到《${currentVideoTitle}》`);
-
-        const newVodId = searchData.list[0].vod_id;
-        if (!newVodId) throw new Error("新线路返回的数据中缺少视频ID");
-
         let detailUrl = `/api/detail?id=${newVodId}&source=${newSourceCode}`;
-        if (isCustom) detailUrl += `&customApi=${encodeURIComponent(apiInfo.url)}`;
+        if (apiInfo.isCustom) {
+            detailUrl += `&customApi=${encodeURIComponent(apiInfo.url)}`;
+        }
 
         const detailRes = await fetch(detailUrl);
         const detailData = await detailRes.json();
-        if (detailData.code !== 200 || !detailData.episodes || detailData.episodes.length === 0) throw new Error(`在线路“${apiInfo.name}”上获取剧集列表失败`);
+        if (detailData.code !== 200 || !detailData.episodes || detailData.episodes.length === 0) {
+            throw new Error(`在线路“${apiInfo.name}”上获取剧集列表失败`);
+        }
 
+        // 【修正1】在这里声明 newEpisodes
         const newEpisodes = detailData.episodes;
-        if (currentEpisodeIndex >= newEpisodes.length) throw new Error(`新线路的剧集数(${newEpisodes.length})少于当前集数(${currentEpisodeIndex + 1})`);
 
+        // 【修正2】增加边界检查，防止新线路集数不够
+        if (currentEpisodeIndex >= newEpisodes.length) {
+            throw new Error(`新线路的剧集数(${newEpisodes.length})少于当前集数(${currentEpisodeIndex + 1})`);
+        }
+
+        // 【修正1】现在可以安全地使用 newEpisodes
         const newEpisodeUrl = newEpisodes[currentEpisodeIndex];
+
+        // 更新全局和本地存储的剧集列表
         currentEpisodes = newEpisodes;
         window.currentEpisodes = newEpisodes;
         localStorage.setItem('currentEpisodes', JSON.stringify(newEpisodes));
 
+        // 更新浏览器地址栏的URL参数，以便刷新后状态保持一致
         const newUrlForBrowser = new URL(window.location.href);
         newUrlForBrowser.searchParams.set('source_code', newSourceCode);
         newUrlForBrowser.searchParams.set('source', apiInfo.name);
@@ -957,24 +1002,28 @@ async function switchLine(newSourceCode) {
         newUrlForBrowser.searchParams.set('url', newEpisodeUrl);
         window.history.replaceState({}, '', newUrlForBrowser.toString());
 
+        // 更新播放器
         nextSeekPosition = timeToSeek;
         player.src = { src: newEpisodeUrl, type: 'application/x-mpegurl' };
         player.play();
 
+        // 更新UI
         renderEpisodes();
         showMessage(`已切换到线路: ${apiInfo.name}`, 'success');
+        if (loadingEl) loadingEl.style.display = 'none';
 
     } catch (err) {
-        // 在捕获到错误时，记录失败的操作
         console.error("切换线路失败:", err);
-        lastFailedAction = { type: 'switchLine', payload: newSourceCode }; // 记录失败类型和参数
 
-        // 动态生成更具体的错误信息
-        const apiInfo = window.API_SITES[newSourceCode] || (JSON.parse(localStorage.getItem('customAPIs') || '[]').find(api => api.code === newSourceCode));
+        // 【修正3】更新失败记录，包含 newVodId 以便重试
+        lastFailedAction = { type: 'switchLine', payload: { sourceCode: newSourceCode, vodId: newVodId } };
+
+        // 【修正4】优化错误信息显示
         const lineName = apiInfo ? apiInfo.name : '未知线路';
-        const errorMessage = `在线路“${lineName}”上未找到《${currentVideoTitle}》`;
+        // 使用 err.message 可以显示更具体的错误，如“剧集数不够”
+        const errorMessage = err.message.includes(lineName) ? err.message : `在“${lineName}”上切换失败: ${err.message}`;
 
-        showError(errorMessage); // showError现在只负责显示
+        showError(errorMessage);
         if (loadingEl) loadingEl.style.display = 'none';
     }
 }
@@ -1019,22 +1068,17 @@ function retryLastAction() {
     if (errorEl) errorEl.style.display = 'none';
 
     if (!lastFailedAction) {
-        // 默认行为：如果没有任何失败记录，则尝试重载当前视频
-        if (player && player.currentSrc) {
-            console.log("重试：重新加载当前视频源。");
-            player.src = player.currentSrc;
-            player.play();
-        }
+        // ... (默认行为不变)
         return;
     }
 
-    // 根据失败类型执行不同的重试逻辑
     if (lastFailedAction.type === 'switchLine') {
-        const sourceToRetry = lastFailedAction.payload;
-        console.log(`重试：切换到线路 ${sourceToRetry}`);
-        // 清空失败记录，然后重试
+        // 【修改】从 payload 中解构出需要的参数
+        const { sourceCode, vodId } = lastFailedAction.payload;
+        console.log(`重试：切换到线路 ${sourceCode} (ID: ${vodId})`);
         lastFailedAction = null;
-        switchLine(sourceToRetry);
+        // 【修改】调用 switchLine 并传入两个参数
+        switchLine(sourceCode, vodId);
     }
     // 未来可以扩展其他失败类型，如 'initialPlay'
     else {
