@@ -1,7 +1,5 @@
-// File: js/player_app.js
-
 // 动态导入 VidstackPlayer
-import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player';
+import { PlyrLayout, VidstackPlayer } from 'https://cdn.vidstack.io/player';
 
 // --- 常量定义 ---
 const SKIP_INTRO_KEY = 'skipIntroTime';
