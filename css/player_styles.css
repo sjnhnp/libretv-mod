@@ -556,3 +556,11 @@ header {
     object-fit: contain !important;
   }
 }
+
+/* 当 Vidstack 控件被程序化禁用时 (data-controls="false")，
+   确保我们的自定义锁屏按钮强制可见且可交互 */
+   media-player[data-controls="false"] #lock-button {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    z-index: 51; /* 确保它在最上层，可以被点击 */
+  }
