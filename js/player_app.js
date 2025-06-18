@@ -207,26 +207,26 @@ function addPlayerEventListeners() {
         }
     });
 
-      // —— 以下开始新增 —— 
-      // 拦截内置控件的“请求进入全屏”事件，交给 API 处理
-      player.addEventListener('media-enter-fullscreen-request', async (event) => {
+    // —— 以下开始新增 —— 
+    // 拦截内置控件的“请求进入全屏”事件，交给 API 处理
+    player.addEventListener('media-enter-fullscreen-request', async (event) => {
         event.preventDefault();
         try {
-          await player.enterFullscreen();
+            await player.enterFullscreen();
         } catch (e) {
-          console.error('enterFullscreen failed:', e);
+            console.error('enterFullscreen failed:', e);
         }
-      });
-    
-      // 拦截内置控件的“请求退出全屏”事件，交给 API 处理
-      player.addEventListener('media-exit-fullscreen-request', async (event) => {
+    });
+
+    // 拦截内置控件的“请求退出全屏”事件，交给 API 处理
+    player.addEventListener('media-exit-fullscreen-request', async (event) => {
         event.preventDefault();
         try {
-          await player.exitFullscreen();
+            await player.exitFullscreen();
         } catch (e) {
-          console.error('exitFullscreen failed:', e);
+            console.error('exitFullscreen failed:', e);
         }
-      });
+    });
 
     player.addEventListener('loaded-metadata', () => {
         document.getElementById('loading').style.display = 'none';
@@ -465,17 +465,13 @@ function setupPlayerControls() {
 
     const fullscreenButton = document.getElementById('fullscreen-button');
     if (fullscreenButton) {
-        fullscreenButton.addEventListener('click', async () => {
+        fullscreenButton.addEventListener('click', () => {
             if (player) {
-                try {
-                    if (player.state.fullscreen) {
-                        await player.exitFullscreen();
-                    } else {
-                        await player.enterFullscreen();
-                    }
-                } catch (e) {
-                    showMessage('全屏操作失败', 'error');
-                }
+                const eventType = player.state.fullscreen
+                    ? 'media-exit-fullscreen-request'
+                    : 'media-enter-fullscreen-request';
+                // 派发一个冒泡事件，让播放器捕获并处理
+                player.dispatchEvent(new Event(eventType, { bubbles: true }));
             }
         });
     }
@@ -499,7 +495,7 @@ function setupPlayerControls() {
     if (lockButton) lockButton.addEventListener('click', toggleLockScreen);
 }
 
-async function handleKeyboardShortcuts(e) {
+function handleKeyboardShortcuts(e) {
     // 入口检查：播放器不存在，或焦点在输入框内，则不处理
     if (!player || (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName))) return;
 
@@ -556,16 +552,12 @@ async function handleKeyboardShortcuts(e) {
         case 'F':
             e.preventDefault();
             if (player) {
-                try {
-                    if (player.state.fullscreen) {
-                        await player.exitFullscreen();
-                    } else {
-                        await player.enterFullscreen();
-                    }
-                    actionText = '切换全屏';
-                } catch (e) {
-                    showToast('全屏操作失败', 'error', 1600);
-                }
+                const eventType = player.state.fullscreen
+                    ? 'media-exit-fullscreen-request'
+                    : 'media-enter-fullscreen-request';
+                // 同样使用事件派发
+                player.dispatchEvent(new Event(eventType, { bubbles: true }));
+                actionText = '切换全屏';
             }
             break;
 
