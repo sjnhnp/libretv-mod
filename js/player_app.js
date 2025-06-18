@@ -183,7 +183,6 @@ async function initPlayer(videoUrl, title) {
             playsInline: true,
             crossOrigin: true,
         });
-        player.keyDisabled = true;
         window.player = player;
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
@@ -446,7 +445,9 @@ function setupPlayerControls() {
     const fullscreenButton = document.getElementById('fullscreen-button');
     if (fullscreenButton) {
         fullscreenButton.addEventListener('click', () => {
-            if (player) player.isFullscreen ? player.exitFullscreen() : player.enterFullscreen();
+            // 【修改】直接模拟点击 Vidstack 的内部按钮
+            const vidstackFullscreenButton = player?.el?.querySelector('media-fullscreen-button');
+            vidstackFullscreenButton?.click();
         });
     }
 
@@ -469,9 +470,6 @@ function setupPlayerControls() {
     if (lockButton) lockButton.addEventListener('click', toggleLockScreen);
 }
 
-// 文件: js/player_app.js
-
-// 请用下面的完整函数替换掉旧的 handleKeyboardShortcuts 函数
 function handleKeyboardShortcuts(e) {
     // 入口检查：播放器不存在，或焦点在输入框内，则不处理
     if (!player || (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName))) return;
@@ -531,26 +529,11 @@ function handleKeyboardShortcuts(e) {
         case 'f':
         case 'F':
             e.preventDefault();
-            if (player.isFullscreen) {
-                // 发送“退出全屏”请求
-                player.dispatchEvent(new Event('media-exit-fullscreen-request'));
+            // 【修改】直接模拟点击 Vidstack 的内部按钮
+            const vidstackFullscreenButton = player?.el?.querySelector('media-fullscreen-button');
+            vidstackFullscreenButton?.click();
 
-                // 【核心修正】手动调用屏幕方向解锁 API
-                // 这是一个安全的操作，如果浏览器不支持或屏幕未锁定，它会静默失败。
-                if (screen.orientation && typeof screen.orientation.unlock === 'function') {
-                    try {
-                        screen.orientation.unlock();
-                    } catch (err) {
-                        // 在某些浏览器或模式下，直接调用可能报错，捕获它以防程序崩溃
-                        console.warn("屏幕方向解锁失败:", err);
-                    }
-                }
-
-            } else {
-                // 发送“进入全屏”请求
-                player.dispatchEvent(new Event('media-enter-fullscreen-request'));
-            }
-            actionText = '切换全屏';
+            showToast('切换全屏', 'info', 1500);
             break;
 
         case 'm':
