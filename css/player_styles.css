@@ -1,3 +1,7 @@
+html, body {
+    overflow-x: hidden; /* 强制禁用页面级别的水平滚动条 */
+  }
+
 /* 基本布局和播放器相关样式 */
 .player-container {
   width: 100%;
@@ -212,8 +216,9 @@ input:checked+.slider:before {
 /* 让整排控件靠右 */
 .player-control-bar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.8rem;
+  overflow-x: auto;
   justify-content: flex-end;
   align-items: center;
 }
