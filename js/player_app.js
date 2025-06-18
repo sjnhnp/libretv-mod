@@ -446,12 +446,11 @@ function setupPlayerControls() {
     if (fullscreenButton) {
         fullscreenButton.addEventListener('click', () => {
             if (player) {
-                // 始终使用 player.state.fullscreen 读取状态
-                if (player.state.fullscreen) {
-                    player.exitFullscreen().catch(err => console.error("退出全屏失败:", err));
-                } else {
-                    player.enterFullscreen().catch(err => console.error("进入全屏失败:", err));
-                }
+                const eventType = player.state.fullscreen
+                    ? 'media-exit-fullscreen-request'
+                    : 'media-enter-fullscreen-request';
+                // 派发一个冒泡事件，让播放器捕获并处理
+                player.dispatchEvent(new Event(eventType, { bubbles: true }));
             }
         });
     }
@@ -531,12 +530,14 @@ function handleKeyboardShortcuts(e) {
         case 'f':
         case 'F':
             e.preventDefault();
-            if (player.state.fullscreen) {
-                player.exitFullscreen().catch(err => console.error("退出全屏失败:", err));
-            } else {
-                player.enterFullscreen().catch(err => console.error("进入全屏失败:", err));
+            if (player) {
+                const eventType = player.state.fullscreen
+                    ? 'media-exit-fullscreen-request'
+                    : 'media-enter-fullscreen-request';
+                // 同样使用事件派发
+                player.dispatchEvent(new Event(eventType, { bubbles: true }));
+                actionText = '切换全屏';
             }
-            actionText = '切换全屏';
             break;
 
         case 'm':
