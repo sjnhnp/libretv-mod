@@ -178,7 +178,7 @@ async function initPlayer(videoUrl, title) {
             title: title,
             autoplay: true,
             layout: new PlyrLayout(),
-            controls: true,
+           // controls: true,
             playsInline: true,
             crossOrigin: true,
         });
