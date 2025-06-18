@@ -182,37 +182,6 @@ async function initPlayer(videoUrl, title) {
             controls: true,
             playsInline: true,
             crossOrigin: true,
-            // 使用 Vidstack 的方式配置快捷键
-            keyShortcuts: {
-                // --- 保留 Vidstack 默认的全屏/播放/音量等快捷键 ---
-                togglePaused: 'k Space',
-                toggleMuted: 'm',
-                toggleFullscreen: 'f', // 'f' 键现在由 Vidstack 内部处理
-                togglePictureInPicture: 'i',
-                toggleCaptions: 'c',
-                volumeUp: 'ArrowUp',
-                volumeDown: 'ArrowDown',
-                seekBackward: 'ArrowLeft',
-                seekForward: 'ArrowRight',
-
-                // --- 添加您自定义的快捷键逻辑 ---
-                'alt+ArrowLeft': (event) => {
-                    event.preventDefault();
-                    if (typeof playPreviousEpisode === 'function') {
-                        playPreviousEpisode();
-                        showToast('上一集', 'info', 1500);
-                    }
-                },
-                'alt+ArrowRight': (event) => {
-                    event.preventDefault();
-                    if (typeof playNextEpisode === 'function') {
-                        playNextEpisode();
-                        showToast('下一集', 'info', 1500);
-                    }
-                }
-            }
-
-
         });
         window.player = player;
         addPlayerEventListeners();
@@ -440,7 +409,7 @@ function setupAllUI() {
     setupSkipControls();
     setupSkipDropdownEvents();
     setupRememberEpisodeProgressToggle();
-    // document.addEventListener('keydown', handleKeyboardShortcuts);
+    document.addEventListener('keydown', handleKeyboardShortcuts);
     window.addEventListener('beforeunload', () => {
         saveCurrentProgress();
         saveVideoSpecificProgress();
