@@ -493,8 +493,8 @@ function handleKeyboardShortcuts(e) {
                 playPreviousEpisode();
                 actionText = '上一集';
             } else {
-                player.currentTime -= 5;
-                actionText = '后退 5s';
+                player.currentTime -= 10;
+                actionText = '后退 10s';
             }
             break;
 
@@ -504,8 +504,8 @@ function handleKeyboardShortcuts(e) {
                 playNextEpisode();
                 actionText = '下一集';
             } else {
-                player.currentTime += 5;
-                actionText = '前进 5s';
+                player.currentTime += 10;
+                actionText = '前进 10s';
             }
             break;
 
