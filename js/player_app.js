@@ -1,5 +1,5 @@
 // 动态导入 VidstackPlayer
-import { PlyrLayout, VidstackPlayer } from 'https://cdn.vidstack.io/player';
+import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player';
 
 // --- 常量定义 ---
 const SKIP_INTRO_KEY = 'skipIntroTime';
@@ -177,7 +177,7 @@ async function initPlayer(videoUrl, title) {
             src: { src: videoUrl, type: 'application/x-mpegurl' },
             title: title,
             autoplay: true,
-            layout: new PlyrLayout(),
+            layout: new VidstackPlayerLayout(),
            // controls: true,
             playsInline: true,
             crossOrigin: true,
