@@ -469,6 +469,9 @@ function setupPlayerControls() {
     if (lockButton) lockButton.addEventListener('click', toggleLockScreen);
 }
 
+// 文件: js/player_app.js
+
+// 请用下面的完整函数替换掉旧的 handleKeyboardShortcuts 函数
 function handleKeyboardShortcuts(e) {
     // 入口检查：播放器不存在，或焦点在输入框内，则不处理
     if (!player || (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName))) return;
@@ -480,6 +483,7 @@ function handleKeyboardShortcuts(e) {
     }
 
     let actionText = '';
+    const canPlay = player.canPlay; // 获取一次媒体就绪状态
 
     switch (e.key) {
         case 'ArrowLeft':
@@ -487,7 +491,7 @@ function handleKeyboardShortcuts(e) {
             if (e.altKey) {
                 playPreviousEpisode();
                 actionText = '上一集';
-            } else {
+            } else if (canPlay) { // 【修正2】增加 canPlay 检查
                 player.currentTime -= 5;
                 actionText = '后退 5s';
             }
@@ -498,7 +502,7 @@ function handleKeyboardShortcuts(e) {
             if (e.altKey) {
                 playNextEpisode();
                 actionText = '下一集';
-            } else {
+            } else if (canPlay) { // 【修正2】增加 canPlay 检查
                 player.currentTime += 5;
                 actionText = '前进 5s';
             }
@@ -506,9 +510,10 @@ function handleKeyboardShortcuts(e) {
 
         case ' ': // 空格键
             e.preventDefault();
-            // 对于播放/暂停，直接修改属性是安全且常见的
-            player.paused ? player.play() : player.pause();
-            actionText = player.paused ? '播放' : '暂停';
+            if (canPlay) { // 【修正2】增加 canPlay 检查，解决 "media not ready" 错误
+                player.paused ? player.play() : player.pause();
+                actionText = player.paused ? '播放' : '暂停';
+            }
             break;
 
         case 'ArrowUp':
@@ -526,13 +531,11 @@ function handleKeyboardShortcuts(e) {
         case 'f':
         case 'F':
             e.preventDefault();
-            // 【核心修正】使用请求事件来切换全屏
+            // 【修正1】使用标准的 dispatchEvent API，解决 "is not a function" 错误
             if (player.isFullscreen) {
-                // 发送“退出全屏”请求
-                player.dispatch('media-exit-fullscreen-request');
+                player.dispatchEvent(new Event('media-exit-fullscreen-request'));
             } else {
-                // 发送“进入全屏”请求
-                player.dispatch('media-enter-fullscreen-request');
+                player.dispatchEvent(new Event('media-enter-fullscreen-request'));
             }
             actionText = '切换全屏';
             break;
