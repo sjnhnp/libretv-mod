@@ -83,7 +83,7 @@ function sanitizeText(text) {
  * @param {string} sourceName - 来源名称
  * @param {string} sourceCode - 来源代码
  */
-function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', vodId = '', year = '', typeName = '') {
+function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', vodId = '', year = '', typeName = '', videoKey = '') {
     if (!url) {
         showToast('无效的视频链接', 'error');
         return;
@@ -116,7 +116,9 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', v
     if (sourceCode) playerUrl.searchParams.set('source_code', sourceCode);
     if (year) playerUrl.searchParams.set('year', year);
     if (typeName) playerUrl.searchParams.set('typeName', typeName);
-
+    if (videoKey) {
+        playerUrl.searchParams.set('videoKey', videoKey);
+    }
     // ← 在这一行后面，插入广告过滤开关参数
     const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, false);
     playerUrl.searchParams.set('af', adOn ? '1' : '0');
@@ -572,7 +574,6 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
 
     if (!searchResultsContainer || !resultsArea || !searchResultsCountElement) return;
 
-    // ... (合并结果和错误信息的逻辑保持不变) ...
     let allResults = [];
     let errors = [];
     // (假设 allResults 和 errors 已正确填充)
@@ -593,7 +594,6 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
 
     const yellowFilterEnabled = getBoolConfig('yellowFilterEnabled', true);
     if (yellowFilterEnabled) {
-        // ... (过滤逻辑)
         allResults = allResults.filter(item => {
             const title = item.vod_name || '';
             const type = item.type_name || '';
@@ -601,6 +601,25 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
         });
     }
 
+    // 【新增】处理并存储搜索结果到 sessionStorage
+    try {
+        const videoSourceMap = {};
+        allResults.forEach(item => {
+            const key = `${item.vod_name}|${item.vod_year || ''}`;
+            if (!videoSourceMap[key]) {
+                videoSourceMap[key] = [];
+            }
+            // 只存储必要信息
+            videoSourceMap[key].push({
+                name: item.source_name,
+                code: item.source_code,
+                vod_id: item.vod_id
+            });
+        });
+        sessionStorage.setItem('videoSourceMap', JSON.stringify(videoSourceMap));
+    } catch (e) {
+        console.error("存储搜索结果到 sessionStorage 失败:", e);
+    }
 
     searchResultsContainer.innerHTML = ''; // 先清空旧内容
 
@@ -687,30 +706,6 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
         searchArea.classList.remove('hidden');
     }
     getElement('doubanArea')?.classList.add('hidden');
-
-    // 缓存搜索结果到 sessionStorage
-    try {
-        const searchInput = DOMCache.get('searchInput');
-        const query = searchInput ? searchInput.value.trim() : '';
-
-        if (query && allResults.length > 0) {
-            // 缓存搜索关键词
-            sessionStorage.setItem('searchQuery', query);
-
-            // 缓存搜索结果
-            sessionStorage.setItem('searchResults', JSON.stringify(allResults));
-
-            // 缓存当前的API选择状态
-            const selectedAPIs = AppState.get('selectedAPIs');
-            if (selectedAPIs) {
-                sessionStorage.setItem('searchSelectedAPIs', JSON.stringify(selectedAPIs));
-            }
-
-            console.log('[缓存] 搜索结果已保存到 sessionStorage');
-        }
-    } catch (e) {
-        console.error('缓存搜索结果失败:', e);
-    }
 }
 
 function restoreSearchFromCache() {
@@ -993,6 +988,10 @@ function createResultItemUsingTemplate(item) {
         }
     }
 
+    // 创建一个唯一的视频标识符
+    const videoKey = `${item.vod_name}|${item.vod_year || ''}`;
+    cardElement.dataset.videoKey = videoKey;
+
     cardElement.dataset.id = item.vod_id || '';
     cardElement.dataset.name = item.vod_name || '';
     cardElement.dataset.sourceCode = item.source_code || '';
@@ -1013,13 +1012,13 @@ function handleResultClick(event) {
     const name = card.dataset.name;
     const sourceCode = card.dataset.sourceCode;
     const apiUrl = card.dataset.apiUrl || '';
-    // 【新增】读取年份和类型
     const year = card.dataset.year;
     const typeName = card.dataset.typeName;
+    const videoKey = card.dataset.videoKey;
 
     if (typeof showVideoEpisodesModal === 'function') {
         // 【修改】将年份和类型传递下去
-        showVideoEpisodesModal(id, name, sourceCode, apiUrl, year, typeName);
+        showVideoEpisodesModal(id, name, sourceCode, apiUrl, year, typeName, videoKey);
     } else {
         console.error('showVideoEpisodesModal function not found!');
         showToast('无法加载剧集信息', 'error');
@@ -1038,7 +1037,7 @@ window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
  */
 // 在 app.js 中
 
-async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeName) {
+async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeName, videoKey) {
     showLoading('加载剧集信息...');
 
     // 确保 APISourceManager 和 getSelectedApi 方法可用
@@ -1082,8 +1081,9 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeN
         AppState.set('currentVideoTitle', title);
         AppState.set('currentSourceName', selectedApi.name);
         AppState.set('currentSourceCode', sourceCode);
-        AppState.set('currentVideoYear', year); 
-        AppState.set('currentVideoTypeName', typeName); 
+        AppState.set('currentVideoYear', year);
+        AppState.set('currentVideoTypeName', typeName);
+        AppState.set('currentVideoKey', videoKey);
 
         // ← 在这里，紧接着写入 localStorage，player.html 会读取这两项
         localStorage.setItem('currentEpisodes', JSON.stringify(data.episodes));
@@ -1105,6 +1105,7 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
     const vodId = AppState.get('currentVideoId') || '';
     const year = AppState.get('currentVideoYear') || '';
     const typeName = AppState.get('currentVideoTypeName') || '';
+    const videoKey = AppState.get('currentVideoKey') || '';
 
     let html = `
     <div class="mb-4 flex justify-end items-center space-x-2">
@@ -1136,7 +1137,7 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
 
         html += `
         <button 
-            onclick="playVideo('${episodeUrl}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}', '${vodId}', '${year}', '${typeName}')" 
+            onclick="playVideo('${episodeUrl}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}', '${vodId}', '${year}', '${typeName}', '${videoKey}')" 
             class="episode-btn px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate"
             data-index="${originalIndex}"
             title="第 ${originalIndex + 1} 集" 

@@ -26,6 +26,7 @@ let vodIdForPlayer = '';
 let currentVideoYear = '';
 let currentVideoTypeName = '';
 let lastFailedAction = null;
+let availableAlternativeSources = []; // 用于存储从 sessionStorage 读取的线路
 
 // --- 实用工具函数 ---
 
@@ -332,6 +333,20 @@ function doEpisodeSwitch(index, url) {
         vodIdForPlayer = urlParams.get('id') || '';
         currentVideoYear = urlParams.get('year') || '';
         currentVideoTypeName = urlParams.get('typeName') || '';
+
+        const videoKey = urlParams.get('videoKey');
+        if (videoKey) {
+            try {
+                const sourceMapJSON = sessionStorage.getItem('videoSourceMap');
+                if (sourceMapJSON) {
+                    const sourceMap = JSON.parse(sourceMapJSON);
+                    availableAlternativeSources = sourceMap[videoKey] || [];
+                }
+            } catch (e) {
+                console.error("从 sessionStorage 读取线路失败:", e);
+                availableAlternativeSources = [];
+            }
+        }
 
         try {
             currentEpisodes = JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
@@ -828,98 +843,38 @@ function setupLineSwitching() {
     const dropdown = document.getElementById('line-switch-dropdown');
     if (!button || !dropdown) return;
 
-    // 使用 async 函数来处理异步搜索
-    const findAndShowLines = async (event) => {
+    const showLinesFromCache = (event) => {
         event.stopPropagation();
-        // 关闭其他可能打开的下拉菜单
         const skipDropdown = document.getElementById('skip-control-dropdown');
         if (skipDropdown) skipDropdown.classList.add('hidden');
 
-        // 如果下拉菜单已打开，则关闭它
-        if (!dropdown.classList.contains('hidden')) {
-            dropdown.classList.add('hidden');
-            return;
+        dropdown.innerHTML = ''; // 清空旧内容
+        const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
+
+        if (availableAlternativeSources.length > 1) {
+            availableAlternativeSources.forEach(source => {
+                const item = document.createElement('button');
+                item.textContent = source.name;
+                item.dataset.sourceCode = source.code;
+                item.dataset.vodId = source.vod_id;
+                item.className = 'w-full text-left px-3 py-2 rounded text-sm transition-colors hover:bg-gray-700';
+                if (source.code === currentSourceCode) {
+                    item.classList.add('line-active', 'bg-blue-600', 'text-white');
+                    item.disabled = true;
+                } else {
+                    item.classList.add('text-gray-300');
+                }
+                dropdown.appendChild(item);
+            });
+        } else {
+            dropdown.innerHTML = `<div class="text-center text-sm text-gray-500 py-2">无其他可用线路</div>`;
         }
 
-        // 显示加载状态
-        dropdown.innerHTML = `<div class="text-center text-sm text-gray-400 py-2 px-4">正在查找其他线路...</div>`;
-        dropdown.classList.remove('hidden');
-
-        try {
-            // 1. 获取所有启用的API
-            const selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '[]');
-            const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
-            if (selectedAPIs.length === 0) {
-                throw new Error("未选择任何数据源");
-            }
-
-            // 2. 并行发起所有搜索请求
-            const searchPromises = selectedAPIs.map(sourceCode => {
-                const apiInfo = APISourceManager.getSelectedApi(sourceCode);
-                if (!apiInfo) return Promise.resolve(null);
-
-                let searchUrl = `/api/search?wd=${encodeURIComponent(currentVideoTitle)}&source=${sourceCode}`;
-                if (apiInfo.isCustom) {
-                    searchUrl += `&customApi=${encodeURIComponent(apiInfo.url)}`;
-                }
-                return fetch(searchUrl).then(res => res.json()).catch(() => null);
-            });
-
-            const results = await Promise.all(searchPromises);
-
-            // 3. 过滤和处理结果
-            const alternativeSources = [];
-            results.forEach(result => {
-                if (result && result.code === 200 && result.list) {
-                    result.list.forEach(item => {
-                        // 使用“指纹”进行精确匹配
-                        if (item.vod_name === currentVideoTitle &&
-                            (!currentVideoYear || item.vod_year === currentVideoYear) &&
-                            (!currentVideoTypeName || item.type_name === currentVideoTypeName)) {
-                            alternativeSources.push({
-                                name: APISourceManager.getSelectedApi(item.source_code)?.name || '未知',
-                                code: item.source_code,
-                                vod_id: item.vod_id
-                            });
-                        }
-                    });
-                }
-            });
-
-            // 4. 渲染最终的线路列表
-            dropdown.innerHTML = ''; // 清空加载提示
-            const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
-
-            if (alternativeSources.length > 0) {
-                // 去重，防止同一个源返回多个结果
-                const uniqueSources = Array.from(new Map(alternativeSources.map(item => [item.code, item])).values());
-
-                uniqueSources.forEach(source => {
-                    const item = document.createElement('button');
-                    item.textContent = source.name;
-                    item.dataset.sourceCode = source.code;
-                    item.dataset.vodId = source.vod_id; // 存储新的VOD ID
-                    item.className = 'w-full text-left px-3 py-2 rounded text-sm transition-colors hover:bg-gray-700';
-                    if (source.code === currentSourceCode) {
-                        item.classList.add('line-active', 'bg-blue-600', 'text-white');
-                        item.disabled = true;
-                    } else {
-                        item.classList.add('text-gray-300');
-                    }
-                    dropdown.appendChild(item);
-                });
-            } else {
-                dropdown.innerHTML = `<div class="text-center text-sm text-gray-500 py-2">未找到其他可用线路</div>`;
-            }
-
-        } catch (error) {
-            dropdown.innerHTML = `<div class="text-center text-sm text-red-400 py-2 px-4">查找失败: ${error.message}</div>`;
-        }
+        dropdown.classList.toggle('hidden');
     };
 
-    // 绑定事件
     if (!button._lineSwitchListenerAttached) {
-        button.addEventListener('click', findAndShowLines);
+        button.addEventListener('click', showLinesFromCache);
         button._lineSwitchListenerAttached = true;
     }
 
@@ -928,7 +883,6 @@ function setupLineSwitching() {
             const target = e.target.closest('button[data-source-code]');
             if (target && !target.disabled) {
                 dropdown.classList.add('hidden');
-                // 传递新的 VOD ID
                 switchLine(target.dataset.sourceCode, target.dataset.vodId);
             }
         });
