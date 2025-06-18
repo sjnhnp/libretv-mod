@@ -168,12 +168,6 @@ input:checked+.slider:before {
 }
 
 /* 锁屏样式 - 适配 Vidstack */
-.player-container.player-locked [data-controls] {
-  opacity: 0 !important;
-  pointer-events: none !important;
-  transition: opacity 0.3s ease-out;
-}
-
 .player-container.player-locked #lock-button {
   opacity: 1 !important;
   /* 确保锁屏按钮本身总是可见的 */

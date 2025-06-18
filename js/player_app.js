@@ -689,7 +689,6 @@ function copyLinks() {
 }
 
 function toggleLockScreen() {
-    // 1. 安全检查，确保播放器实例存在
     if (!player) {
         console.warn("播放器未初始化，无法锁定屏幕。");
         return;
@@ -697,28 +696,28 @@ function toggleLockScreen() {
 
     isScreenLocked = !isScreenLocked;
     const playerContainer = document.querySelector('.player-container');
-    const lockButton = document.getElementById('lock-button');
     const lockIcon = document.getElementById('lock-icon');
 
-    // 2. 【核心改动】绑定 Vidstack 的 keyDisabled 属性
-    // 当屏幕锁定时，禁用播放器的键盘快捷键；解锁时，重新启用。
+    // --- 核心改动 ---
+    // 1. 使用 Vidstack API 禁用/启用键盘快捷键
     player.keyDisabled = isScreenLocked;
+    // 2. 使用 Vidstack API 隐藏/显示其自带的全部UI控件
+    player.controls = !isScreenLocked;
+    // --- 核心改动结束 ---
 
+    // 仅用CSS类来标记状态，以便我们自己的按钮可以响应
     if (playerContainer) {
-        // 3. 切换CSS类，这个逻辑保持不变，它负责隐藏UI控件
         playerContainer.classList.toggle('player-locked', isScreenLocked);
     }
 
-    // 更新图标的 SVG 内容 (此部分逻辑保持不变)
+    // 更新我们自己的锁屏按钮图标 (这部分逻辑不变)
     if (lockIcon) {
         if (isScreenLocked) {
-            // 设置为“解锁”图标
             lockIcon.innerHTML = `
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
             `;
         } else {
-            // 设置为“锁定”图标（原始图标）
             lockIcon.innerHTML = `
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
@@ -726,7 +725,6 @@ function toggleLockScreen() {
         }
     }
 
-    // 显示状态提示 (此部分逻辑保持不变)
     showMessage(isScreenLocked ? '屏幕已锁定' : '屏幕已解锁', 'info');
 }
 
