@@ -118,9 +118,10 @@ media-player {
   left: 0;
   right: 0;
   bottom: 0;
-  background: #333;
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 24px;
-  transition: .4s;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .slider:before {
@@ -129,18 +130,40 @@ media-player {
   height: 18px;
   width: 18px;
   left: 3px;
-  bottom: 3px;
+  bottom: 2px;
   background: #fff;
   border-radius: 50%;
-  transition: .4s;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+/* 未选中状态的悬停效果 */
+.slider:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* 选中状态 */
 input:checked+.slider {
-  background: #00ccff;
+  background: #404040;
+  border-color: transparent;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
 }
 
+/* 选中状态的滑块位置 */
 input:checked+.slider:before {
   transform: translateX(22px);
+  background: #ffffff;
+}
+
+/* 选中状态的悬停效果 */
+input:checked+.slider:hover {
+  background: #505050;
+}
+
+/* 禁用状态 */
+input:disabled+.slider {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* 键盘快捷键提示 */
@@ -227,11 +250,77 @@ input:checked+.slider:before {
 }
 
 
-/* 控件标签 */
+/* 开关文本标签样式优化 */
 .control-label {
-  font-size: .875rem;
-  color: #9ca3af;
-  margin-right: .25rem;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin-right: 0.5rem;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+/* 选中状态下的文本标签 */
+.switch input:checked~.control-label {
+  color: #ffffff;
+}
+
+/* 容器样式优化 */
+.player-control-bar>div {
+  display: flex;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
+}
+
+.player-control-bar>div:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+
+/* 添加焦点状态 */
+.switch input:focus+.slider {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+/* 设置动画效果 */
+@keyframes switchOn {
+  0% {
+    transform: scale(0.95);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.switch input:checked+.slider {
+  animation: switchOn 0.2s ease-out;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .switch {
+    width: 40px;
+    height: 22px;
+  }
+
+  .slider:before {
+    width: 16px;
+    height: 16px;
+  }
+
+  input:checked+.slider:before {
+    transform: translateX(18px);
+  }
+
+  .control-label {
+    font-size: 0.8125rem;
+  }
 }
 
 /* 隐藏 "选集" 二字 */
@@ -307,6 +396,7 @@ input:checked+.slider:before {
     opacity: 0;
     transform: scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -326,7 +416,7 @@ input:checked+.slider:before {
 .progress-restore-card {
   background: linear-gradient(145deg, rgba(20, 24, 35, 0.95), rgba(30, 35, 50, 0.95));
   border-radius: 20px;
-  box-shadow: 
+  box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(255, 255, 255, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -446,21 +536,21 @@ input:checked+.slider:before {
     max-width: 95vw;
     margin: 1rem;
   }
-  
+
   .progress-modal-title {
     font-size: 1.2rem;
   }
-  
+
   .progress-modal-content {
     font-size: 0.9rem;
     margin-bottom: 1.5rem;
   }
-  
+
   .progress-modal-actions {
     flex-direction: column;
     gap: 0.75rem;
   }
-  
+
   .progress-modal-btn {
     width: 100%;
     padding: 0.875rem 1rem;
@@ -668,7 +758,7 @@ header {
   left: 50%;
   transform: translate(-50%, -50%);
   /* 确保z-index足够高，高于播放器所有UI */
-  z-index: 2147483647; 
+  z-index: 2147483647;
   pointer-events: none;
   background: rgba(0, 0, 0, 0.7);
   border-radius: 8px;
