@@ -446,7 +446,7 @@ function setupAllUI() {
     setupSkipControls();
     setupSkipDropdownEvents();
     setupRememberEpisodeProgressToggle();
-    document.addEventListener('keydown', handleKeyboardShortcuts);
+    // document.addEventListener('keydown', handleKeyboardShortcuts);
     window.addEventListener('beforeunload', () => {
         saveCurrentProgress();
         saveVideoSpecificProgress();
@@ -512,87 +512,7 @@ function setupPlayerControls() {
     if (lockButton) lockButton.addEventListener('click', toggleLockScreen);
 }
 
-// js/player_app.js
 
-function handleKeyboardShortcuts(e) {
-    // Entrance check: if player doesn't exist, or focus is in an input field, do nothing
-    if (!player || (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName))) return;
-
-    // Special handling for lock screen: only allow fullscreen (f/F) and exit (Escape) keys
-    if (isScreenLocked && !['f', 'F', 'Escape'].includes(e.key)) {
-        // We prevent default here because we explicitly want to block all other actions
-        e.preventDefault();
-        return;
-    }
-
-    let actionText = '';
-
-    switch (e.key) {
-        case 'ArrowLeft':
-            // e.preventDefault(); // REMOVE THIS LINE
-            if (e.altKey) {
-                playPreviousEpisode();
-                actionText = '上一集';
-            } else {
-                player.currentTime -= 10;
-                actionText = '后退 10s';
-            }
-            break;
-
-        case 'ArrowRight':
-            // e.preventDefault(); // REMOVE THIS LINE
-            if (e.altKey) {
-                playNextEpisode();
-                actionText = '下一集';
-            } else {
-                player.currentTime += 10;
-                actionText = '前进 10s';
-            }
-            break;
-
-        case ' ': // Space key
-            // e.preventDefault(); // REMOVE THIS LINE
-            player.paused ? player.play() : player.pause();
-            actionText = player.paused ? '播放' : '暂停';
-            break;
-
-        case 'ArrowUp':
-            // e.preventDefault(); // REMOVE THIS LINE
-            player.volume = Math.min(1, player.volume + 0.1);
-            actionText = `音量 ${Math.round(player.volume * 100)}%`;
-            break;
-
-        case 'ArrowDown':
-            // e.preventDefault(); // REMOVE THIS LINE
-            player.volume = Math.max(0, player.volume - 0.1);
-            actionText = `音量 ${Math.round(player.volume * 100)}%`;
-            break;
-
-        case 'f':
-        case 'F':
-            // e.preventDefault(); // REMOVE THIS LINE
-            if (player) {
-                if (player.state.fullscreen) {
-                    player.exitFullscreen();
-                } else {
-                    player.enterFullscreen();
-                }
-                actionText = '切换全屏';
-            }
-            break;
-
-        case 'm':
-        case 'M':
-            // e.preventDefault(); // REMOVE THIS LINE
-            player.muted = !player.muted;
-            actionText = player.muted ? '静音' : '取消静音';
-            break;
-    }
-
-    if (actionText) {
-        showToast(actionText, 'info', 1500);
-    }
-}
 
 function saveToHistory() {
     if (!player || !currentVideoTitle || !window.addToViewingHistory || !currentEpisodes[currentEpisodeIndex]) return;
