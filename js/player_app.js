@@ -760,39 +760,48 @@ function copyLinks() {
     });
 }
 
+/**
+ * 切换播放器的屏幕锁定状态。
+ * 这将禁用/启用键盘快捷键、设置UI元素的 inert 状态以阻止交互，并更新视觉样式。
+ */
 function toggleLockScreen() {
     if (!player) {
         console.warn("播放器未初始化，无法锁定屏幕。");
         return;
     }
 
-    isScreenLocked =!isScreenLocked;
-    
-    // 1. 使用 Vidstack API 禁用键盘快捷键
+    isScreenLocked = !isScreenLocked;
+
+    // 1. 禁用/启用键盘
     player.keyDisabled = isScreenLocked;
 
     const playerContainer = document.querySelector('.player-container');
     const lockIcon = document.getElementById('lock-icon');
-    
-    // 2. 定位需要设为 inert 的所有可交互容器
-    const elementsToToggle =;
 
-    // 3. 切换 CSS 类以控制视觉样式
+    // 2. 【已修正】为常量正确赋值，选取所有需要被禁用/启用的可交互容器。
+    const elementsToToggle = document.querySelectorAll(
+        '.vds-controls',
+        '.vds-gestures',
+        'header',
+        '.player-control-bar',
+        '#episodes-container',
+        '#prev-episode',
+        '#next-episode'
+    );
+
+    // 3. 切换 CSS 类以控制视觉样式（如解锁按钮的可见性）
     if (playerContainer) {
         playerContainer.classList.toggle('player-locked', isScreenLocked);
     }
 
-    // 4. 动态设置或移除 inert 属性
+    // 4. 【已优化】直接为所有选定元素设置 inert 属性，无需额外判断
     elementsToToggle.forEach(el => {
         if (el) {
-            // 确保我们不会将解锁按钮本身设为 inert
-            if (!el.contains(document.getElementById('lock-button'))) {
-                 el.inert = isScreenLocked;
-            }
+            el.inert = isScreenLocked;
         }
     });
 
-    // 5. 更新锁屏按钮图标并显示提示
+    // 5. 更新锁屏按钮图标并显示提示消息
     if (lockIcon) {
         if (isScreenLocked) {
             lockIcon.innerHTML = `
@@ -1102,29 +1111,42 @@ function retryLastAction() {
     }
 }
 
+/**
+ * 设置锁屏状态下的“抖动”交互反馈。
+ * 当用户点击锁定的屏幕时，相关UI元素会抖动以提示用户。
+ */
 function setupShakeInteraction() {
     const playerRegion = document.getElementById('player-region');
     if (!playerRegion) return;
 
     playerRegion.addEventListener('click', (event) => {
-        // 仅在锁屏状态下，且点击的不是解锁按钮本身或其内部SVG时触发
+        // 仅在锁屏状态下，且点击的不是解锁按钮本身时触发
         if (isScreenLocked && !event.target.closest('#lock-button')) {
             event.preventDefault();
             event.stopPropagation();
 
-            const elementsToShake =;
+            // 【已修正】为常量正确赋值，选取所有应产生抖动效果的元素。
+            const elementsToShake = document.querySelectorAll(
+                '.vds-controls',
+                '.vds-gestures',
+                'header',
+                '.player-control-bar',
+                '#episodes-container',
+                '#prev-episode',
+                '#next-episode'
+            );
 
             elementsToShake.forEach(el => {
                 if (el && !el.classList.contains('shake-it')) {
                     el.classList.add('shake-it');
-                    // 动画结束后移除类，以便下次可以再次触发
+                    // 动画结束后移除类，以便可以再次触发
                     el.addEventListener('animationend', () => {
                         el.classList.remove('shake-it');
                     }, { once: true });
                 }
             });
         }
-    }, true); // 使用捕获阶段以尽早拦截点击
+    }, true); // 使用捕获阶段确保尽早拦截点击
 }
 
 window.playNextEpisode = playNextEpisode;
