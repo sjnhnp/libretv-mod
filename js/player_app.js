@@ -30,6 +30,16 @@ let availableAlternativeSources = []; // 用于存储从 sessionStorage 读取�
 // --- 实用工具函数 ---
 
 function showToast(message, type = 'info', duration = 3000) {
+    // 确保提示框在全屏模式下正确显示
+    const toastEl = document.getElementById('toast');
+    // 将提示框插入到播放器全屏容器中
+    if (player && player.state.fullscreen) {
+        const fullscreenContainer = document.querySelector('media-player[fullscreen]');
+        if (fullscreenContainer && !fullscreenContainer.contains(toastEl)) {
+            fullscreenContainer.appendChild(toastEl);
+        }
+    }
+
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toastMessage');
     if (!toast || !toastMessage) return;

@@ -596,3 +596,18 @@ header {
   z-index: 999999999999 !important; /* 超过全屏元素层级 */
   pointer-events: none; /* 防止阻挡操作 */
 }
+
+#toast,
+media-player[fullscreen] #toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) !important;
+  z-index: 1000 !important; /* 确保高于Vidstack的全屏UI */
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 18px;
+  color: white;
+}
