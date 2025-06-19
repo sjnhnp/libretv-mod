@@ -580,3 +580,14 @@ header {
     object-fit: contain !important;
   }
 }
+
+/* 解决音量控制条可视化问题 */
+.vds-volume-slider-track {
+  background-color: rgba(255, 255, 255, 0.3) !important; /* 轨道底色 */
+}
+.vds-volume-slider-track-fill {
+  background-color: #3b82f6 !important; /* 填充色 - 明亮的蓝色 */
+}
+.vds-volume-slider-thumb {
+  background-color: white !important; /* 滑块白色 */
+}
