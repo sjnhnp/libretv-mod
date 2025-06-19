@@ -187,16 +187,22 @@ input:checked+.slider:before {
  */
 
 /* Vidstack 的 Default Layout 锁屏样式 */
-
+/* 确保锁定状态下控制条保持隐藏 */
 .player-locked .vds-controls {
   display: none !important;
-  /* 最彻底的解决方案 */
+  pointer-events: none !important;
+}
+
+/* 允许视频区域的点击事件通过 */
+.player-locked .vds-video-container {
+  pointer-events: auto !important;
 }
 
 .player-locked .vds-gestures {
   display: none !important;
   /* 最彻底的解决方案 */
 }
+
 
 /* end 锁屏样式 */
 
@@ -579,8 +585,4 @@ header {
     height: 100% !important;
     object-fit: contain !important;
   }
-}
-
-.vds-audio-layout {
-  --audio-brand: hsl(0, 4%, 47%);
 }

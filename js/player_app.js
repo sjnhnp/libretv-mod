@@ -781,11 +781,10 @@ function toggleLockScreen() {
 
     // 2. 【已修正】为常量正确赋值，选取所有需要被禁用/启用的可交互容器。
     const elementsToToggle = document.querySelectorAll(
-        '.plyr', 
-        '.plyr__controls', 
+        '.plyr',
+        '.plyr__controls',
         '.vds-controls',
         '.vds-gestures',
-        
         'header',
         '.player-control-bar',
         '#episodes-container',
@@ -821,7 +820,39 @@ function toggleLockScreen() {
             showMessage('屏幕已解锁', 'info', 1500);
         }
     }
+
+    // 新增：即使在锁屏状态下也要保持播放/暂停的点击功能
+    const mediaElement = player.querySelector('video');
+    if (mediaElement) {
+        // 移除之前可能存在的监听器
+        mediaElement.removeEventListener('click', handleMediaClick);
+
+        if (isScreenLocked) {
+            // 锁屏时添加点击播放/暂停功能
+            mediaElement.addEventListener('click', handleMediaClick);
+        }
+    }
 }
+
+
+// 新增：播放/暂停的点击处理函数
+function handleMediaClick(e) {
+    // 阻止事件冒泡（避免穿透到其他元素）
+    e.stopPropagation();
+
+    // 在锁屏状态下响应播放/暂停
+    if (!player) return;
+
+    if (player.paused) {
+        player.play();
+    } else {
+        player.pause();
+    }
+
+    // 短暂显示状态提示（桌面端）
+    showToast(player.paused ? '暂停' : '播放中', 'info', 1000);
+}
+
 
 function handleSkipIntroOutro(playerInstance) {
     if (!playerInstance) return;
