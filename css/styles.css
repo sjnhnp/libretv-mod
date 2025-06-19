@@ -447,21 +447,54 @@ body {
 
 /* 现有的删除按钮样式 */
 .history-item .delete-btn {
-  opacity: 1 !important;
-  background-color: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  opacity: 1 !important; /* 强制始终显示 */
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  padding: 4px;
   border-radius: 50%;
-  padding: 0.25rem;
-  transition: all 0.2s ease;
-}
-.history-item .delete-btn:hover {
-  background-color: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.4);
-  transform: scale(1.05);
+  background-color: rgba(239, 68, 68, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
 }
 
-.history-item .delete-btn:active {
-  transform: scale(0.95);
+/* 桌面端悬停效果增强 */
+@media (min-width: 769px) {
+  .history-item .delete-btn {
+    background-color: rgba(239, 68, 68, 0.15);
+  }
+  
+  .history-item .delete-btn:hover {
+    background-color: rgba(239, 68, 68, 0.3);
+    transform: scale(1.1);
+  }
+}
+
+/* 移动端点击效果 */
+@media (max-width: 768px) {
+  .history-item .delete-btn {
+    background-color: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    width: 28px;
+    height: 28px;
+  }
+  
+  .history-item .delete-btn:active {
+    background-color: rgba(239, 68, 68, 0.4);
+    transform: scale(0.9);
+  }
+}
+
+/* 如果删除按钮中有SVG，确保它显示正确 */
+.history-item .delete-btn svg {
+  width: 16px;
+  height: 16px;
+  color: #ef4444;
 }
 
 .history-info {
