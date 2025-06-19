@@ -713,7 +713,7 @@ function toggleLockScreen() {
     // 1. 禁用/启用键盘
     player.keyDisabled = isScreenLocked;
     // 2. 使用 Vidstack API 隐藏/显示其自带的全部UI控件
-    player.controls = !isScreenLocked;
+   // player.controls = !isScreenLocked;
 
     const playerContainer = document.querySelector('.player-container');
     const lockIcon = document.getElementById('lock-icon');
