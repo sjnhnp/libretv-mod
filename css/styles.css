@@ -1045,3 +1045,27 @@ body {
 .search-tag+span[role=button] {
   cursor: pointer;
 }
+
+
+
+/* 直接覆盖所有可能的黑色背景 */
+.history-panel * {
+  background-color: transparent !important;
+}
+
+.history-panel {
+  background: linear-gradient(145deg, rgba(15, 22, 34, 0.98), rgba(25, 34, 49, 0.98)) !important;
+}
+
+/* 然后重新设置需要背景的元素 */
+.history-panel .clear-history-btn {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.08)) !important;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 12px;
+  margin: 0;
+  padding: 0.75rem 1.5rem;
+}
+
+.history-panel .history-item {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04)) !important;
+}
