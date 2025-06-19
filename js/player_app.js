@@ -188,20 +188,28 @@ async function initPlayer(videoUrl, title) {
             keyShortcuts: {
                 togglePaused: 'k Space',
                 toggleMuted: 'm',
-                toggleFullscreen: 'f',
-                togglePictureInPicture: 'i',
-                toggleCaptions: 'c',
+                toggleFullscreen: 'f',           
                 seekBackward: ['j', 'J', 'ArrowLeft'],
                 seekForward: ['l', 'L', 'ArrowRight'],
                 volumeUp: 'ArrowUp',
                 volumeDown: 'ArrowDown',
                 speedUp: '>',
-                slowDown: '<',           
+                slowDown: '<',  
+                prevEpisode: 'Shift+p',
+                nextEpisode: 'Shift+n'         
             }
             });
         window.player = player;
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
+
+        player.addEventListener('prev-episode', () => {
+            if (!isScreenLocked) playPreviousEpisode();
+          });
+          
+          player.addEventListener('next-episode', () => {
+            if (!isScreenLocked) playNextEpisode();
+          });
 
     } catch (error) {
         console.error("Vidstack Player 创建失败:", error);
