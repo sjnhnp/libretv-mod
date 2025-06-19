@@ -184,6 +184,7 @@ async function initPlayer(videoUrl, title) {
             // controls: true,
             playsInline: true,
             crossOrigin: true,
+            keyTarget: 'document',
         });
         window.player = player;
         addPlayerEventListeners();
