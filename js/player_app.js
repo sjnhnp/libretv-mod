@@ -186,7 +186,19 @@ async function initPlayer(videoUrl, title) {
             crossOrigin: true,
             keyTarget: 'document',
             keyShortcuts: {
-                seekBackward: ({ event, remote }) => {
+                togglePaused: 'k Space',
+                toggleMuted: 'm',
+                toggleFullscreen: 'f',
+                togglePictureInPicture: 'i',
+                toggleCaptions: 'c',
+                // Array.
+                seekBackward: ['j', 'J', 'ArrowLeft'],
+                seekForward: ['l', 'L', 'ArrowRight'],
+                volumeUp: 'ArrowUp',
+                volumeDown: 'ArrowDown',
+                speedUp: '>',
+                slowDown: '<',
+                playPreviousEpisode: ({ event, remote }) => {
                     if (event.altKey && event.key === 'ArrowLeft') {
                         event.preventDefault();
                         playPreviousEpisode();
@@ -196,7 +208,7 @@ async function initPlayer(videoUrl, title) {
                         remote.seekBackward();
                     }
                 },
-                seekForward: ({ event, remote }) => {
+                playNextEpisode: ({ event, remote }) => {
                     if (event.altKey && event.key === 'ArrowRight') {
                         event.preventDefault();
                         playNextEpisode();
