@@ -195,6 +195,10 @@ async function initPlayer(videoUrl, title) {
                 volumeDown: 'ArrowDown',
                 speedUp: '>',
                 slowDown: '<',
+            },
+            gestures: {
+                // 启用播放器上的手势
+                enabled: true,
             }
         });
         window.player = player;
