@@ -780,6 +780,8 @@ function toggleLockScreen() {
 
     // 2. 【已修正】为常量正确赋值，选取所有需要被禁用/启用的可交互容器。
     const elementsToToggle = document.querySelectorAll(
+        '.plyr', 
+        '.plyr__controls', 
         '.vds-controls',
         '.vds-gestures',
         'header',
