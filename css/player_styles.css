@@ -1,5 +1,4 @@
 
-
 /* 基本布局和播放器相关样式 */
 .player-container {
   width: 100%;
@@ -12,6 +11,33 @@
   width: 100%;
   height: 60vh;
   position: relative;
+}
+
+
+/* 确保 Vidstack 播放器和其内部 video 元素正确缩放 */
+#player,
+media-player {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  /* 添加弹性布局 */
+  justify-content: center;
+  /* 水平居中 */
+  align-items: center;
+  /* 垂直居中 */
+  background-color: black;
+  /* 黑边背景 */
+}
+
+#player video {
+  max-width: 100%;
+  /* 保证不溢出容器 */
+  max-height: 100%;
+  /* 保证不溢出容器 */
+  object-fit: contain;
+  /* 使用contain模式确保完整显示 */
+  margin: auto;
+  /* 居中 */
 }
 
 /* 加载和错误覆盖层 */
