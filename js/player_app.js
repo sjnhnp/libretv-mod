@@ -178,7 +178,7 @@ async function initPlayer(videoUrl, title) {
             title: title,
             autoplay: true,
             layout: new PlyrLayout(),
-           // controls: true,
+            // controls: true,
             playsInline: true,
             crossOrigin: true,
         });
@@ -407,6 +407,7 @@ function setupAllUI() {
     setupLineSwitching();
     setupSkipControls();
     setupSkipDropdownEvents();
+    setupShakeInteraction();
     setupRememberEpisodeProgressToggle();
     document.addEventListener('keydown', handleKeyboardShortcuts);
     window.addEventListener('beforeunload', () => {
@@ -765,36 +766,48 @@ function toggleLockScreen() {
         return;
     }
 
-    isScreenLocked = !isScreenLocked;
+    isScreenLocked =!isScreenLocked;
+    
+    // 1. 使用 Vidstack API 禁用键盘快捷键
+    player.keyDisabled = isScreenLocked;
+
     const playerContainer = document.querySelector('.player-container');
     const lockIcon = document.getElementById('lock-icon');
+    
+    // 2. 定位需要设为 inert 的所有可交互容器
+    const elementsToToggle =;
 
-    // 1. 使用 Vidstack API 禁用/启用键盘快捷键
-    player.keyDisabled = isScreenLocked;
-    // 2. 使用 Vidstack API 隐藏/显示其自带的全部UI控件
-    // player.controls = !isScreenLocked;
-
-    // 仅用CSS类来标记状态，以便我们自己的按钮可以响应
+    // 3. 切换 CSS 类以控制视觉样式
     if (playerContainer) {
         playerContainer.classList.toggle('player-locked', isScreenLocked);
     }
 
-    // 更新我们自己的锁屏按钮图标 (这部分逻辑不变)
+    // 4. 动态设置或移除 inert 属性
+    elementsToToggle.forEach(el => {
+        if (el) {
+            // 确保我们不会将解锁按钮本身设为 inert
+            if (!el.contains(document.getElementById('lock-button'))) {
+                 el.inert = isScreenLocked;
+            }
+        }
+    });
+
+    // 5. 更新锁屏按钮图标并显示提示
     if (lockIcon) {
         if (isScreenLocked) {
             lockIcon.innerHTML = `
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
             `;
+            showMessage('屏幕已锁定，单击解锁按钮可解锁', 'info', 2500);
         } else {
             lockIcon.innerHTML = `
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             `;
+            showMessage('屏幕已解锁', 'info', 1500);
         }
     }
-
-    showMessage(isScreenLocked ? '屏幕已锁定' : '屏幕已解锁', 'info');
 }
 
 function handleSkipIntroOutro(playerInstance) {
@@ -1087,6 +1100,31 @@ function retryLastAction() {
             player.play();
         }
     }
+}
+
+function setupShakeInteraction() {
+    const playerRegion = document.getElementById('player-region');
+    if (!playerRegion) return;
+
+    playerRegion.addEventListener('click', (event) => {
+        // 仅在锁屏状态下，且点击的不是解锁按钮本身或其内部SVG时触发
+        if (isScreenLocked && !event.target.closest('#lock-button')) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const elementsToShake =;
+
+            elementsToShake.forEach(el => {
+                if (el && !el.classList.contains('shake-it')) {
+                    el.classList.add('shake-it');
+                    // 动画结束后移除类，以便下次可以再次触发
+                    el.addEventListener('animationend', () => {
+                        el.classList.remove('shake-it');
+                    }, { once: true });
+                }
+            });
+        }
+    }, true); // 使用捕获阶段以尽早拦截点击
 }
 
 window.playNextEpisode = playNextEpisode;
