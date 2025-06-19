@@ -345,7 +345,6 @@ input:checked+.slider:before {
   overflow: hidden;
 }
 
-
 .progress-restore-card::before {
   content: '';
   position: absolute;
@@ -353,7 +352,7 @@ input:checked+.slider:before {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0, 204, 255, 0.5), transparent);
+  background: linear-gradient(90deg, transparent, rgba(180, 160, 255, 0.4), transparent);
 }
 
 .progress-modal-title {
@@ -369,7 +368,7 @@ input:checked+.slider:before {
 
 .progress-modal-title::before {
   content: '▶';
-  color: #00ccff;
+  color: #b4a0ff;
   font-size: 1.2rem;
 }
 
@@ -417,15 +416,15 @@ input:checked+.slider:before {
 }
 
 .progress-modal-btn.confirm {
-  background: linear-gradient(135deg, #00ccff, #0099cc);
+  background: linear-gradient(135deg, #a596e7, #7a6bb8);
   color: #ffffff;
-  box-shadow: 0 4px 15px rgba(0, 204, 255, 0.3);
+  box-shadow: 0 4px 15px rgba(166, 150, 231, 0.3);
 }
 
 .progress-modal-btn.confirm:hover {
-  background: linear-gradient(135deg, #00b8e6, #0088bb);
+  background: linear-gradient(135deg, #9485d6, #6f60a7);
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(0, 204, 255, 0.4);
+  box-shadow: 0 6px 20px rgba(166, 150, 231, 0.4);
 }
 
 .progress-modal-btn.cancel {
