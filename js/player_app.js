@@ -51,7 +51,7 @@ function showToast(message, type = 'info', duration = 3000) {
 
     setTimeout(() => {
         toast.style.opacity = '0';
-       // toast.style.transform = 'translateX(-50%) translateY(-100%)';
+        // toast.style.transform = 'translateX(-50%) translateY(-100%)';
     }, duration);
 }
 
@@ -477,12 +477,15 @@ function setupPlayerControls() {
     if (lockButton) lockButton.addEventListener('click', toggleLockScreen);
 }
 
+// js/player_app.js
+
 function handleKeyboardShortcuts(e) {
-    // 入口检查：播放器不存在，或焦点在输入框内，则不处理
+    // Entrance check: if player doesn't exist, or focus is in an input field, do nothing
     if (!player || (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName))) return;
 
-    // 锁屏状态下的特殊处理：只允许全屏(f/F)和退出(Escape)键通过
+    // Special handling for lock screen: only allow fullscreen (f/F) and exit (Escape) keys
     if (isScreenLocked && !['f', 'F', 'Escape'].includes(e.key)) {
+        // We prevent default here because we explicitly want to block all other actions
         e.preventDefault();
         return;
     }
@@ -491,7 +494,7 @@ function handleKeyboardShortcuts(e) {
 
     switch (e.key) {
         case 'ArrowLeft':
-            e.preventDefault();
+            // e.preventDefault(); // REMOVE THIS LINE
             if (e.altKey) {
                 playPreviousEpisode();
                 actionText = '上一集';
@@ -502,7 +505,7 @@ function handleKeyboardShortcuts(e) {
             break;
 
         case 'ArrowRight':
-            e.preventDefault();
+            // e.preventDefault(); // REMOVE THIS LINE
             if (e.altKey) {
                 playNextEpisode();
                 actionText = '下一集';
@@ -512,29 +515,28 @@ function handleKeyboardShortcuts(e) {
             }
             break;
 
-        case ' ': // 空格键
-            e.preventDefault();
+        case ' ': // Space key
+            // e.preventDefault(); // REMOVE THIS LINE
             player.paused ? player.play() : player.pause();
             actionText = player.paused ? '播放' : '暂停';
             break;
 
         case 'ArrowUp':
-            e.preventDefault();
+            // e.preventDefault(); // REMOVE THIS LINE
             player.volume = Math.min(1, player.volume + 0.1);
             actionText = `音量 ${Math.round(player.volume * 100)}%`;
             break;
 
         case 'ArrowDown':
-            e.preventDefault();
+            // e.preventDefault(); // REMOVE THIS LINE
             player.volume = Math.max(0, player.volume - 0.1);
             actionText = `音量 ${Math.round(player.volume * 100)}%`;
             break;
 
         case 'f':
         case 'F':
-            e.preventDefault();
+            // e.preventDefault(); // REMOVE THIS LINE
             if (player) {
-                // 直接调用 Vidstack Player 实例的 API 方法
                 if (player.state.fullscreen) {
                     player.exitFullscreen();
                 } else {
@@ -546,7 +548,7 @@ function handleKeyboardShortcuts(e) {
 
         case 'm':
         case 'M':
-            e.preventDefault();
+            // e.preventDefault(); // REMOVE THIS LINE
             player.muted = !player.muted;
             actionText = player.muted ? '静音' : '取消静音';
             break;
