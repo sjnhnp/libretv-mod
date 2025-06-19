@@ -195,27 +195,28 @@ async function initPlayer(videoUrl, title) {
                 volumeDown: 'ArrowDown',
                 speedUp: '>',
                 slowDown: '<',
-                seekBackward: ({ event, remote }) => {
+                seekBackward: ({ event, player, remote }) => {
                     if (event.altKey && event.key === 'ArrowLeft') {
                         event.preventDefault();
                         playPreviousEpisode();
-                        // 补上 Toast 提示
                         showToast('上一集', 'info', 1500);
                     } else {
                         remote.seekBackward();
                     }
                 },
-                seekForward: ({ event, remote }) => {
+
+                // 重写“前进”快捷键
+                seekForward: ({ event, player, remote }) => {
                     if (event.altKey && event.key === 'ArrowRight') {
                         event.preventDefault();
                         playNextEpisode();
-                        // 补上 Toast 提示
                         showToast('下一集', 'info', 1500);
                     } else {
                         remote.seekForward();
                     }
                 },
             }
+            // ↑↑↑ --- 快捷键配置结束 --- ↑↑↑
         });
         window.player = player;
         addPlayerEventListeners();
