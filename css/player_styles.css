@@ -177,6 +177,7 @@ input:checked+.slider:before {
   /* 确保它在最上层，可以被点击 */
 }
 
+/* 锁屏样式 - 适配 Vidstack 的plyr style
 .player-locked .plyr {
   pointer-events: none !important;
 }
@@ -184,7 +185,34 @@ input:checked+.slider:before {
 .player-locked .plyr__controls {
   display: none !important;
 }
+ */
 
+ /* Vidstack 的 Default Layout 锁屏样式 */
+.player-locked .vds-default-ui {
+  display: none !important;  /* 彻底隐藏整个UI */
+  pointer-events: none !important; /* 禁用所有交互 */
+}
+
+.player-locked .vds-controls {
+  opacity: 0 !important; /* 控制条透明 */
+  pointer-events: none !important; /* 禁用控制条交互 */
+  transition: opacity 0.3s ease !important; /* 平滑过渡 */
+}
+
+.player-locked .vds-gestures {
+  pointer-events: none !important; /* 禁用手势识别 */
+}
+
+/* 确保播放区域在锁屏时仍然可见 */
+.player-locked media-playback {
+  display: block !important;
+}
+
+/* 保持视频元素可见 */
+.player-locked video {
+  display: block !important;
+}
+/* end 锁屏样式 */
 
 /* 选集按钮样式（未选中） */
 #episode-grid button:not(.episode-active) {

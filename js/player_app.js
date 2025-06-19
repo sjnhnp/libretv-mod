@@ -1,5 +1,6 @@
 // 动态导入 VidstackPlayer
-import { PlyrLayout, VidstackPlayer } from 'https://cdn.vidstack.io/player';
+// import { PlyrLayout, VidstackPlayer } from 'https://cdn.vidstack.io/player'; //plyr layout
+import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player'; // default layout
 
 // --- 常量定义 ---
 const SKIP_INTRO_KEY = 'skipIntroTime';
