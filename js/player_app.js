@@ -187,37 +187,51 @@ async function initPlayer(videoUrl, title) {
             keyTarget: 'document',
             keyShortcuts: {
                 togglePaused: 'k Space',
-                //toggleMuted: 'm',
-                //toggleFullscreen: 'f',
+                toggleMuted: 'm',
+                toggleFullscreen: 'f',
                 togglePictureInPicture: 'i',
                 toggleCaptions: 'c',
-                //volumeUp: 'ArrowUp',
+                volumeUp: 'ArrowUp',
                 volumeDown: 'ArrowDown',
                 speedUp: '>',
                 slowDown: '<',
-                seekBackward: ({ event, player, remote }) => {
-                    if (event.altKey && event.key === 'ArrowLeft') {
+                seekBackward: {
+                    keys: ['ArrowLeft'],
+                    onKeyDown(event, { player, remote }) {
+                        // 仅在播放器拥有焦点时响应
+                        if (!remote.hasFocus) return;
+
                         event.preventDefault();
-                        playPreviousEpisode();
-                        showToast('上一集', 'info', 1500);
-                    } else {
-                        remote.seekBackward();
+                        if (isScreenLocked) return;
+
+                        if (event.altKey) {
+                            playPreviousEpisode();
+                            showToast('上一集', 'info', 1500);
+                        } else {
+                            player.currentTime = Math.max(0, player.currentTime - 10);
+                            showToast('后退 10s', 'info', 1500);
+                        }
                     }
                 },
 
-                // 重写“前进”快捷键
-                seekForward: ({ event, player, remote }) => {
-                    if (event.altKey && event.key === 'ArrowRight') {
+                seekForward: {
+                    keys: ['ArrowRight'],
+                    onKeyDown(event, { player, remote }) {
+                        if (!remote.hasFocus) return;
+
                         event.preventDefault();
-                        playNextEpisode();
-                        showToast('下一集', 'info', 1500);
-                    } else {
-                        remote.seekForward();
+                        if (isScreenLocked) return;
+
+                        if (event.altKey) {
+                            playNextEpisode();
+                            showToast('下一集', 'info', 1500);
+                        } else {
+                            player.currentTime = Math.min(player.duration, player.currentTime + 10);
+                            showToast('前进 10s', 'info', 1500);
+                        }
                     }
-                },
-            }
-            // ↑↑↑ --- 快捷键配置结束 --- ↑↑↑
-        });
+                }
+            });
         window.player = player;
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
