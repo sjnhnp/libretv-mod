@@ -510,10 +510,11 @@ function handleKeyboardShortcuts(e) {
             if (e.altKey) {
                 playPreviousEpisode();
                 actionText = '上一集';
-            } else {
-                player.currentTime -= 10;
-                actionText = '后退 10s';
-            }
+            } 
+            //else {
+             //   player.currentTime -= 10;
+              //  actionText = '后退 10s';
+          //  }
             break;
 
         case 'ArrowRight':
@@ -521,10 +522,11 @@ function handleKeyboardShortcuts(e) {
             if (e.altKey) {
                 playNextEpisode();
                 actionText = '下一集';
-            } else {
-                player.currentTime += 10;
+            } 
+            //else {
+             //   player.currentTime += 10;
                 //   actionText = '前进 10s';
-            }
+            //}
             break;
 
         case 'f':
