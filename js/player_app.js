@@ -30,15 +30,6 @@ let availableAlternativeSources = []; // 用于存储从 sessionStorage 读取�
 // --- 实用工具函数 ---
 
 function showToast(message, type = 'info', duration = 3000) {
-    // 确保提示框在全屏模式下正确显示
-    const toastEl = document.getElementById('toast');
-    // 将提示框插入到播放器全屏容器中
-    if (player && player.state.fullscreen) {
-        const fullscreenContainer = document.querySelector('media-player[fullscreen]');
-        if (fullscreenContainer && !fullscreenContainer.contains(toastEl)) {
-            fullscreenContainer.appendChild(toastEl);
-        }
-    }
 
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toastMessage');
@@ -52,15 +43,15 @@ function showToast(message, type = 'info', duration = 3000) {
     };
     const bgColor = bgColors[type] || bgColors.info;
 
-    toast.className = `fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${bgColor} text-white z-[10001] pointer-events-none`;
+    toast.className = `fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${bgColor} text-white z-[2147483647] pointer-events-none`;
     toastMessage.textContent = message;
 
     toast.style.opacity = '1';
-    toast.style.transform = 'translateX(-50%) translateY(0)';
+    // toast.style.transform = 'translateX(-50%) translateY(0)';
 
     setTimeout(() => {
         toast.style.opacity = '0';
-        toast.style.transform = 'translateX(-50%) translateY(-100%)';
+       // toast.style.transform = 'translateX(-50%) translateY(-100%)';
     }, duration);
 }
 
