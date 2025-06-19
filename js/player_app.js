@@ -188,17 +188,13 @@ async function initPlayer(videoUrl, title) {
             keyShortcuts: {
                 togglePaused: 'k Space',
                 toggleMuted: 'm',
-               // toggleFullscreen: 'f',
+                // toggleFullscreen: 'f',
                 seekBackward: ['j', 'J', 'ArrowLeft'],
                 seekForward: ['l', 'L', 'ArrowRight'],
                 volumeUp: 'ArrowUp',
                 volumeDown: 'ArrowDown',
                 speedUp: '>',
                 slowDown: '<',
-            },
-            gestures: {
-                // 启用播放器上的手势
-                enabled: true,
             }
         });
         window.player = player;
@@ -269,6 +265,27 @@ function addPlayerEventListeners() {
             }, 1000);
         }
     });
+
+    // 新增：监听用户寻道事件以显示提示
+    let lastSeekTime = 0;
+    player.addEventListener('user-seeked', (event) => {
+        const currentTime = player.currentTime;
+        // 通过比较上一次寻道时间和当前时间来判断是快进还是快退
+        const seekAmount = Math.round(currentTime - lastSeekTime);
+        lastSeekTime = currentTime; // 更新时间以便下次比较
+
+        // 避免在视频加载完成或从历史记录恢复播放时的初始跳转时显示提示
+        if (Math.abs(seekAmount) > 0 && Math.abs(seekAmount) <= 15) { // 典型的双击寻道范围是10秒，设置一个容差
+            const direction = seekAmount > 0 ? '快进' : '快退';
+            // 调用在 player_app.js 中已定义的 showToast 函数
+            showToast(`${direction} ${Math.abs(seekAmount)}秒`, 'info', 1500);
+        }
+    });
+
+    // 新增：在播放开始时初始化 lastSeekTime
+    player.addEventListener('can-play', () => {
+        lastSeekTime = player.currentTime;
+    }, { once: true }); // 仅执行一次
 
     player.addEventListener('seeking', () => { isUserSeeking = true; });
     player.addEventListener('seeked', () => {
@@ -512,11 +529,11 @@ function handleKeyboardShortcuts(e) {
             if (e.altKey) {
                 playPreviousEpisode();
                 actionText = '上一集';
-            } 
+            }
             //else {
-             //   player.currentTime -= 10;
-              //  actionText = '后退 10s';
-          //  }
+            //   player.currentTime -= 10;
+            //  actionText = '后退 10s';
+            //  }
             break;
 
         case 'ArrowRight':
@@ -524,10 +541,10 @@ function handleKeyboardShortcuts(e) {
             if (e.altKey) {
                 playNextEpisode();
                 actionText = '下一集';
-            } 
+            }
             //else {
-             //   player.currentTime += 10;
-                //   actionText = '前进 10s';
+            //   player.currentTime += 10;
+            //   actionText = '前进 10s';
             //}
             break;
 
