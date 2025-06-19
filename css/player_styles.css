@@ -226,7 +226,6 @@ input:disabled+.slider {
   /* 最彻底的解决方案 */
 }
 
-
 /* end 锁屏样式 */
 
 /* 选集按钮样式（未选中） */
@@ -249,6 +248,78 @@ input:disabled+.slider {
   justify-content: center;
 }
 
+/* 统一播放控制按钮样式 */
+#prev-episode,
+#next-episode {
+  /* 减小按钮尺寸，与控制栏按钮保持一致 */
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#prev-episode:hover:not(:disabled),
+#next-episode:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+#prev-episode:active:not(:disabled),
+#next-episode:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+#prev-episode:disabled,
+#next-episode:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+#prev-episode svg,
+#next-episode svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* 确保集数信息也有一致的样式 */
+#episode-info-span {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+}
+
+/* 统一所有控制按钮的间距和排版 */
+.flex.items-center.justify-between.p-4 {
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  #prev-episode,
+  #next-episode {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8125rem;
+  }
+  
+  #prev-episode svg,
+  #next-episode svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  #episode-info-span {
+    font-size: 0.8125rem;
+  }
+}
 
 /* 开关文本标签样式优化 */
 .control-label {
