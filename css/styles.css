@@ -779,6 +779,10 @@ body {
 }
 
 /* -------- 历史面板优化 -------- */
+.history-panel * {
+  background-color: transparent !important;
+}
+
 .history-panel {
   background: linear-gradient(145deg, rgba(15, 22, 34, 0.98), rgba(25, 34, 49, 0.98)) !important;
   scrollbar-width: thin;
