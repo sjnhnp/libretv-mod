@@ -779,10 +779,6 @@ body {
 }
 
 /* -------- 历史面板优化 -------- */
-.history-panel * {
-  background-color: transparent !important;
-}
-
 .history-panel {
   background: linear-gradient(145deg, rgba(15, 22, 34, 0.98), rgba(25, 34, 49, 0.98)) !important;
   scrollbar-width: thin;
@@ -809,7 +805,7 @@ body {
 
 /* 清空历史按钮 - 修复黑色背景问题 */
 .history-panel .mt-4.text-center.sticky.bottom-0 {
-  background: linear-gradient(145deg, rgba(15, 22, 34, 0.98), rgba(25, 34, 49, 0.98)) !important;
+  background: transparent !important; /* 移除背景色 */
   padding: 0.75rem 1rem;
   margin: 0;
 }
@@ -822,4 +818,15 @@ body {
   padding: 0.75rem 1.5rem;
   width: 100%;
   box-sizing: border-box;
+  color: #d4af37; /* 添加文字颜色 */
+  font-weight: 500;
+  transition: all 0.3s ease;
 }
+.history-panel .clear-history-btn:hover {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(212, 175, 55, 0.15)) !important;
+  border-color: rgba(212, 175, 55, 0.4);
+  color: #f4e4bc;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.2);
+}
+
