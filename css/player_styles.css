@@ -1,4 +1,3 @@
-
 /* 基本布局和播放器相关样式 */
 .player-container {
   width: 100%;
@@ -187,17 +186,18 @@ input:checked+.slider:before {
 }
  */
 
- /* Vidstack 的 Default Layout 锁屏样式 */
+/* Vidstack 的 Default Layout 锁屏样式 */
 
 .player-locked .vds-controls {
-  opacity: 0 !important; /* 控制条透明 */
-  pointer-events: none !important; /* 禁用控制条交互 */
-  transition: opacity 0.3s ease !important; /* 平滑过渡 */
+  display: none !important;
+  /* 最彻底的解决方案 */
 }
 
 .player-locked .vds-gestures {
-  pointer-events: none !important; /* 禁用手势识别 */
+  display: none !important;
+  /* 最彻底的解决方案 */
 }
+
 /* end 锁屏样式 */
 
 /* 选集按钮样式（未选中） */
