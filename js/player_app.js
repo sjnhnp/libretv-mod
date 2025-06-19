@@ -769,7 +769,6 @@ function toggleLockScreen() {
     });
 
     // 5. 更新锁屏按钮图标并显示提示消息
-    const lockIcon = document.getElementById('lock-icon');
     if (lockIcon) {
         if (isScreenLocked) {
             lockIcon.innerHTML = `
