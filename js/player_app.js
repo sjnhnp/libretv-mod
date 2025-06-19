@@ -185,6 +185,28 @@ async function initPlayer(videoUrl, title) {
             playsInline: true,
             crossOrigin: true,
             keyTarget: 'document',
+            keyShortcuts: {
+                seekBackward: ({ event, remote }) => {
+                    if (event.altKey && event.key === 'ArrowLeft') {
+                        event.preventDefault();
+                        playPreviousEpisode();
+                        // 补上 Toast 提示
+                        showToast('上一集', 'info', 1500);
+                    } else {
+                        remote.seekBackward();
+                    }
+                },
+                seekForward: ({ event, remote }) => {
+                    if (event.altKey && event.key === 'ArrowRight') {
+                        event.preventDefault();
+                        playNextEpisode();
+                        // 补上 Toast 提示
+                        showToast('下一集', 'info', 1500);
+                    } else {
+                        remote.seekForward();
+                    }
+                },
+            }
         });
         window.player = player;
         addPlayerEventListeners();
