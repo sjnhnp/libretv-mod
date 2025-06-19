@@ -719,6 +719,7 @@ input:disabled+.slider {
 }
 
 /* 线路切换菜单样式 */
+/* 线路切换菜单样式 */
 .line-switch-container {
   position: relative;
   display: inline-block;
@@ -728,51 +729,127 @@ input:disabled+.slider {
   display: none;
   position: absolute;
   bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-bottom: 8px;
-  width: 150px;
-  max-height: 200px;
+  right: 0;
+  width: clamp(180px, 50vw, 220px);
+  max-height: 300px;
   overflow-y: auto;
-  background: rgba(25, 28, 38, 0.97);
-  border-radius: 8px;
-  border: 1px solid rgba(50, 50, 60, 0.5);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
-  padding: 8px;
+  background: linear-gradient(145deg, rgba(20, 24, 35, 0.95), rgba(30, 35, 50, 0.95));
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  padding: 12px;
   z-index: 2223;
+  margin-bottom: 8px;
+  backdrop-filter: blur(20px);
 }
 
 #line-switch-dropdown:not(.hidden) {
   display: block;
+  animation: dropdown-fade-in 0.2s ease-out;
 }
 
 #line-switch-dropdown button {
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 12px;
   margin-bottom: 4px;
   text-align: left;
-  font-size: 0.9em;
-  color: #c0c8e0;
-  background-color: transparent;
-  border: none;
-  border-radius: 5px;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  font-weight: 500;
 }
 
 #line-switch-dropdown button:last-child {
   margin-bottom: 0;
 }
 
+#line-switch-dropdown button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+#line-switch-dropdown button:hover:not(:disabled)::before {
+  left: 100%;
+}
+
 #line-switch-dropdown button:hover:not(:disabled) {
-  background-color: #303442;
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+  color: #ffffff;
+}
+
+#line-switch-dropdown button:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 #line-switch-dropdown button.line-active {
-  background-color: #007bff;
-  color: #fff;
-  font-weight: bold;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-weight: 600;
+  border-color: rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+}
+
+#line-switch-dropdown button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 自定义滚动条 */
+#line-switch-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+#line-switch-dropdown::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+#line-switch-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+#line-switch-dropdown::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  #line-switch-dropdown {
+    width: clamp(160px, 80vw, 200px);
+    padding: 10px;
+  }
+  
+  #line-switch-dropdown button {
+    padding: 8px 10px;
+    font-size: 0.8125rem;
+  }
+}
+
+/* 添加空状态样式 */
+#line-switch-dropdown .empty-state {
+  padding: 12px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.875rem;
 }
 
 /* 顶部导航栏 */
