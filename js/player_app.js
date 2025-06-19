@@ -188,13 +188,13 @@ async function initPlayer(videoUrl, title) {
             keyShortcuts: {
                 togglePaused: 'k Space',
                 toggleMuted: 'm',
-                toggleFullscreen: 'f',
+               // toggleFullscreen: 'f',
                 seekBackward: ['j', 'J', 'ArrowLeft'],
                 seekForward: ['l', 'L', 'ArrowRight'],
                 volumeUp: 'ArrowUp',
                 volumeDown: 'ArrowDown',
                 speedUp: '>',
-                slowDown: '<',         
+                slowDown: '<',
             }
         });
         window.player = player;
@@ -523,7 +523,20 @@ function handleKeyboardShortcuts(e) {
                 actionText = '下一集';
             } else {
                 player.currentTime += 10;
-                actionText = '前进 10s';
+                //   actionText = '前进 10s';
+            }
+            break;
+
+        case 'f':
+        case 'F':
+            // e.preventDefault(); // REMOVE THIS LINE
+            if (player) {
+                if (player.state.fullscreen) {
+                    player.exitFullscreen();
+                } else {
+                    player.enterFullscreen();
+                }
+                actionText = '切换全屏';
             }
             break;
     }
