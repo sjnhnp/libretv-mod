@@ -188,6 +188,7 @@ async function initPlayer(videoUrl, title) {
             keyShortcuts: {
                 togglePaused: 'k Space',
                 toggleMuted: 'm',
+                togglePictureInPicture: 'i',
                 // toggleFullscreen: 'f',
                 seekBackward: ['j', 'J', 'ArrowLeft'],
                 seekForward: ['l', 'L', 'ArrowRight'],
