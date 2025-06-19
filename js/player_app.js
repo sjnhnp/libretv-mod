@@ -205,7 +205,8 @@ async function initPlayer(videoUrl, title) {
         window.player = player;
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
-
+        // 添加双击快进提示消息功能
+        setupDoubleTapSeekFeedback(player);
     } catch (error) {
         console.error("Vidstack Player 创建失败:", error);
         showError("播放器初始化失败");
