@@ -629,8 +629,9 @@ body {
 }
 
 .history-panel::-webkit-scrollbar-track {
-  background: rgba(15, 22, 34, 0.98);
-  border-radius: 4px;
+  /* 使用与面板完全相同的背景 */
+  background: linear-gradient(145deg, rgba(15, 22, 34, 0.98), rgba(25, 34, 49, 0.98));
+  border-radius: 0;
 }
 
 .history-panel::-webkit-scrollbar-thumb {
