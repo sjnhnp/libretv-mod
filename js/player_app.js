@@ -174,10 +174,6 @@ async function initPlayer(videoUrl, title) {
     }
 
     try {
-        // 创建播放器前获取当前锁屏状态
-        const lockScreenStateOnInit = localStorage.getItem('lockScreenState') === 'true';
-        isScreenLocked = lockScreenStateOnInit;
-
         player = await VidstackPlayer.create({
             target: playerContainer,
             src: { src: videoUrl, type: 'application/x-mpegurl' },
@@ -198,26 +194,9 @@ async function initPlayer(videoUrl, title) {
                 volumeUp: 'ArrowUp',
                 volumeDown: 'ArrowDown',
                 speedUp: '>',
-                slowDown: '<',
-                prevEpisode: 'Shift+p',
-                nextEpisode: 'Shift+n'
-            },
-            // 应用初始锁屏状态到键盘快捷键
-            keyDisabled: lockScreenStateOnInit
-        });
-        // 添加自定义事件监听器
-        player.addEventListener('prev-episode', () => {
-            if (!isScreenLocked && currentEpisodeIndex > 0) {
-                playPreviousEpisode();
+                slowDown: '<',         
             }
         });
-
-        player.addEventListener('next-episode', () => {
-            if (!isScreenLocked && currentEpisodeIndex < currentEpisodes.length - 1) {
-                playNextEpisode();
-            }
-        });
-
         window.player = player;
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
@@ -356,9 +335,6 @@ function doEpisodeSwitch(index, url) {
         const urlParams = new URLSearchParams(window.location.search);
         let episodeUrlForPlayer = urlParams.get('url');
 
-        // +++ 锁屏状态初始化和记忆功能 +++
-        isScreenLocked = localStorage.getItem('lockScreenState') === 'true';
-
         function fullyDecode(str) {
             try {
                 let prev, cur = str;
@@ -447,7 +423,7 @@ function setupAllUI() {
     setupSkipControls();
     setupSkipDropdownEvents();
     setupRememberEpisodeProgressToggle();
-    // document.addEventListener('keydown', handleKeyboardShortcuts);
+    document.addEventListener('keydown', handleKeyboardShortcuts);
     window.addEventListener('beforeunload', () => {
         saveCurrentProgress();
         saveVideoSpecificProgress();
@@ -513,7 +489,49 @@ function setupPlayerControls() {
     if (lockButton) lockButton.addEventListener('click', toggleLockScreen);
 }
 
+// js/player_app.js
 
+function handleKeyboardShortcuts(e) {
+    // Entrance check: if player doesn't exist, or focus is in an input field, do nothing
+    if (!player || (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName))) return;
+
+    // Special handling for lock screen: only allow fullscreen (f/F) and exit (Escape) keys
+    if (isScreenLocked && !['f', 'F', 'Escape'].includes(e.key)) {
+        // We prevent default here because we explicitly want to block all other actions
+        e.preventDefault();
+        return;
+    }
+
+    let actionText = '';
+
+    switch (e.key) {
+        case 'ArrowLeft':
+            // e.preventDefault(); // REMOVE THIS LINE
+            if (e.altKey) {
+                playPreviousEpisode();
+                actionText = '上一集';
+            } else {
+                player.currentTime -= 10;
+                actionText = '后退 10s';
+            }
+            break;
+
+        case 'ArrowRight':
+            // e.preventDefault(); // REMOVE THIS LINE
+            if (e.altKey) {
+                playNextEpisode();
+                actionText = '下一集';
+            } else {
+                player.currentTime += 10;
+                actionText = '前进 10s';
+            }
+            break;
+    }
+
+    if (actionText) {
+        showToast(actionText, 'info', 1500);
+    }
+}
 
 function saveToHistory() {
     if (!player || !currentVideoTitle || !window.addToViewingHistory || !currentEpisodes[currentEpisodeIndex]) return;
@@ -732,18 +750,13 @@ function toggleLockScreen() {
 
     isScreenLocked = !isScreenLocked;
 
-    // 禁用/启用键盘
+    // 1. 禁用/启用键盘
     player.keyDisabled = isScreenLocked;
-
-    // 保存锁屏状态到localStorage
-    localStorage.setItem('lockScreenState', isScreenLocked.toString());
-
-    // 使用 Vidstack API 隐藏/显示其自带的全部UI控件
-    // player.controls = !isScreenLocked;
 
     const playerContainer = document.querySelector('.player-container');
     const lockIcon = document.getElementById('lock-icon');
 
+    // 2. 【已修正】为常量正确赋值，选取所有需要被禁用/启用的可交互容器。
     const elementsToToggle = document.querySelectorAll(
         '.plyr',
         '.plyr__controls',
@@ -775,13 +788,13 @@ function toggleLockScreen() {
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
             `;
-            showMessage('屏幕已锁定，键盘快捷键已禁用', 'info', 2500);
+            showMessage('屏幕已锁定，单击解锁按钮可解锁', 'info', 2500);
         } else {
             lockIcon.innerHTML = `
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             `;
-            showMessage('屏幕已解锁，键盘快捷键已启用', 'info', 1500);
+            showMessage('屏幕已解锁', 'info', 1500);
         }
     }
 
