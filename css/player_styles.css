@@ -177,6 +177,15 @@ input:checked+.slider:before {
   /* 确保它在最上层，可以被点击 */
 }
 
+.player-locked .plyr {
+  pointer-events: none !important;
+}
+
+.player-locked .plyr__controls {
+  display: none !important;
+}
+
+
 /* 选集按钮样式（未选中） */
 #episode-grid button:not(.episode-active) {
   background: #222;
