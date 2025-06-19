@@ -407,7 +407,6 @@ function setupAllUI() {
     setupLineSwitching();
     setupSkipControls();
     setupSkipDropdownEvents();
-    setupShakeInteraction();
     setupRememberEpisodeProgressToggle();
     document.addEventListener('keydown', handleKeyboardShortcuts);
     window.addEventListener('beforeunload', () => {
@@ -1112,44 +1111,6 @@ function retryLastAction() {
             player.play();
         }
     }
-}
-
-/**
- * 设置锁屏状态下的“抖动”交互反馈。
- * 当用户点击锁定的屏幕时，相关UI元素会抖动以提示用户。
- */
-function setupShakeInteraction() {
-    const playerRegion = document.getElementById('player-region');
-    if (!playerRegion) return;
-
-    playerRegion.addEventListener('click', (event) => {
-        // 仅在锁屏状态下，且点击的不是解锁按钮本身时触发
-        if (isScreenLocked && !event.target.closest('#lock-button')) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            // 【已修正】为常量正确赋值，选取所有应产生抖动效果的元素。
-            const elementsToShake = document.querySelectorAll(
-                '.vds-controls',
-                '.vds-gestures',
-                'header',
-                '.player-control-bar',
-                '#episodes-container',
-                '#prev-episode',
-                '#next-episode'
-            );
-
-            elementsToShake.forEach(el => {
-                if (el && !el.classList.contains('shake-it')) {
-                    el.classList.add('shake-it');
-                    // 动画结束后移除类，以便可以再次触发
-                    el.addEventListener('animationend', () => {
-                        el.classList.remove('shake-it');
-                    }, { once: true });
-                }
-            });
-        }
-    }, true); // 使用捕获阶段确保尽早拦截点击
 }
 
 window.playNextEpisode = playNextEpisode;
