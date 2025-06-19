@@ -191,46 +191,12 @@ async function initPlayer(videoUrl, title) {
                 toggleFullscreen: 'f',
                 togglePictureInPicture: 'i',
                 toggleCaptions: 'c',
+                seekBackward: ['j', 'J', 'ArrowLeft'],
+                seekForward: ['l', 'L', 'ArrowRight'],
                 volumeUp: 'ArrowUp',
                 volumeDown: 'ArrowDown',
                 speedUp: '>',
-                slowDown: '<',
-                seekBackward: {
-                    keys: ['ArrowLeft'],
-                    onKeyDown(event, { player, remote }) {
-                        // 仅在播放器拥有焦点时响应
-                        if (!remote.hasFocus) return;
-
-                        event.preventDefault();
-                        if (isScreenLocked) return;
-
-                        if (event.altKey) {
-                            playPreviousEpisode();
-                            showToast('上一集', 'info', 1500);
-                        } else {
-                            player.currentTime = Math.max(0, player.currentTime - 10);
-                            showToast('后退 10s', 'info', 1500);
-                        }
-                    }
-                },
-
-                seekForward: {
-                    keys: ['ArrowRight'],
-                    onKeyDown(event, { player, remote }) {
-                        if (!remote.hasFocus) return;
-
-                        event.preventDefault();
-                        if (isScreenLocked) return;
-
-                        if (event.altKey) {
-                            playNextEpisode();
-                            showToast('下一集', 'info', 1500);
-                        } else {
-                            player.currentTime = Math.min(player.duration, player.currentTime + 10);
-                            showToast('前进 10s', 'info', 1500);
-                        }
-                    }
-                }
+                slowDown: '<',           
             }
             });
         window.player = player;
@@ -746,11 +712,12 @@ function toggleLockScreen() {
 
     // 1. 禁用/启用键盘
     player.keyDisabled = isScreenLocked;
+    // 2. 使用 Vidstack API 隐藏/显示其自带的全部UI控件
+    player.controls = !isScreenLocked;
 
     const playerContainer = document.querySelector('.player-container');
     const lockIcon = document.getElementById('lock-icon');
 
-    // 2. 【已修正】为常量正确赋值，选取所有需要被禁用/启用的可交互容器。
     const elementsToToggle = document.querySelectorAll(
         '.plyr',
         '.plyr__controls',
