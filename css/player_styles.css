@@ -602,9 +602,3 @@ header {
   opacity: 0;
   transition: opacity .3s ease-in-out;
 }
-
-/* Vidstack音量条样式 */
-media-player {
-  --media-slider-track-fill: #00ccff; /* 使用主题的主色调 */
-  --media-focus-ring: 0 0 0 3px rgba(0, 204, 255, 0.4); /* 优化焦点光环颜色 */
-}
