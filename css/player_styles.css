@@ -292,14 +292,25 @@ input:checked+.slider:before {
   display: none;
   align-items: center;
   justify-content: center;
-  background: rgba(16, 22, 34, 0.45);
-  backdrop-filter: blur(3.5px);
-  transition: background 0.28s;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
 }
 
 #progress-restore-modal.active {
   display: flex;
-  animation: fadein-modal 0.25s;
+  animation: modal-fade-in 0.3s ease-out;
+}
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes fadein-modal {
@@ -313,83 +324,147 @@ input:checked+.slider:before {
 }
 
 .progress-restore-card {
-  background: rgba(34, 39, 51, 0.78);
-  border-radius: 16px;
-  box-shadow: 0 8px 40px 0 rgba(10, 18, 36, 0.25), 0 1.5px 6px 0 rgba(0, 204, 255, 0.08);
-  padding: 2rem 2.5rem 1.3rem 2.5rem;
-  min-width: 330px;
-  max-width: 92vw;
-  color: var(--text-color, #e6f2ff);
-  font-size: 1.07rem;
+  background: linear-gradient(145deg, rgba(20, 24, 35, 0.95), rgba(30, 35, 50, 0.95));
+  border-radius: 20px;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  padding: 2.5rem 2rem 2rem 2rem;
+  min-width: 380px;
+  max-width: 90vw;
+  color: #ffffff;
+  font-size: 1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  border: 1.5px solid var(--primary-color, #00ccff);
-  backdrop-filter: blur(7px) saturate(1.35);
+  text-align: center;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+
+.progress-restore-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 204, 255, 0.5), transparent);
 }
 
 .progress-modal-title {
-  font-size: 1.17rem;
-  font-weight: 700;
-  color: var(--primary-color, #00ccff);
-  margin-bottom: 0.4rem;
-  letter-spacing: 0.01em;
-  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.progress-modal-title::before {
+  content: '▶';
+  color: #00ccff;
+  font-size: 1.2rem;
 }
 
 .progress-modal-content {
-  line-height: 1.8;
-  margin-bottom: 1.10rem;
-  text-shadow: 0 1.5px 12px rgba(0, 204, 255, 0.08);
-  text-align: center;
-  color: var(--text-color, #e6f2ff);
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
 }
 
 .progress-modal-actions {
   display: flex;
-  gap: 1.2rem;
+  gap: 1rem;
   justify-content: center;
-  margin-top: 0.2rem;
+  width: 100%;
 }
 
 .progress-modal-btn {
   border: none;
-  font-size: 1.08rem;
-  padding: 0.48em 1.5em;
-  border-radius: 8px;
+  font-size: 0.95rem;
+  padding: 0.75rem 2rem;
+  border-radius: 12px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 500;
   outline: none;
-  transition: background 0.16s, color 0.13s;
-  box-shadow: 0 2px 7px -1.5px rgba(0, 0, 0, 0.11);
+  transition: all 0.2s ease;
+  min-width: 100px;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-modal-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+.progress-modal-btn:hover::before {
+  left: 100%;
 }
 
 .progress-modal-btn.confirm {
-  background: linear-gradient(94deg, #00ccff 60%, #33d6ff 100%);
-  color: #fff;
+  background: linear-gradient(135deg, #00ccff, #0099cc);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(0, 204, 255, 0.3);
 }
 
 .progress-modal-btn.confirm:hover {
-  background: #05e3e3;
-  color: #303343;
+  background: linear-gradient(135deg, #00b8e6, #0088bb);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 204, 255, 0.4);
 }
 
 .progress-modal-btn.cancel {
-  background: rgba(200, 200, 200, 0.25);
-  color: #a1bada;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .progress-modal-btn.cancel:hover {
-  background: rgba(180, 180, 180, 0.13);
-  color: #73b1cb;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  transform: translateY(-1px);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .progress-restore-card {
-    padding: 1.25rem 0.6rem;
+    padding: 2rem 1.5rem;
     min-width: 0;
-    max-width: 98vw;
-    font-size: 0.98rem;
+    max-width: 95vw;
+    margin: 1rem;
+  }
+  
+  .progress-modal-title {
+    font-size: 1.2rem;
+  }
+  
+  .progress-modal-content {
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .progress-modal-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .progress-modal-btn {
+    width: 100%;
+    padding: 0.875rem 1rem;
   }
 }
 
