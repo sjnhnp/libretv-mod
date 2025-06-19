@@ -174,6 +174,10 @@ async function initPlayer(videoUrl, title) {
     }
 
     try {
+        // 创建播放器前获取当前锁屏状态
+        const lockScreenStateOnInit = localStorage.getItem('lockScreenState') === 'true';
+        isScreenLocked = lockScreenStateOnInit;
+
         player = await VidstackPlayer.create({
             target: playerContainer,
             src: { src: videoUrl, type: 'application/x-mpegurl' },
@@ -188,28 +192,35 @@ async function initPlayer(videoUrl, title) {
             keyShortcuts: {
                 togglePaused: 'k Space',
                 toggleMuted: 'm',
-                toggleFullscreen: 'f',           
+                toggleFullscreen: 'f',
                 seekBackward: ['j', 'J', 'ArrowLeft'],
                 seekForward: ['l', 'L', 'ArrowRight'],
                 volumeUp: 'ArrowUp',
                 volumeDown: 'ArrowDown',
                 speedUp: '>',
-                slowDown: '<',  
+                slowDown: '<',
                 prevEpisode: 'Shift+p',
-                nextEpisode: 'Shift+n'         
+                nextEpisode: 'Shift+n'
+            },
+            // 应用初始锁屏状态到键盘快捷键
+            keyDisabled: lockScreenStateOnInit
+        });
+        // 添加自定义事件监听器
+        player.addEventListener('prev-episode', () => {
+            if (!isScreenLocked && currentEpisodeIndex > 0) {
+                playPreviousEpisode();
             }
-            });
+        });
+
+        player.addEventListener('next-episode', () => {
+            if (!isScreenLocked && currentEpisodeIndex < currentEpisodes.length - 1) {
+                playNextEpisode();
+            }
+        });
+
         window.player = player;
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
-
-        player.addEventListener('prev-episode', () => {
-            if (!isScreenLocked) playPreviousEpisode();
-          });
-          
-          player.addEventListener('next-episode', () => {
-            if (!isScreenLocked) playNextEpisode();
-          });
 
     } catch (error) {
         console.error("Vidstack Player 创建失败:", error);
@@ -344,6 +355,9 @@ function doEpisodeSwitch(index, url) {
     document.addEventListener('DOMContentLoaded', async () => {
         const urlParams = new URLSearchParams(window.location.search);
         let episodeUrlForPlayer = urlParams.get('url');
+
+        // +++ 锁屏状态初始化和记忆功能 +++
+        isScreenLocked = localStorage.getItem('lockScreenState') === 'true';
 
         function fullyDecode(str) {
             try {
@@ -718,10 +732,14 @@ function toggleLockScreen() {
 
     isScreenLocked = !isScreenLocked;
 
-    // 1. 禁用/启用键盘
+    // 禁用/启用键盘
     player.keyDisabled = isScreenLocked;
-    // 2. 使用 Vidstack API 隐藏/显示其自带的全部UI控件
-   // player.controls = !isScreenLocked;
+
+    // 保存锁屏状态到localStorage
+    localStorage.setItem('lockScreenState', isScreenLocked.toString());
+
+    // 使用 Vidstack API 隐藏/显示其自带的全部UI控件
+    // player.controls = !isScreenLocked;
 
     const playerContainer = document.querySelector('.player-container');
     const lockIcon = document.getElementById('lock-icon');
@@ -751,19 +769,20 @@ function toggleLockScreen() {
     });
 
     // 5. 更新锁屏按钮图标并显示提示消息
+    const lockIcon = document.getElementById('lock-icon');
     if (lockIcon) {
         if (isScreenLocked) {
             lockIcon.innerHTML = `
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
             `;
-            showMessage('屏幕已锁定，单击解锁按钮可解锁', 'info', 2500);
+            showMessage('屏幕已锁定，键盘快捷键已禁用', 'info', 2500);
         } else {
             lockIcon.innerHTML = `
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             `;
-            showMessage('屏幕已解锁', 'info', 1500);
+            showMessage('屏幕已解锁，键盘快捷键已启用', 'info', 1500);
         }
     }
 
