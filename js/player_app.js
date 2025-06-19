@@ -231,6 +231,7 @@ async function initPlayer(videoUrl, title) {
                         }
                     }
                 }
+            }
             });
         window.player = player;
         addPlayerEventListeners();
