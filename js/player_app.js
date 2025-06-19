@@ -850,7 +850,7 @@ function handleMediaClick(e) {
     }
 
     // 短暂显示状态提示（桌面端）
-    showToast(player.paused ? '暂停' : '播放中', 'info', 1000);
+    showToast(player.paused ? '播放' : '暂停', 'info', 1000);
 }
 
 
