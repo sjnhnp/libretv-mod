@@ -196,18 +196,11 @@ async function initPlayer(videoUrl, title) {
                 volumeDown: 'ArrowDown',
                 speedUp: '>',
                 slowDown: '<',
-            },
-            gestures: {
-                enabled: true,
-                // 设置双击跳转的时间（秒）
-                seekStep: 20
             }
         });
         window.player = player;
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
-        // 添加双击快进提示消息功能
-        setupDoubleTapSeekFeedback(player);
     } catch (error) {
         console.error("Vidstack Player 创建失败:", error);
         showError("播放器初始化失败");
