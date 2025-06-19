@@ -188,10 +188,6 @@ input:checked+.slider:before {
  */
 
  /* Vidstack 的 Default Layout 锁屏样式 */
-.player-locked .vds-default-ui {
-  display: none !important;  /* 彻底隐藏整个UI */
-  pointer-events: none !important; /* 禁用所有交互 */
-}
 
 .player-locked .vds-controls {
   opacity: 0 !important; /* 控制条透明 */
@@ -583,9 +579,4 @@ header {
     height: 100% !important;
     object-fit: contain !important;
   }
-}
-
-/* 改变进度条颜色 */
-.vds-volume-progress {
-  background: linear-gradient(to right, #3b82f6, #1d4ed8) !important;
 }

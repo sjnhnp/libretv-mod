@@ -785,7 +785,7 @@ function toggleLockScreen() {
         '.plyr__controls', 
         '.vds-controls',
         '.vds-gestures',
-        '.vds-default-ui',
+        
         'header',
         '.player-control-bar',
         '#episodes-container',
