@@ -437,8 +437,6 @@ function setupAllUI() {
 }
 
 function updateUIForNewEpisode() {
-    const siteName = (window.SITE_CONFIG && window.SITE_CONFIG.name) ? window.SITE_CONFIG.name : '播放器';
-    document.title = `${currentVideoTitle} - 第 ${currentEpisodeIndex + 1} 集 - ${siteName}`;
     updateEpisodeInfo();
     renderEpisodes();
     updateButtonStates();
@@ -692,12 +690,24 @@ function renderEpisodes() {
     updateButtonStates();
 }
 
-
 function updateEpisodeInfo() {
     const episodeInfoSpan = document.getElementById('episode-info-span');
     if (!episodeInfoSpan) return;
+
+    // 更新浏览器标签页标题
+    const siteName = (window.SITE_CONFIG && window.SITE_CONFIG.name) ? window.SITE_CONFIG.name : '播放器';
+    const totalEpisodes = window.currentEpisodes ? window.currentEpisodes.length : 0;
+
+    if (currentVideoTitle && totalEpisodes > 1) {
+        document.title = `${currentVideoTitle} - 第 ${currentEpisodeIndex + 1} 集 - ${siteName}`;
+    } else if (currentVideoTitle) {
+        document.title = `${currentVideoTitle} - ${siteName}`;
+    } else {
+        document.title = siteName;
+    }
+
+    // 更新页面内的剧集信息显示
     if (window.currentEpisodes && window.currentEpisodes.length > 1) {
-        const totalEpisodes = window.currentEpisodes.length;
         const currentDisplayNumber = window.currentEpisodeIndex + 1;
         episodeInfoSpan.textContent = `第 ${currentDisplayNumber} / ${totalEpisodes} 集`;
         const episodesCountEl = document.getElementById('episodes-count');
