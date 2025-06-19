@@ -1,7 +1,7 @@
 /* -------- 1. 全局 CSS 变量（保留） -------- */
 :root {
-  --primary-color: #00ccff;
-  --primary-light: #33d6ff;
+  --primary-color: #d4af37;  /* 改为金色 */
+  --primary-light: #f4e4bc;  /* 改为浅金色 */
   --secondary-color: #0f1622;
   --accent-color: #ff3c78;
   --text-color: #e6f2ff;
@@ -16,50 +16,28 @@
 }
 
 /* -------- 2. 统一滚动条样式（全局应用） -------- */
-/* 修改原有的全局滚动条样式 */
-html,
-body,
-.episode-grid,
-.custom-title-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: #444 #222;
-}
-
-/* 单独为 history-panel 设置滚动条样式 */
-.history-panel {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-}
 
 html::-webkit-scrollbar,
 body::-webkit-scrollbar,
+.history-panel::-webkit-scrollbar,
 .episode-grid::-webkit-scrollbar,
 .custom-title-scroll::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-/* 单独为 history-panel 设置 webkit 滚动条 */
-.history-panel::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
 html::-webkit-scrollbar-track,
 body::-webkit-scrollbar-track,
+.history-panel::-webkit-scrollbar-track,
 .episode-grid::-webkit-scrollbar-track,
 .custom-title-scroll::-webkit-scrollbar-track {
   background: transparent;
   border-radius: 4px;
 }
 
-.history-panel::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 4px;
-}
-
 html::-webkit-scrollbar-thumb,
 body::-webkit-scrollbar-thumb,
+.history-panel::-webkit-scrollbar-thumb,
 .episode-grid::-webkit-scrollbar-thumb,
 .custom-title-scroll::-webkit-scrollbar-thumb {
   background-color: #444;
@@ -67,24 +45,13 @@ body::-webkit-scrollbar-thumb,
   transition: background-color 0.3s ease;
 }
 
-.history-panel::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  transition: background-color 0.3s ease;
-}
-
 html::-webkit-scrollbar-thumb:hover,
 body::-webkit-scrollbar-thumb:hover,
+.history-panel::-webkit-scrollbar-thumb:hover,
 .episode-grid::-webkit-scrollbar-thumb:hover,
 .custom-title-scroll::-webkit-scrollbar-thumb:hover {
   background-color: #555;
 }
-
-.history-panel::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.25);
-}
-
-v
 
 /* -------- 3. 页面背景（保留多层点状背景） -------- */
 .page-bg {
@@ -402,273 +369,49 @@ body {
   border-radius: 8px;
 }
 
-/* 集数按钮优化 */
 #episodesGrid button {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 500;
-  padding: 0.75rem 1rem;
-  transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-#episodesGrid button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
-  transition: left 0.5s ease;
-}
-
-#episodesGrid button:hover::before {
-  left: 100%;
+  background: rgba(0, 204, 255, 0.08);
+  border: 1px solid rgba(0, 204, 255, 0.2);
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 #episodesGrid button:hover {
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.08));
-  border-color: rgba(212, 175, 55, 0.4);
-  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.15);
-  transform: translateY(-1px);
-  color: #ffffff;
-}
-
-/* -------- 密码弹窗优化 -------- */
-#passwordModal {
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(8px);
-}
-
-#passwordModal>div {
-  background: linear-gradient(145deg, rgba(15, 22, 34, 0.95), rgba(25, 34, 49, 0.95));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  backdrop-filter: blur(20px);
-  position: relative;
-}
-
-#passwordModal>div::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.3), transparent);
-}
-
-#passwordModalTitle {
-  background: linear-gradient(135deg, #d4af37, #f4e4bc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-#passwordModalTitle::before {
-  content: '🔐';
-  font-size: 1.2rem;
-  filter: sepia(1) hue-rotate(30deg) saturate(0.8);
-}
-
-#passwordInput {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  color: #ffffff;
-  padding: 1rem 1.25rem;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-}
-
-#passwordInput:focus {
-  outline: none;
-  border-color: rgba(212, 175, 55, 0.5);
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
-}
-
-#passwordInput::placeholder {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-#passwordSubmitBtn {
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.8), rgba(212, 175, 55, 0.6));
-  border: none;
-  border-radius: 12px;
-  color: #ffffff;
-  font-weight: 600;
-  padding: 0.875rem 1.5rem;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-#passwordSubmitBtn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s ease;
-}
-
-#passwordSubmitBtn:hover::before {
-  left: 100%;
-}
-
-#passwordSubmitBtn:hover {
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.9), rgba(212, 175, 55, 0.7));
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.2);
-}
-
-/* -------- Toast 提示优化 -------- */
-#toast {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  color: #ffffff;
-  font-weight: 500;
-  padding: 1rem 1.5rem;
-}
-
-/* 成功状态的 Toast */
-#toast.success {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.95), rgba(22, 163, 74, 0.95));
-}
-
-/* 警告状态的 Toast */
-#toast.warning {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
-}
-
-/* 信息状态的 Toast */
-#toast.info {
-  background: linear-gradient(135deg, rgba(156, 163, 175, 0.95), rgba(107, 114, 128, 0.95));
-}
-
-/* -------- 响应式优化 -------- */
-@media (max-width: 768px) {
-  .history-panel {
-    width: 100vw;
-    max-width: 320px;
-  }
-
-  #modal>div,
-  #passwordModal>div {
-    margin: 1rem;
-    padding: 1.5rem;
-  }
-
-  #modalTitle,
-  #passwordModalTitle {
-    font-size: 1.25rem;
-  }
+  background: rgba(0, 204, 255, 0.15);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 8px rgba(0, 204, 255, 0.3);
 }
 
 /* -------- 14. 历史记录面板（优化过渡效果） -------- */
 .history-panel {
-  background: linear-gradient(145deg, rgba(15, 22, 34, 0.98), rgba(25, 34, 49, 0.98));
-  backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
   transition: transform 0.3s ease-in-out;
   overflow-y: scroll;
   overflow-x: hidden;
-  width: 340px;
+  width: 320px;
   box-sizing: border-box;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) rgba(15, 22, 34, 0.98);
+  scrollbar-color: #333 #111;
 }
 
-/* 历史面板标题优化 */
-.history-panel h3 {
-  background: linear-gradient(135deg, #d4af37, #f4e4bc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-/* 清空历史按钮优化 - 移除黑边 */
-.history-panel .clear-history-btn {
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.08));
-  border: 1px solid rgba(212, 175, 55, 0.25);
-  color: rgba(255, 255, 255, 0.9);
-  padding: 0.75rem 1.5rem;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 0.875rem;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  /* 移除可能的外边距和轮廓 */
-  margin: 0;
-  outline: none;
-  box-shadow: none;
-}
-
-.history-panel .clear-history-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
-  transition: left 0.5s ease;
-}
-
-.history-panel .clear-history-btn:hover::before {
-  left: 100%;
-}
-
-.history-panel .clear-history-btn:hover {
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(212, 175, 55, 0.12));
-  border-color: rgba(212, 175, 55, 0.4);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.15);
-}
-
-/* 历史面板滚动条 - 与背景一致 */
+/* 为历史面板定制滚动条样式 */
 .history-panel::-webkit-scrollbar {
   width: 6px;
 }
 
 .history-panel::-webkit-scrollbar-track {
-  /* 使用与面板完全相同的背景 */
-  background: linear-gradient(145deg, rgba(15, 22, 34, 0.98), rgba(25, 34, 49, 0.98));
-  border-radius: 0;
+  background: #111;
+  border-radius: 4px;
 }
 
 .history-panel::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: #333;
   border-radius: 4px;
-  transition: background-color 0.3s ease;
 }
 
 .history-panel::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.25);
+  background-color: #444;
+  /* old4 的滑块悬停颜色 (new4 全局是 #555) */
 }
 
 .history-panel.show {
@@ -679,36 +422,26 @@ body {
   padding-right: 6px;
 }
 
-/* 历史记录项优化 */
 .history-item {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #1a1a1a;
+  border-radius: 6px;
+  border: 1px solid #333;
   overflow: hidden;
-  transition: all 0.3s ease;
-  padding: 12px 16px;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+  padding: 10px 14px;
   position: relative;
-  margin-bottom: 10px;
-  backdrop-filter: blur(10px);
-}
-
-.history-item::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.2), transparent);
+  margin-bottom: 8px;
+  width: 100%;
 }
 
 .history-item:hover {
   transform: translateY(-2px);
-  border-color: rgba(212, 175, 55, 0.3);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
+  border-color: #444;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
-
 
 .history-item .delete-btn {
   opacity: 0;
@@ -725,63 +458,34 @@ body {
 }
 
 .history-title {
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.95rem;
-  margin-bottom: 4px;
-  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .history-meta {
-  color: rgba(255, 255, 255, 0.7);
+  color: #bbb;
   font-size: 0.75rem;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 
 .history-episode {
-  color: #d4af37;
-  font-weight: 500;
+  color: #3b82f6;
 }
 
 .history-source {
-  color: #9ca3af;
-  font-weight: 500;
+  color: #10b981;
 }
 
 .history-time {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.75rem;
-  margin-top: 6px;
-}
-
-/* -------- 模态框优化 -------- */
-#modal {
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(8px);
-}
-
-#modal>div {
-  background: linear-gradient(145deg, rgba(15, 22, 34, 0.95), rgba(25, 34, 49, 0.95));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  backdrop-filter: blur(20px);
-}
-
-#modalTitle {
-  background: linear-gradient(135deg, #d4af37, #f4e4bc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  color: #888;
+  font-size: 0.8rem;
+  margin-top: 4px;
 }
 
 /* 历史分隔符样式 */
@@ -1074,27 +778,44 @@ body {
   cursor: pointer;
 }
 
-/* 直接覆盖所有可能的黑色背景 */
-.history-panel * {
-  background-color: transparent !important;
-}
-
+/* -------- 历史面板优化 -------- */
 .history-panel {
   background: linear-gradient(145deg, rgba(15, 22, 34, 0.98), rgba(25, 34, 49, 0.98)) !important;
-  /* 关键：移除滚动条 gutter */
-  scrollbar-gutter: auto !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
-/* 然后重新设置需要背景的元素 */
+/* Webkit 滚动条样式 */
+.history-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.history-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.history-panel::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.history-panel::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+/* 清空历史按钮 - 修复黑色背景问题 */
+.history-panel .mt-4.text-center.sticky.bottom-0 {
+  background: linear-gradient(145deg, rgba(15, 22, 34, 0.98), rgba(25, 34, 49, 0.98)) !important;
+  padding: 0.75rem 1rem;
+  margin: 0;
+}
+
 .history-panel .clear-history-btn {
   background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.08)) !important;
   border: 1px solid rgba(212, 175, 55, 0.25);
   border-radius: 12px;
   margin: 0;
   padding: 0.75rem 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
-
-.history-panel .history-item {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04)) !important;
-}
-
