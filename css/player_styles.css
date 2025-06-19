@@ -586,3 +586,13 @@ header {
     object-fit: contain !important;
   }
 }
+
+/* 全屏播放器操作提示 */
+#toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) !important; /* 强制居中 */
+  z-index: 999999999999 !important; /* 超过全屏元素层级 */
+  pointer-events: none; /* 防止阻挡操作 */
+}
