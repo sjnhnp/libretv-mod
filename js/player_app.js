@@ -347,43 +347,6 @@ function doEpisodeSwitch(index, url) {
         vodIdForPlayer = urlParams.get('id') || '';
         currentVideoYear = urlParams.get('year') || '';
         currentVideoTypeName = urlParams.get('typeName') || '';
-        const sourceCodeForPlayer = urlParams.get('source_code') || '';
-
-        // 无论如何，都尝试根据ID和Source重新获取最全的剧集列表
-        if (vodIdForPlayer && sourceCodeForPlayer) {
-            console.log(`[player_app] 检测到ID和Source，尝试重新获取线路列表...`);
-            try {
-                // 找到 api.js 的位置 (根据您的文件结构，它应该在全局作用域)
-                const apiInfo = APISourceManager.getSelectedApi(sourceCodeForPlayer);
-                if (!apiInfo) throw new Error(`找不到源 ${sourceCodeForPlayer} 的配置`);
-
-                let detailUrl = `/api/detail?id=${vodIdForPlayer}&source=${sourceCodeForPlayer}`;
-                if (apiInfo.isCustom) {
-                    detailUrl += `&customApi=${encodeURIComponent(apiInfo.url)}`;
-                }
-                const response = await fetch(detailUrl);
-                const data = await response.json();
-
-                if (data.code === 200 && data.episodes && data.episodes.length > 0) {
-                    console.log(`[player_app] 成功获取到 ${data.episodes.length} 条线路`);
-                    currentEpisodes = data.episodes;
-                    // 将最新的、最全的列表存入localStorage
-                    localStorage.setItem('currentEpisodes', JSON.stringify(currentEpisodes));
-                } else {
-                    console.warn(`[player_app] 获取线路列表失败或为空:`, data.msg || '无剧集');
-                    // 即使获取失败，也尝试从localStorage恢复旧数据，作为备用方案
-                    currentEpisodes = JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
-                }
-            } catch (error) {
-                console.error(`[player_app] API请求获取线路列表时出错:`, error);
-                showError("获取线路列表失败，请检查网络或数据源。");
-                currentEpisodes = JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
-            }
-        } else {
-            console.log(`[player_app] URL中缺少ID或Source，从localStorage恢复线路列表。`);
-            // 如果URL中没有足够信息，还是从localStorage加载
-            currentEpisodes = JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
-        }
 
         const videoKey = urlParams.get('videoKey');
         if (videoKey) {
