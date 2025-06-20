@@ -294,7 +294,7 @@ async function playEpisode(index) {
         if (savedProgress && savedProgress > 5) {
             const wantsToResume = await showProgressRestoreModal({
                 title: "继续播放？",
-                content: `上次观看《${currentVideoTitle}》第 ${index + 1}，<br>到 <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> `,
+                content: `上次观看《${currentVideoTitle}》第 ${index + 1}，<br> <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> `,
                 confirmText: "YES",
                 cancelText: "NO"
             });
@@ -409,7 +409,7 @@ function doEpisodeSwitch(index, url) {
                 if (savedProgress && savedProgress > 5) {
                     const wantsToResume = await showProgressRestoreModal({
                         title: "继续播放？",
-                        content: `上次观看《${currentVideoTitle}》第 ${currentEpisodeIndex + 1} 集，<br>到 <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> `,
+                        content: `上次观看《${currentVideoTitle}》第 ${currentEpisodeIndex + 1} 集，<br> <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> `,
                         confirmText: "YES",
                         cancelText: "NO"
                     });
