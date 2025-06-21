@@ -179,12 +179,13 @@ async function initPlayer(videoUrl, title) {
             src: { src: videoUrl, type: 'application/x-mpegurl' },
             title: title,
             autoplay: true,
-            preload: 'auto'
+            preload: 'auto',
             layout: new VidstackPlayerLayout(),
             // layout: new PlyrLayout(),
             // controls: true,
             playsInline: true,
             crossOrigin: true,
+            layout: new VidstackPlayerLayout(),
             keyTarget: 'document',
             keyShortcuts: {
                 togglePaused: 'k Space',
