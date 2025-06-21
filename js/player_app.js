@@ -179,6 +179,7 @@ async function initPlayer(videoUrl, title) {
             src: { src: videoUrl, type: 'application/x-mpegurl' },
             title: title,
             autoplay: true,
+            preload: 'auto'
             layout: new VidstackPlayerLayout(),
             // layout: new PlyrLayout(),
             // controls: true,
@@ -294,7 +295,7 @@ async function playEpisode(index) {
         if (savedProgress && savedProgress > 5) {
             const wantsToResume = await showProgressRestoreModal({
                 title: "继续播放？",
-                content: `上次观看《${currentVideoTitle}》第 ${index + 1}，<br> <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> `,
+                content: `《${currentVideoTitle}》第 ${index + 1}，<br> <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> `,
                 confirmText: "YES",
                 cancelText: "NO"
             });
@@ -409,7 +410,7 @@ function doEpisodeSwitch(index, url) {
                 if (savedProgress && savedProgress > 5) {
                     const wantsToResume = await showProgressRestoreModal({
                         title: "继续播放？",
-                        content: `上次观看《${currentVideoTitle}》第 ${currentEpisodeIndex + 1} 集，<br> <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> `,
+                        content: `《${currentVideoTitle}》第 ${currentEpisodeIndex + 1} 集，<br> <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> `,
                         confirmText: "YES",
                         cancelText: "NO"
                     });
