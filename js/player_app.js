@@ -185,6 +185,7 @@ async function initPlayer(videoUrl, title) {
             // controls: true,
             playsInline: true,
             crossOrigin: true,
+            layout: new VidstackPlayerLayout(),
             keyTarget: 'document',
             keyShortcuts: {
                 togglePaused: 'k Space',
