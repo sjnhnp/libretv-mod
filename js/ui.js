@@ -196,7 +196,7 @@ let loadingTimeoutId = null;
  * 显示Loading
  * @param {string} message 加载提示文本
  */
-function showLoading(message = '加载中...') {
+export function showLoading(message = '加载中...') {
     if (loadingTimeoutId) { clearTimeout(loadingTimeoutId); loadingTimeoutId = null; }
     const loading = getElement('loading');
     if (!loading) return;
@@ -212,7 +212,7 @@ function showLoading(message = '加载中...') {
 /** 
  * 隐藏Loading
  */
-function hideLoading() {
+export function hideLoading() {
     if (loadingTimeoutId) { clearTimeout(loadingTimeoutId); loadingTimeoutId = null; }
     const loading = getElement('loading');
     if (loading) loading.style.display = 'none';
