@@ -12,37 +12,47 @@
     <link rel="preconnect" href="https://images.icon-icons.com">
     <link rel="dns-prefetch" href="https://images.icon-icons.com">
 
-    <!-- 本地样式表 -->
+    <!-- Unified Stylesheet -->
     <link rel="stylesheet" href="css/styles.css">
+    <!-- player_styles.css is merged into styles.css -->
 
     <!-- 加载 Tailwind CSS（本地JS方式，保持原逻辑）-->
     <script src="libs/tailwindcss.min.js"></script>
 </head>
 
 <body class="page-bg text-white">
-    <!-- 顶部功能按钮区：历史 -->
-    <nav aria-label="主要功能" class="fixed top-4 left-4 z-10">
-        <button id="historyButton"
-            class="bg-[#222] hover:bg-[#333] border border-[#333] hover:border-white rounded-lg px-3 py-1.5 flex items-center gap-1 transition-colors"
-            aria-label="观看历史" type="button">
-            <!-- SVG内联更快渲染 -->
+    <!-- Unified Header -->
+    <header class="fixed top-0 left-0 right-0 bg-[#111] border-b border-[#333] z-40 flex items-center justify-between px-4 py-2 shadow-md">
+        <!-- Left Side: Home Button -->
+        <button id="unifiedHomeButton" onclick="resetToHome()"
+            class="bg-pink-600 hover:bg-pink-700 text-white font-medium px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
+            aria-label="返回首页" title="返回首页">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3M9 21V11m6 10V11"></path>
             </svg>
-            <span class="hidden sm:inline">历史</span>
+            <span class="hidden sm:inline">首页</span>
         </button>
-    </nav>
 
-    <!-- 顶部功能按钮区：设置 -->
-    <nav aria-label="设置功能" class="fixed top-4 right-4 z-10">
+        <!-- Center: Search Form (Flex-grow) -->
+        <form id="searchForm" onsubmit="event.preventDefault(); search();" class="flex-grow mx-4">
+            <div class="flex items-stretch h-10 shadow-sm rounded-lg overflow-hidden">
+                <input type="text" id="searchInput"
+                    class="flex-1 bg-[#222] border border-[#333] text-white px-4 py-0 focus:outline-none focus:border-pink-500 transition-colors"
+                    placeholder="搜索你喜欢的视频..." autocomplete="off" aria-label="视频搜索框">
+                <button type="submit"
+                    class="w-20 sm:w-24 flex items-center justify-center bg-pink-600 text-white font-medium hover:bg-pink-700 transition-colors"
+                    aria-label="搜索按钮">
+                    搜索
+                </button>
+            </div>
+        </form>
 
+        <!-- Right Side: TV, History, Settings -->
         <div class="flex items-center space-x-2">
-            <!-- 电视直播按钮 -->
             <a href="https://m3u-player.pages.dev/" target="_blank" rel="noopener noreferrer"
                 class="bg-[#222] hover:bg-[#333] border border-[#333] hover:border-white rounded-lg px-3 py-1.5 flex items-center gap-1 transition-colors"
                 aria-label="电视">
-                <!-- 电视图标（SVG） -->
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <rect x="3" y="7" width="18" height="13" rx="2" stroke="currentColor" stroke-width="2" />
                     <path d="M8 21h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
@@ -50,8 +60,15 @@
                 </svg>
                 <span class="hidden sm:inline">电视</span>
             </a>
-
-            <!-- 原有设置按钮 -->
+            <button id="historyButton"
+                class="bg-[#222] hover:bg-[#333] border border-[#333] hover:border-white rounded-lg px-3 py-1.5 flex items-center gap-1 transition-colors"
+                aria-label="观看历史" type="button">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span class="hidden sm:inline">历史</span>
+            </button>
             <button id="settingsButton"
                 class="bg-[#222] hover:bg-[#333] border border-[#333] hover:border-white rounded-lg px-3 py-1.5 flex items-center gap-1 transition-colors"
                 aria-label="打开设置" type="button">
@@ -64,9 +81,10 @@
                 </svg>
                 <span class="hidden sm:inline">设置</span>
             </button>
-    </nav>
+        </div>
+    </header>
 
-    <!-- 历史记录面板 -->
+    <!-- 历史记录面板 (remains the same, but ensure it's not obscured by the new header) -->
     <aside id="historyPanel"
         class="history-panel fixed left-0 top-0 h-full bg-[#111] p-6 z-40 transform -translate-x-full transition-transform duration-300"
         aria-label="观看历史" tabindex="-1">
@@ -257,50 +275,19 @@
     </aside>
 
     <!-- 主内容区 -->
-    <main class="container mx-auto px-4 py-8 flex flex-col h-screen" role="main">
-        <div class="flex-1 flex flex-col">
-            <!-- 标题部分 -->
-            <header class="text-center mb-2" role="banner">
-                <div class="flex justify-center items-center mb-4">
-                    <a href="#" onclick="resetToHome(); return false;" class="flex items-center" aria-label="返回首页">
-                        <svg class="w-10 h-10 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                            aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
-                            </path>
-                        </svg>
-                        <h1 class="text-5xl font-bold gradient-text">X</h1>
-                    </a>
-                </div>
-                <p class="text-gray-400 mb-8">自由观影，畅享精彩</p>
-            </header>
-            <!-- 搜索区 -->
+    <main class="container mx-auto px-4 py-8 flex flex-col h-screen pt-20" role="main"> <!-- Added pt-20 for header spacing -->
+        <div id="homeView" class="flex-1 flex flex-col">
+            <!-- Search Area (formerly part of a larger header) -->
             <section id="searchArea" class="flex-1 flex flex-col items-center justify-center" aria-label="搜索区">
                 <div class="w-full max-w-2xl">
-                    <form id="searchForm" onsubmit="event.preventDefault(); search();">
-                        <div class="flex items-stretch mb-3 h-14 shadow-lg rounded-lg overflow-hidden">
-                            <button id="homeButton" type="button" onclick="resetToHome()"
-                                class="w-20 sm:w-24 flex items-center justify-center bg-white text-black font-medium hover:bg-gray-200 transition-colors"
-                                aria-label="返回首页" title="返回首页">
-                                首页
-                            </button>
-                            <input type="text" id="searchInput"
-                                class="flex-1 bg-[#111] border-y border-[#333] text-white px-6 py-0 focus:outline-none transition-colors"
-                                placeholder="搜索你喜欢的视频..." autocomplete="off" aria-label="视频搜索框">
-                            <button type="submit"
-                                class="w-20 sm:w-24 flex items-center justify-center bg-white text-black font-medium hover:bg-gray-200 transition-colors"
-                                aria-label="搜索按钮">
-                                搜索
-                            </button>
-                        </div>
-                    </form>
+                    <!-- Search form is now in the unified header -->
                     <div id="recentSearches" class="mt-4 flex flex-wrap gap-2" aria-label="最近搜索记录" aria-live="polite">
                     </div>
                     <div id="searchFeedbackArea" class="w-full text-center mt-8 hidden">
                     </div>
                 </div>
             </section>
-            <!-- 豆瓣热门区 -->
+            <!-- Douban Popular Area -->
             <section id="doubanArea" class="w-full my-8 hidden" aria-label="豆瓣热门">
                 <div class="mx-auto max-w-screen-xl px-2">
                     <div class="mb-4">
@@ -336,9 +323,10 @@
                     <div id="douban-results"
                         class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3"
                         role="region" aria-live="polite"></div>
+                </div>
             </section>
 
-            <!-- 搜索结果 -->
+            <!-- Search Results -->
             <section id="resultsArea" class="w-full hidden" aria-label="搜索结果">
                 <div class="mx-auto max-w-7xl px-2">
                     <div class="flex justify-end items-center mb-4">
@@ -351,9 +339,159 @@
                 </div>
             </section>
         </div>
+
+        <section id="playerView" class="hidden">
+            <!-- Content from player.html body will be injected here -->
+            <div class="player-container relative">
+
+                <!-- Player area from player.html, EXCLUDING its original header -->
+                <div id="player-region" class="relative" role="region" aria-label="视频播放区域">
+                    <!-- Vidstack 播放器将通过 JS 注入到这个 div -->
+                    <div id="player" class="w-full h-full"></div>
+
+                    <!-- Error overlay from player.html (loading, toast, message, progress-restore-modal are global in index.html) -->
+                    <div id="error" class="error-container" aria-live="assertive">
+                        <div class="error-icon" aria-hidden="true">⚠️</div>
+                        <div class="text-xl font-bold">播放出错</div>
+                        <div class="mt-2">请尝试其他线路或刷新页面</div>
+                        <button id="retry-button"
+                            class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded transition-colors">重试</button>
+                    </div>
+                </div>
+
+                <!-- Playback controls and episode info from player.html -->
+                <div class="flex items-center justify-between p-4">
+                    <button id="prev-episode"
+                        class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg flex items-center gap-2 transition-colors"
+                        aria-label="上一集">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="feather feather-skip-back">
+                            <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                            <line x1="5" y1="19" x2="5" y2="5"></line>
+                        </svg>
+                        <span>上一集</span>
+                    </button>
+                    <span id="episode-info-span" class="text-lg font-medium text-gray-300"></span>
+                    <button id="next-episode"
+                        class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg flex items-center gap-2 transition-colors"
+                        aria-label="下一集">
+                        <span>下一集</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="feather feather-skip-forward">
+                            <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                            <line x1="19" y1="5" x2="19" y2="19"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Functional control bar from player.html -->
+                <div class="p-4 bg-gray-900 rounded-lg mx-4 mb-4">
+                    <div class="player-control-bar">
+                        <div class="flex items-center gap-2">
+                            <span id="autoplay-label" class="control-label">自动播放</span>
+                            <label class="switch">
+                                <input type="checkbox" id="autoplay-next" checked aria-labelledby="autoplay-label">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="remember-episode-progress-label" class="control-label">记住进度</span> <label class="switch">
+                                <input type="checkbox" id="remember-episode-progress-toggle" checked
+                                    aria-labelledby="remember-episode-progress-label"> <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="relative line-switch-container">
+                            <button id="line-switch-button"
+                                class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors flex items-center gap-1 px-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                                <span class="text-sm">线路</span>
+                            </button>
+                            <div id="line-switch-dropdown" class="hidden"></div>
+                        </div>
+                        <div class="relative skip-control-container">
+                            <button id="skip-control-button" title="跳过设置"
+                                class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors"
+                                aria-label="跳过片头片尾">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 5l7 7-7 7M15 5l7 7-7 7" />
+                                </svg>
+                            </button>
+                            <div id="skip-control-dropdown"
+                                class="hidden absolute right-0 bottom-full mb-2 bg-gray-900 rounded shadow-lg p-3 w-48">
+                                <div class="flex items-center mb-2">
+                                    <label for="skip-intro-input" class="text-gray-300 text-sm mr-2 shrink-0">跳片头</label>
+                                    <input id="skip-intro-input" type="number" min="0" step="1" placeholder="秒"
+                                        class="w-full bg-gray-800 text-gray-300 rounded p-1 text-sm">
+                                </div>
+                                <div class="flex items-center mb-4">
+                                    <label for="skip-outro-input" class="text-gray-300 text-sm mr-2 shrink-0">跳片尾</label>
+                                    <input id="skip-outro-input" type="number" min="0" step="1" placeholder="秒"
+                                        class="w-full bg-gray-800 text-gray-300 rounded p-1 text-sm">
+                                </div>
+                                <button id="apply-skip-settings"
+                                    class="w-full bg-blue-600 hover:bg-blue-700 text-white rounded p-2 mb-2 text-sm">应用</button>
+                                <button id="reset-skip-settings"
+                                    class="w-full bg-red-600 hover:bg-red-700 text-white rounded p-2 text-sm">重置</button>
+                            </div>
+                        </div>
+                        <button onclick="copyLinks()" title="复制当前视频链接"
+                            class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors"
+                            aria-label="复制链接">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                            </svg>
+                        </button>
+                        <button id="order-button"
+                            class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors"
+                            aria-label="切换剧集顺序">
+                            <svg id="order-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" style="transition: transform 0.3s ease;">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <button id="lock-button"
+                            class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors"
+                            aria-label="锁定/解锁屏幕控制">
+                            <svg id="lock-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Episode selection from player.html -->
+                <div id="episodes-container" class="mt-2 mx-4 mb-4 hidden" role="navigation" aria-label="剧集选择">
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="text-xl font-bold">选集</h2>
+                        <span id="episodes-count" class="text-gray-400"></span>
+                    </div>
+                    <div id="episode-grid" class="episode-grid grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2"></div>
+                </div>
+
+                <!-- Shortcut hint from player.html -->
+                <div id="shortcut-hint" class="shortcut-hint" aria-live="polite" aria-atomic="true">
+                    <span id="shortcut-key"></span>
+                    <span id="shortcut-action"></span>
+                </div>
+            </div>
+        </section>
     </main>
 
-    <!-- 详情模态框 -->
+    <!-- 详情模态框 (global) -->
     <!-- Example of improved modal dialog -->
     <div id="modal"
         class="fixed inset-0 bg-black/95 hidden flex items-center justify-center transition-opacity duration-30 z-40"
@@ -400,14 +538,14 @@
         </div>
     </div>
 
-    <!-- 弹窗提示 -->
+    <!-- 弹窗提示 (global) -->
     <div id="toast"
         class="fixed top-4 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 opacity-0 -translate-y-full"
         role="alertdialog" aria-live="assertive" aria-atomic="true" aria-hidden="true" tabindex="-1">
         <p id="toastMessage"></p>
     </div>
 
-    <!-- 加载提示 -->
+    <!-- 加载提示 (global) -->
     <div id="loading" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50" role="status"
         aria-live="polite" aria-hidden="true" tabindex="-1">
         <div class="bg-[#111] p-8 rounded-lg border border-[#333] flex items-center space-x-4">
@@ -416,6 +554,22 @@
             <p class="text-white text-lg">加载中...</p>
         </div>
     </div>
+
+    <!-- 消息提示 (global, for player and other messages) -->
+    <div id="message" class="fixed top-4 right-4 p-4 rounded shadow-lg z-[60] hidden bg-blue-500 text-white" aria-live="polite"></div>
+
+    <!-- 记住进度弹窗 (global) -->
+    <div id="progress-restore-modal" class="fixed inset-0 bg-black/75 hidden items-center justify-center z-[70]" tabindex="-1" aria-modal="true" role="dialog" aria-labelledby="progress-restore-title">
+        <div class="bg-[#111] p-6 rounded-lg shadow-xl border border-[#333] w-11/12 max-w-sm text-center">
+            <h3 id="progress-restore-title" class="text-lg font-semibold text-white mb-3">继续播放？</h3>
+            <div id="progress-restore-content" class="text-gray-300 mb-4"></div>
+            <div class="flex justify-around">
+                <button id="progress-restore-cancel" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-md transition-colors">取消</button>
+                <button id="progress-restore-confirm" class="px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-md transition-colors">确定</button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- SHA-256库与初始化，避免全局冲突 -->
     <script src="libs/sha256.min.js" defer></script>

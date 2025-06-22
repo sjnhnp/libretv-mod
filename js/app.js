@@ -3,6 +3,8 @@
  * 使用AppState进行状态管理，DOMCache进行DOM元素缓存
  */
 
+import { initPlayerModule, destroyPlayer } from './player_app.js';
+
 // Basic AppState Implementation
 const AppState = (function () {
     const state = new Map();
@@ -23,6 +25,10 @@ const AppState = (function () {
         }
     };
 })();
+
+// Make AppState globally available for player_app.js
+window.AppState = AppState;
+
 
 // Basic DOMCache Implementation
 const DOMCache = (function () {
@@ -121,9 +127,37 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', v
     }
     // ← 在这一行后面，插入广告过滤开关参数
     const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, false);
-    playerUrl.searchParams.set('af', adOn ? '1' : '0');
+    // playerUrl.searchParams.set('af', adOn ? '1' : '0'); // af param is not used by initPlayerModule
 
-    window.location.href = playerUrl.toString();
+    // SPA navigation
+    switchContentView('player');
+    // Construct the full URL for history state, but initPlayerModule only needs the base video URL
+    const playerHistoryUrl = new URL(window.location.origin + window.location.pathname); // Base path for SPA
+    playerHistoryUrl.searchParams.set('url', url); // Keep original video url for potential direct access/bookmark
+    playerHistoryUrl.searchParams.set('title', title);
+    playerHistoryUrl.searchParams.set('index', episodeIndex.toString());
+    if (vodId) playerHistoryUrl.searchParams.set('id', vodId);
+    if (sourceName) playerHistoryUrl.searchParams.set('source', sourceName);
+    if (sourceCode) playerHistoryUrl.searchParams.set('source_code', sourceCode);
+    if (year) playerHistoryUrl.searchParams.set('year', year);
+    if (typeName) playerHistoryUrl.searchParams.set('typeName', typeName);
+    if (videoKey) playerHistoryUrl.searchParams.set('videoKey', videoKey);
+
+    history.pushState({
+        view: 'player',
+        videoUrl: url, // Direct video URL for player init
+        title: title,
+        episodeIndex: episodeIndex,
+        vodId: vodId,
+        sourceCode: sourceCode,
+        sourceName: sourceName,
+        year: year,
+        typeName: typeName,
+        videoKey: videoKey,
+        // episodes: AppState.get('currentEpisodes') // Consider if this is needed in state
+    }, title, playerHistoryUrl.toString());
+
+    initPlayerModule(url, title, 0, episodeIndex, AppState.get('currentEpisodes') || [], vodId, sourceCode, sourceName, year, typeName, videoKey);
 }
 
 
@@ -232,10 +266,32 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     // 添加广告过滤参数 (PLAYER_CONFIG 和 getBoolConfig 应在 app.js 或其引用的 config.js 中可用)
     const adOn = typeof getBoolConfig !== 'undefined' && typeof PLAYER_CONFIG !== 'undefined' ?
         getBoolConfig(PLAYER_CONFIG.adFilteringStorage, false) : false;
-    playerUrl.searchParams.set('af', adOn ? '1' : '0');
+    // playerUrl.searchParams.set('af', adOn ? '1' : '0'); // af param is not used by initPlayerModule
 
-    console.log(`[App - playFromHistory] Navigating to player: ${playerUrl.toString()}`);
-    window.location.href = playerUrl.toString();
+    // SPA navigation
+    switchContentView('player');
+    const playerHistoryUrl = new URL(window.location.origin + window.location.pathname); // Base path for SPA
+    playerHistoryUrl.searchParams.set('url', url);
+    playerHistoryUrl.searchParams.set('title', title);
+    playerHistoryUrl.searchParams.set('index', episodeIndex.toString());
+    if (vodId) playerHistoryUrl.searchParams.set('id', vodId);
+    if (actualSourceName) playerHistoryUrl.searchParams.set('source', actualSourceName);
+    if (actualSourceCode) playerHistoryUrl.searchParams.set('source_code', actualSourceCode);
+    if (playbackPosition > 0) playerHistoryUrl.searchParams.set('position', playbackPosition.toString());
+
+    history.pushState({
+        view: 'player',
+        videoUrl: url,
+        title: title,
+        episodeIndex: episodeIndex,
+        vodId: vodId,
+        sourceCode: actualSourceCode,
+        sourceName: actualSourceName,
+        initialSeekPosition: playbackPosition,
+        episodes: episodesList
+    }, title, playerHistoryUrl.toString());
+
+    initPlayerModule(url, title, playbackPosition, episodeIndex, episodesList, vodId, actualSourceCode, actualSourceName, '', '', ''); // year, typeName, videoKey might not be available here easily, pass empty or enhance history item
 }
 
 /**
@@ -268,8 +324,81 @@ document.addEventListener('DOMContentLoaded', function () {
     // 加载搜索历史
     renderSearchHistory();
 
-    // 恢复搜索状态
-    restoreSearchFromCache();
+    // 恢复搜索状态 (do not restore if specific player params are in URL)
+    const currentUrlParams = new URLSearchParams(window.location.search);
+    if (!currentUrlParams.has('url') && !currentUrlParams.has('title') && !currentUrlParams.has('id')) {
+        restoreSearchFromCache();
+    }
+
+
+    // Handle initial page load and popstate for SPA navigation
+    function handleNavigation(state) {
+        if (state && state.view === 'player') {
+            switchContentView('player');
+            // Ensure episodes are available, might need to fetch/get from state.episodes
+            let episodesForPlayer = state.episodes || AppState.get('currentEpisodes') || [];
+            if (state.videoUrl && state.title) { // Check for essential params
+                 initPlayerModule(
+                    state.videoUrl,
+                    state.title,
+                    state.initialSeekPosition || 0,
+                    state.episodeIndex,
+                    episodesForPlayer,
+                    state.vodId,
+                    state.sourceCode,
+                    state.sourceName,
+                    state.year,
+                    state.typeName,
+                    state.videoKey
+                );
+            } else {
+                console.warn("Player state incomplete, redirecting to home.");
+                resetToHome(); // Or switchContentView('home');
+            }
+        } else {
+            switchContentView('home');
+            // If player was active, ensure it's destroyed
+            if (AppState.get('isPlayerActive')) { // Requires AppState to track player status
+                if (typeof destroyPlayer === 'function') destroyPlayer();
+                AppState.set('isPlayerActive', false);
+            }
+        }
+    }
+
+    window.addEventListener('popstate', function (event) {
+        handleNavigation(event.state);
+    });
+
+    // Initial load check
+    const initialParams = new URLSearchParams(window.location.search);
+    if (initialParams.has('url') && initialParams.has('title')) { // Check for minimal player params
+        // Construct state object from URL to mimic history state for handleNavigation
+        const initialState = {
+            view: 'player',
+            videoUrl: initialParams.get('url'),
+            title: initialParams.get('title'),
+            episodeIndex: parseInt(initialParams.get('index') || '0'),
+            initialSeekPosition: parseInt(initialParams.get('position') || '0'),
+            vodId: initialParams.get('id'),
+            sourceCode: initialParams.get('source_code'),
+            sourceName: initialParams.get('source'),
+            year: initialParams.get('year'),
+            typeName: initialParams.get('typeName'),
+            videoKey: initialParams.get('videoKey'),
+            // Episodes might need to be fetched or retrieved from localStorage if not in URL
+            // For simplicity, assuming playVideo/playFromHistory would have set them in AppState/localStorage
+            episodes: JSON.parse(localStorage.getItem('currentEpisodes') || '[]')
+        };
+        // Replace current history entry with a state object so back button works correctly from a direct player URL
+        history.replaceState(initialState, initialState.title, window.location.href);
+        handleNavigation(initialState);
+    } else {
+        // Default to home view, ensure current history has a state for popstate consistency
+        if (!history.state || history.state.view !== 'home') {
+             history.replaceState({ view: 'home' }, 'Home', '/');
+        }
+        handleNavigation({ view: 'home' });
+    }
 });
 
 // js/app.js
@@ -886,42 +1015,55 @@ async function getVideoDetail(id, sourceCode, apiUrl = '') {
  * 重置到首页
  */
 function resetToHome() {
-    const searchInput = DOMCache.get('searchInput');
-    const searchResults = DOMCache.get('searchResults');
-    const resultsArea = getElement('resultsArea');
-    const doubanArea = getElement('doubanArea');
-    const searchArea = getElement('searchArea');
-
-    if (searchInput) searchInput.value = '';
-    if (searchResults) searchResults.innerHTML = '';
-
-    // 回到「初始版面」
-    /* ---- 恢复搜索区默认样式 ---- */
-    if (searchArea) {
-        searchArea.classList.add('flex-1');   // 重新撑满页面
-        searchArea.classList.remove('mb-8');  // 移除搜索结果页加的外边距
-        searchArea.classList.remove('hidden');
+    switchContentView('home');
+    if (typeof destroyPlayer === 'function') {
+        destroyPlayer();
     }
+    history.pushState({ view: 'home' }, 'Home', '/');
 
-    /* ---- 隐藏结果区 ---- */
-    resultsArea?.classList.add('hidden');
+    // Clear search input and results for a clean home view
+    const searchInput = DOMCache.get('searchInput');
+    if (searchInput) searchInput.value = '';
 
-    /* ---- 视用户设置决定是否显示豆瓣区 ---- */
+    const searchResultsContainer = DOMCache.get('searchResults');
+    if (searchResultsContainer) searchResultsContainer.innerHTML = '';
+
+    const resultsArea = getElement('resultsArea');
+    if(resultsArea) resultsArea.classList.add('hidden');
+
+    // Show Douban if enabled
+    const doubanArea = getElement('doubanArea');
     if (doubanArea) {
         const showDouban = getBoolConfig('doubanEnabled', false);
         doubanArea.classList.toggle('hidden', !showDouban);
     }
+    renderSearchHistory(); // Keep rendering search history
+}
 
-    // 清理搜索缓存
-    try {
-        sessionStorage.removeItem('searchQuery');
-        sessionStorage.removeItem('searchResults');
-        sessionStorage.removeItem('searchSelectedAPIs');
-    } catch (e) {
-        console.error('清理搜索缓存失败:', e);
+// Function to switch content views
+function switchContentView(viewName) {
+    const homeView = document.getElementById('homeView');
+    const playerView = document.getElementById('playerView');
+
+    if (!homeView || !playerView) {
+        console.error('Home or Player view not found');
+        return;
     }
 
-    renderSearchHistory();
+    if (viewName === 'home') {
+        homeView.classList.remove('hidden');
+        playerView.classList.add('hidden');
+        // Ensure search area is visible when going home
+        const searchArea = getElement('searchArea');
+        if (searchArea) {
+            searchArea.classList.remove('hidden');
+            searchArea.classList.add('flex-1');
+            searchArea.classList.remove('mb-8');
+        }
+    } else if (viewName === 'player') {
+        homeView.classList.add('hidden');
+        playerView.classList.remove('hidden');
+    }
 }
 
 

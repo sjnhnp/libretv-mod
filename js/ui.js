@@ -1,3 +1,5 @@
+import { AppState } from './app.js'; // Assuming AppState is exported if needed here, or pass as param
+
 // =================== 全局常量、工具 =====================
 
 // 搜索与历史相关常量
@@ -214,6 +216,30 @@ function hideLoading() {
     const loading = getElement('loading');
     if (loading) loading.style.display = 'none';
 }
+
+/**
+ * Centralized showError function
+ * @param {string} message - The error message to display.
+ */
+export function showError(message) {
+    // Hide loading indicator
+    const loading = getElement('loading');
+    if (loading) loading.style.display = 'none';
+
+    // Display error in toast
+    showToast(message, 'error');
+
+    // Log to console
+    console.error("Error displayed to user:", message);
+
+    // Optionally, if there's a dedicated error display area in the main UI (not player specific)
+    // const mainErrorDisplay = getElement('mainErrorDisplay'); // Example ID
+    // if (mainErrorDisplay) {
+    //     mainErrorDisplay.textContent = message;
+    //     mainErrorDisplay.classList.remove('hidden');
+    // }
+}
+
 
 // ----------- 模态框管理 --------------
 let lastFocusedElement = null;
@@ -735,47 +761,55 @@ function loadViewingHistory() {
  * 初始化事件监听器
  */
 function attachEventListeners() {
-    // 设置按钮事件
-    const settingsButton = getElement('settingsButton');
+    // Unified Header Buttons
+    const unifiedHomeButton = getElement('unifiedHomeButton');
+    if (unifiedHomeButton && typeof window.resetToHome === 'function') { // resetToHome is in app.js
+        unifiedHomeButton.addEventListener('click', window.resetToHome);
+    }
+    // Search form submission is handled by its onsubmit attribute in HTML
+    // TV link is a direct href
+
+    // Settings button (now in unified header)
+    const settingsButton = getElement('settingsButton'); // ID remains the same
     if (settingsButton) {
         settingsButton.addEventListener('click', toggleSettings);
     }
 
-    // 新增：监听设置密码验证成功的事件
-    document.addEventListener('settingsPasswordVerified', actuallyToggleSettingsPanel);
-
-    // 观看历史按钮
-    const historyButton = getElement('historyButton');
+    // History button (now in unified header)
+    const historyButton = getElement('historyButton'); // ID remains the same
     if (historyButton) {
         historyButton.addEventListener('click', toggleHistory);
     }
 
-    // 关闭设置面板按钮
+    // Password verification event (remains the same)
+    document.addEventListener('settingsPasswordVerified', actuallyToggleSettingsPanel);
+
+    // Close Settings Panel Button (remains the same)
     const closeSettingsPanelButton = getElement('closeSettingsPanelButton');
     if (closeSettingsPanelButton) {
         closeSettingsPanelButton.addEventListener('click', toggleSettings);
     }
 
-    // 关闭历史面板按钮  ← 新增这一段
+    // Close History Panel Button (remains the same)
     const closeHistoryPanelButton = getElement('closeHistoryPanelButton');
     if (closeHistoryPanelButton) {
         closeHistoryPanelButton.addEventListener('click', toggleHistory);
     }
 
-    // 清空观看历史按钮
-    const clearViewingHistoryButton = getElement('clearViewingHistoryButton');
-    if (clearViewingHistoryButton) {
-        clearViewingHistoryButton.addEventListener('click', clearViewingHistory);
+    // Clear Viewing History Button (remains the same, assuming it's inside historyPanel)
+    const clearViewingHistoryButton = document.querySelector('#historyPanel .clear-history-btn'); // More specific selector
+    if (clearViewingHistoryButton) { // Note: Original HTML had onclick="clearViewingHistory()"
+        clearViewingHistoryButton.onclick = clearViewingHistory; // Ensure it calls the ui.js function
     }
 
-    // 关闭模态框按钮
+
+    // Close Modal Button (remains the same)
     const closeModalButton = getElement('closeModalButton');
     if (closeModalButton) {
         closeModalButton.addEventListener('click', closeModal);
     }
 
-    // 优化：将委托事件监听器移到这里一次性设置
-    // 搜索历史标签点击事件委托
+    // Delegated event listeners (remain the same)
     const recentSearches = getElement('recentSearches');
     if (recentSearches) {
         recentSearches.addEventListener('click', handleSearchTagClick);

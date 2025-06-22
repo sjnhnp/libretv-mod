@@ -877,3 +877,508 @@ body {
   transform: scale(0.95);
 }
 }
+
+/* Player Styles Integration */
+
+/* Basic layout and player related styles */
+.player-container {
+  width: 100%;
+  /* max-width: 1200px; Player view will take full width within main content area */
+  margin: 0 auto;
+}
+
+/* Player region within #playerView */
+#playerView #player-region { /* Scoped to playerView */
+  width: 100%;
+  height: 60vh; /* Default height, can be adjusted */
+  position: relative;
+  background-color: #000; /* Background for letterboxing */
+}
+
+
+/* Ensure Vidstack player and its internal video element scale correctly within #playerView */
+#playerView #player,
+#playerView media-player { /* Scoped to playerView */
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#playerView #player video,
+#playerView media-player video { /* Scoped to playerView */
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  margin: auto;
+}
+
+/* Loading and error overlay within #playerView */
+/* .loading-container is global, #playerView .error-container for player specific error */
+#playerView .error-container { /* Scoped to playerView */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: none; /* Initially hidden, shown by JS */
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  z-index: 100; /* Ensure it's above the player but below global modals */
+  flex-direction: column;
+  text-align: center;
+  padding: 1rem;
+}
+
+#playerView .error-icon { /* Scoped to playerView */
+  font-size: 48px;
+  margin-bottom: 10px;
+}
+
+
+/* Episode button styles within #playerView */
+#playerView .episode-active { /* Scoped to playerView */
+  background: #3b82f6 !important;
+  border-color: #60a5fa !important;
+  color: #fff !important;
+  font-weight: bold;
+}
+
+#playerView .episode-grid { /* Scoped to playerView */
+  max-height: 30vh; /* Adjust as needed */
+  overflow-y: auto;
+  padding: 1rem 0;
+}
+
+#playerView .episode-grid button:not(.episode-active) {
+  background: #222;
+  color: #d1d5db;
+  border: 1px solid #333;
+}
+
+#playerView .episode-grid button:not(.episode-active):hover {
+  background: #333;
+  color: #fff
+}
+
+
+/* Custom switch style within #playerView */
+#playerView .switch { /* Scoped to playerView */
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 24px;
+}
+
+#playerView .switch input { /* Scoped to playerView */
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+#playerView .slider { /* Scoped to playerView */
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#playerView .slider:before { /* Scoped to playerView */
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 2px;
+  background: #fff;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#playerView .slider:hover { /* Scoped to playerView */
+  background: rgba(255, 255, 255, 0.15);
+}
+
+#playerView input:checked+.slider { /* Scoped to playerView */
+  background: #404040;
+  border-color: transparent;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+#playerView input:checked+.slider:before { /* Scoped to playerView */
+  transform: translateX(22px);
+  background: #ffffff;
+}
+
+#playerView input:checked+.slider:hover { /* Scoped to playerView */
+  background: #505050;
+}
+
+#playerView input:disabled+.slider { /* Scoped to playerView */
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Shortcut hint within #playerView */
+#playerView .shortcut-hint { /* Scoped to playerView */
+  position: fixed; /* Or absolute if container is relative and fullscreen */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, .8);
+  color: #fff;
+  padding: 1rem 2rem;
+  border-radius: .5rem;
+  font-size: 1.5rem;
+  display: none; /* Shown by JS */
+  align-items: center;
+  gap: .5rem;
+  z-index: 1000; /* High enough for player view */
+  opacity: 0;
+  transition: opacity .3s;
+}
+
+#playerView .shortcut-hint.show { /* Scoped to playerView */
+  display: flex;
+  opacity: 1;
+}
+
+/* Lock screen styles within #playerView */
+#playerView .player-container.player-locked #lock-button { /* Scoped to playerView */
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  z-index: 51; /* Ensure lock button is clickable */
+}
+
+#playerView .player-locked .vds-controls { /* Scoped to playerView */
+  display: none !important;
+  pointer-events: none !important;
+}
+
+#playerView .player-locked .vds-video-container { /* Scoped to playerView */
+  pointer-events: auto !important; /* Allow click to play/pause */
+}
+
+#playerView .player-locked .vds-gestures { /* Scoped to playerView */
+  display: none !important;
+}
+
+
+/* Icon button and player controls within #playerView */
+#playerView .icon-btn { /* Scoped to playerView */
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#playerView #prev-episode, /* Scoped to playerView */
+#playerView #next-episode {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#playerView #prev-episode:hover:not(:disabled), /* Scoped to playerView */
+#playerView #next-episode:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+#playerView #prev-episode:active:not(:disabled), /* Scoped to playerView */
+#playerView #next-episode:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+#playerView #prev-episode:disabled, /* Scoped to playerView */
+#playerView #next-episode:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+#playerView #prev-episode svg, /* Scoped to playerView */
+#playerView #next-episode svg {
+  width: 18px;
+  height: 18px;
+}
+
+#playerView #episode-info-span { /* Scoped to playerView */
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+}
+
+#playerView .flex.items-center.justify-between.p-4 { /* Scoped to playerView, specific to episode nav */
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  #playerView #prev-episode, /* Scoped to playerView */
+  #playerView #next-episode {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8125rem;
+  }
+
+  #playerView #prev-episode svg, /* Scoped to playerView */
+  #playerView #next-episode svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  #playerView #episode-info-span { /* Scoped to playerView */
+    font-size: 0.8125rem;
+  }
+}
+
+/* Control label and bar styles within #playerView */
+#playerView .control-label { /* Scoped to playerView */
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin-right: 0.5rem;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+#playerView .switch input:checked~.control-label { /* Scoped to playerView */
+  color: #ffffff;
+}
+
+#playerView .player-control-bar>div { /* Scoped to playerView */
+  display: flex;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
+}
+
+#playerView .player-control-bar>div:hover { /* Scoped to playerView */
+  background: rgba(255, 255, 255, 0.05);
+}
+
+#playerView .switch input:focus+.slider { /* Scoped to playerView */
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+@keyframes switchOnPlayerView { /* Unique name */
+  0% { transform: scale(0.95); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+#playerView .switch input:checked+.slider { /* Scoped to playerView */
+  animation: switchOnPlayerView 0.2s ease-out; /* Use unique animation name */
+}
+
+@media (max-width: 768px) {
+  #playerView .switch { /* Scoped to playerView */
+    width: 40px;
+    height: 22px;
+  }
+
+  #playerView .slider:before { /* Scoped to playerView */
+    width: 16px;
+    height: 16px;
+  }
+
+  #playerView input:checked+.slider:before { /* Scoped to playerView */
+    transform: translateX(18px);
+  }
+
+  #playerView .control-label { /* Scoped to playerView */
+    font-size: 0.8125rem;
+  }
+}
+
+#playerView #episodes-container h2 { /* Scoped to playerView */
+  display: none;
+}
+
+#playerView .player-control-bar { /* Scoped to playerView */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  #playerView .player-control-bar { gap: 0.8rem; } /* Scoped */
+  #playerView .icon-btn { padding: 0.6rem; } /* Scoped */
+}
+@media (max-width: 768px) {
+  #playerView .player-control-bar { gap: 0.6rem; } /* Scoped */
+  #playerView .icon-btn { padding: 0.5rem; } /* Scoped */
+}
+@media (max-width: 600px) {
+  #playerView .player-control-bar { gap: 0.25rem; } /* Scoped */
+  #playerView .icon-btn { padding: 0.2rem; } /* Scoped */
+}
+
+#playerView #episodes-count { display: none !important; } /* Scoped */
+
+/* Progress restore modal is global, no need to scope */
+
+/* Skip control dropdown within #playerView */
+#playerView .skip-control-container { position: relative; display: inline-block; } /* Scoped */
+
+#playerView #skip-control-dropdown { /* Scoped */
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  width: clamp(180px, 50vw, 220px);
+  background: linear-gradient(145deg, rgba(20, 24, 35, 0.95), rgba(30, 35, 50, 0.95));
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  padding: 16px;
+  z-index: 2222; /* Ensure it's above player controls */
+  margin-bottom: 8px;
+  backdrop-filter: blur(20px);
+}
+
+#playerView #skip-control-dropdown:not(.hidden) { display: block; animation: dropdown-fade-in-player 0.2s ease-out; } /* Scoped, unique animation name */
+@keyframes dropdown-fade-in-player { /* Unique name */
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#playerView #skip-control-dropdown .flex { margin-bottom: 12px; } /* Scoped */
+#playerView #skip-control-dropdown .flex:last-of-type { margin-bottom: 16px; } /* Scoped */
+#playerView #skip-control-dropdown label { /* Scoped */
+  display: block; color: rgba(255, 255, 255, 0.9); font-size: 0.875rem; font-weight: 500; margin-right: 8px; min-width: 60px;
+}
+#playerView #skip-control-dropdown input[type="number"] { /* Scoped */
+  width: 100%; font-size: 0.875rem; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08); color: #ffffff; box-sizing: border-box; transition: all 0.2s ease;
+}
+#playerView #skip-control-dropdown input[type="number"]:focus { /* Scoped */
+  outline: none; border-color: rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.12); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+#playerView #skip-control-dropdown input[type="number"]::placeholder { color: rgba(255, 255, 255, 0.5); } /* Scoped */
+#playerView #skip-control-dropdown button { /* Scoped */
+  width: 100%; padding: 10px 16px; font-size: 0.875rem; font-weight: 600; border: none; border-radius: 8px;
+  cursor: pointer; transition: all 0.2s ease; position: relative; overflow: hidden;
+}
+#playerView #skip-control-dropdown button::before { /* Scoped */
+  content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent); transition: left 0.5s ease;
+}
+#playerView #skip-control-dropdown button:hover::before { left: 100%; } /* Scoped */
+#playerView #skip-control-dropdown button:active { transform: scale(0.98); } /* Scoped */
+#playerView #skip-control-dropdown #apply-skip-settings { /* Scoped */
+  background: rgba(255, 255, 255, 0.15); color: #ffffff; margin-bottom: 8px; border: 1px solid rgba(255, 255, 255, 0.2);
+}
+#playerView #skip-control-dropdown #apply-skip-settings:hover { /* Scoped */
+  background: rgba(255, 255, 255, 0.2); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+#playerView #skip-control-dropdown #reset-skip-settings { /* Scoped */
+  background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);
+}
+#playerView #skip-control-dropdown #reset-skip-settings:hover { /* Scoped */
+  background: rgba(255, 255, 255, 0.12); color: #ffffff; transform: translateY(-1px);
+}
+@media (max-width: 768px) { /* Scoped */
+  #playerView #skip-control-dropdown { width: clamp(160px, 80vw, 200px); padding: 14px; }
+  #playerView #skip-control-dropdown label { font-size: 0.8125rem; min-width: 55px; }
+  #playerView #skip-control-dropdown input[type="number"] { padding: 7px 10px; font-size: 0.8125rem; }
+  #playerView #skip-control-dropdown button { padding: 9px 14px; font-size: 0.8125rem; }
+}
+
+/* Line switch dropdown within #playerView */
+#playerView .line-switch-container { position: relative; display: inline-block; } /* Scoped */
+#playerView #line-switch-dropdown { /* Scoped */
+  display: none; position: absolute; bottom: 100%; right: 0; width: clamp(180px, 50vw, 220px); max-height: 300px; overflow-y: auto;
+  background: linear-gradient(145deg, rgba(20, 24, 35, 0.95), rgba(30, 35, 50, 0.95)); border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05);
+  padding: 12px; z-index: 2223; margin-bottom: 8px; backdrop-filter: blur(20px);
+}
+#playerView #line-switch-dropdown:not(.hidden) { display: block; animation: dropdown-fade-in-player-line 0.2s ease-out; } /* Scoped, unique animation */
+@keyframes dropdown-fade-in-player-line { /* Unique name */
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+#playerView #line-switch-dropdown button { /* Scoped */
+  display: flex; align-items: center; width: 100%; padding: 10px 12px; margin-bottom: 4px; text-align: left;
+  font-size: 0.875rem; color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer; transition: all 0.2s ease;
+  position: relative; overflow: hidden; font-weight: 500;
+}
+#playerView #line-switch-dropdown button:last-child { margin-bottom: 0; } /* Scoped */
+#playerView #line-switch-dropdown button::before { /* Scoped */
+  content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); transition: left 0.5s ease;
+}
+#playerView #line-switch-dropdown button:hover:not(:disabled)::before { left: 100%; } /* Scoped */
+#playerView #line-switch-dropdown button:hover:not(:disabled) { /* Scoped */
+  background: rgba(255,255,255,0.12); transform: translateY(-1px); color: #ffffff;
+}
+#playerView #line-switch-dropdown button:active:not(:disabled) { transform: scale(0.98); } /* Scoped */
+#playerView #line-switch-dropdown button.line-active { /* Scoped */
+  background: rgba(255,255,255,0.15); color: #ffffff; font-weight: 600; border-color: rgba(255,255,255,0.2); pointer-events: none;
+}
+#playerView #line-switch-dropdown button:disabled { opacity: 0.5; cursor: not-allowed; } /* Scoped */
+#playerView #line-switch-dropdown::-webkit-scrollbar { width: 6px; } /* Scoped */
+#playerView #line-switch-dropdown::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 3px; } /* Scoped */
+#playerView #line-switch-dropdown::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; transition: background 0.2s ease; } /* Scoped */
+#playerView #line-switch-dropdown::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); } /* Scoped */
+@media (max-width: 768px) { /* Scoped */
+  #playerView #line-switch-dropdown { width: clamp(160px, 80vw, 200px); padding: 10px; }
+  #playerView #line-switch-dropdown button { padding: 8px 10px; font-size: 0.8125rem; }
+}
+#playerView #line-switch-dropdown .empty-state { /* Scoped */
+  padding: 12px; text-align: center; color: rgba(255,255,255,0.5); font-size: 0.875rem;
+}
+
+/* Player header elements are removed from player_styles.css as they are part of unified header now */
+
+/* Responsive player region for mobile within #playerView */
+@media (max-width: 900px) {
+  #playerView #player-region { /* Scoped */
+    width: 100%;
+    height: auto !important;
+    aspect-ratio: 16/9;
+    background-color: transparent; /* Player itself has black bg */
+  }
+
+  #playerView #player video, /* Scoped */
+  #playerView media-player video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+  }
+}
+
+/* Global toast is already styled, no need to scope #toast to playerView */
+
+/* Ensure main content area has padding for the fixed header */
+main {
+  padding-top: 70px; /* Adjust based on actual header height */
+}
+
+/* Hidden class utility */
+.hidden {
+  display: none !important;
+}

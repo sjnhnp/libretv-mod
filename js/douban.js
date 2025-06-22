@@ -1,3 +1,5 @@
+import { showToast, showLoading, hideLoading } from './ui.js'; // Centralized UI functions
+
 // douban.js
 // 用同一个 Overlay，反复插拔
 let globalLoadingOverlay = null;
@@ -72,27 +74,7 @@ const utils = {
     };
   },
 
-  /* ------------------------------------------------------------------
-     ↓↓↓ 如果项目里尚未定义 createLoadingOverlay，就把它也放进来 ↓↓↓
-  ------------------------------------------------------------------ */
-  createLoadingOverlay() {
-    const div = document.createElement("div");
-    div.className =
-      "absolute inset-0 bg-white/60 flex items-center justify-center";
-    div.innerHTML = `<span class="animate-spin mr-2">⏳</span> Loading…`;
-    return div;
-  },
-
-  /* ------------------------------------------------------------------
-     ↓↓↓ 新增：复用同一个 Loading 遮罩层 ↓↓↓
-  ------------------------------------------------------------------ */
-  getLoadingOverlay() {
-    // 用 utils._globalLoadingOverlay 缓存唯一实例
-    if (!this._globalLoadingOverlay) {
-      this._globalLoadingOverlay = this.createLoadingOverlay();
-    }
-    return this._globalLoadingOverlay;
-  },
+  // createLoadingOverlay and getLoadingOverlay are removed as we use global showLoading/hideLoading
 
   // 安全文本处理 - 增强型XSS防护
   safeText(text) {
@@ -138,18 +120,7 @@ const utils = {
     return cachedElements.get(id);
   },
 
-  // 创建loading遮罩
-  createLoadingOverlay() {
-    const overlay = document.createElement('div');
-    overlay.className = 'absolute inset-0 bg-gray-100 bg-opacity-75 flex items-center justify-center z-10';
-    overlay.innerHTML = `
-      <div class="flex items-center justify-center">
-        <div class="w-6 h-6 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
-        <span class="text-pink-500 ml-4">加载中...</span>
-      </div>
-    `;
-    return overlay;
-  },
+  // createLoadingOverlay removed, use global showLoading/hideLoading from ui.js
 
   // 存储操作包装
   storage: {
@@ -253,10 +224,10 @@ function initDoubanToggle() {
       toggleDot.classList.remove('translate-x-6');
     }
 
-    updateDoubanVisibility();
+    // updateDoubanVisibility(); // This will be handled by app.js's switchContentView
   });
 
-  updateDoubanVisibility();
+  // updateDoubanVisibility(); // Initial call handled by app.js
 
   // 滚动到页面顶部
   window.scrollTo(0, 0);
@@ -265,32 +236,20 @@ function initDoubanToggle() {
 // 使用更高效的事件监听方式
 document.addEventListener('DOMContentLoaded', initDouban, { once: true });
 
-// 延迟加载豆瓣推荐内容
-if (utils.storage.get(CONFIG.STORAGE_KEYS.ENABLED, false) === true) {
-  setTimeout(() => {
-    renderRecommend(doubanCurrentTag, doubanPageSize, doubanPageStart);
-  }, 500); // 延迟500毫秒加载
-}
+// 延迟加载豆瓣推荐内容 - This logic might need adjustment based on when Douban view is shown
+// if (utils.storage.get(CONFIG.STORAGE_KEYS.ENABLED, false) === true) {
+//   setTimeout(() => {
+//     // Only render if homeView is active and doubanArea is not hidden by app.js
+//     const homeView = document.getElementById('homeView');
+//     const doubanArea = utils.getElement('doubanArea');
+//     if (homeView && !homeView.classList.contains('hidden') && doubanArea && !doubanArea.classList.contains('hidden')) {
+//        renderRecommend(doubanCurrentTag, doubanPageSize, doubanPageStart);
+//     }
+//   }, 500);
+// }
 
-// 更新豆瓣区域显示状态
-function updateDoubanVisibility() {
-  const doubanArea = utils.getElement('doubanArea');
-  if (!doubanArea) return;
-
-  const isEnabled = utils.storage.get(CONFIG.STORAGE_KEYS.ENABLED, false) === true;
-  const resultsArea = utils.getElement('resultsArea');
-  const isSearching = resultsArea && !resultsArea.classList.contains('hidden');
-
-  if (isEnabled && !isSearching) {
-    doubanArea.classList.remove('hidden');
-    const doubanResults = utils.getElement('douban-results');
-    if (doubanResults && doubanResults.children.length === 0) {
-      renderRecommend(doubanCurrentTag, doubanPageSize, doubanPageStart);
-    }
-  } else {
-    doubanArea.classList.add('hidden');
-  }
-}
+// updateDoubanVisibility is removed, app.js controls visibility via switchContentView.
+// Douban content rendering should be triggered when homeView becomes visible if Douban is enabled.
 
 // 填充搜索框函数
 function fillSearchInput(title) {
@@ -555,11 +514,8 @@ async function renderRecommend(tag, pageLimit, pageStart) {
   const container = utils.getElement("douban-results");
   if (!container) return;
 
-  const loadingOverlay = utils.getLoadingOverlay();
-  if (!container.contains(loadingOverlay)) {
-    container.classList.add("relative");      // 保证父元素定位
-    container.appendChild(loadingOverlay);    // 只插一次
-  }
+  // Use global showLoading before fetch and hideLoading in finally
+  showLoading('加载豆瓣数据...'); // Or a more specific message
 
   try {
     const target = `https://movie.douban.com/j/search_subjects?type=${doubanMovieTvCurrentSwitch}&tag=${encodeURIComponent(tag)}&sort=recommend&page_limit=${pageLimit}&page_start=${pageStart}`;
@@ -574,9 +530,7 @@ async function renderRecommend(tag, pageLimit, pageStart) {
       </div>
     `;
   } finally {
-    if (container.contains(loadingOverlay)) {
-      container.removeChild(loadingOverlay);
-    }
+    hideLoading(); // Use global hideLoading
   }
 }
 

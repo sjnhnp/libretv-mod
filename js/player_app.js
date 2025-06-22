@@ -1,6 +1,7 @@
-// 动态导入 VidstackPlayer
-// import { PlyrLayout, VidstackPlayer } from 'https://cdn.vidstack.io/player'; //plyr layout
-import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player'; // default layout
+// ES Module imports
+import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player';
+import { showToast as globalShowToast, showError as globalShowError } from './ui.js'; // Assuming ui.js exports these
+// AppState will be accessed via window.AppState as it's set by app.js
 
 // --- 常量定义 ---
 const SKIP_INTRO_KEY = 'skipIntroTime';
@@ -29,43 +30,25 @@ let availableAlternativeSources = []; // 用于存储从 sessionStorage 读取�
 
 // --- 实用工具函数 ---
 
+// Use globalShowToast and globalShowError imported from ui.js
 function showToast(message, type = 'info', duration = 3000) {
-
-    const toast = document.getElementById('toast');
-    const toastMessage = document.getElementById('toastMessage');
-    if (!toast || !toastMessage) return;
-
-    const bgColors = {
-        'error': 'bg-red-500',
-        'success': 'bg-green-500',
-        'info': 'bg-blue-500',
-        'warning': 'bg-yellow-500'
-    };
-    const bgColor = bgColors[type] || bgColors.info;
-
-    toast.className = `fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${bgColor} text-white z-[2147483647] pointer-events-none`;
-    toastMessage.textContent = message;
-
-    toast.style.opacity = '1';
-    // toast.style.transform = 'translateX(-50%) translateY(0)';
-
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        // toast.style.transform = 'translateX(-50%) translateY(-100%)';
-    }, duration);
+    globalShowToast(message, type, duration);
 }
 
 function showMessage(text, type = 'info', duration = 3000) {
-    const messageElement = document.getElementById('message');
+    // This function seems specific to player_app.js for now.
+    // If it needs to be global, move to ui.js. Otherwise, keep as is or use globalShowToast.
+    // For now, let's assume it's a player-specific message style and keep it.
+    const messageElement = document.getElementById('message'); // This is now a global element in index.html
     if (!messageElement) { return; }
 
     let bgColorClass = ({ error: 'bg-red-500', success: 'bg-green-500', warning: 'bg-yellow-500', info: 'bg-blue-500' })[type] || 'bg-blue-500';
 
-    messageElement.className = `fixed top-4 right-4 p-3 rounded shadow-lg z-[10001] text-sm ${bgColorClass} text-white transition-opacity duration-300 opacity-0`;
+    messageElement.className = `fixed top-4 right-4 p-3 rounded shadow-lg z-[60] text-sm ${bgColorClass} text-white transition-opacity duration-300 opacity-0`;
     messageElement.textContent = text;
     messageElement.classList.remove('hidden');
 
-    void messageElement.offsetWidth;
+    void messageElement.offsetWidth; // Trigger reflow to apply transition
     messageElement.classList.add('opacity-100');
 
     if (messageElement._messageTimeout) clearTimeout(messageElement._messageTimeout);
@@ -73,28 +56,25 @@ function showMessage(text, type = 'info', duration = 3000) {
     messageElement._messageTimeout = setTimeout(() => {
         messageElement.classList.remove('opacity-100');
         messageElement.classList.add('opacity-0');
-        setTimeout(() => messageElement.classList.add('hidden'), 300);
+        setTimeout(() => messageElement.classList.add('hidden'), 300); // Hide after fade out
     }, duration);
 }
 
-
 function showError(message) {
-    const loadingEl = document.getElementById('loading');
-    // if (loadingEl) loadingEl.style.display = 'none'; // 这行可以移除或保留
+    globalShowError(message); // Use the global error display
 
-    const errorElement = document.getElementById('error');
-    if (errorElement) {
-        const errorTextElement = errorElement.querySelector('.text-xl.font-bold');
+    // Additionally, show the player-specific error overlay if it exists
+    const playerErrorOverlay = document.querySelector('#playerView #error'); // More specific selector
+    const loadingEl = document.getElementById('loading'); // Global loading
+
+    if (playerErrorOverlay) {
+        const errorTextElement = playerErrorOverlay.querySelector('.text-xl.font-bold');
         if (errorTextElement) errorTextElement.textContent = message;
-        errorElement.style.display = 'flex';
+        playerErrorOverlay.style.display = 'flex';
 
-        // 确保父容器 #loading 是可见的，才能显示出 #error
-        if (loadingEl) {
-            loadingEl.classList.remove('hidden');
-            loadingEl.style.display = 'flex';
-        }
+        // Hide global loading if player-specific error is shown
+        if (loadingEl) loadingEl.style.display = 'none';
     }
-    showMessage(message, 'error');
 }
 
 
@@ -106,19 +86,23 @@ function formatPlayerTime(seconds) {
 }
 
 function getShowIdentifier(perEpisode = true) {
-    const urlParams = new URLSearchParams(window.location.search);
-    const sc = urlParams.get('source_code') || 'unknown_source';
-    const vid = vodIdForPlayer || urlParams.get('id') || '';
-    const ep = perEpisode ? `_ep${currentEpisodeIndex}` : '';
+    const sc = window.AppState.get('currentSourceCode') || 'unknown_source';
+    const vid = window.AppState.get('currentVideoId') || vodIdForPlayer || ''; // Use AppState first
+    const title = window.AppState.get('currentVideoTitle') || currentVideoTitle; // Use AppState first
+    const cEpisodes = window.AppState.get('currentEpisodes') || currentEpisodes; // Use AppState
+    const cEpisodeIndex = window.AppState.get('currentEpisodeIndex') !== undefined ? window.AppState.get('currentEpisodeIndex') : currentEpisodeIndex;
 
-    if (vid) return `${currentVideoTitle}_${sc}_${vid}${ep}`;
+
+    const ep = perEpisode ? `_ep${cEpisodeIndex}` : '';
+
+    if (vid) return `${title}_${sc}_${vid}${ep}`;
 
     // Fallback if no vod_id is available
-    const raw = currentEpisodes[currentEpisodeIndex] || '';
-    if (!raw) return `${currentVideoTitle}_${sc}${ep}`; // Fallback if no episodes either
+    const raw = cEpisodes[cEpisodeIndex] || '';
+    if (!raw) return `${title}_${sc}${ep}`; // Fallback if no episodes either
 
     const urlKey = raw.split('/').pop().split(/[?#]/)[0] || (raw.length > 32 ? raw.slice(-32) : raw);
-    return `${currentVideoTitle}_${sc}_${urlKey}${ep}`;
+    return `${title}_${sc}_${urlKey}${ep}`;
 }
 
 // 恢复「记住进度」弹窗函数
@@ -319,7 +303,7 @@ async function playEpisode(index) {
 
 function doEpisodeSwitch(index, url) {
     currentEpisodeIndex = index;
-    window.currentEpisodeIndex = index;
+    // window.currentEpisodeIndex = index; // Removed window assignment
 
     updateUIForNewEpisode();
     updateBrowserHistory(url);
@@ -332,111 +316,165 @@ function doEpisodeSwitch(index, url) {
     }
 }
 
-(async function initializePage() {
-    document.addEventListener('DOMContentLoaded', async () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        let episodeUrlForPlayer = urlParams.get('url');
 
-        function fullyDecode(str) {
-            try {
-                let prev, cur = str;
-                do { prev = cur; cur = decodeURIComponent(cur); } while (cur !== prev);
-                return cur;
-            } catch { return str; }
-        }
-        currentVideoTitle = urlParams.get('title') ? fullyDecode(urlParams.get('title')) : '视频播放';
-        currentEpisodeIndex = parseInt(urlParams.get('index') || '0', 10);
-        vodIdForPlayer = urlParams.get('id') || '';
-        currentVideoYear = urlParams.get('year') || '';
-        currentVideoTypeName = urlParams.get('typeName') || '';
+// Exported function to initialize the player module
+export async function initPlayerModule(url, title, initialSeekPosition = 0, episodeIdx, episodesList, vodId, sourceCode, sourceName, year, typeName, videoKey) {
+    currentVideoTitle = title;
+    currentEpisodeIndex = episodeIdx;
+    currentEpisodes = episodesList || [];
+    vodIdForPlayer = vodId || '';
+    currentVideoYear = year || '';
+    currentVideoTypeName = typeName || '';
 
-        // —— 从 sessionStorage 获取可能的可选线路 —— 
-        const sourceMapJSON = sessionStorage.getItem('videoSourceMap');
-        if (sourceMapJSON) {
-            try {
-                const sourceMap = JSON.parse(sourceMapJSON);
-                // 优先使用外部传入的 videoKey
-                const videoKey = urlParams.get('videoKey');
-                if (videoKey && sourceMap[videoKey]) {
-                    availableAlternativeSources = sourceMap[videoKey];
+    // Update AppState with the new video context
+    if (window.AppState) {
+        window.AppState.set('currentVideoTitle', currentVideoTitle);
+        window.AppState.set('currentEpisodeIndex', currentEpisodeIndex);
+        window.AppState.set('currentEpisodes', currentEpisodes);
+        window.AppState.set('currentVideoId', vodIdForPlayer);
+        window.AppState.set('currentSourceCode', sourceCode);
+        window.AppState.set('currentSourceName', sourceName);
+        window.AppState.set('currentVideoYear', currentVideoYear);
+        window.AppState.set('currentVideoTypeName', currentVideoTypeName);
+        window.AppState.set('currentVideoKey', videoKey);
+        window.AppState.set('isPlayerActive', true);
+    }
+
+
+    // Logic to get alternative sources from sessionStorage (similar to old initializePage)
+    const sourceMapJSON = sessionStorage.getItem('videoSourceMap');
+    if (sourceMapJSON) {
+        try {
+            const sourceMap = JSON.parse(sourceMapJSON);
+            const videoKeyFromParam = videoKey; // videoKey is now a direct param
+            if (videoKeyFromParam && sourceMap[videoKeyFromParam]) {
+                availableAlternativeSources = sourceMap[videoKeyFromParam];
+            } else {
+                const titleParam = title;
+                const yearParam = year;
+                const fallbackKey = `${titleParam}|${yearParam}`;
+                if (sourceMap[fallbackKey]) {
+                    availableAlternativeSources = sourceMap[fallbackKey];
                 } else {
-                    // 回退：用 title|year 去匹配
-                    const titleParam = urlParams.get('title')
-                        ? decodeURIComponent(urlParams.get('title'))
-                        : '';
-                    const yearParam = urlParams.get('year') || '';
-                    const fallbackKey = `${titleParam}|${yearParam}`;
-                    if (sourceMap[fallbackKey]) {
-                        availableAlternativeSources = sourceMap[fallbackKey];
-                    } else {
-                        // 兜底：查找首条以 title 开头的映射
-                        for (const key in sourceMap) {
-                            if (key.startsWith(`${titleParam}|`)) {
-                                availableAlternativeSources = sourceMap[key];
-                                break;
-                            }
+                    for (const keyInMap in sourceMap) {
+                        if (keyInMap.startsWith(`${titleParam}|`)) {
+                            availableAlternativeSources = sourceMap[keyInMap];
+                            break;
                         }
                     }
                 }
-            } catch (e) {
-                console.error("从 sessionStorage 读取线路失败:", e);
-                availableAlternativeSources = [];
             }
+        } catch (e) {
+            console.error("Error reading alternative sources from sessionStorage:", e);
+            availableAlternativeSources = [];
         }
+    }
 
+    // Ensure currentEpisodes is an array
+    if (!Array.isArray(currentEpisodes)) {
+        console.warn("Episodes list is not an array, attempting to parse from localStorage or defaulting to empty.");
         try {
             currentEpisodes = JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
-            if (!episodeUrlForPlayer && currentEpisodes[currentEpisodeIndex]) {
-                episodeUrlForPlayer = currentEpisodes[currentEpisodeIndex];
-            }
         } catch {
             currentEpisodes = [];
         }
+    }
 
-        window.currentEpisodes = currentEpisodes;
-        window.currentEpisodeIndex = currentEpisodeIndex;
+    // Fallback if URL is not directly provided but can be derived from episodes list
+    let episodeUrlForPlayer = url;
+    if (!episodeUrlForPlayer && currentEpisodes[currentEpisodeIndex]) {
+        episodeUrlForPlayer = currentEpisodes[currentEpisodeIndex];
+    }
 
-        setupAllUI();
+    setupAllUI(); // Call this before player init to ensure UI elements are ready
 
-        const positionFromUrl = urlParams.get('position');
-        if (positionFromUrl) {
-            nextSeekPosition = parseInt(positionFromUrl);
-        } else {
-            const rememberOn = localStorage.getItem(REMEMBER_EPISODE_PROGRESS_ENABLED_KEY) !== 'false';
-            if (rememberOn) {
-                const showId = getShowIdentifier(false);
-                const allProgress = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
-                const savedProgress = allProgress[showId]?.[currentEpisodeIndex];
+    nextSeekPosition = initialSeekPosition; // Use the passed initialSeekPosition
 
-                if (savedProgress && savedProgress > 5) {
-                    const wantsToResume = await showProgressRestoreModal({
-                        title: "继续播放？",
-                        content: `《${currentVideoTitle}》第 ${currentEpisodeIndex + 1} 集，<br> <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> `,
-                        confirmText: "YES",
-                        cancelText: "NO"
-                    });
+    // If initialSeekPosition is 0, check for stored progress (like old initializePage)
+    if (initialSeekPosition === 0) {
+        const rememberOn = localStorage.getItem(REMEMBER_EPISODE_PROGRESS_ENABLED_KEY) !== 'false';
+        if (rememberOn) {
+            const showId = getShowIdentifier(false); // getShowIdentifier now uses AppState
+            const allProgress = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
+            const savedProgress = allProgress[showId]?.[currentEpisodeIndex];
 
-                    if (wantsToResume) {
-                        nextSeekPosition = savedProgress;
-                    } else {
-                        clearVideoProgressForEpisode(currentEpisodeIndex);
-                        nextSeekPosition = 0;
-                    }
+            if (savedProgress && savedProgress > 5) {
+                const wantsToResume = await showProgressRestoreModal({
+                    title: "继续播放？",
+                    content: `《${currentVideoTitle}》第 ${currentEpisodeIndex + 1} 集，<br> <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> `,
+                    confirmText: "YES",
+                    cancelText: "NO"
+                });
+
+                if (wantsToResume) {
+                    nextSeekPosition = savedProgress;
+                } else {
+                    clearVideoProgressForEpisode(currentEpisodeIndex); // clearVideoProgressForEpisode now uses AppState
+                    nextSeekPosition = 0;
                 }
             }
         }
+    }
 
-        if (episodeUrlForPlayer) {
-            // document.getElementById('loading').style.display = 'flex';
-            await initPlayer(episodeUrlForPlayer, currentVideoTitle);
-        } else {
-            showError('没有可播放的视频链接。');
-        }
-    });
-})();
+
+    if (episodeUrlForPlayer) {
+        const globalLoading = document.getElementById('loading');
+        if(globalLoading) globalLoading.style.display = 'flex'; // Show global loading
+
+        await initPlayer(episodeUrlForPlayer, currentVideoTitle);
+
+        if(globalLoading) globalLoading.style.display = 'none'; // Hide after player init attempt
+    } else {
+        showError('没有可播放的视频链接。');
+    }
+}
+
+// Exported function to destroy the player module
+export function destroyPlayer() {
+    if (player) {
+        player.destroy();
+        player = null;
+    }
+    if (progressSaveInterval) {
+        clearInterval(progressSaveInterval);
+        progressSaveInterval = null;
+    }
+    // Remove any player-specific event listeners from document or window if added
+    document.removeEventListener('keydown', handleKeyboardShortcuts);
+    window.removeEventListener('beforeunload', beforeUnloadHandler);
+    document.removeEventListener('visibilitychange', visibilityChangeHandler);
+
+    // Clear player-specific AppState
+    if (window.AppState) {
+         window.AppState.set('isPlayerActive', false);
+    }
+
+    // Clear UI elements related to player
+    const episodeInfoSpan = document.getElementById('episode-info-span');
+    if (episodeInfoSpan) episodeInfoSpan.textContent = '';
+    const episodeGrid = document.getElementById('episode-grid');
+    if (episodeGrid) episodeGrid.innerHTML = '';
+    const episodesContainer = document.getElementById('episodes-container');
+    if (episodesContainer) episodesContainer.classList.add('hidden');
+
+    console.log("Player instance destroyed and cleaned up.");
+}
+
+// Helper for beforeunload and visibilitychange
+const beforeUnloadHandler = () => {
+    saveCurrentProgress();
+    saveVideoSpecificProgress();
+};
+const visibilityChangeHandler = () => {
+    if (document.visibilityState === 'hidden') {
+        saveCurrentProgress();
+        saveVideoSpecificProgress();
+    }
+};
+
 
 function setupAllUI() {
-    updateEpisodeInfo();
+    updateEpisodeInfo(); // Uses AppState
     renderEpisodes();
     setupPlayerControls();
     updateButtonStates();
@@ -465,49 +503,121 @@ function updateUIForNewEpisode() {
 }
 
 function updateBrowserHistory(newEpisodeUrl) {
-    const newUrlForBrowser = new URL(window.location.href);
-    newUrlForBrowser.searchParams.set('url', newEpisodeUrl);
-    newUrlForBrowser.searchParams.set('index', currentEpisodeIndex.toString());
-    newUrlForBrowser.searchParams.delete('position');
-    window.history.pushState({ path: newUrlForBrowser.toString(), episodeIndex: currentEpisodeIndex }, '', newUrlForBrowser.toString());
+    const newUrlForBrowser = new URL(window.location.origin + window.location.pathname); // Base path for SPA
+    newUrlForBrowser.searchParams.set('url', newEpisodeUrl); // Video URL for direct access/bookmark
+    newUrlForBrowser.searchParams.set('title', currentVideoTitle); // Keep title
+    newUrlForBrowser.searchParams.set('index', currentEpisodeIndex.toString()); // Keep index
+
+    // Keep other relevant params if they exist and are managed by AppState or passed to initPlayerModule
+    if (vodIdForPlayer) newUrlForBrowser.searchParams.set('id', vodIdForPlayer);
+    const sourceCode = window.AppState ? window.AppState.get('currentSourceCode') : '';
+    if (sourceCode) newUrlForBrowser.searchParams.set('source_code', sourceCode);
+    const sourceName = window.AppState ? window.AppState.get('currentSourceName') : '';
+    if (sourceName) newUrlForBrowser.searchParams.set('source', sourceName);
+    // Add year, typeName, videoKey if available and needed for state
+    if (currentVideoYear) newUrlForBrowser.searchParams.set('year', currentVideoYear);
+    if (currentVideoTypeName) newUrlForBrowser.searchParams.set('typeName', currentVideoTypeName);
+    const videoKey = window.AppState ? window.AppState.get('currentVideoKey') : '';
+    if (videoKey) newUrlForBrowser.searchParams.set('videoKey', videoKey);
+
+
+    newUrlForBrowser.searchParams.delete('position'); // Clear position as it's for initial seek
+
+    // Update history state with all necessary info for potential popstate restoration
+    const historyState = {
+        view: 'player',
+        videoUrl: newEpisodeUrl,
+        title: currentVideoTitle,
+        episodeIndex: currentEpisodeIndex,
+        vodId: vodIdForPlayer,
+        sourceCode: sourceCode,
+        sourceName: sourceName,
+        year: currentVideoYear,
+        typeName: currentVideoTypeName,
+        videoKey: videoKey,
+        episodes: currentEpisodes, // Include episodes for restoration
+        initialSeekPosition: 0 // New episode starts from 0
+    };
+    window.history.pushState(historyState, currentVideoTitle, newUrlForBrowser.toString());
 }
 
 function setupPlayerControls() {
-    const backButton = document.getElementById('back-button');
-    if (backButton) backButton.addEventListener('click', () => { window.location.href = 'index.html'; });
+    // Back button is removed from player view, handled by unifiedHomeButton in app.js
+    // const backButton = document.getElementById('back-button');
+    // if (backButton) backButton.addEventListener('click', () => { /* Now handled by app.js resetToHome */ });
 
-    const fullscreenButton = document.getElementById('fullscreen-button');
-    if (fullscreenButton) {
-        fullscreenButton.addEventListener('click', () => {
-            if (player) {
-                // 直接调用 Vidstack Player 实例的 API 方法
-                if (player.state.fullscreen) {
-                    player.exitFullscreen();
-                } else {
-                    player.enterFullscreen();
-                }
-            }
-        });
-    }
+    // Fullscreen button might be part of Vidstack's default controls, or a custom one if needed.
+    // If there's a custom fullscreen button within #playerView, it would be set up here.
+    // For now, assuming Vidstack handles it or it's not part of this immediate refactor if it was global.
+    // const fullscreenButton = document.getElementById('fullscreen-button'); // This ID was for player.html's header
+    // if (fullscreenButton) { ... }
 
-    // retry-button 的点击事件绑定到新的智能重试函数
-    const retryButton = document.getElementById('retry-button');
+    const retryButton = document.querySelector('#playerView #retry-button'); //Scoped to playerView
     if (retryButton) {
         retryButton.addEventListener('click', retryLastAction);
     }
 
-    const prevEpisodeBtn = document.getElementById('prev-episode');
-    if (prevEpisodeBtn) prevEpisodeBtn.addEventListener('click', playPreviousEpisode);
+    const prevEpisodeBtn = document.querySelector('#playerView #prev-episode');
+    if (prevEpisodeBtn) {
+        prevEpisodeBtn.removeEventListener('click', playPreviousEpisode); // Remove old if any
+        prevEpisodeBtn.addEventListener('click', playPreviousEpisode);
+    }
 
-    const nextEpisodeBtn = document.getElementById('next-episode');
-    if (nextEpisodeBtn) nextEpisodeBtn.addEventListener('click', playNextEpisode);
+    const nextEpisodeBtn = document.querySelector('#playerView #next-episode');
+    if (nextEpisodeBtn) {
+        nextEpisodeBtn.removeEventListener('click', playNextEpisode); // Remove old if any
+        nextEpisodeBtn.addEventListener('click', playNextEpisode);
+    }
 
-    const orderBtn = document.getElementById('order-button');
-    if (orderBtn) orderBtn.addEventListener('click', toggleEpisodeOrder);
+    const orderBtn = document.querySelector('#playerView #order-button');
+    if (orderBtn) {
+        orderBtn.removeEventListener('click', toggleEpisodeOrder); // Remove old if any
+        orderBtn.addEventListener('click', toggleEpisodeOrder);
+    }
 
-    const lockButton = document.getElementById('lock-button');
-    if (lockButton) lockButton.addEventListener('click', toggleLockScreen);
+    const lockButton = document.querySelector('#playerView #lock-button');
+    if (lockButton) {
+        lockButton.removeEventListener('click', toggleLockScreen); // Remove old if any
+        lockButton.addEventListener('click', toggleLockScreen);
+    }
+
+    // Event listeners for autoplay, remember progress, line switch, skip controls
+    const autoplayToggle = document.querySelector('#playerView #autoplay-next');
+    if (autoplayToggle) {
+        autoplayToggle.removeEventListener('change', handleAutoplayChange); // Prevent multiple listeners
+        autoplayToggle.addEventListener('change', handleAutoplayChange);
+        autoplayToggle.checked = autoplayEnabled; // Initialize based on current state
+    }
+
+    const rememberProgressToggle = document.querySelector('#playerView #remember-episode-progress-toggle');
+    if (rememberProgressToggle) {
+        // This is already handled by setupRememberEpisodeProgressToggle, ensure it's called
+    }
+
+    const lineSwitchButton = document.querySelector('#playerView #line-switch-button');
+    if(lineSwitchButton) {
+        // setupLineSwitching takes care of its own listeners
+    }
+
+    const skipControlButton = document.querySelector('#playerView #skip-control-button');
+    if(skipControlButton){
+        // setupSkipControls and setupSkipDropdownEvents take care of these
+    }
+
+    const copyLinksButton = document.querySelector('#playerView button[onclick="copyLinks()"]');
+    if (copyLinksButton) {
+        copyLinksButton.onclick = copyLinks; // Re-assign to ensure it uses the module's copyLinks
+    }
+
 }
+
+function handleAutoplayChange(event) {
+    autoplayEnabled = event.target.checked;
+    // Optionally save to localStorage if you want persistence across sessions for autoplay
+    // localStorage.setItem('playerAutoplayEnabled', autoplayEnabled);
+    showToast(`自动播放下集已 ${autoplayEnabled ? '开启' : '关闭'}`, 'info');
+}
+
 
 // js/player_app.js
 
@@ -569,16 +679,25 @@ function handleKeyboardShortcuts(e) {
 }
 
 function saveToHistory() {
-    if (!player || !currentVideoTitle || !window.addToViewingHistory || !currentEpisodes[currentEpisodeIndex]) return;
+    // Use module-scoped variables and AppState
+    const episodes = window.AppState.get('currentEpisodes') || currentEpisodes;
+    const epIndex = window.AppState.get('currentEpisodeIndex') !== undefined ? window.AppState.get('currentEpisodeIndex') : currentEpisodeIndex;
+    const title = window.AppState.get('currentVideoTitle') || currentVideoTitle;
+    const vodId = window.AppState.get('currentVideoId') || vodIdForPlayer;
+    const sCode = window.AppState.get('currentSourceCode') || (new URLSearchParams(window.location.search).get('source_code') || 'unknown_source');
+    const sName = window.AppState.get('currentSourceName') || (new URLSearchParams(window.location.search).get('source') || '');
+
+
+    if (!player || !title || !window.addToViewingHistory || !episodes[epIndex]) return;
     try {
         const videoInfo = {
-            title: currentVideoTitle,
-            url: window.currentEpisodes[window.currentEpisodeIndex],
-            episodeIndex: window.currentEpisodeIndex,
-            vod_id: vodIdForPlayer || '',
-            sourceCode: new URLSearchParams(window.location.search).get('source_code') || 'unknown_source',
-            sourceName: new URLSearchParams(window.location.search).get('source') || '',
-            episodes: window.currentEpisodes,
+            title: title,
+            url: episodes[epIndex],
+            episodeIndex: epIndex,
+            vod_id: vodId || '',
+            sourceCode: sCode,
+            sourceName: sName,
+            episodes: episodes,
             playbackPosition: Math.floor(player.currentTime),
             duration: Math.floor(player.duration) || 0,
             timestamp: Date.now()
@@ -593,19 +712,28 @@ function saveCurrentProgress() {
     if (!player || isUserSeeking || videoHasEnded || !window.addToViewingHistory) return;
     const currentTime = player.currentTime;
     const duration = player.duration;
+
+    // Use AppState for consistency
+    const episodes = window.AppState.get('currentEpisodes') || currentEpisodes;
+    const epIndex = window.AppState.get('currentEpisodeIndex') !== undefined ? window.AppState.get('currentEpisodeIndex') : currentEpisodeIndex;
+    const title = window.AppState.get('currentVideoTitle') || currentVideoTitle;
+    const vodId = window.AppState.get('currentVideoId') || vodIdForPlayer;
+    const sCode = window.AppState.get('currentSourceCode') || (new URLSearchParams(window.location.search).get('source_code') || 'unknown_source');
+    const sName = window.AppState.get('currentSourceName') || (new URLSearchParams(window.location.search).get('source') || '');
+
     if (currentTime > 5 && duration > 0 && currentTime < duration * 0.98) {
         try {
             const videoInfo = {
-                title: currentVideoTitle,
-                url: window.currentEpisodes[window.currentEpisodeIndex],
-                episodeIndex: window.currentEpisodeIndex,
-                vod_id: vodIdForPlayer || '',
-                sourceCode: new URLSearchParams(window.location.search).get('source_code') || 'unknown_source',
-                sourceName: new URLSearchParams(window.location.search).get('source') || '',
+                title: title,
+                url: episodes[epIndex],
+                episodeIndex: epIndex,
+                vod_id: vodId || '',
+                sourceCode: sCode,
+                sourceName: sName,
                 playbackPosition: Math.floor(currentTime),
                 duration: Math.floor(duration),
                 timestamp: Date.now(),
-                episodes: window.currentEpisodes
+                episodes: episodes
             };
             window.addToViewingHistory(videoInfo);
         } catch (e) {
@@ -713,26 +841,27 @@ function renderEpisodes() {
 }
 
 function updateEpisodeInfo() {
-    const episodeInfoSpan = document.getElementById('episode-info-span');
+    const episodeInfoSpan = document.getElementById('episode-info-span'); // This is in #playerView
     if (!episodeInfoSpan) return;
 
-    // 更新浏览器标签页标题
     const siteName = (window.SITE_CONFIG && window.SITE_CONFIG.name) ? window.SITE_CONFIG.name : '播放器';
-    const totalEpisodes = window.currentEpisodes ? window.currentEpisodes.length : 0;
+    const title = window.AppState.get('currentVideoTitle') || currentVideoTitle;
+    const episodes = window.AppState.get('currentEpisodes') || currentEpisodes;
+    const epIndex = window.AppState.get('currentEpisodeIndex') !== undefined ? window.AppState.get('currentEpisodeIndex') : currentEpisodeIndex;
+    const totalEpisodes = episodes ? episodes.length : 0;
 
-    if (currentVideoTitle && totalEpisodes > 1) {
-        document.title = `${currentVideoTitle} - 第 ${currentEpisodeIndex + 1} 集 - ${siteName}`;
-    } else if (currentVideoTitle) {
-        document.title = `${currentVideoTitle} - ${siteName}`;
+    if (title && totalEpisodes > 1) {
+        document.title = `${title} - 第 ${epIndex + 1} 集 - ${siteName}`;
+    } else if (title) {
+        document.title = `${title} - ${siteName}`;
     } else {
         document.title = siteName;
     }
 
-    // 更新页面内的剧集信息显示
-    if (window.currentEpisodes && window.currentEpisodes.length > 1) {
-        const currentDisplayNumber = window.currentEpisodeIndex + 1;
+    if (episodes && totalEpisodes > 1) {
+        const currentDisplayNumber = epIndex + 1;
         episodeInfoSpan.textContent = `第 ${currentDisplayNumber} / ${totalEpisodes} 集`;
-        const episodesCountEl = document.getElementById('episodes-count');
+        const episodesCountEl = document.querySelector('#playerView #episodes-count'); // Scoped
         if (episodesCountEl) episodesCountEl.textContent = `共 ${totalEpisodes} 集`;
     } else {
         episodeInfoSpan.textContent = '';
@@ -740,16 +869,19 @@ function updateEpisodeInfo() {
 }
 
 function updateButtonStates() {
-    const prevButton = document.getElementById('prev-episode');
-    const nextButton = document.getElementById('next-episode');
-    const totalEpisodes = window.currentEpisodes ? window.currentEpisodes.length : 0;
+    const prevButton = document.querySelector('#playerView #prev-episode'); //Scoped
+    const nextButton = document.querySelector('#playerView #next-episode'); //Scoped
+    const episodes = window.AppState.get('currentEpisodes') || currentEpisodes;
+    const epIndex = window.AppState.get('currentEpisodeIndex') !== undefined ? window.AppState.get('currentEpisodeIndex') : currentEpisodeIndex;
+    const totalEpisodes = episodes ? episodes.length : 0;
+
     if (prevButton) {
-        prevButton.disabled = window.currentEpisodeIndex <= 0;
+        prevButton.disabled = epIndex <= 0;
         prevButton.classList.toggle('opacity-50', prevButton.disabled);
         prevButton.classList.toggle('cursor-not-allowed', prevButton.disabled);
     }
     if (nextButton) {
-        nextButton.disabled = window.currentEpisodeIndex >= totalEpisodes - 1;
+        nextButton.disabled = epIndex >= totalEpisodes - 1;
         nextButton.classList.toggle('opacity-50', nextButton.disabled);
         nextButton.classList.toggle('cursor-not-allowed', nextButton.disabled);
     }
