@@ -322,6 +322,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // 初始化事件监听器
     initializeEventListeners();
 
+    // 特别添加：初始化API源管理器
+    if (window.APISourceManager && typeof window.APISourceManager.init === 'function') {
+        window.APISourceManager.init();
+    }
+
     // 加载搜索历史
     renderSearchHistory();
 

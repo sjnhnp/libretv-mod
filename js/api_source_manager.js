@@ -17,7 +17,7 @@ const APISourceManager = {
      * Initialize API checkboxes in the UI
      */
     initAPICheckboxes: function () {
-        const container = DOMCache.get('apiCheckboxes') || document.getElementById('apiCheckboxes');
+        const container = document.getElementById('apiCheckboxes');
         if (!container) return;
 
         container.innerHTML = '';
@@ -103,12 +103,12 @@ const APISourceManager = {
      * Render the list of custom APIs
      */
     renderCustomAPIsList: function () {
-        const container = DOMCache.get('customApisList') || document.getElementById('customApisList');
+        const container = document.getElementById('customApisList');
         if (!container) return;
 
         const customAPIs = AppState.get('customAPIs');
-        container.innerHTML = customAPIs.length ?
-            '' : '<p class="text-xs text-gray-500 text-center my-2">未添加自定义API</p>';
+        container.innerHTML = customAPIs.length ? '' : '<p class="text-xs text-gray-500 text-center my-2">未添加自定义API</p>';
+
 
         customAPIs.forEach((api, idx) => {
             const item = document.createElement('div');
@@ -146,9 +146,9 @@ const APISourceManager = {
         if (index < 0 || index >= customAPIs.length) return;
 
         const api = customAPIs[index];
-        const nameInput = DOMCache.get('customApiName') || document.getElementById('customApiName');
-        const urlInput = DOMCache.get('customApiUrl') || document.getElementById('customApiUrl');
-        const isAdultInput = DOMCache.get('customApiIsAdult') || document.getElementById('customApiIsAdult');
+        const nameInput = document.getElementById('customApiName');
+        const urlInput = document.getElementById('customApiUrl');
+        const isAdultInput = document.getElementById('customApiIsAdult');
 
         // 填充表单数据
         nameInput.value = api.name;
@@ -156,7 +156,7 @@ const APISourceManager = {
         if (isAdultInput) isAdultInput.checked = !!api.isAdult;
 
         // 显示表单
-        const form = DOMCache.get('addCustomApiForm') || document.getElementById('addCustomApiForm');
+        const form = document.getElementById('addCustomApiForm');
         if (form) {
             form.classList.remove('hidden');
 
