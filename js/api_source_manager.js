@@ -1,6 +1,3 @@
-
-const domCache = DOMCache;
-
 // Module-level variables (private)
 const APISourceManager = {
     /**
