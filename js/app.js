@@ -25,6 +25,7 @@ const AppState = (function () {
         }
     };
 })();
+export { AppState };
 
 // Make AppState globally available for player_app.js
 window.AppState = AppState;
