@@ -1,6 +1,7 @@
 // ES Module imports
 import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player';
 import { showToast as globalShowToast, showError as globalShowError } from './ui.js'; // Assuming ui.js exports these
+
 // AppState will be accessed via window.AppState as it's set by app.js
 
 // --- 常量定义 ---
