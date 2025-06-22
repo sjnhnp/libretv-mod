@@ -161,6 +161,7 @@ function showToast(message, type = 'error') {
     toastQueue.push({ message, type });
     if (!isShowingToast) showNextToast();
 }
+export { showToast };
 
 /**
  * 显示下一条Toast消息
