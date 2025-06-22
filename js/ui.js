@@ -940,3 +940,4 @@ function deleteHistoryItem(internalId) {
     }
 }
 window.search = search; 
+window.resetToHome = resetToHome;
