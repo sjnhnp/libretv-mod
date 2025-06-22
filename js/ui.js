@@ -939,3 +939,4 @@ function deleteHistoryItem(internalId) {
         showToast('删除历史记录失败', 'error');
     }
 }
+window.search = search; 
