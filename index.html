@@ -24,7 +24,7 @@
     <!-- Unified Header -->
     <header class="fixed top-0 left-0 right-0 bg-[#111] border-b border-[#333] z-40 flex items-center justify-between px-4 py-2 shadow-md">
         <!-- Left Side: Home Button -->
-        <button id="unifiedHomeButton" onclick="resetToHome()"
+        <button id="unifiedHomeButton"
             class="bg-pink-600 hover:bg-pink-700 text-white font-medium px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
             aria-label="返回首页" title="返回首页">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -35,7 +35,7 @@
         </button>
 
         <!-- Center: Search Form (Flex-grow) -->
-        <form id="searchForm" onsubmit="event.preventDefault(); search();" class="flex-grow mx-4">
+        <form id="searchForm" class="flex-grow mx-4"> <!-- Removed onsubmit -->
             <div class="flex items-stretch h-10 shadow-sm rounded-lg overflow-hidden">
                 <input type="text" id="searchInput"
                     class="flex-1 bg-[#222] border border-[#333] text-white px-4 py-0 focus:outline-none focus:border-pink-500 transition-colors"

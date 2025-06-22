@@ -456,22 +456,31 @@ function initializeDOMCache() {
     DOMCache.set('preloadingToggle', document.getElementById('preloadingToggle'));
     // (fix) ID is preloadCountInput, not preloadCount
     DOMCache.set('preloadCountInput', document.getElementById('preloadCountInput'));
+
+    // Cache unified header buttons
+    DOMCache.set('unifiedHomeButton', document.getElementById('unifiedHomeButton'));
 }
 
 /**
  * 初始化事件监听器
  */
 function initializeEventListeners() {
-    // 搜索表单提交事件
+    // Unified Home Button
+    const unifiedHomeButton = DOMCache.get('unifiedHomeButton');
+    if (unifiedHomeButton) {
+        unifiedHomeButton.addEventListener('click', resetToHome);
+    }
+
+    // Search Form submission (already cached as 'searchForm')
     const searchForm = DOMCache.get('searchForm');
     if (searchForm) {
         searchForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            search();
+            search(); // search is globally available via window.search or directly if in same module scope
         });
     }
 
-    // 搜索输入框事件
+    // Search input (already cached as 'searchInput')
     const searchInput = DOMCache.get('searchInput');
     if (searchInput) {
         searchInput.addEventListener('input', function () {

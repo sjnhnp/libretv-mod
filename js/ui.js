@@ -1,5 +1,3 @@
-import { AppState } from './app.js'; // Assuming AppState is exported if needed here, or pass as param
-
 // =================== 全局常量、工具 =====================
 
 // 搜索与历史相关常量
