@@ -26,6 +26,7 @@ let currentVideoYear = '';
 let currentVideoTypeName = '';
 let lastFailedAction = null;
 let availableAlternativeSources = []; // 用于存储从 sessionStorage 读取的线路
+let adFilteringEnabled = false;
 
 // --- 实用工具函数 ---
 
@@ -174,9 +175,12 @@ async function initPlayer(videoUrl, title) {
     }
 
     try {
+        // 新增：在创建播放器前处理URL
+        const processedUrl = applyAdFiltering(videoUrl);
+
         player = await VidstackPlayer.create({
             target: playerContainer,
-            src: { src: videoUrl, type: 'application/x-mpegurl' },
+            src: { src: processedUrl, type: 'application/x-mpegurl' },
             title: title,
             autoplay: true,
             preload: 'auto',
@@ -335,6 +339,7 @@ function doEpisodeSwitch(index, url) {
 (async function initializePage() {
     document.addEventListener('DOMContentLoaded', async () => {
         const urlParams = new URLSearchParams(window.location.search);
+        adFilteringEnabled = urlParams.get('af') === '1';
         let episodeUrlForPlayer = urlParams.get('url');
 
         function fullyDecode(str) {
@@ -1168,6 +1173,25 @@ function retryLastAction() {
             player.play();
         }
     }
+}
+
+/**
+ * 根据广告过滤设置，处理视频URL。
+ * 注意：此处的实现为占位符，实际的过滤逻辑需要您根据视频源的广告模式自行实现。
+ * 通常是替换URL或通过代理加载。
+ * @param {string} url 原始视频URL
+ * @returns {string} 处理后的视频URL
+ */
+function applyAdFiltering(url) {
+    if (adFilteringEnabled) {
+        console.log("广告过滤已启用，处理URL:", url);
+        // 示例：如果过滤逻辑是通过一个代理实现的，可以这样修改URL
+        // return `/ad-filter-proxy/${encodeURIComponent(url)}`;
+
+        // 目前仅作为示例，返回原始URL。您需要在此处实现您的过滤逻辑。
+        return url;
+    }
+    return url;
 }
 
 window.playNextEpisode = playNextEpisode;
