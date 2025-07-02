@@ -46,7 +46,7 @@ const API_SITES = {
 };
 
 window.API_SITES = API_SITES; 
-const DEFAULT_SELECTED_APIS = ["heimuer", "tyyszy", "jmzy", "bfzy", "dyttzy"];
+const DEFAULT_SELECTED_APIS = ["heimuer", "bfzy", "tyyszy", "dyttzy", "jmzy"];
 window.DEFAULT_SELECTED_APIS = DEFAULT_SELECTED_APIS; // 将其设为全局变量
 
 // 聚合搜索配置 (与 renew.txt 原有保持一致)
