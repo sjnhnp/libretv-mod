@@ -163,55 +163,55 @@ function showProgressRestoreModal(opts) {
 async function processVideoUrl(url) {
     // 如果未启用广告过滤，直接返回原始 URL
     if (!adFilteringEnabled) {
-      return url;
+        return url;
     }
-  
+
     try {
-      // 1. 拉取 m3u8 文本
-      const resp = await fetch(url, { mode: 'cors' });
-      if (!resp.ok) throw new Error(`无法获取 m3u8，状态 ${resp.status}`);
-      const m3u8Text = await resp.text();
-  
-      // 2. 广告过滤 & URL 补全
-      const adPatterns = [
-        /#EXT-X-DISCONTINUITY/i,
-        /MOMENT-START/i,
-        /\/\/.*\.(ts|jpg|png)\?ad=/i
-      ];
-      const lines = m3u8Text.split('\n');
-      const baseUrl = url;           // 原始 m3u8 地址
-      const cleanLines = [];
-  
-      for (let line of lines) {
-        // 跳过广告相关标签或片段
-        if (adPatterns.some(p => p.test(line))) {
-          // 如果是标签直接丢弃
-          continue;
+        // 1. 拉取 m3u8 文本
+        const resp = await fetch(url, { mode: 'cors' });
+        if (!resp.ok) throw new Error(`无法获取 m3u8，状态 ${resp.status}`);
+        const m3u8Text = await resp.text();
+
+        // 2. 广告过滤 & URL 补全
+        const adPatterns = [
+            /#EXT-X-DISCONTINUITY/i,
+            /MOMENT-START/i,
+            /\/\/.*\.(ts|jpg|png)\?ad=/i
+        ];
+        const lines = m3u8Text.split('\n');
+        const baseUrl = url;           // 原始 m3u8 地址
+        const cleanLines = [];
+
+        for (let line of lines) {
+            // 跳过广告相关标签或片段
+            if (adPatterns.some(p => p.test(line))) {
+                // 如果是标签直接丢弃
+                continue;
+            }
+            // 如果当前行是片段 URI（简单按 .ts/.m3u8 判断）
+            if (line && !line.startsWith('#') && /\.(ts|m3u8)(\?|$)/i.test(line.trim())) {
+                try {
+                    // new URL 可以自动把相对路径、// 开头、绝对路径等都补全成完整 URL
+                    line = new URL(line.trim(), baseUrl).href;
+                } catch (e) {
+                    console.warn('URL 补全失败，保留原行:', line, e);
+                }
+            }
+            cleanLines.push(line);
         }
-        // 如果当前行是片段 URI（简单按 .ts/.m3u8 判断）
-        if (line && !line.startsWith('#') && /\.(ts|m3u8)(\?|$)/i.test(line.trim())) {
-          try {
-            // new URL 可以自动把相对路径、// 开头、绝对路径等都补全成完整 URL
-            line = new URL(line.trim(), baseUrl).href;
-          } catch (e) {
-            console.warn('URL 补全失败，保留原行:', line, e);
-          }
-        }
-        cleanLines.push(line);
-      }
-  
-      const filteredM3u8 = cleanLines.join('\n');
-  
-      // 3. 生成 Blob URL
-      const blob = new Blob([filteredM3u8], { type: 'application/vnd.apple.mpegurl' });
-      return URL.createObjectURL(blob);
-  
+
+        const filteredM3u8 = cleanLines.join('\n');
+
+        // 3. 生成 Blob URL
+        const blob = new Blob([filteredM3u8], { type: 'application/vnd.apple.mpegurl' });
+        return URL.createObjectURL(blob);
+
     } catch (err) {
-      console.error('广告过滤或 URL 补全失败：', err);
-      showToast('广告过滤失败，播放原始地址', 'warning');
-      return url;
+        console.error('广告过滤或 URL 补全失败：', err);
+        showToast('广告过滤失败，播放原始地址', 'warning');
+        return url;
     }
-  }  
+}
 
 // --- 播放器核心逻辑 ---
 
@@ -837,7 +837,7 @@ function toggleLockScreen() {
     player.keyDisabled = isScreenLocked;
     const playerContainer = document.querySelector('.player-container');
     const lockIcon = document.getElementById('lock-icon');
-    const elementsToToggle = document.querySelectorAll('.plyr, .plyr__controls, .vds-controls, .vds-gestures, header, .player-control-bar, #episodes-container, #prev-episode, #next-episode');
+    const elementsToToggle = document.querySelectorAll('.plyr, .plyr__controls, .vds-controls, .vds-gestures, #episodes-container, #prev-episode, #next-episode, .player-control-bar > *:not(#lock-button)');
 
     if (playerContainer) {
         playerContainer.classList.toggle('player-locked', isScreenLocked);
