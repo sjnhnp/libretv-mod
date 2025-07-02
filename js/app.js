@@ -360,7 +360,8 @@ function initializeEventListeners() {
         });
 
         // 初始化开关状态 - 使用getBoolConfig
-        adFilteringToggle.checked = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, false);
+        adFilteringToggle.checked = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, PLAYER_CONFIG.adFilteringEnabled);
+
     }
 
     // 黄色内容过滤开关事件

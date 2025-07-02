@@ -100,7 +100,7 @@ const PLAYER_CONFIG = {
     timeout: 15000, // 播放器加载超时时间 
     filterAds: false, // 是否启用广告过滤 
     autoPlayNext: true, // 默认启用自动连播功能 
-    adFilteringEnabled: getBoolConfig('adFilteringEnabled', false), // 默认关闭分片广告过滤（如果localStorage无记录），开启会导致某些资源卡住 
+    adFilteringEnabled: getBoolConfig('adFilteringEnabled', true), // 默认关闭分片广告过滤（如果localStorage无记录），开启会导致某些资源卡住 
     adFilteringStorage: 'adFilteringEnabled', // 存储广告过滤设置的键名 
     enablePreloading: getBoolConfig('enablePreloading', DEFAULTS.enablePreloading),
     preloadCount: getIntConfig('preloadCount', DEFAULTS.preloadCount, 1, 10), 
