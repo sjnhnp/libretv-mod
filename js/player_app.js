@@ -152,9 +152,6 @@ function showProgressRestoreModal(opts) {
     });
 }
 
-
-// --- 新增：广告过滤核心逻辑 ---
-
 /**
  * 根据广告过滤设置，异步处理视频URL。
  * @param {string} url 原始视频URL
