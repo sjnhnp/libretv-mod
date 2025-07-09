@@ -30,6 +30,14 @@ let availableAlternativeSources = [];
 let adFilteringEnabled = false;
 let universalId = '';
 
+// 生成视频统一标识符，用于跨线路共享播放进度
+function generateUniversalId(title, year, episodeIndex) {
+        // 移除标题中的特殊字符和空格，转换为小写 
+        const normalizedTitle = title.toLowerCase().replace(/[^\w\u4e00-\u9fa5]/g, '').replace(/\s+/g, '');  
+        const normalizedYear = year ? year : 'unknown'; 
+        return `${normalizedTitle}_${normalizedYear}_${episodeIndex}`; 
+    }
+
 // 实用工具函数
 function showToast(message, type = 'info', duration = 3000) {
 
@@ -342,8 +350,9 @@ async function playEpisode(index) {
 
     const rememberOn = localStorage.getItem(REMEMBER_EPISODE_PROGRESS_ENABLED_KEY) !== 'false';
     if (rememberOn) {
+        const currentUniversalId = generateUniversalId(currentVideoTitle, currentVideoYear, index);
         const allProgress = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
-        const savedProgress = universalId ? allProgress[universalId] : undefined;
+        const savedProgress = allProgress[currentUniversalId];
 
         if (savedProgress && savedProgress > 5) {
             const wantsToResume = await showProgressRestoreModal({
@@ -356,7 +365,7 @@ async function playEpisode(index) {
             if (wantsToResume) {
                 nextSeekPosition = savedProgress;
             } else {
-                clearVideoProgressForEpisode(index);
+                clearVideoProgressForEpisode(currentUniversalId);
                 nextSeekPosition = 0;
             }
         } else {
@@ -667,7 +676,7 @@ function saveVideoSpecificProgress() {
     if (isNavigatingToEpisode) return;
     const toggle = document.getElementById('remember-episode-progress-toggle');
     if (!toggle || !toggle.checked || !player) return;
-    if (!universalId) return;
+        const currentUniversalId = generateUniversalId(currentVideoTitle, currentVideoYear, currentEpisodeIndex);
 
     const currentTime = Math.floor(player.currentTime);
     const duration = Math.floor(player.duration);
@@ -675,7 +684,7 @@ function saveVideoSpecificProgress() {
     if (currentTime > 5 && duration > 0 && currentTime < duration * 0.95) {
         try {
             let allProgresses = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
-            allProgresses[universalId] = currentTime;
+            allProgresses[currentUniversalId] = currentTime;
             localStorage.setItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY, JSON.stringify(allProgresses));
         } catch (e) {
             console.error('保存特定视频集数进度失败:', e);
@@ -691,16 +700,15 @@ function startProgressSaveInterval() {
     }, 8000);
 }
 
-function clearVideoProgressForEpisode(episodeIndex) {
+function clearVideoProgressForEpisode(universalId) {
     try {
-        if (!universalId) return;
         let allProgresses = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
-        if (allProgresses[universalId] !== undefined) {
-            delete allProgresses[universalId];
+               if (allProgresses[universalId]) {
+                        delete allProgresses[universalId];
             localStorage.setItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY, JSON.stringify(allProgresses));
         }
     } catch (e) {
-        console.error(`清除第 ${episodeIndex + 1} 集的进度失败:`, e);
+        console.error(`清除进度失败:`, e);
     }
 }
 
