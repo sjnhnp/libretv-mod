@@ -108,7 +108,8 @@ function getShowIdentifier(perEpisode = true) {
 
     if (vid) return `${currentVideoTitle}_${sc}_${vid}${ep}`;
 
-    const raw = currentEpisodes[currentEpisodeIndex] || '';
+    // If no video ID is available, use the first episode's URL to create a consistent identifier for the show.
+    const raw = (currentEpisodes && currentEpisodes.length > 0) ? currentEpisodes[0] : '';
     if (!raw) return `${currentVideoTitle}_${sc}${ep}`;
 
     const urlKey = raw.split('/').pop().split(/[?#]/)[0] || (raw.length > 32 ? raw.slice(-32) : raw);
