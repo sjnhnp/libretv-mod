@@ -196,7 +196,7 @@ async function processVideoUrl(url) {
                 continue;
             }
 
-            // 新增：处理加密密钥(key)的相对路径，将其转换为绝对路径
+            // 处理加密密钥(key)的相对路径，将其转换为绝对路径
             if (line.startsWith('#EXT-X-KEY')) {
                 const uriMatch = line.match(/URI="([^"]+)"/);
                 if (uriMatch && uriMatch[1]) {
@@ -510,8 +510,6 @@ async function doEpisodeSwitch(index, url) {
     });
 })();
 
-// ... 此处省略其他所有未改变的函数，如 setupAllUI, updateUIForNewEpisode, updateBrowserHistory, etc. ...
-// 请将您文件中从 setupAllUI 开始到文件末尾的所有函数粘贴到这里
 function setupAllUI() {
     updateEpisodeInfo();
     renderEpisodes();
