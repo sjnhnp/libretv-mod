@@ -454,6 +454,18 @@ function initializeUIComponents() {
  */
 
 function search(options = {}) {
+    // --- 新增：在每次新搜索开始时，强制清除所有旧的搜索结果缓存 ---
+    try {
+        sessionStorage.removeItem('searchQuery');
+        sessionStorage.removeItem('searchResults');
+        sessionStorage.removeItem('searchSelectedAPIs');
+        sessionStorage.removeItem('videoSourceMap'); // 确保这个也清除
+        console.log('[缓存] 已在执行新搜索前清除旧缓存。');
+    } catch (e) {
+        console.error('清除 sessionStorage 失败:', e);
+    }
+    // --- 新增结束 ---
+
     const searchInput = DOMCache.get('searchInput');
     const searchResultsContainer = DOMCache.get('searchResults');
 
@@ -471,30 +483,20 @@ function search(options = {}) {
         return;
     }
 
-    // 只有当不是豆瓣触发的搜索时，才调用 showLoading。豆瓣触发时，其调用处已处理。
-    // 或者，如果 options.onComplete 不存在 (意味着不是豆瓣那种带回调的调用方式)，则认为是普通搜索。
-    let isNormalSearch = !options.doubanQuery; // 简单判断是否为普通搜索
+    let isNormalSearch = !options.doubanQuery;
 
     if (isNormalSearch && typeof showLoading === 'function') {
-        showLoading(`正在搜索“${query}”`); // 普通搜索也显示全局 loading
+        showLoading(`正在搜索“${query}”`);
     }
 
-    // 只有非豆瓣触发的搜索才保存历史（或按您之前的逻辑调整）
     if (!options.doubanQuery) {
         if (typeof saveSearchHistory === 'function') saveSearchHistory(query);
     }
 
-    // Always record the search, including Douban queries
-    // if (typeof saveSearchHistory === 'function') {
-    //     saveSearchHistory(query);
-    // }
-
     const selectedAPIs = AppState.get('selectedAPIs');
     if (!selectedAPIs || selectedAPIs.length === 0) {
         if (searchResultsContainer) searchResultsContainer.innerHTML = '<div class="text-center py-4 text-gray-400">请至少选择一个API源</div>';
-        // 如果是普通搜索触发的loading，这里需要hide
         if (isNormalSearch && typeof hideLoading === 'function') hideLoading();
-        // 豆瓣的 onComplete 也会处理 hideLoading
         if (typeof options.onComplete === 'function') options.onComplete();
         return;
     }
@@ -507,11 +509,9 @@ function search(options = {}) {
             if (searchResultsContainer) searchResultsContainer.innerHTML = `<div class="text-center py-4 text-red-400">搜索出错: ${error.message}</div>`;
         })
         .finally(() => {
-            // 如果是普通搜索触发的loading，在这里hide
             if (isNormalSearch && typeof hideLoading === 'function') {
                 hideLoading();
             }
-            // 豆瓣的 onComplete 也会处理 hideLoading
             if (typeof options.onComplete === 'function') {
                 options.onComplete();
             }
