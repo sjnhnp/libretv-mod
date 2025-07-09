@@ -25,7 +25,6 @@ let currentVideoYear = '';
 let currentVideoTypeName = '';
 let lastFailedAction = null;
 let availableAlternativeSources = [];
-// 新增：用于存储广告过滤状态的全局变量
 let adFilteringEnabled = false;
 let universalId = '';
 
@@ -36,7 +35,6 @@ function generateUniversalId(title, year, episodeIndex) {
     const normalizedYear = year ? year : 'unknown';
     return `${normalizedTitle}_${normalizedYear}_${episodeIndex}`;
 }
-
 
 // 实用工具函数
 function showToast(message, type = 'info', duration = 3000) {
@@ -100,7 +98,6 @@ function showError(message) {
     }
     showMessage(message, 'error');
 }
-
 
 function formatPlayerTime(seconds) {
     if (isNaN(seconds) || seconds < 0) return "00:00";
@@ -186,17 +183,15 @@ async function processVideoUrl(url) {
             /\/\/.*\.(ts|jpg|png)\?ad=/i
         ];
         const lines = m3u8Text.split('\n');
-        const baseUrl = url;           // 原始 m3u8 地址
+        const baseUrl = url;        
         const cleanLines = [];
 
         for (let line of lines) {
-            // 跳过广告相关标签或片段
             if (adPatterns.some(p => p.test(line))) {
-                // 如果是标签直接丢弃
                 continue;
             }
 
-            // 新增：处理加密密钥(key)的相对路径，将其转换为绝对路径
+            // 处理加密密钥(key)的相对路径，将其转换为绝对路径
             if (line.startsWith('#EXT-X-KEY')) {
                 const uriMatch = line.match(/URI="([^"]+)"/);
                 if (uriMatch && uriMatch[1]) {
@@ -510,8 +505,6 @@ async function doEpisodeSwitch(index, url) {
     });
 })();
 
-// ... 此处省略其他所有未改变的函数，如 setupAllUI, updateUIForNewEpisode, updateBrowserHistory, etc. ...
-// 请将您文件中从 setupAllUI 开始到文件末尾的所有函数粘贴到这里
 function setupAllUI() {
     updateEpisodeInfo();
     renderEpisodes();
