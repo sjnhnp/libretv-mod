@@ -1,4 +1,3 @@
-// 动态导入 VidstackPlayer
 // import { PlyrLayout, VidstackPlayer } from 'https://cdn.vidstack.io/player'; //plyr layout
 import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player';
 
@@ -37,6 +36,7 @@ function generateUniversalId(title, year, episodeIndex) {
     const normalizedYear = year ? year : 'unknown';
     return `${normalizedTitle}_${normalizedYear}_${episodeIndex}`;
 }
+
 
 // 实用工具函数
 function showToast(message, type = 'info', duration = 3000) {
@@ -691,6 +691,7 @@ function saveVideoSpecificProgress() {
     if (isNavigatingToEpisode) return;
     const toggle = document.getElementById('remember-episode-progress-toggle');
     if (!toggle || !toggle.checked || !player) return;
+
     const currentUniversalId = generateUniversalId(currentVideoTitle, currentVideoYear, currentEpisodeIndex);
 
     const currentTime = Math.floor(player.currentTime);
