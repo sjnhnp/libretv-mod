@@ -50,7 +50,6 @@ const DOMCache = (function () {
     };
 })();
 
-// STUB 实现 - 处理缺失的函数定义
 /**
  * 显示详情
  * @param {HTMLElement} element - 包含数据属性的元素
@@ -58,10 +57,7 @@ const DOMCache = (function () {
 function showDetails(element) {
     const id = element.dataset.id;
     const sourceCode = element.dataset.source;
-    // const name = element.querySelector('.result-title').textContent; // 获取名称的示例
-    // const customApiUrl = element.dataset.customApi;
     console.log(`STUB: showDetails called for element with ID: ${id}, Source: ${sourceCode}`);
-    // 潜在地使用这些数据属性获取并显示详情
 }
 
 /**
@@ -144,9 +140,7 @@ function generateUniversalId(title, year, episodeIndex) {
     return `${normalizedTitle}_${normalizedYear}_${episodeIndex}`;
 }
 
-/**
- * 播放上一集
- */
+// 播放上一集
 function playPreviousEpisode() {
     const currentIndex = AppState.get('currentEpisodeIndex');
     const episodes = AppState.get('currentEpisodes');
@@ -162,9 +156,7 @@ function playPreviousEpisode() {
     }
 }
 
-/**
- * 播放下一集
- */
+// 播放下一集
 function playNextEpisode() {
     const currentIndex = AppState.get('currentEpisodeIndex');
     const episodes = AppState.get('currentEpisodes');
@@ -201,15 +193,15 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
             actualSourceCode = historyItem.sourceCode || '';
         }
     } catch (e) {
-        // 兜底
+
     }
 
-    // —— 新增：优先拉最新集数
+    // 优先拉最新集数
     let gotFreshEpisodes = false;
     if (vodId && actualSourceCode) {
         try {
             let apiUrl = `/api/detail?id=${encodeURIComponent(vodId)}&source=${encodeURIComponent(actualSourceCode)}`;
-            // 如果你有自定义API线路，也可以这里加 customApi
+
             const apiInfo = typeof APISourceManager !== 'undefined' ? APISourceManager.getSelectedApi(actualSourceCode) : null;
             if (apiInfo && apiInfo.isCustom && apiInfo.url) {
                 apiUrl += `&customApi=${encodeURIComponent(apiInfo.url)}`;
@@ -220,7 +212,7 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
             if (detailData.code === 200 && Array.isArray(detailData.episodes) && detailData.episodes.length > 0) {
                 episodesList = detailData.episodes;
                 gotFreshEpisodes = true;
-                // 此时可顺便更新 AppState
+
                 AppState.set('currentEpisodes', episodesList);
                 AppState.set('currentVideoTitle', title);
                 AppState.set('currentEpisodeIndex', episodeIndex);
@@ -316,8 +308,6 @@ document.addEventListener('DOMContentLoaded', function () {
     restoreSearchFromCache();
 });
 
-// js/app.js
-
 /**
  * 初始化应用状态
  * 从localStorage加载初始状态并设置到AppState，如果localStorage为空则写入默认值
@@ -343,10 +333,7 @@ function initializeAppState() {
     }
 }
 
-/**
- * 初始化DOM缓存
- * 缓存频繁访问的DOM元素
- */
+// 初始化DOM缓存 缓存频繁访问的DOM元素
 function initializeDOMCache() {
     // 缓存搜索相关元素
     DOMCache.set('searchInput', document.getElementById('searchInput'));
@@ -373,9 +360,7 @@ function initializeDOMCache() {
     DOMCache.set('preloadCountInput', document.getElementById('preloadCountInput'));
 }
 
-/**
- * 初始化事件监听器
- */
+// 初始化事件监听器
 function initializeEventListeners() {
     // 搜索表单提交事件
     const searchForm = DOMCache.get('searchForm');
@@ -485,20 +470,15 @@ function initializeEventListeners() {
     }
 }
 
-/**
- * 初始化UI组件
- */
+// 初始化UI组件
 function initializeUIComponents() {
     // 初始化任何需要的UI组件
 }
 
-/**
- * 执行搜索
- * @param {object} options - 搜索选项，可以包含 doubanQuery 和 onComplete 回调
- */
+// 执行搜索
 
 function search(options = {}) {
-    // --- 新增：在每次新搜索开始时，强制清除所有旧的搜索结果缓存 ---
+    // ---在每次新搜索开始时，强制清除所有旧的搜索结果缓存 ---
     try {
         sessionStorage.removeItem('searchQuery');
         sessionStorage.removeItem('searchResults');
@@ -508,7 +488,6 @@ function search(options = {}) {
     } catch (e) {
         console.error('清除 sessionStorage 失败:', e);
     }
-    // --- 新增结束 ---
 
     const searchInput = DOMCache.get('searchInput');
     const searchResultsContainer = DOMCache.get('searchResults');
@@ -518,8 +497,8 @@ function search(options = {}) {
         return;
     }
 
-    const queryFromInput = searchInput.value.trim(); // 用户在输入框实际输入的内容
-    const query = options.doubanQuery || queryFromInput; // 优先用豆瓣的query，否则用输入框的
+    const queryFromInput = searchInput.value.trim();
+    const query = options.doubanQuery || queryFromInput;
 
     if (!query) {
         if (typeof showToast === 'function') showToast('请输入搜索内容', 'warning');
@@ -562,12 +541,7 @@ function search(options = {}) {
         });
 }
 
-/**
- * 执行搜索请求
- * @param {string} query - 搜索查询
- * @param {Array} selectedAPIs - 选中的API列表
- * @returns {Promise} - 搜索结果Promise
- */
+// 执行搜索请求
 async function performSearch(query, selectedAPIs) {
     // 创建搜索请求数组
     const searchPromises = selectedAPIs.map(apiId => {
@@ -613,14 +587,13 @@ async function performSearch(query, selectedAPIs) {
 }
 
 function renderSearchResults(results, doubanSearchedTitle = null) {
-    const searchResultsContainer = DOMCache.get('searchResults'); // 这个是放置所有结果卡片或无结果提示的容器
-    const resultsArea = getElement('resultsArea'); // 这个是包含 searchResultsCount 和 searchResultsContainer 的外层区域
-    const searchResultsCountElement = getElement('searchResultsCount'); // “X个结果”的元素
+    const searchResultsContainer = DOMCache.get('searchResults');
+    const resultsArea = getElement('resultsArea');
+    const searchResultsCountElement = getElement('searchResultsCount');
 
     if (!searchResultsContainer || !resultsArea || !searchResultsCountElement) return;
 
     let allResults = [];
-    // 我们不再关心错误的具体信息，只收集成功的结果
     results.forEach(result => {
         if (result.code === 200 && Array.isArray(result.list) && result.list.length > 0) {
             const resultsWithSource = result.list.map(item => ({
@@ -643,7 +616,7 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
         });
     }
 
-    // 【新增】处理并存储搜索结果到 sessionStorage
+    // 处理并存储搜索结果到 sessionStorage
     try {
         const videoSourceMap = {};
         allResults.forEach(item => {
@@ -680,7 +653,6 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
             messageSuggestion = "请尝试其他关键词或更换数据源。";
         }
 
-        // 使用类似老代码的结构和样式 (Tailwind CSS) - 已移除错误详情部分
         searchResultsContainer.innerHTML = `
             <div class="col-span-full text-center py-10 sm:py-16">
                 <svg class="mx-auto h-12 w-12 text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -715,7 +687,6 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
         try {
             fragment.appendChild(createResultItemUsingTemplate(item));
         } catch (error) {
-            // ... error handling for card creation
         }
     });
     gridContainer.appendChild(fragment);
@@ -798,7 +769,7 @@ function restoreSearchFromCache() {
     }
 }
 
-// 在 js/app.js 中添加专门用于恢复缓存结果的渲染函数
+// 恢复缓存结果的渲染函数
 function renderSearchResultsFromCache(cachedResults) {
     const searchResultsContainer = DOMCache.get('searchResults');
     const resultsArea = getElement('resultsArea');
@@ -840,12 +811,7 @@ function renderSearchResultsFromCache(cachedResults) {
     getElement('doubanArea')?.classList.add('hidden');
 }
 
-/**
- * 获取视频详情
- * @param {string} id - 视频ID
- * @param {string} sourceCode - 来源代码
- * @param {string} apiUrl - API URL（对于自定义API）
- */
+// 获取视频详情
 async function getVideoDetail(id, sourceCode, apiUrl = '') {
     if (!id || !sourceCode) {
         showToast('无效的视频信息', 'error');
@@ -915,9 +881,7 @@ async function getVideoDetail(id, sourceCode, apiUrl = '') {
     }
 }
 
-/**
- * 重置到首页
- */
+// 重置到首页
 function resetToHome() {
     const searchInput = DOMCache.get('searchInput');
     const searchResults = DOMCache.get('searchResults');
@@ -1062,7 +1026,6 @@ function createResultItemUsingTemplate(item) {
     return clone;
 }
 
-// Add the handler function (if not already present) 
 function handleResultClick(event) {
     const card = event.currentTarget;
     const id = card.dataset.id;
@@ -1074,7 +1037,7 @@ function handleResultClick(event) {
     const videoKey = card.dataset.videoKey;
 
     if (typeof showVideoEpisodesModal === 'function') {
-        // 【修改】将年份和类型传递下去
+        // 将年份和类型传递下去
         showVideoEpisodesModal(id, name, sourceCode, apiUrl, year, typeName, videoKey);
     } else {
         console.error('showVideoEpisodesModal function not found!');
@@ -1086,18 +1049,10 @@ window.handleResultClick = handleResultClick;
 window.copyLinks = copyLinks;
 window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 
-/**
- * 显示视频剧集模态框
- * @param {string} id - 视频ID
- * @param {string} title - 视频标题
- * @param {string} sourceCode - 来源代码
- */
-// 在 app.js 中
-
+// 显示视频剧集模态框
 async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeName, videoKey) {
     showLoading('加载剧集信息...');
 
-    // 确保 APISourceManager 和 getSelectedApi 方法可用
     if (typeof APISourceManager === 'undefined' || typeof APISourceManager.getSelectedApi !== 'function') {
         hideLoading();
         showToast('数据源管理器不可用', 'error');
@@ -1143,7 +1098,6 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeN
         AppState.set('currentVideoKey', videoKey);
         AppState.set('currentVideoId', id);
 
-        // ← 在这里，紧接着写入 localStorage，player.html 会读取这两项
         localStorage.setItem('currentEpisodes', JSON.stringify(data.episodes));
         localStorage.setItem('currentVideoTitle', title);
 
@@ -1241,17 +1195,14 @@ function copyLinks() {
     });
 }
 
-/**
- * 切换剧集排序UI并更新状态
- */
+// 切换剧集排序UI并更新状态
 
 function toggleEpisodeOrderUI() {
     const container = document.getElementById('episodeButtonsContainer');
-    // const orderTextElement = document.getElementById('orderText'); // 该元素已被删除
     const orderIcon = document.getElementById('orderIcon');
-    const toggleBtn = document.getElementById('toggleEpisodeOrderBtn'); // 获取按钮本身
+    const toggleBtn = document.getElementById('toggleEpisodeOrderBtn');
 
-    if (!container || !orderIcon || !toggleBtn) return; // 确保按钮也存在
+    if (!container || !orderIcon || !toggleBtn) return;
 
     let currentReversedState = AppState.get('episodesReversed') || false;
     currentReversedState = !currentReversedState;
@@ -1291,5 +1242,4 @@ function toggleEpisodeOrderUI() {
     }
 }
 
-// 将函数暴露给全局作用域
 window.showVideoEpisodesModal = showVideoEpisodesModal;
