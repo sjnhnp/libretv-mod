@@ -180,11 +180,13 @@ function playNextEpisode() {
     }
 }
 
-function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
+async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     console.log(`[App - playFromHistory] Called with: url=${url}, title=${title}, epIndex=${episodeIndex}, pos=${playbackPosition}`);
 
     let historyItem = null;
     let episodesList = [];
+    let vodId = '', actualSourceName = '', actualSourceCode = '';
+
     try {
         const history = JSON.parse(localStorage.getItem('viewingHistory') || '[]');
         historyItem = history.find(item =>
@@ -194,51 +196,75 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
         );
 
         if (historyItem) {
-            console.log("[App - playFromHistory] Found historyItem:", historyItem);
-            // Only use the episode list from history if it's a valid, non-empty array.
-            if (historyItem.episodes && Array.isArray(historyItem.episodes) && historyItem.episodes.length > 0) {
-                episodesList = historyItem.episodes;
-            }
-        } else {
-            console.warn("[App - playFromHistory] Could not find exact match in viewingHistory. Will try with currentEpisodes.");
-            episodesList = AppState.get('currentEpisodes') || JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
+            vodId = historyItem.vod_id || '';
+            actualSourceName = historyItem.sourceName || '';
+            actualSourceCode = historyItem.sourceCode || '';
         }
     } catch (e) {
-        console.error("Error accessing or parsing viewingHistory:", e);
+        // 兜底
+    }
+
+    // —— 新增：优先拉最新集数
+    let gotFreshEpisodes = false;
+    if (vodId && actualSourceCode) {
+        try {
+            let apiUrl = `/api/detail?id=${encodeURIComponent(vodId)}&source=${encodeURIComponent(actualSourceCode)}`;
+            // 如果你有自定义API线路，也可以这里加 customApi
+            const apiInfo = typeof APISourceManager !== 'undefined' ? APISourceManager.getSelectedApi(actualSourceCode) : null;
+            if (apiInfo && apiInfo.isCustom && apiInfo.url) {
+                apiUrl += `&customApi=${encodeURIComponent(apiInfo.url)}`;
+            }
+
+            const detailResp = await fetch(apiUrl);
+            const detailData = await detailResp.json();
+            if (detailData.code === 200 && Array.isArray(detailData.episodes) && detailData.episodes.length > 0) {
+                episodesList = detailData.episodes;
+                gotFreshEpisodes = true;
+                // 此时可顺便更新 AppState
+                AppState.set('currentEpisodes', episodesList);
+                AppState.set('currentVideoTitle', title);
+                AppState.set('currentEpisodeIndex', episodeIndex);
+                // 更新 localStorage
+                localStorage.setItem('currentEpisodes', JSON.stringify(episodesList));
+                localStorage.setItem('currentVideoTitle', title);
+                localStorage.setItem('currentEpisodeIndex', episodeIndex.toString());
+            } else {
+                // 回退到旧history里的数据
+                if (historyItem && Array.isArray(historyItem.episodes) && historyItem.episodes.length > 0) {
+                    episodesList = historyItem.episodes;
+                }
+            }
+        } catch (e) {
+            // 拉取失败 fallback
+            if (historyItem && Array.isArray(historyItem.episodes) && historyItem.episodes.length > 0) {
+                episodesList = historyItem.episodes;
+            }
+        }
+    } else if (historyItem && Array.isArray(historyItem.episodes) && historyItem.episodes.length > 0) {
+        episodesList = historyItem.episodes;
+    } else {
         episodesList = AppState.get('currentEpisodes') || JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
     }
 
-    // 更新 AppState 和 localStorage 以反映即将播放的剧集信息
-    AppState.set('currentEpisodeIndex', episodeIndex);
-    AppState.set('currentVideoTitle', title);
-    // Only update localStorage if we have a valid list. This prevents overwriting with an empty array.
     if (episodesList.length > 0) {
         AppState.set('currentEpisodes', episodesList);
         localStorage.setItem('currentEpisodes', JSON.stringify(episodesList));
-    } else {
-        // 如果没有剧集列表，播放器可能会遇到问题，这里可以考虑是否要阻止播放或提示
-        console.warn(`[App - playFromHistory] No episodes list found for "${title}". Player might not have full context.`);
     }
+
+    AppState.set('currentEpisodeIndex', episodeIndex);
+    AppState.set('currentVideoTitle', title);
     localStorage.setItem('currentEpisodeIndex', episodeIndex.toString());
     localStorage.setItem('currentVideoTitle', title);
 
-
-    // 从 historyItem 中获取 vod_id, sourceName, sourceCode (如果存在)
-    const vodId = historyItem ? historyItem.vod_id || '' : '';
-    const actualSourceName = historyItem ? historyItem.sourceName || '' : ''; // 使用 historyItem 中的 sourceName
-    const actualSourceCode = historyItem ? historyItem.sourceCode || '' : ''; // 使用 historyItem 中的 sourceCode
-
-    // 构建播放器 URL
+    // 跳转到 player.html
     const playerUrl = new URL('player.html', window.location.origin);
-    playerUrl.searchParams.set('url', url); // 这是特定集的URL
+    playerUrl.searchParams.set('url', url);
     playerUrl.searchParams.set('title', title);
     playerUrl.searchParams.set('index', episodeIndex.toString());
-
     if (vodId) {
-        playerUrl.searchParams.set('id', vodId); // 传递 vod_id
+        playerUrl.searchParams.set('id', vodId);
     }
     if (actualSourceName) {
-        // player_app.js 会从 URL search param 'source' 读取 sourceName
         playerUrl.searchParams.set('source', actualSourceName);
     }
     if (actualSourceCode) {
@@ -247,15 +273,14 @@ function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     if (playbackPosition > 0) {
         playerUrl.searchParams.set('position', playbackPosition.toString());
     }
-
-    // 添加广告过滤参数 (PLAYER_CONFIG 和 getBoolConfig 应在 app.js 或其引用的 config.js 中可用)
-    const adOn = typeof getBoolConfig !== 'undefined' && typeof PLAYER_CONFIG !== 'undefined' ?
-        getBoolConfig(PLAYER_CONFIG.adFilteringStorage, PLAYER_CONFIG.adFilteringEnabled) : PLAYER_CONFIG?.adFilteringEnabled ?? false;
+    const adOn = typeof getBoolConfig !== 'undefined' && typeof PLAYER_CONFIG !== 'undefined'
+        ? getBoolConfig(PLAYER_CONFIG.adFilteringStorage, PLAYER_CONFIG.adFilteringEnabled)
+        : PLAYER_CONFIG?.adFilteringEnabled ?? false;
     playerUrl.searchParams.set('af', adOn ? '1' : '0');
 
-    console.log(`[App - playFromHistory] Navigating to player: ${playerUrl.toString()}`);
     window.location.href = playerUrl.toString();
 }
+
 
 /**
  * 从localStorage获取布尔配置
