@@ -889,11 +889,21 @@ async function getVideoDetail(id, sourceCode, apiUrl = '') {
 
         // 使用playVideo函数播放第一集
         const firstEpisode = data.episodes[0];
+        // 尝试从API表查 sourceName
+        let sourceName = '';
+        if (sourceCode.startsWith('custom_') && window.APISourceManager?.getCustomApiInfo) {
+            try {
+                const idx = parseInt(sourceCode.replace('custom_', ''));
+                sourceName = window.APISourceManager.getCustomApiInfo(idx)?.name || '';
+            } catch { }
+        } else if (window.API_SITES && window.API_SITES[sourceCode]) {
+            sourceName = window.API_SITES[sourceCode].name;
+        }
         playVideo(
             firstEpisode,
             data.videoInfo?.title || '未知视频',
             0,
-            selectedApi.name || '', // sourceName
+            sourceName,
             sourceCode,
             id // vod_id
         );
@@ -1131,6 +1141,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeN
         AppState.set('currentVideoYear', year);
         AppState.set('currentVideoTypeName', typeName);
         AppState.set('currentVideoKey', videoKey);
+        AppState.set('currentVideoId', id);
 
         // ← 在这里，紧接着写入 localStorage，player.html 会读取这两项
         localStorage.setItem('currentEpisodes', JSON.stringify(data.episodes));
