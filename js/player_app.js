@@ -27,6 +27,9 @@ let lastFailedAction = null;
 let availableAlternativeSources = [];
 let adFilteringEnabled = false;
 let universalId = '';
+let qualitySwitchButton = null;
+let qualityDropdown = null;
+let currentQualityLabel = null;
 
 // 生成视频统一标识符，用于跨线路共享播放进度
 function generateUniversalId(title, year, episodeIndex) {
@@ -183,7 +186,7 @@ async function processVideoUrl(url) {
             /\/\/.*\.(ts|jpg|png)\?ad=/i
         ];
         const lines = m3u8Text.split('\n');
-        const baseUrl = url;        
+        const baseUrl = url;
         const cleanLines = [];
 
         for (let line of lines) {
@@ -345,6 +348,16 @@ function addPlayerEventListeners() {
         saveVideoSpecificProgress();
     });
     player.addEventListener('pause', saveVideoSpecificProgress);
+
+    // --- NEW: Listen for quality changes ---
+    player.qualities.addEventListener('add', setupQualitySwitch);
+    player.qualities.addEventListener('change', updateSelectedQualityUI);
+    player.qualities.addEventListener('auto-change', updateSelectedQualityUI);
+
+    // Initial setup in case qualities are already available
+    if (player.qualities.length > 0) {
+        setupQualitySwitch();
+    }
 }
 
 async function playEpisode(index) {
@@ -1122,6 +1135,99 @@ function retryLastAction() {
             player.play();
         }
     }
+}
+
+// 获取视频质量
+/**
+ * Sets up the quality switch button and dropdown menu.
+ */
+function setupQualitySwitch() {
+    qualitySwitchButton = document.getElementById('quality-switch-button');
+    qualityDropdown = document.getElementById('quality-switch-dropdown');
+    currentQualityLabel = document.getElementById('current-quality-label');
+
+    if (!qualitySwitchButton || !qualityDropdown) return;
+
+    // Toggle dropdown visibility
+    qualitySwitchButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        qualityDropdown.classList.toggle('hidden');
+    });
+
+    // Hide dropdown if clicked outside
+    document.addEventListener('click', (event) => {
+        if (!qualityDropdown.classList.contains('hidden') && !qualitySwitchButton.contains(event.target)) {
+            qualityDropdown.classList.add('hidden');
+        }
+    });
+
+    populateQualityMenu();
+    updateSelectedQualityUI();
+}
+
+/**
+ * Populates the quality selection dropdown menu.
+ */
+function populateQualityMenu() {
+    if (!player || !qualityDropdown) return;
+
+    qualityDropdown.innerHTML = ''; // Clear existing options
+
+    // Add Auto option
+    const autoButton = document.createElement('button');
+    autoButton.textContent = '自动';
+    autoButton.className = 'w-full text-left px-3 py-2 rounded text-sm transition-colors hover:bg-gray-700';
+    autoButton.onclick = () => {
+        player.qualities.autoSelect();
+        qualityDropdown.classList.add('hidden');
+    };
+    qualityDropdown.appendChild(autoButton);
+
+    // --- CORRECTION ---
+    // Filter for valid qualities (height > 0) before creating buttons
+    const validQualities = player.qualities.toArray().filter(q => q && q.height > 0);
+
+    validQualities.forEach((quality) => {
+        const button = document.createElement('button');
+        button.textContent = `${quality.height}p`;
+        button.className = 'w-full text-left px-3 py-2 rounded text-sm transition-colors hover:bg-gray-700';
+        // Store the height on the button for reliable selection
+        button.dataset.height = quality.height;
+
+        button.onclick = () => {
+            // Select the quality object directly, which is more robust than using an index
+            quality.selected = true;
+            qualityDropdown.classList.add('hidden');
+        };
+
+        qualityDropdown.appendChild(button);
+    });
+}
+
+/**
+ * Updates the UI to show the currently selected quality.
+ */
+function updateSelectedQualityUI() {
+    if (!player || !qualitySwitchButton || !qualityDropdown || !currentQualityLabel) return;
+
+    const isAuto = player.qualities.auto;
+    const currentQuality = player.quality;
+
+    // Update the main button label
+    currentQualityLabel.textContent = isAuto ? '自动' : (currentQuality && currentQuality.height > 0 ? `${currentQuality.height}p` : '自动');
+
+    // Highlight the selected item in the dropdown
+    const buttons = qualityDropdown.querySelectorAll('button');
+    buttons.forEach(button => {
+        button.classList.remove('line-active', 'bg-blue-600', 'text-white');
+        if (isAuto && button.textContent === '自动') {
+            button.classList.add('line-active', 'bg-blue-600', 'text-white');
+        } else if (!isAuto && currentQuality && button.dataset.height && Number(button.dataset.height) === currentQuality.height) {
+            // --- CORRECTION ---
+            // Compare based on height instead of a potentially incorrect index
+            button.classList.add('line-active', 'bg-blue-600', 'text-white');
+        }
+    });
 }
 
 window.playNextEpisode = playNextEpisode;

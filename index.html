@@ -44,7 +44,7 @@
     <nav aria-label="设置功能" class="fixed top-4 right-4 z-10">
         <div class="flex items-center space-x-2">
 
-          <!--  <a href="https://www.olevod.com/nav/%E7%94%B5%E5%BD%B1/%E5%85%A8%E9%83%A8%E5%9C%B0%E5%8C%BA/%E5%85%A8%E9%83%A8%E5%B9%B4%E4%BB%BD/%E5%85%A8%E9%83%A8%E7%B1%BB%E5%9E%8B/%E5%85%A8%E9%83%A8/%E5%85%A8%E9%83%A8/%E6%9C%80%E6%96%B0.html"
+            <a href="https://www.olevod.com/nav/%E7%94%B5%E5%BD%B1/%E5%85%A8%E9%83%A8%E5%9C%B0%E5%8C%BA/%E5%85%A8%E9%83%A8%E5%B9%B4%E4%BB%BD/%E5%85%A8%E9%83%A8%E7%B1%BB%E5%9E%8B/%E5%85%A8%E9%83%A8/%E5%85%A8%E9%83%A8/%E6%9C%80%E6%96%B0.html"
                 target="_blank" rel="noopener noreferrer"
                 class="bg-[#222] hover:bg-[#333] border border-[#333] hover:border-white rounded-lg px-3 py-1.5 flex items-center gap-1 transition-colors"
                 aria-label="抓取最新" type="button">
@@ -53,7 +53,7 @@
                         d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                 </svg>
                 <span class="hidden sm:inline">最新电影</span>
-            </a>  -->
+            </a>
 
             <!-- 电视直播按钮 -->
             <a href="https://m3u-player.pages.dev/" target="_blank" rel="noopener noreferrer"
@@ -371,7 +371,6 @@
     </main>
 
     <!-- 详情模态框 -->
-    <!-- Example of improved modal dialog -->
     <div id="modal"
         class="fixed inset-0 bg-black/95 hidden flex items-center justify-center transition-opacity duration-30 z-40"
         role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true" tabindex="-1">
@@ -449,10 +448,8 @@
     <script src="js/api_source_manager.js" defer></script>
     <script src="js/app.js" defer></script>
     <script src="js/douban.js" defer></script>
-    <!-- 删除 js/sha256.js 的引用 -->
     <script src="js/password.js" defer></script>
 
-    <!-- 服务端环境变量注入（Cloudflare Pages场景兼容） -->
     <script>
         // 全局注入环境变量对象
         window.__ENV__ = window.__ENV__ || {};
@@ -460,8 +457,6 @@
         window.__ENV__.SETTINGS_PASSWORD = "{{SETTINGS_PASSWORD}}";
     </script>
 
-
-    <!-- Templates -->
     <template id="search-result-template">
         <div class="card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full shadow-sm hover:shadow-md"
             data-id="" data-source-code="">
