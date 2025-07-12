@@ -1183,18 +1183,20 @@ function populateQualityMenu() {
     };
     qualityDropdown.appendChild(autoButton);
 
+    // --- CORRECTION ---
+    // Filter for valid qualities (height > 0) before creating buttons
+    const validQualities = player.qualities.toArray().filter(q => q && q.height > 0);
 
-    // --- CORRECTED PART ---
-    // Add specific quality options by converting the list to an array first
-    player.qualities.toArray().forEach((quality, index) => {
+    validQualities.forEach((quality) => {
         const button = document.createElement('button');
         button.textContent = `${quality.height}p`;
         button.className = 'w-full text-left px-3 py-2 rounded text-sm transition-colors hover:bg-gray-700';
-        button.dataset.qualityIndex = index;
+        // Store the height on the button for reliable selection
+        button.dataset.height = quality.height;
 
         button.onclick = () => {
-            // As per docs, setting a quality manually disables auto-selection.
-            player.qualities[index].selected = true;
+            // Select the quality object directly, which is more robust than using an index
+            quality.selected = true;
             qualityDropdown.classList.add('hidden');
         };
 
@@ -1212,7 +1214,7 @@ function updateSelectedQualityUI() {
     const currentQuality = player.quality;
 
     // Update the main button label
-    currentQualityLabel.textContent = isAuto ? '自动' : (currentQuality ? `${currentQuality.height}p` : '...');
+    currentQualityLabel.textContent = isAuto ? '自动' : (currentQuality && currentQuality.height > 0 ? `${currentQuality.height}p` : '自动');
 
     // Highlight the selected item in the dropdown
     const buttons = qualityDropdown.querySelectorAll('button');
@@ -1220,7 +1222,9 @@ function updateSelectedQualityUI() {
         button.classList.remove('line-active', 'bg-blue-600', 'text-white');
         if (isAuto && button.textContent === '自动') {
             button.classList.add('line-active', 'bg-blue-600', 'text-white');
-        } else if (!isAuto && currentQuality && button.dataset.qualityIndex && player.qualities[button.dataset.qualityIndex] === currentQuality) {
+        } else if (!isAuto && currentQuality && button.dataset.height && Number(button.dataset.height) === currentQuality.height) {
+            // --- CORRECTION ---
+            // Compare based on height instead of a potentially incorrect index
             button.classList.add('line-active', 'bg-blue-600', 'text-white');
         }
     });
