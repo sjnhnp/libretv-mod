@@ -208,11 +208,26 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
                 apiUrl += `&customApi=${encodeURIComponent(apiInfo.url)}`;
             }
 
-            const detailResp = await fetch(apiUrl);
             const detailData = await detailResp.json();
             if (detailData.code === 200 && Array.isArray(detailData.episodes) && detailData.episodes.length > 0) {
-                episodesList = detailData.episodes;
-                gotFreshEpisodes = true;
+                let acceptNew = true;
+                const histEps = (historyItem && Array.isArray(historyItem.episodes)) ? historyItem.episodes : [];
+                if (histEps.length) {
+                    const getTail = u => {
+                        try { return new URL(u).pathname.split('/').pop(); }
+                        catch { return u.split('/').pop(); }
+                    };
+                    const newTails = new Set(detailData.episodes.map(getTail));
+                    const oldTails = new Set(histEps.map(getTail));
+                    acceptNew = [...oldTails].some(t => newTails.has(t));
+                }
+
+                if (acceptNew) {
+                    episodesList = detailData.episodes;
+                    gotFreshEpisodes = true;
+                } else {
+                    console.warn('[playFromHistory] 拉到的分集与历史无交集，已忽略。');
+                }
 
                 AppState.set('currentEpisodes', episodesList);
                 AppState.set('currentVideoTitle', title);
@@ -250,14 +265,15 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
         const rel = episodesList.findIndex(ep => ep === url);
         if (rel !== -1) actualEpisodeIndex = rel;
     }
+    const finalUrl = (episodesList[actualEpisodeIndex] || url);
     AppState.set('currentEpisodeIndex', actualEpisodeIndex);
     AppState.set('currentVideoTitle', title);
-    localStorage.setItem('currentEpisodeIndex', episodeIndex.toString());
+    localStorage.setItem('currentEpisodeIndex', actualEpisodeIndex.toString());
     localStorage.setItem('currentVideoTitle', title);
 
     // 跳转到 player.html
     const playerUrl = new URL('player.html', window.location.origin);
-    playerUrl.searchParams.set('url', url);
+    playerUrl.searchParams.set('url', finalUrl);
     playerUrl.searchParams.set('title', title);
     playerUrl.searchParams.set('index', actualEpisodeIndex.toString());
     if (vodId) {
