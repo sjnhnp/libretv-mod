@@ -173,8 +173,6 @@ function playNextEpisode() {
     }
 }
 
-// File: js/app.js
-
 async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     console.log(`[App - playFromHistory] Called with: url=${url}, title=${title}, epIndex=${episodeIndex}, pos=${playbackPosition}`);
 
@@ -215,20 +213,39 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
             const detailData = await detailResp.json();
 
             if (detailData.code === 200 && Array.isArray(detailData.episodes) && detailData.episodes.length > 0) {
-                const histEps = (historyItem && Array.isArray(historyItem.episodes)) ? historyItem.episodes : [];
+                const oldEps = (historyItem && Array.isArray(historyItem.episodes)) ? historyItem.episodes : [];
+                const newEps = detailData.episodes;
 
-                // ---【终极铁律安全校验】---
+                // ---【最终加强版：分场景铁律校验】---
                 let acceptNew = false;
-                if (histEps.length > 0) {
-                    // 核心规则：新列表的集数必须大于或等于旧列表的集数。
-                    // 这是最严格、最简单、最不容易被欺骗的规则。
-                    // 它完全忽略了不可靠的文件名，只认集数。
-                    if (detailData.episodes.length >= histEps.length) {
-                        acceptNew = true;
-                        console.log(`[Validation] 接受：新集数 (${detailData.episodes.length}) 不少于旧集数 (${histEps.length})。`);
-                    } else {
-                        acceptNew = false;
-                        console.warn(`[Validation] 拒绝：新集数 (${detailData.episodes.length}) 少于旧集数 (${histEps.length})，判定为错误数据。`);
+                if (oldEps.length > 0) {
+                    // 场景1: 电视剧/动漫 (多集内容)
+                    if (oldEps.length > 1) {
+                        if (newEps.length >= oldEps.length) {
+                            acceptNew = true;
+                            console.log(`[Validation] 接受(多集)：新集数 (${newEps.length}) 不少于旧集数 (${oldEps.length})。`);
+                        } else {
+                            acceptNew = false;
+                            console.warn(`[Validation] 拒绝(多集)：新集数 (${newEps.length}) 少于旧集数 (${oldEps.length})。`);
+                        }
+                    }
+                    // 场景2: 电影 (单集内容)
+                    else { // oldEps.length === 1
+                        if (newEps.length === 1) {
+                            const getTail = u => (u.split('/').pop() || u);
+                            // 规则：新旧URL必须完全相等，或至少文件名相等
+                            if (newEps[0] === oldEps[0] || getTail(newEps[0]) === getTail(oldEps[0])) {
+                                acceptNew = true;
+                                console.log(`[Validation] 接受(单集)：URL或文件名匹配。`);
+                            } else {
+                                acceptNew = false;
+                                console.warn(`[Validation] 拒绝(单集)：URL和文件名均不匹配。`);
+                            }
+                        } else {
+                            // 如果旧的是电影，新的是多集，一定有问题
+                            acceptNew = false;
+                            console.warn(`[Validation] 拒绝(单集)：内容从1集变为 ${newEps.length} 集。`);
+                        }
                     }
                 } else {
                     // 如果历史中没有集数，直接接受。
@@ -237,20 +254,16 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
                 // ---【校验结束】---
 
                 if (acceptNew) {
-                    episodesList = detailData.episodes;
+                    episodesList = newEps;
                     gotFreshEpisodes = true;
-                    showToast('已成功同步最新剧集列表', 'success');
                 } else {
-                    episodesList = histEps; // 明确使用历史数据
-                    showToast('检测到数据可能错乱，已保留历史剧集列表', 'error');
+                    episodesList = oldEps; // 明确使用历史数据
                 }
             } else {
                 if (historyItem && Array.isArray(historyItem.episodes)) episodesList = historyItem.episodes;
-                showToast('无法获取最新集数，使用历史版本', 'warning');
             }
         } catch (e) {
             console.error('[playFromHistory] 拉取最新集数失败:', e);
-            showToast('拉取最新集数失败，使用历史版本', 'error');
             if (historyItem && Array.isArray(historyItem.episodes)) episodesList = historyItem.episodes;
         }
     } else if (historyItem && Array.isArray(historyItem.episodes)) {
@@ -271,7 +284,7 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
         if (rel !== -1) actualEpisodeIndex = rel;
     }
     if (actualEpisodeIndex >= episodesList.length) {
-        actualEpisodeIndex = episodesList.length - 1;
+        actualEpisodeIndex = episodesList.length > 0 ? episodesList.length - 1 : 0;
     }
 
     const finalUrl = (episodesList.length > 0 && episodesList[actualEpisodeIndex]) ? episodesList[actualEpisodeIndex] : url;
