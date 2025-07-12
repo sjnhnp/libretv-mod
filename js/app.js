@@ -997,7 +997,7 @@ function createResultItemUsingTemplate(item) {
         }
     }
 
-    // --- 核心修改：存储所有可用的元数据 ---
+    // --- 存储所有可用的元数据 ---
     cardElement.dataset.id = item.vod_id || '';
     cardElement.dataset.name = item.vod_name || '';
     cardElement.dataset.sourceCode = item.source_code || '';
