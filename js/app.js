@@ -219,7 +219,12 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
                     };
                     const newTails = new Set(detailData.episodes.map(getTail));
                     const oldTails = new Set(histEps.map(getTail));
+                    // ① 若文件名有交集 → 接受
                     acceptNew = [...oldTails].some(t => newTails.has(t));
+                    // ② 若无交集但新列表更长 → 也接受（普遍的“更新到更多集”的场景）
+                    if (!acceptNew && detailData.episodes.length > histEps.length) {
+                        acceptNew = true;
+                    }
                 }
 
                 if (acceptNew) {
