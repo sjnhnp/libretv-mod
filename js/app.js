@@ -932,8 +932,6 @@ window.playNextEpisode = playNextEpisode;
 window.showDetails = showDetails;
 window.playFromHistory = playFromHistory;
 
-// js/app.js
-
 function createResultItemUsingTemplate(item) {
     const template = document.getElementById('search-result-template');
     if (!template) {
@@ -956,19 +954,17 @@ function createResultItemUsingTemplate(item) {
         imgElement.src = item.vod_pic && item.vod_pic.startsWith('http') ?
             item.vod_pic : 'https://via.placeholder.com/100x150/191919/555555?text=No+Image';
         imgElement.alt = item.vod_name || '未知标题';
-        imgElement.onerror = function () {
+        imgElement.onerror = function() {
             this.onerror = null;
             this.src = 'https://via.placeholder.com/100x150/191919/555555?text=Error';
             this.classList.add('object-contain');
         };
     }
-
     const titleElement = clone.querySelector('.result-title');
     if (titleElement) {
         titleElement.textContent = item.vod_name || '未知标题';
         titleElement.title = item.vod_name || '未知标题';
     }
-
     const typeElement = clone.querySelector('.result-type');
     if (typeElement) {
         if (item.type_name) {
@@ -978,7 +974,6 @@ function createResultItemUsingTemplate(item) {
             typeElement.classList.add('hidden');
         }
     }
-
     const yearElement = clone.querySelector('.result-year');
     if (yearElement) {
         if (item.vod_year) {
@@ -988,7 +983,6 @@ function createResultItemUsingTemplate(item) {
             yearElement.classList.add('hidden');
         }
     }
-
     const remarksElement = clone.querySelector('.result-remarks');
     if (remarksElement) {
         if (item.vod_remarks) {
@@ -998,19 +992,16 @@ function createResultItemUsingTemplate(item) {
             remarksElement.classList.add('hidden');
         }
     }
-
     const sourceNameElement = clone.querySelector('.result-source-name');
     if (sourceNameElement) {
         if (item.source_name) {
-            sourceNameElement.textContent = item.source_name; // 设置文本内容
+            sourceNameElement.textContent = item.source_name;
             sourceNameElement.className = 'result-source-name bg-[#222222] text-xs text-gray-200 px-2 py-1 rounded-md';
-
         } else {
-            // 如果没有 source_name，则确保元素是隐藏的
             sourceNameElement.className = 'result-source-name hidden';
         }
     }
-
+    
     // 创建一个唯一的视频标识符
     const videoKey = `${item.vod_name}|${item.vod_year || ''}`;
     cardElement.dataset.videoKey = videoKey;
@@ -1023,7 +1014,11 @@ function createResultItemUsingTemplate(item) {
     if (item.api_url) {
         cardElement.dataset.apiUrl = item.api_url;
     }
-    cardElement.onclick = handleResultClick; // 点击整个卡片触发事件
+    
+    // --- 将搜索结果中的简介存储在 data-blurb 属性中 ---
+    cardElement.dataset.blurb = item.vod_blurb || '';
+
+    cardElement.onclick = handleResultClick;
 
     return clone;
 }
@@ -1037,10 +1032,12 @@ function handleResultClick(event) {
     const year = card.dataset.year;
     const typeName = card.dataset.typeName;
     const videoKey = card.dataset.videoKey;
+    // --- 读取存储的简介信息 ---
+    const blurb = card.dataset.blurb;
 
     if (typeof showVideoEpisodesModal === 'function') {
-        // 将年份和类型传递下去
-        showVideoEpisodesModal(id, name, sourceCode, apiUrl, year, typeName, videoKey);
+        // --- 将 blurb 作为新参数传递 ---
+        showVideoEpisodesModal(id, name, sourceCode, apiUrl, year, typeName, videoKey, blurb);
     } else {
         console.error('showVideoEpisodesModal function not found!');
         showToast('无法加载剧集信息', 'error');
@@ -1052,9 +1049,8 @@ window.copyLinks = copyLinks;
 window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 
 // 显示视频剧集模态框
-// js/app.js
 
-async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeName, videoKey) {
+async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeName, videoKey, blurb) {
     showLoading('加载剧集信息...');
 
     if (typeof APISourceManager === 'undefined' || typeof APISourceManager.getSelectedApi !== 'function') {
@@ -1063,7 +1059,6 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeN
         return;
     }
     const selectedApi = APISourceManager.getSelectedApi(sourceCode);
-
     if (!selectedApi) {
         hideLoading();
         showToast('未找到有效的数据源', 'error');
@@ -1078,7 +1073,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeN
 
         const response = await fetch(detailApiUrl);
         if (!response.ok) throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
-
+        
         const data = await response.json();
         hideLoading();
 
@@ -1088,7 +1083,6 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeN
             return;
         }
 
-        // 保存状态
         AppState.set('currentEpisodes', data.episodes);
         AppState.set('currentVideoTitle', title);
         AppState.set('currentSourceName', selectedApi.name);
@@ -1097,13 +1091,11 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeN
         AppState.set('currentVideoTypeName', typeName);
         AppState.set('currentVideoKey', videoKey);
         AppState.set('currentVideoId', id);
-
         localStorage.setItem('currentEpisodes', JSON.stringify(data.episodes));
         localStorage.setItem('currentVideoTitle', title);
 
-        // --- 核心改造：构建包含所有信息的模态框内容 ---
         const videoInfo = data.videoInfo || {};
-        const safeDesc = (videoInfo.desc || '').replace(/<[^>]+>/g, '').trim() || '暂无简介。';
+        const finalDesc = (videoInfo.desc || '').replace(/<[^>]+>/g, '').trim() || blurb || '暂无简介。';
 
         const modalContentHtml = `
             <div class="text-white text-sm">
@@ -1117,14 +1109,14 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeN
                 </div>
                 <div class="mb-4">
                     <h4 class="font-semibold text-gray-300 mb-1">简介：</h4>
-                    <p class="text-gray-400 text-xs leading-relaxed">${safeDesc}</p>
+                    <p class="text-gray-400 text-xs leading-relaxed">${finalDesc}</p>
                 </div>
                 <div id="episodesContainer">
                     ${renderEpisodeButtons(data.episodes, title, sourceCode, selectedApi.name)}
                 </div>
             </div>
         `;
-
+        
         showModal(modalContentHtml, `${title} (${selectedApi.name})`);
 
     } catch (error) {
