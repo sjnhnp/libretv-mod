@@ -183,7 +183,7 @@ async function processVideoUrl(url) {
             /\/\/.*\.(ts|jpg|png)\?ad=/i
         ];
         const lines = m3u8Text.split('\n');
-        const baseUrl = url;        
+        const baseUrl = url;
         const cleanLines = [];
 
         for (let line of lines) {
@@ -331,7 +331,9 @@ function addPlayerEventListeners() {
     player.addEventListener('end', () => {
         videoHasEnded = true;
         saveCurrentProgress();
-        clearVideoProgressForEpisode(currentEpisodeIndex);
+        clearVideoProgressForEpisode(
+            universalId || generateUniversalId(currentVideoTitle, currentVideoYear, currentEpisodeIndex)
+        );
         if (autoplayEnabled && currentEpisodeIndex < currentEpisodes.length - 1) {
             setTimeout(() => {
                 if (videoHasEnded && !isUserSeeking) playNextEpisode();
@@ -351,6 +353,7 @@ async function playEpisode(index) {
     if (isNavigatingToEpisode || index < 0 || index >= currentEpisodes.length) {
         return;
     }
+    universalId = generateUniversalId(currentVideoTitle, currentVideoYear, index);
 
     if (player && player.currentTime > 5) {
         saveVideoSpecificProgress();
@@ -537,8 +540,16 @@ function updateUIForNewEpisode() {
 function updateBrowserHistory(newEpisodeUrl) {
     const newUrlForBrowser = new URL(window.location.href);
     newUrlForBrowser.searchParams.set('url', newEpisodeUrl);
+    newUrlForBrowser.searchParams.set(
+        'universalId',
+        generateUniversalId(currentVideoTitle, currentVideoYear, currentEpisodeIndex)
+    );
     newUrlForBrowser.searchParams.set('index', currentEpisodeIndex.toString());
     newUrlForBrowser.searchParams.delete('position');
+    newUrlForBrowser.searchParams.set(
+        'universalId',
+        generateUniversalId(currentVideoTitle, currentVideoYear, currentEpisodeIndex)
+    );
     window.history.pushState({ path: newUrlForBrowser.toString(), episodeIndex: currentEpisodeIndex }, '', newUrlForBrowser.toString());
 }
 

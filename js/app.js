@@ -178,6 +178,7 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     let historyItem = null;
     let episodesList = [];
     let vodId = '', actualSourceName = '', actualSourceCode = '';
+    let videoYear = '';
 
     try {
         const history = JSON.parse(localStorage.getItem('viewingHistory') || '[]');
@@ -191,6 +192,7 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
             vodId = historyItem.vod_id || '';
             actualSourceName = historyItem.sourceName || '';
             actualSourceCode = historyItem.sourceCode || '';
+            videoYear = historyItem.year || '';
         }
     } catch (e) {
     }
@@ -241,7 +243,13 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
         localStorage.setItem('currentEpisodes', JSON.stringify(episodesList));
     }
 
-    AppState.set('currentEpisodeIndex', episodeIndex);
+
+    let actualEpisodeIndex = episodeIndex;
+    if (episodesList.length) {
+        const rel = episodesList.findIndex(ep => ep === url);
+        if (rel !== -1) actualEpisodeIndex = rel;
+    }
+    AppState.set('currentEpisodeIndex', actualEpisodeIndex);
     AppState.set('currentVideoTitle', title);
     localStorage.setItem('currentEpisodeIndex', episodeIndex.toString());
     localStorage.setItem('currentVideoTitle', title);
@@ -250,7 +258,7 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     const playerUrl = new URL('player.html', window.location.origin);
     playerUrl.searchParams.set('url', url);
     playerUrl.searchParams.set('title', title);
-    playerUrl.searchParams.set('index', episodeIndex.toString());
+    playerUrl.searchParams.set('index', actualEpisodeIndex.toString());
     if (vodId) {
         playerUrl.searchParams.set('id', vodId);
     }
@@ -260,9 +268,16 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     if (actualSourceCode) {
         playerUrl.searchParams.set('source_code', actualSourceCode);
     }
+    if (videoYear) {
+        playerUrl.searchParams.set('year', videoYear);
+    }
+
     if (playbackPosition > 0) {
         playerUrl.searchParams.set('position', playbackPosition.toString());
     }
+    const uid = generateUniversalId(title, videoYear, actualEpisodeIndex);
+    playerUrl.searchParams.set('universalId', uid);
+
     const adOn = typeof getBoolConfig !== 'undefined' && typeof PLAYER_CONFIG !== 'undefined'
         ? getBoolConfig(PLAYER_CONFIG.adFilteringStorage, PLAYER_CONFIG.adFilteringEnabled)
         : PLAYER_CONFIG?.adFilteringEnabled ?? false;
