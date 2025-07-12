@@ -196,6 +196,7 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
             videoYear = historyItem.year || '';
         }
     } catch (e) {
+        console.error('读取历史记录失败:', e);
     }
 
     // 优先拉最新集数
@@ -208,7 +209,13 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
                 apiUrl += `&customApi=${encodeURIComponent(apiInfo.url)}`;
             }
 
+            // 添加缺失的 fetch 调用
+            const detailResp = await fetch(apiUrl);
+            if (!detailResp.ok) {
+                throw new Error(`API 请求失败: ${detailResp.status} ${detailResp.statusText}`);
+            }
             const detailData = await detailResp.json();
+
             if (detailData.code === 200 && Array.isArray(detailData.episodes) && detailData.episodes.length > 0) {
                 let acceptNew = true;
                 const histEps = (historyItem && Array.isArray(historyItem.episodes)) ? historyItem.episodes : [];
@@ -221,17 +228,25 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
                     const oldTails = new Set(histEps.map(getTail));
                     // ① 若文件名有交集 → 接受
                     acceptNew = [...oldTails].some(t => newTails.has(t));
-                    // ② 若无交集但新列表更长 → 也接受（普遍的“更新到更多集”的场景）
-                    if (!acceptNew && detailData.episodes.length > histEps.length) {
+                    // ② 若无交集但新列表更长或相等 → 也接受（优化：允许相等长度，覆盖旧列表）
+                    if (!acceptNew && detailData.episodes.length >= histEps.length) {
                         acceptNew = true;
+                    }
+                    // 新增：如果新列表长度差异太大（例如，新列表少于旧的50%），拒绝以防拉错资源
+                    if (acceptNew && detailData.episodes.length < histEps.length * 0.5) {
+                        acceptNew = false;
+                        console.warn('[playFromHistory] 新列表长度过短，已忽略。');
                     }
                 }
 
                 if (acceptNew) {
                     episodesList = detailData.episodes;
                     gotFreshEpisodes = true;
+                    console.log('[playFromHistory] 已使用最新集数列表，长度:', episodesList.length);
+                    showToast('已更新到最新集数列表', 'success');  // 提示用户更新成功
                 } else {
-                    console.warn('[playFromHistory] 拉到的分集与历史无交集，已忽略。');
+                    console.warn('[playFromHistory] 拉到的分集与历史无交集且不满足条件，已忽略。');
+                    showToast('集数列表未更新（不匹配），使用历史版本', 'warning');
                 }
 
                 AppState.set('currentEpisodes', episodesList);
@@ -246,8 +261,11 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
                 if (historyItem && Array.isArray(historyItem.episodes) && historyItem.episodes.length > 0) {
                     episodesList = historyItem.episodes;
                 }
+                showToast('无法获取最新集数，使用历史版本', 'warning');
             }
         } catch (e) {
+            console.error('[playFromHistory] 拉取最新集数失败:', e);
+            showToast('拉取最新集数失败，使用历史版本', 'error');
             // 拉取失败 fallback
             if (historyItem && Array.isArray(historyItem.episodes) && historyItem.episodes.length > 0) {
                 episodesList = historyItem.episodes;
@@ -263,7 +281,6 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
         AppState.set('currentEpisodes', episodesList);
         localStorage.setItem('currentEpisodes', JSON.stringify(episodesList));
     }
-
 
     let actualEpisodeIndex = episodeIndex;
     if (episodesList.length) {
@@ -307,7 +324,6 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
 
     window.location.href = playerUrl.toString();
 }
-
 
 /**
  * 从localStorage获取布尔配置
