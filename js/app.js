@@ -95,6 +95,7 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', v
             sourceName: sourceName,
             sourceCode: sourceCode,
             vod_id: vodId,
+            year: year,
             episodes: AppState.get('currentEpisodes') || []
         };
         addToViewingHistory(videoInfoForHistory);

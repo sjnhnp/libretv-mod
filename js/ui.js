@@ -560,7 +560,16 @@ function addToViewingHistory(videoInfo) {
         // 使用统一工具生成「剧 + 集」级唯一键，避免同名不同集互相覆盖
         const internalShowIdentifier = getUniqueEpisodeId(videoInfo);
 
-        const idx = history.findIndex(item => item.internalShowIdentifier === internalShowIdentifier);
+        // 先用内部标识精确查重
+        let idx = history.findIndex(item => item.internalShowIdentifier === internalShowIdentifier);
+        // 如未找到，再用「标题+源+集」做一次宽松查重（兼容旧纪录缺 vod_id/year）
+        if (idx === -1) {
+            idx = history.findIndex(item =>
+                item.title === videoInfo.title &&
+                item.sourceCode === videoInfo.sourceCode &&
+                item.episodeIndex === videoInfo.episodeIndex
+            );
+        }
 
         if (idx !== -1) { // 如果这部剧已在历史中
             const item = history[idx];
@@ -570,7 +579,8 @@ function addToViewingHistory(videoInfo) {
             item.playbackPosition = videoInfo.playbackPosition;
             item.duration = videoInfo.duration;
             item.timestamp = Date.now();
-            // 如果新的videoInfo提供了更完整的剧集列表，则更新
+            item.year = videoInfo.year || item.year;
+
             if (videoInfo.episodes && videoInfo.episodes.length > 0) {
                 // 简单的检查，如果长度不同或第一个元素不同，就认为需要更新（可以做得更复杂）
                 if (!item.episodes || item.episodes.length !== videoInfo.episodes.length || (item.episodes[0] !== videoInfo.episodes[0])) {
@@ -593,6 +603,7 @@ function addToViewingHistory(videoInfo) {
                 internalShowIdentifier: internalShowIdentifier, // 保存这个内部标识符
                 playbackPosition: videoInfo.playbackPosition,
                 duration: videoInfo.duration,
+                year: videoInfo.year,
                 timestamp: Date.now(),
                 episodes: (videoInfo.episodes && videoInfo.episodes.length > 0) ? [...videoInfo.episodes] : []
             };

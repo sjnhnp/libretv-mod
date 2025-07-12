@@ -658,7 +658,8 @@ function saveToHistory() {
             episodes: window.currentEpisodes,
             playbackPosition: Math.floor(player.currentTime),
             duration: Math.floor(player.duration) || 0,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            year: currentVideoYear
         };
         window.addToViewingHistory(videoInfo);
     } catch (e) {
@@ -682,6 +683,7 @@ function saveCurrentProgress() {
                 playbackPosition: Math.floor(currentTime),
                 duration: Math.floor(duration),
                 timestamp: Date.now(),
+                year: currentVideoYear,
                 episodes: window.currentEpisodes
             };
             window.addToViewingHistory(videoInfo);
