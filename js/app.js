@@ -943,18 +943,18 @@ function createResultItemUsingTemplate(item) {
 
     const clone = template.content.cloneNode(true);
     const cardElement = clone.querySelector('.card-hover');
-
     if (!cardElement) {
         console.error("卡片元素 (.card-hover) 在模板克隆中未找到，项目:", item);
-        return document.createDocumentFragment();
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'card-hover bg-[#222] rounded-lg overflow-hidden p-2 text-red-400';
+        errorDiv.innerHTML = `<h3>加载错误</h3><p class="text-xs">无法显示此项目</p>`;
+        return errorDiv;
     }
 
-    // --- 图片 ---
     const imgElement = clone.querySelector('.result-img');
     if (imgElement) {
-        imgElement.src = item.vod_pic && item.vod_pic.startsWith('http')
-            ? item.vod_pic
-            : 'https://via.placeholder.com/100x150/191919/555555?text=No+Image';
+        imgElement.src = item.vod_pic && item.vod_pic.startsWith('http') ?
+            item.vod_pic : 'https://via.placeholder.com/100x150/191919/555555?text=No+Image';
         imgElement.alt = item.vod_name || '未知标题';
         imgElement.onerror = function () {
             this.onerror = null;
@@ -963,14 +963,12 @@ function createResultItemUsingTemplate(item) {
         };
     }
 
-    // --- 标题 ---
     const titleElement = clone.querySelector('.result-title');
     if (titleElement) {
         titleElement.textContent = item.vod_name || '未知标题';
         titleElement.title = item.vod_name || '未知标题';
     }
 
-    // --- 类型和年份 ---
     const typeElement = clone.querySelector('.result-type');
     if (typeElement) {
         if (item.type_name) {
@@ -980,6 +978,7 @@ function createResultItemUsingTemplate(item) {
             typeElement.classList.add('hidden');
         }
     }
+
     const yearElement = clone.querySelector('.result-year');
     if (yearElement) {
         if (item.vod_year) {
@@ -990,41 +989,41 @@ function createResultItemUsingTemplate(item) {
         }
     }
 
-    // --- 新增：填充简介 ---
-    const descriptionElement = clone.querySelector('.result-description');
-    if (descriptionElement) {
-        // 使用 vod_blurb 字段作为简介，如果不存在则显示默认文本
-        descriptionElement.textContent = item.vod_blurb || '暂无简介。';
+    const remarksElement = clone.querySelector('.result-remarks');
+    if (remarksElement) {
+        if (item.vod_remarks) {
+            remarksElement.textContent = item.vod_remarks;
+            remarksElement.classList.remove('hidden');
+        } else {
+            remarksElement.classList.add('hidden');
+        }
     }
 
-    // --- 数据源和播放按钮 ---
     const sourceNameElement = clone.querySelector('.result-source-name');
     if (sourceNameElement) {
         if (item.source_name) {
-            sourceNameElement.textContent = item.source_name;
-            sourceNameElement.className = 'result-source-name bg-[#222222] text-xs text-gray-400 px-2 py-1 rounded-md';
+            sourceNameElement.textContent = item.source_name; // 设置文本内容
+            sourceNameElement.className = 'result-source-name bg-[#222222] text-xs text-gray-200 px-2 py-1 rounded-md';
+
         } else {
+            // 如果没有 source_name，则确保元素是隐藏的
             sourceNameElement.className = 'result-source-name hidden';
         }
     }
 
-    // --- 更新：将点击事件绑定到播放按钮 ---
-    const playButton = clone.querySelector('.play-button');
-    if (playButton) {
-        // 将所有必要信息存储在按钮的 dataset 中
-        const videoKey = `${item.vod_name}|${item.vod_year || ''}`;
-        playButton.dataset.id = item.vod_id || '';
-        playButton.dataset.name = item.vod_name || '';
-        playButton.dataset.sourceCode = item.source_code || '';
-        playButton.dataset.year = item.vod_year || '';
-        playButton.dataset.typeName = item.type_name || '';
-        playButton.dataset.videoKey = videoKey;
-        if (item.api_url) {
-            playButton.dataset.apiUrl = item.api_url;
-        }
-        // 绑定点击事件
-        playButton.onclick = handleResultClick;
+    // 创建一个唯一的视频标识符
+    const videoKey = `${item.vod_name}|${item.vod_year || ''}`;
+    cardElement.dataset.videoKey = videoKey;
+
+    cardElement.dataset.id = item.vod_id || '';
+    cardElement.dataset.name = item.vod_name || '';
+    cardElement.dataset.sourceCode = item.source_code || '';
+    cardElement.dataset.year = item.vod_year || '';
+    cardElement.dataset.typeName = item.type_name || '';
+    if (item.api_url) {
+        cardElement.dataset.apiUrl = item.api_url;
     }
+    cardElement.onclick = handleResultClick; // 点击整个卡片触发事件
 
     return clone;
 }
@@ -1053,13 +1052,14 @@ window.copyLinks = copyLinks;
 window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 
 // 显示视频剧集模态框
+// js/app.js
+
 async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeName, videoKey) {
     showLoading('加载剧集信息...');
 
     if (typeof APISourceManager === 'undefined' || typeof APISourceManager.getSelectedApi !== 'function') {
         hideLoading();
         showToast('数据源管理器不可用', 'error');
-        console.error('APISourceManager or getSelectedApi is not defined.');
         return;
     }
     const selectedApi = APISourceManager.getSelectedApi(sourceCode);
@@ -1067,7 +1067,6 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeN
     if (!selectedApi) {
         hideLoading();
         showToast('未找到有效的数据源', 'error');
-        console.error('Selected API is null for sourceCode:', sourceCode);
         return;
     }
 
@@ -1078,20 +1077,18 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeN
         }
 
         const response = await fetch(detailApiUrl);
-        if (!response.ok) {
-            throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
-        }
-        const data = await response.json();
+        if (!response.ok) throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
 
+        const data = await response.json();
         hideLoading();
 
         if (data.code !== 200 || !data.episodes || data.episodes.length === 0) {
-            let errorMessage = data.msg || (data.videoInfo && data.videoInfo.msg) || (data.list && data.list.length > 0 && data.list[0] && data.list[0].msg) || '未找到剧集信息';
+            let errorMessage = data.msg || '未找到剧集信息';
             showToast(errorMessage, 'warning');
-            console.warn('获取剧集详情数据问题:', data, `Requested URL: ${detailApiUrl}`);
             return;
         }
 
+        // 保存状态
         AppState.set('currentEpisodes', data.episodes);
         AppState.set('currentVideoTitle', title);
         AppState.set('currentSourceName', selectedApi.name);
@@ -1104,12 +1101,34 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeN
         localStorage.setItem('currentEpisodes', JSON.stringify(data.episodes));
         localStorage.setItem('currentVideoTitle', title);
 
-        const episodeButtonsHtml = renderEpisodeButtons(data.episodes, title, sourceCode, selectedApi.name);
-        showModal(episodeButtonsHtml, `${title} (${selectedApi.name})`);
+        // --- 核心改造：构建包含所有信息的模态框内容 ---
+        const videoInfo = data.videoInfo || {};
+        const safeDesc = (videoInfo.desc || '').replace(/<[^>]+>/g, '').trim() || '暂无简介。';
+
+        const modalContentHtml = `
+            <div class="text-white text-sm">
+                <div class="grid grid-cols-2 gap-x-4 gap-y-2 mb-4">
+                    <div><span class="text-gray-400">类型：</span>${videoInfo.type || '未知'}</div>
+                    <div><span class="text-gray-400">年份：</span>${videoInfo.year || '未知'}</div>
+                    <div><span class="text-gray-400">地区：</span>${videoInfo.area || '未知'}</div>
+                    <div><span class="text-gray-400">导演：</span>${videoInfo.director || '未知'}</div>
+                    <div class="col-span-2"><span class="text-gray-400">主演：</span>${videoInfo.actor || '未知'}</div>
+                    <div class="col-span-2"><span class="text-gray-400">备注：</span>${videoInfo.remarks || '无'}</div>
+                </div>
+                <div class="mb-4">
+                    <h4 class="font-semibold text-gray-300 mb-1">简介：</h4>
+                    <p class="text-gray-400 text-xs leading-relaxed">${safeDesc}</p>
+                </div>
+                <div id="episodesContainer">
+                    ${renderEpisodeButtons(data.episodes, title, sourceCode, selectedApi.name)}
+                </div>
+            </div>
+        `;
+
+        showModal(modalContentHtml, `${title} (${selectedApi.name})`);
 
     } catch (error) {
         hideLoading();
-        console.error('获取剧集信息失败 (catch block):', error, `Requested URL: ${detailApiUrl}`);
         showToast(`获取剧集信息失败: ${error.message}`, 'error');
     }
 }
