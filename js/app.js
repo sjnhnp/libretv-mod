@@ -209,74 +209,74 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
                 apiUrl += `&customApi=${encodeURIComponent(apiInfo.url)}`;
             }
 
-            // 添加缺失的 fetch 调用
             const detailResp = await fetch(apiUrl);
-            if (!detailResp.ok) {
-                throw new Error(`API 请求失败: ${detailResp.status} ${detailResp.statusText}`);
-            }
+            if (!detailResp.ok) throw new Error(`API 请求失败: ${detailResp.status}`);
             const detailData = await detailResp.json();
 
             if (detailData.code === 200 && Array.isArray(detailData.episodes) && detailData.episodes.length > 0) {
-                let acceptNew = true;
                 const histEps = (historyItem && Array.isArray(historyItem.episodes)) ? historyItem.episodes : [];
-                if (histEps.length) {
+
+                // ---【全新安全校验逻辑开始】---
+                let acceptNew = false;
+                if (histEps.length > 0) {
                     const getTail = u => {
-                        try { return new URL(u).pathname.split('/').pop(); }
-                        catch { return u.split('/').pop(); }
+                        try { return new URL(u).pathname.split('/').pop() || u; }
+                        catch { return u.split('/').pop() || u; }
                     };
+
                     const newTails = new Set(detailData.episodes.map(getTail));
                     const oldTails = new Set(histEps.map(getTail));
-                    // ① 若文件名有交集 → 接受
-                    acceptNew = [...oldTails].some(t => newTails.has(t));
-                    // ② 若无交集但新列表更长或相等 → 也接受（优化：允许相等长度，覆盖旧列表）
-                    if (!acceptNew && detailData.episodes.length >= histEps.length) {
+
+                    const commonTailsCount = [...oldTails].filter(t => newTails.has(t)).length;
+                    const overlapPercentage = (commonTailsCount / Math.min(oldTails.size, newTails.size)) * 100;
+
+                    // 规则1：高置信度匹配。如果文件名重合度非常高（例如超过50%），我们认为这绝对是同一个剧集，安全接受。
+                    if (overlapPercentage > 50) {
                         acceptNew = true;
+                        console.log(`[Validation] 接受：文件名高度重合 (${overlapPercentage.toFixed(1)}%)`);
                     }
-                    // 新增：如果新列表长度差异太大（例如，新列表少于旧的50%），拒绝以防拉错资源
-                    if (acceptNew && detailData.episodes.length < histEps.length * 0.5) {
+                    // 规则2：低/零重合度，但可能是合法更新。只有在新集数不减少的情况下，才接受。
+                    // 这是最关键的改动，它禁止了集数变少的情况。
+                    else if (commonTailsCount === 0 && detailData.episodes.length >= histEps.length) {
+                        acceptNew = true;
+                        console.log(`[Validation] 接受：无文件名重合，但集数未减少 (${histEps.length} -> ${detailData.episodes.length})`);
+                    }
+                    // 规则3：其他所有模糊情况（如少量重合但集数减少），一律拒绝，保证安全。
+                    else {
                         acceptNew = false;
-                        console.warn('[playFromHistory] 新列表长度过短，已忽略。');
+                        console.warn(`[Validation] 拒绝：不满足安全更新条件。重合度: ${overlapPercentage.toFixed(1)}%, 集数变化: ${histEps.length} -> ${detailData.episodes.length}`);
                     }
+                } else {
+                    // 如果历史记录中没有剧集列表，直接接受新的。
+                    acceptNew = true;
                 }
+                // ---【全新安全校验逻辑结束】---
 
                 if (acceptNew) {
                     episodesList = detailData.episodes;
                     gotFreshEpisodes = true;
-                    console.log('[playFromHistory] 已使用最新集数列表，长度:', episodesList.length);
-                    showToast('已更新到最新集数列表', 'success');  // 提示用户更新成功
+                    showToast('已成功同步最新剧集列表', 'success');
                 } else {
-                    console.warn('[playFromHistory] 拉到的分集与历史无交集且不满足条件，已忽略。');
-                    showToast('集数列表未更新（不匹配），使用历史版本', 'warning');
+                    // 如果校验失败，明确使用历史数据
+                    episodesList = histEps;
+                    showToast('为防止数据错乱，已保留历史剧集列表', 'warning');
                 }
-
-                AppState.set('currentEpisodes', episodesList);
-                AppState.set('currentVideoTitle', title);
-                AppState.set('currentEpisodeIndex', episodeIndex);
-                // 更新 localStorage
-                localStorage.setItem('currentEpisodes', JSON.stringify(episodesList));
-                localStorage.setItem('currentVideoTitle', title);
-                localStorage.setItem('currentEpisodeIndex', episodeIndex.toString());
             } else {
-                // 回退到旧history里的数据
-                if (historyItem && Array.isArray(historyItem.episodes) && historyItem.episodes.length > 0) {
-                    episodesList = historyItem.episodes;
-                }
+                if (historyItem && Array.isArray(historyItem.episodes)) episodesList = historyItem.episodes;
                 showToast('无法获取最新集数，使用历史版本', 'warning');
             }
         } catch (e) {
             console.error('[playFromHistory] 拉取最新集数失败:', e);
             showToast('拉取最新集数失败，使用历史版本', 'error');
-            // 拉取失败 fallback
-            if (historyItem && Array.isArray(historyItem.episodes) && historyItem.episodes.length > 0) {
-                episodesList = historyItem.episodes;
-            }
+            if (historyItem && Array.isArray(historyItem.episodes)) episodesList = historyItem.episodes;
         }
-    } else if (historyItem && Array.isArray(historyItem.episodes) && historyItem.episodes.length > 0) {
+    } else if (historyItem && Array.isArray(historyItem.episodes)) {
         episodesList = historyItem.episodes;
     } else {
         episodesList = AppState.get('currentEpisodes') || JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
     }
 
+    // ... 后续代码保持不变 ...
     if (episodesList.length > 0) {
         AppState.set('currentEpisodes', episodesList);
         localStorage.setItem('currentEpisodes', JSON.stringify(episodesList));
@@ -287,41 +287,33 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
         const rel = episodesList.findIndex(ep => ep === url);
         if (rel !== -1) actualEpisodeIndex = rel;
     }
+    // 如果当前集数超出范围（例如，从40集切换到26集，但想播放第30集），则重置为最后一集
+    if (actualEpisodeIndex >= episodesList.length) {
+        actualEpisodeIndex = episodesList.length - 1;
+    }
+
     const finalUrl = (episodesList[actualEpisodeIndex] || url);
     AppState.set('currentEpisodeIndex', actualEpisodeIndex);
     AppState.set('currentVideoTitle', title);
     localStorage.setItem('currentEpisodeIndex', actualEpisodeIndex.toString());
     localStorage.setItem('currentVideoTitle', title);
 
-    // 跳转到 player.html
+    // ... 后续跳转逻辑完全不变 ...
     const playerUrl = new URL('player.html', window.location.origin);
     playerUrl.searchParams.set('url', finalUrl);
     playerUrl.searchParams.set('title', title);
     playerUrl.searchParams.set('index', actualEpisodeIndex.toString());
-    if (vodId) {
-        playerUrl.searchParams.set('id', vodId);
-    }
-    if (actualSourceName) {
-        playerUrl.searchParams.set('source', actualSourceName);
-    }
-    if (actualSourceCode) {
-        playerUrl.searchParams.set('source_code', actualSourceCode);
-    }
-    if (videoYear) {
-        playerUrl.searchParams.set('year', videoYear);
-    }
-
-    if (playbackPosition > 0) {
-        playerUrl.searchParams.set('position', playbackPosition.toString());
-    }
+    if (vodId) playerUrl.searchParams.set('id', vodId);
+    if (actualSourceName) playerUrl.searchParams.set('source', actualSourceName);
+    if (actualSourceCode) playerUrl.searchParams.set('source_code', actualSourceCode);
+    if (videoYear) playerUrl.searchParams.set('year', videoYear);
+    if (playbackPosition > 0) playerUrl.searchParams.set('position', playbackPosition.toString());
     const uid = generateUniversalId(title, videoYear, actualEpisodeIndex);
     playerUrl.searchParams.set('universalId', uid);
-
     const adOn = typeof getBoolConfig !== 'undefined' && typeof PLAYER_CONFIG !== 'undefined'
         ? getBoolConfig(PLAYER_CONFIG.adFilteringStorage, PLAYER_CONFIG.adFilteringEnabled)
         : PLAYER_CONFIG?.adFilteringEnabled ?? false;
     playerUrl.searchParams.set('af', adOn ? '1' : '0');
-
     window.location.href = playerUrl.toString();
 }
 
