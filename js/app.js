@@ -120,7 +120,7 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', v
     const universalId = generateUniversalId(title, year, episodeIndex);
     playerUrl.searchParams.set('universalId', universalId);
 
-    // ← 在这一行后面，插入广告过滤开关参数
+    // 插入广告过滤开关参数
     const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, PLAYER_CONFIG.adFilteringEnabled);
     playerUrl.searchParams.set('af', adOn ? '1' : '0');
 
@@ -172,8 +172,6 @@ function playNextEpisode() {
         showToast('已经是最后一集了', 'info');
     }
 }
-
-// File: app.js
 
 async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     console.log(`[App - playFromHistory] Called with: url=${url}, title=${title}, epIndex=${episodeIndex}, pos=${playbackPosition}`);
@@ -458,8 +456,6 @@ function initializeEventListeners() {
             }
 
             localStorage.setItem('preloadCount', count.toString());
-
-            // 注意：这里直接修改PLAYER_CONFIG。更健壮的解决方案可能涉及在config.js模块中使用setter
             PLAYER_CONFIG.preloadCount = count;
 
             showToast(`预加载数量已设置为 ${count}`, 'info');
@@ -469,8 +465,6 @@ function initializeEventListeners() {
         const savedCount = localStorage.getItem('preloadCount');
         const preloadCount = savedCount ? parseInt(savedCount) : 2;
         preloadCountInput.value = preloadCount;
-
-        // 注意：这里直接修改PLAYER_CONFIG。更健壮的解决方案可能涉及在config.js模块中使用setter
         PLAYER_CONFIG.preloadCount = preloadCount;
     }
 }
@@ -481,7 +475,6 @@ function initializeUIComponents() {
 }
 
 // 执行搜索
-
 function search(options = {}) {
     // ---在每次新搜索开始时，强制清除所有旧的搜索结果缓存 ---
     try {
@@ -900,8 +893,8 @@ function resetToHome() {
     // 回到「初始版面」
     /* ---- 恢复搜索区默认样式 ---- */
     if (searchArea) {
-        searchArea.classList.add('flex-1');   // 重新撑满页面
-        searchArea.classList.remove('mb-8');  // 移除搜索结果页加的外边距
+        searchArea.classList.add('flex-1');   
+        searchArea.classList.remove('mb-8');  
         searchArea.classList.remove('hidden');
     }
 
