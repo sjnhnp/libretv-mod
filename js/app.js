@@ -943,10 +943,7 @@ function createResultItemUsingTemplate(item) {
     const cardElement = clone.querySelector('.card-hover');
     if (!cardElement) {
         console.error("卡片元素 (.card-hover) 在模板克隆中未找到，项目:", item);
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'card-hover bg-[#222] rounded-lg overflow-hidden p-2 text-red-400';
-        errorDiv.innerHTML = `<h3>加载错误</h3><p class="text-xs">无法显示此项目</p>`;
-        return errorDiv;
+        return document.createDocumentFragment();
     }
 
     const imgElement = clone.querySelector('.result-img');
@@ -1001,21 +998,23 @@ function createResultItemUsingTemplate(item) {
             sourceNameElement.className = 'result-source-name hidden';
         }
     }
-    
-    // 创建一个唯一的视频标识符
-    const videoKey = `${item.vod_name}|${item.vod_year || ''}`;
-    cardElement.dataset.videoKey = videoKey;
 
+    // --- 核心修改：存储所有可用的元数据 ---
     cardElement.dataset.id = item.vod_id || '';
     cardElement.dataset.name = item.vod_name || '';
     cardElement.dataset.sourceCode = item.source_code || '';
-    cardElement.dataset.year = item.vod_year || '';
-    cardElement.dataset.typeName = item.type_name || '';
     if (item.api_url) {
         cardElement.dataset.apiUrl = item.api_url;
     }
-    
-    // --- 将搜索结果中的简介存储在 data-blurb 属性中 ---
+    cardElement.dataset.videoKey = `${item.vod_name}|${item.vod_year || ''}`;
+
+    // 存储来自搜索列表的元数据
+    cardElement.dataset.year = item.vod_year || '';
+    cardElement.dataset.typeName = item.type_name || '';
+    cardElement.dataset.remarks = item.vod_remarks || '';
+    cardElement.dataset.area = item.vod_area || '';
+    cardElement.dataset.actor = item.vod_actor || '';
+    cardElement.dataset.director = item.vod_director || '';
     cardElement.dataset.blurb = item.vod_blurb || '';
 
     cardElement.onclick = handleResultClick;
@@ -1025,19 +1024,27 @@ function createResultItemUsingTemplate(item) {
 
 function handleResultClick(event) {
     const card = event.currentTarget;
-    const id = card.dataset.id;
-    const name = card.dataset.name;
-    const sourceCode = card.dataset.sourceCode;
-    const apiUrl = card.dataset.apiUrl || '';
-    const year = card.dataset.year;
-    const typeName = card.dataset.typeName;
-    const videoKey = card.dataset.videoKey;
-    // --- 读取存储的简介信息 ---
-    const blurb = card.dataset.blurb;
+    
+    const {
+        id,
+        name,
+        sourceCode,
+        apiUrl = '',
+        year,
+        typeName,
+        videoKey,
+        blurb,
+        remarks,
+        area,
+        actor,
+        director
+    } = card.dataset;
 
     if (typeof showVideoEpisodesModal === 'function') {
-        // --- 将 blurb 作为新参数传递 ---
-        showVideoEpisodesModal(id, name, sourceCode, apiUrl, year, typeName, videoKey, blurb);
+        // 将所有数据传递给弹窗函数
+        showVideoEpisodesModal(id, name, sourceCode, apiUrl, {
+            year, typeName, videoKey, blurb, remarks, area, actor, director
+        });
     } else {
         console.error('showVideoEpisodesModal function not found!');
         showToast('无法加载剧集信息', 'error');
@@ -1049,8 +1056,7 @@ window.copyLinks = copyLinks;
 window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 
 // 显示视频剧集模态框
-
-async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeName, videoKey, blurb) {
+async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackData) {
     showLoading('加载剧集信息...');
 
     if (typeof APISourceManager === 'undefined' || typeof APISourceManager.getSelectedApi !== 'function') {
@@ -1059,6 +1065,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeN
         return;
     }
     const selectedApi = APISourceManager.getSelectedApi(sourceCode);
+
     if (!selectedApi) {
         hideLoading();
         showToast('未找到有效的数据源', 'error');
@@ -1078,34 +1085,34 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, year, typeN
         hideLoading();
 
         if (data.code !== 200 || !data.episodes || data.episodes.length === 0) {
-            let errorMessage = data.msg || '未找到剧集信息';
-            showToast(errorMessage, 'warning');
+            showToast(data.msg || '未找到剧集信息', 'warning');
             return;
         }
 
         AppState.set('currentEpisodes', data.episodes);
         AppState.set('currentVideoTitle', title);
-        AppState.set('currentSourceName', selectedApi.name);
-        AppState.set('currentSourceCode', sourceCode);
-        AppState.set('currentVideoYear', year);
-        AppState.set('currentVideoTypeName', typeName);
-        AppState.set('currentVideoKey', videoKey);
-        AppState.set('currentVideoId', id);
+ 
         localStorage.setItem('currentEpisodes', JSON.stringify(data.episodes));
         localStorage.setItem('currentVideoTitle', title);
 
         const videoInfo = data.videoInfo || {};
-        const finalDesc = (videoInfo.desc || '').replace(/<[^>]+>/g, '').trim() || blurb || '暂无简介。';
+        const finalType = videoInfo.type || fallbackData.typeName || '未知';
+        const finalYear = videoInfo.year || fallbackData.year || '未知';
+        const finalArea = videoInfo.area || fallbackData.area || '未知';
+        const finalDirector = videoInfo.director || fallbackData.director || '未知';
+        const finalActor = videoInfo.actor || fallbackData.actor || '未知';
+        const finalRemarks = videoInfo.remarks || fallbackData.remarks || '无';
+        const finalDesc = (videoInfo.desc || '').replace(/<[^>]+>/g, '').trim() || fallbackData.blurb || '暂无简介。';
 
         const modalContentHtml = `
             <div class="text-white text-sm">
                 <div class="grid grid-cols-2 gap-x-4 gap-y-2 mb-4">
-                    <div><span class="text-gray-400">类型：</span>${videoInfo.type || '未知'}</div>
-                    <div><span class="text-gray-400">年份：</span>${videoInfo.year || '未知'}</div>
-                    <div><span class="text-gray-400">地区：</span>${videoInfo.area || '未知'}</div>
-                    <div><span class="text-gray-400">导演：</span>${videoInfo.director || '未知'}</div>
-                    <div class="col-span-2"><span class="text-gray-400">主演：</span>${videoInfo.actor || '未知'}</div>
-                    <div class="col-span-2"><span class="text-gray-400">备注：</span>${videoInfo.remarks || '无'}</div>
+                    <div><span class="text-gray-400">类型：</span>${finalType}</div>
+                    <div><span class="text-gray-400">年份：</span>${finalYear}</div>
+                    <div><span class="text-gray-400">地区：</span>${finalArea}</div>
+                    <div><span class="text-gray-400">导演：</span>${finalDirector}</div>
+                    <div class="col-span-2"><span class="text-gray-400">主演：</span>${finalActor}</div>
+                    <div class="col-span-2"><span class="text-gray-400">备注：</span>${finalRemarks}</div>
                 </div>
                 <div class="mb-4">
                     <h4 class="font-semibold text-gray-300 mb-1">简介：</h4>
