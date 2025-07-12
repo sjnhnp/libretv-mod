@@ -1184,8 +1184,9 @@ function populateQualityMenu() {
     qualityDropdown.appendChild(autoButton);
 
 
-    // Add specific quality options
-    player.qualities.forEach((quality, index) => {
+    // --- CORRECTED PART ---
+    // Add specific quality options by converting the list to an array first
+    player.qualities.toArray().forEach((quality, index) => {
         const button = document.createElement('button');
         button.textContent = `${quality.height}p`;
         button.className = 'w-full text-left px-3 py-2 rounded text-sm transition-colors hover:bg-gray-700';
