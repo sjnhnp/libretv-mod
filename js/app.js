@@ -193,6 +193,7 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
             actualSourceCode = historyItem.sourceCode || '';
         }
     } catch (e) {
+
     }
 
     // 优先拉最新集数
@@ -200,6 +201,7 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     if (vodId && actualSourceCode) {
         try {
             let apiUrl = `/api/detail?id=${encodeURIComponent(vodId)}&source=${encodeURIComponent(actualSourceCode)}`;
+
             const apiInfo = typeof APISourceManager !== 'undefined' ? APISourceManager.getSelectedApi(actualSourceCode) : null;
             if (apiInfo && apiInfo.isCustom && apiInfo.url) {
                 apiUrl += `&customApi=${encodeURIComponent(apiInfo.url)}`;
