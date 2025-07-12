@@ -44,7 +44,7 @@
     <nav aria-label="设置功能" class="fixed top-4 right-4 z-10">
         <div class="flex items-center space-x-2">
 
-          <!--  <a href="https://www.olevod.com/nav/%E7%94%B5%E5%BD%B1/%E5%85%A8%E9%83%A8%E5%9C%B0%E5%8C%BA/%E5%85%A8%E9%83%A8%E5%B9%B4%E4%BB%BD/%E5%85%A8%E9%83%A8%E7%B1%BB%E5%9E%8B/%E5%85%A8%E9%83%A8/%E5%85%A8%E9%83%A8/%E6%9C%80%E6%96%B0.html"
+            <!--  <a href="https://www.olevod.com/nav/%E7%94%B5%E5%BD%B1/%E5%85%A8%E9%83%A8%E5%9C%B0%E5%8C%BA/%E5%85%A8%E9%83%A8%E5%B9%B4%E4%BB%BD/%E5%85%A8%E9%83%A8%E7%B1%BB%E5%9E%8B/%E5%85%A8%E9%83%A8/%E5%85%A8%E9%83%A8/%E6%9C%80%E6%96%B0.html"
                 target="_blank" rel="noopener noreferrer"
                 class="bg-[#222] hover:bg-[#333] border border-[#333] hover:border-white rounded-lg px-3 py-1.5 flex items-center gap-1 transition-colors"
                 aria-label="抓取最新" type="button">
@@ -463,29 +463,31 @@
 
     <!-- Templates -->
     <template id="search-result-template">
-        <div class="card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full shadow-sm hover:shadow-md"
+        <div class="card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full shadow-sm hover:shadow-md flex flex-col"
             data-id="" data-source-code="">
-            <div class="flex h-full">
+            <div class="flex flex-grow">
                 <div class="search-card-img-container relative flex-shrink-0">
                     <img src="https://via.placeholder.com/100x150/191919/555555?text=No+Image" alt="视频封面"
                         class="result-img h-full w-full object-cover transition-transform hover:scale-110"
                         loading="lazy"
                         onerror="this.onerror=null; this.src='https://via.placeholder.com/100x150/191919/555555?text=Error'; this.classList.add('object-contain');">
-                    <div class="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent"></div>
                 </div>
-                <div class="p-2 flex flex-col flex-grow">
+                <div class="p-3 flex flex-col flex-grow">
                     <div class="flex-grow">
                         <h3 class="result-title font-semibold text-sm mb-1 break-words line-clamp-2" title="视频标题">视频标题
                         </h3>
-                        <div class="result-meta flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1"> <span
+                        <div class="result-meta flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
+                            <span
                                 class="result-type hidden text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-blue-500 text-blue-300">类型</span>
                             <span
                                 class="result-year hidden text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-purple-500 text-purple-300">年份</span>
                         </div>
-                        <p class="result-remarks hidden text-xs text-gray-400 mb-1 line-clamp-1">更新状态</p>
+                        <p class="result-description text-xs text-gray-400 line-clamp-2 mb-2">暂无简介</p>
                     </div>
-                    <div class="result-source flex justify-start items-center mt-auto pt-1 border-t border-gray-800">
-                        <span class="result-source-name hidden">数据源</span>
+                    <div class="result-actions flex justify-between items-center mt-auto pt-2 border-t border-gray-800">
+                        <span class="result-source-name hidden"></span>
+                        <button
+                            class="play-button text-xs bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded-md transition-colors">播放</button>
                     </div>
                 </div>
             </div>

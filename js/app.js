@@ -932,6 +932,8 @@ window.playNextEpisode = playNextEpisode;
 window.showDetails = showDetails;
 window.playFromHistory = playFromHistory;
 
+// js/app.js
+
 function createResultItemUsingTemplate(item) {
     const template = document.getElementById('search-result-template');
     if (!template) {
@@ -941,18 +943,18 @@ function createResultItemUsingTemplate(item) {
 
     const clone = template.content.cloneNode(true);
     const cardElement = clone.querySelector('.card-hover');
+
     if (!cardElement) {
         console.error("卡片元素 (.card-hover) 在模板克隆中未找到，项目:", item);
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'card-hover bg-[#222] rounded-lg overflow-hidden p-2 text-red-400';
-        errorDiv.innerHTML = `<h3>加载错误</h3><p class="text-xs">无法显示此项目</p>`;
-        return errorDiv;
+        return document.createDocumentFragment();
     }
 
+    // --- 图片 ---
     const imgElement = clone.querySelector('.result-img');
     if (imgElement) {
-        imgElement.src = item.vod_pic && item.vod_pic.startsWith('http') ?
-            item.vod_pic : 'https://via.placeholder.com/100x150/191919/555555?text=No+Image';
+        imgElement.src = item.vod_pic && item.vod_pic.startsWith('http')
+            ? item.vod_pic
+            : 'https://via.placeholder.com/100x150/191919/555555?text=No+Image';
         imgElement.alt = item.vod_name || '未知标题';
         imgElement.onerror = function () {
             this.onerror = null;
@@ -961,12 +963,14 @@ function createResultItemUsingTemplate(item) {
         };
     }
 
+    // --- 标题 ---
     const titleElement = clone.querySelector('.result-title');
     if (titleElement) {
         titleElement.textContent = item.vod_name || '未知标题';
         titleElement.title = item.vod_name || '未知标题';
     }
 
+    // --- 类型和年份 ---
     const typeElement = clone.querySelector('.result-type');
     if (typeElement) {
         if (item.type_name) {
@@ -976,7 +980,6 @@ function createResultItemUsingTemplate(item) {
             typeElement.classList.add('hidden');
         }
     }
-
     const yearElement = clone.querySelector('.result-year');
     if (yearElement) {
         if (item.vod_year) {
@@ -987,41 +990,41 @@ function createResultItemUsingTemplate(item) {
         }
     }
 
-    const remarksElement = clone.querySelector('.result-remarks');
-    if (remarksElement) {
-        if (item.vod_remarks) {
-            remarksElement.textContent = item.vod_remarks;
-            remarksElement.classList.remove('hidden');
-        } else {
-            remarksElement.classList.add('hidden');
-        }
+    // --- 新增：填充简介 ---
+    const descriptionElement = clone.querySelector('.result-description');
+    if (descriptionElement) {
+        // 使用 vod_blurb 字段作为简介，如果不存在则显示默认文本
+        descriptionElement.textContent = item.vod_blurb || '暂无简介。';
     }
 
+    // --- 数据源和播放按钮 ---
     const sourceNameElement = clone.querySelector('.result-source-name');
     if (sourceNameElement) {
         if (item.source_name) {
-            sourceNameElement.textContent = item.source_name; // 设置文本内容
-            sourceNameElement.className = 'result-source-name bg-[#222222] text-xs text-gray-200 px-2 py-1 rounded-md';
-
+            sourceNameElement.textContent = item.source_name;
+            sourceNameElement.className = 'result-source-name bg-[#222222] text-xs text-gray-400 px-2 py-1 rounded-md';
         } else {
-            // 如果没有 source_name，则确保元素是隐藏的
             sourceNameElement.className = 'result-source-name hidden';
         }
     }
 
-    // 创建一个唯一的视频标识符
-    const videoKey = `${item.vod_name}|${item.vod_year || ''}`;
-    cardElement.dataset.videoKey = videoKey;
-
-    cardElement.dataset.id = item.vod_id || '';
-    cardElement.dataset.name = item.vod_name || '';
-    cardElement.dataset.sourceCode = item.source_code || '';
-    cardElement.dataset.year = item.vod_year || '';
-    cardElement.dataset.typeName = item.type_name || '';
-    if (item.api_url) {
-        cardElement.dataset.apiUrl = item.api_url;
+    // --- 更新：将点击事件绑定到播放按钮 ---
+    const playButton = clone.querySelector('.play-button');
+    if (playButton) {
+        // 将所有必要信息存储在按钮的 dataset 中
+        const videoKey = `${item.vod_name}|${item.vod_year || ''}`;
+        playButton.dataset.id = item.vod_id || '';
+        playButton.dataset.name = item.vod_name || '';
+        playButton.dataset.sourceCode = item.source_code || '';
+        playButton.dataset.year = item.vod_year || '';
+        playButton.dataset.typeName = item.type_name || '';
+        playButton.dataset.videoKey = videoKey;
+        if (item.api_url) {
+            playButton.dataset.apiUrl = item.api_url;
+        }
+        // 绑定点击事件
+        playButton.onclick = handleResultClick;
     }
-    cardElement.onclick = handleResultClick;
 
     return clone;
 }

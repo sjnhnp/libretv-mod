@@ -877,3 +877,24 @@ body {
   transform: scale(0.95);
 }
 }
+
+
+/* 搜索结果卡片优化 */
+.search-card-img-container {
+  width: 100px; /* 固定图片宽度 */
+  flex-shrink: 0;
+}
+
+.result-title {
+  min-height: 2.5rem; /* 确保标题有足够空间，避免布局跳动 */
+}
+
+.result-description {
+  min-height: 2.2rem; /* 为简介文本预留空间 */
+}
+
+/* 播放按钮样式 */
+.play-button {
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
