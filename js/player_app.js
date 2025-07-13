@@ -34,16 +34,24 @@ function getCoreTitle(title) {
 
     let coreTitle = title;
 
+    // 1. 定义一个明确的、可安全移除的“版本”标签列表
     const versionTags = [
         '国语', '粤语', '台配', '中字', '普通话',
         '高清', 'HD', '版', '修复版'
     ];
     
+    // 2. 创建一个更智能的正则表达式，用于移除被括号或空格包裹的版本标签
     const bracketRegex = new RegExp(`[\\s\\(（【\\[](${versionTags.join('|')})(?![0-9])\\s*[\\)）】\\]]?`, 'gi');
     coreTitle = coreTitle.replace(bracketRegex, '').trim();
 
+    // 3. 创建另一个正则表达式，用于移除末尾的、没有括号的版本标签
     const suffixRegex = new RegExp(`(${versionTags.join('|')})$`, 'i');
     coreTitle = coreTitle.replace(suffixRegex, '').trim();
+
+    // --- 【新增逻辑：空格归一化】---
+    // 4. 移除所有剩余的空格字符，确保 "老友记 第一季" 和 "老友记第一季" 结果一致
+    coreTitle = coreTitle.replace(/\s+/g, '');
+    // --- 【新增结束】---
 
     return coreTitle;
 }
