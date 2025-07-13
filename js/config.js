@@ -20,7 +20,7 @@ const SITE_CONFIG = {
 
 window.SITE_CONFIG = SITE_CONFIG; 
 
-// API站点配置（已更新 api 字段以包含完整路径）
+// API站点配置
 const API_SITES = { 
     jmzy: { api: 'https://api.jmzy.com/api.php/provide/vod', name: '金马资源' },
     bfzy: { api: 'https://bfzyapi.com/api.php/provide/vod', name: '暴风资源' },
@@ -46,9 +46,9 @@ const API_SITES = {
 
 window.API_SITES = API_SITES; 
 const DEFAULT_SELECTED_APIS = ["heimuer", "bfzy", "maotai", "mdzy", "tyyszy", "dyttzy"];
-window.DEFAULT_SELECTED_APIS = DEFAULT_SELECTED_APIS; // 将其设为全局变量
+window.DEFAULT_SELECTED_APIS = DEFAULT_SELECTED_APIS; 
 
-// 聚合搜索配置 (与 renew.txt 原有保持一致)
+// 聚合搜索配置
 const AGGREGATED_SEARCH_CONFIG = { 
     enabled: true, 
     timeout: 8000, // 单个源超时时间（毫秒） 
