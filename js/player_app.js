@@ -1009,25 +1009,25 @@ function setupLineSwitching() {
 
         // 获取当前正在播放的线路code和视频ID，用于高亮显示
         const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
-        const currentId = vodIdForPlayer; 
+        const currentId = vodIdForPlayer;
 
         if (availableAlternativeSources.length > 0) {
             availableAlternativeSources.forEach(source => {
                 const item = document.createElement('button');
 
                 // --- 动态生成线路显示名称的核心逻辑 ---
-                
+
                 // 1. 获取该线路的原始标题，并提取其核心标题
                 const coreTitle = getCoreTitle(source.originalTitle);
-                
+
                 // 2. 尝试从原始标题中提取版本标签
                 let versionTag = source.originalTitle.replace(coreTitle, '').trim();
-                
+
                 // 3. 如果标题中没有版本信息，则使用 remarks 字段作为补充
                 if (!versionTag && source.remarks) {
                     versionTag = source.remarks;
                 }
-                
+
                 // 4. 美化版本标签，确保格式统一（例如，都带上括号）
                 if (versionTag && !/^[\[\(【（]/.test(versionTag)) {
                     versionTag = `(${versionTag})`;
@@ -1041,7 +1041,7 @@ function setupLineSwitching() {
                 item.dataset.sourceCode = source.code;
                 item.dataset.vodId = source.vod_id; // 传递唯一的 VOD ID
                 item.className = 'w-full text-left px-3 py-2 rounded text-sm transition-colors hover:bg-gray-700';
-                
+
                 // 使用 code 和 vod_id 双重判断来确定当前播放线路，确保精准高亮
                 if (source.code === currentSourceCode && source.vod_id === currentId) {
                     item.classList.add('line-active', 'bg-blue-600', 'text-white');
@@ -1086,54 +1086,51 @@ function setupLineSwitching() {
 
 // File: js/player_app.js
 
-async function switchLine(newSourceCode, newVodId) { // 我们将直接使用这里传入的、正确的 newVodId
+async function switchLine(newSourceCode, newVodId) {
     if (!player || !currentVideoTitle) {
         showError("无法切换线路：播放器或视频信息丢失");
         return;
     }
-    
-    // --- 【核心修正】---
-    // 直接使用从按钮dataset传递过来的、已经确认是正确的 newVodId
-    // 不再执行任何不必要的内部查找
-    const correctVodId = newVodId;
-    if (!correctVodId) {
-        showError("切换失败：目标线路缺少有效ID。");
+
+    const targetSourceInfo = availableAlternativeSources.find(source => source.vod_id === newVodId);
+
+    if (!targetSourceInfo) {
+        showError(`切换失败：未能在可用线路中找到ID为“${newVodId}”的线路。`);
         return;
     }
-    // --- 【修正结束】---
 
-    console.log(`[SwitchLine] 正在切换到线路 code: ${newSourceCode}, 使用ID: ${correctVodId}`);
-    
-    vodIdForPlayer = correctVodId; // 更新全局ID，确保历史记录能保存正确的ID
+    const correctVodId = targetSourceInfo.vod_id;
+    console.log(`[SwitchLine] 正在切换到线路: ${targetSourceInfo.originalTitle}, 使用正确ID: ${correctVodId}`);
+
+    vodIdForPlayer = correctVodId;
 
     const timeToSeek = player.currentTime;
     const loadingEl = document.getElementById('loading');
     const errorEl = document.getElementById('error');
     if (loadingEl) loadingEl.style.display = 'flex';
     if (errorEl) errorEl.style.display = 'none';
-    
+
     let apiInfo;
     try {
         apiInfo = APISourceManager.getSelectedApi(newSourceCode);
         if (!apiInfo) throw new Error(`未找到线路 ${newSourceCode} 的信息`);
-        
-        // 直接使用 correctVodId 构建API请求
+
         let detailUrl = `/api/detail?id=${correctVodId}&source=${newSourceCode}`;
         if (apiInfo.isCustom) {
             detailUrl += `&customApi=${encodeURIComponent(apiInfo.url)}`;
         }
-        
+
         const detailRes = await fetch(detailUrl);
         const detailData = await detailRes.json();
-        
+
         if (detailData.code !== 200 || !detailData.episodes || detailData.episodes.length === 0) {
             throw new Error(`在线路“${apiInfo.name}”上获取剧集列表失败`);
         }
-        
+
         const newEps = detailData.episodes;
-        
-        // 保留最基本的安全校验，防止API返回完全错误的数据类型
-        // （此处的校验可以根据需要调整，但基本校验是必要的）
+        const newVideoInfo = detailData.videoInfo || {}; // 获取新线路的元数据
+
+        // 保留基础校验
         const oldEps = [...currentEpisodes];
         if (oldEps.length > 1 && newEps.length < 1) {
             throw new Error(`数据校验失败，为保证安全已中止切换。`);
@@ -1144,26 +1141,50 @@ async function switchLine(newSourceCode, newVodId) { // 我们将直接使用这
         window.currentEpisodes = newEps;
         localStorage.setItem('currentEpisodes', JSON.stringify(newEps));
 
+        // --- 【核心修复开始】---
+        // 1. 同步更新内存中的全局元数据变量
+        currentVideoYear = newVideoInfo.year || currentVideoYear;
+        currentVideoTypeName = newVideoInfo.type_name || newVideoInfo.type || currentVideoTypeName;
+
+        // 2. 更新浏览器地址栏，确保所有参数都与新线路匹配
         const newEpisodeUrl = (currentEpisodeIndex < newEps.length) ? newEps[currentEpisodeIndex] : newEps[0];
-        
         const newUrlForBrowser = new URL(window.location.href);
+
         newUrlForBrowser.searchParams.set('source_code', newSourceCode);
         newUrlForBrowser.searchParams.set('source', apiInfo.name);
-        newUrlForBrowser.searchParams.set('id', correctVodId); 
+        newUrlForBrowser.searchParams.set('id', correctVodId);
         newUrlForBrowser.searchParams.set('url', newEpisodeUrl);
+
+        // 同步更新元数据参数
+        if (currentVideoYear) newUrlForBrowser.searchParams.set('year', currentVideoYear);
+        if (currentVideoTypeName) newUrlForBrowser.searchParams.set('typeName', currentVideoTypeName);
+
+        // 基于新数据重新生成并更新 videoKey 和 universalId
+        const newVideoKey = `${currentVideoTitle}|${currentVideoYear}`;
+        newUrlForBrowser.searchParams.set('videoKey', newVideoKey);
+
+        universalId = generateUniversalId(currentVideoTitle, currentVideoYear, currentEpisodeIndex);
+        newUrlForBrowser.searchParams.set('universalId', universalId);
+
         window.history.replaceState({}, '', newUrlForBrowser.toString());
-        
+        // --- 【核心修复结束】---
+
         nextSeekPosition = timeToSeek;
         const processedUrl = await processVideoUrl(newEpisodeUrl);
         player.src = { src: processedUrl, type: 'application/x-mpegurl' };
         player.play();
-        
+
         renderEpisodes();
+        updateEpisodeInfo(); // 切换线路后也更新一下标题栏等信息
         showMessage(`已切换到线路: ${apiInfo.name}`, 'success');
         if (loadingEl) loadingEl.style.display = 'none';
 
     } catch (err) {
         console.error("切换线路失败:", err);
+        // 出错时恢复 vodIdForPlayer 为切换前的值，以防状态错乱
+        const oldId = new URLSearchParams(window.location.search).get('id');
+        vodIdForPlayer = oldId || vodIdForPlayer;
+
         lastFailedAction = { type: 'switchLine', payload: { sourceCode: newSourceCode, vodId: correctVodId } };
         const lineName = apiInfo ? apiInfo.name : '未知线路';
         const errorMessage = err.message.includes(lineName) ? err.message : `切换“${lineName}”失败: ${err.message}`;
