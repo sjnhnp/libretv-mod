@@ -1053,6 +1053,8 @@ window.copyLinks = copyLinks;
 window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 
 // 显示视频剧集模态框
+// In js/app.js
+
 async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackData) {
     showLoading('加载剧集信息...');
 
@@ -1070,7 +1072,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         }
 
         const response = await fetch(detailApiUrl);
-        if (!response.ok) throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
+        if (!response.ok) throw new Error(`API请求失败: ${response.status}`);
 
         const data = await response.json();
         hideLoading();
@@ -1080,7 +1082,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             return;
         }
 
-        // (AppState and localStorage logic remains the same)
+        // --- AppState and localStorage logic remains the same ---
         AppState.set('currentEpisodes', data.episodes);
         AppState.set('currentVideoTitle', title);
         AppState.set('currentSourceName', selectedApi.name);
@@ -1092,18 +1094,14 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         localStorage.setItem('currentEpisodes', JSON.stringify(data.episodes));
         localStorage.setItem('currentVideoTitle', title);
 
-        // 1. Get the template from the DOM
+        // --- CORE REFACTORING ---
+        // 1. Get and clone the main template
         const template = document.getElementById('video-details-template');
-        if (!template) {
-            showToast('详情模板未找到!', 'error');
-            return;
-        }
-
-        // 2. Clone the template content
+        if (!template) return showToast('详情模板未找到!', 'error');
         const modalContent = template.content.cloneNode(true);
-        const videoInfo = data.videoInfo || {};
 
-        // 3. Populate the cloned template with data
+        // 2. Populate metadata and description
+        const videoInfo = data.videoInfo || {};
         const fields = {
             type: videoInfo.type || fallbackData.typeName || '未知',
             year: videoInfo.year || fallbackData.year || '未知',
@@ -1112,20 +1110,33 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             actor: videoInfo.actor || fallbackData.actor || '未知',
             remarks: videoInfo.remarks || fallbackData.remarks || '无',
             description: (videoInfo.desc || '').replace(/<[^>]+>/g, '').trim() || fallbackData.blurb || '暂无简介。',
+            'episode-count': data.episodes.length,
         };
-
         for (const [key, value] of Object.entries(fields)) {
             const el = modalContent.querySelector(`[data-field="${key}"]`);
             if (el) el.textContent = value;
         }
 
-        // 4. Render and append the episode buttons
-        const episodesContainer = modalContent.querySelector('[data-field="episodesContainer"]');
-        if (episodesContainer) {
-            // renderEpisodeButtons now returns an HTML string, so we set innerHTML
-            episodesContainer.innerHTML = renderEpisodeButtons(data.episodes, title, sourceCode, selectedApi.name);
+        // 3. Render and inject episode buttons
+        const episodeButtonsGrid = modalContent.querySelector('[data-field="episode-buttons-grid"]');
+        if (episodeButtonsGrid) {
+            episodeButtonsGrid.innerHTML = renderEpisodeButtons(data.episodes, title, sourceCode, selectedApi.name);
         }
 
+        // 4. Attach event listeners to the new controls
+        modalContent.querySelector('[data-action="copy-links"]').addEventListener('click', copyLinks);
+        modalContent.querySelector('[data-action="toggle-order"]').addEventListener('click', () => {
+            // We pass the grid container to the UI function so it knows what to update
+            toggleEpisodeOrderUI(episodeButtonsGrid);
+        });
+
+        // Initial state for the order icon
+        const orderIcon = modalContent.querySelector('[data-field="order-icon"]');
+        if (orderIcon) {
+            orderIcon.style.transform = (AppState.get('episodesReversed') || false) ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+
+        // 5. Show the modal
         const tempDiv = document.createElement('div');
         tempDiv.appendChild(modalContent);
         showModal(tempDiv.innerHTML, `${title} (${selectedApi.name})`);
@@ -1133,6 +1144,36 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     } catch (error) {
         hideLoading();
         showToast(`获取剧集信息失败: ${error.message}`, 'error');
+    }
+}
+
+function toggleEpisodeOrderUI(container) {
+    if (!container) {
+        // Find the container in the currently open modal if not passed directly
+        container = document.querySelector('#modalContent [data-field="episode-buttons-grid"]');
+        if (!container) return;
+    }
+
+    let currentReversedState = AppState.get('episodesReversed') || false;
+    AppState.set('episodesReversed', !currentReversedState);
+
+    // Re-render the buttons inside the provided container
+    const episodes = AppState.get('currentEpisodes');
+    const title = AppState.get('currentVideoTitle');
+    const sourceName = AppState.get('currentSourceName');
+    const sourceCode = AppState.get('currentSourceCode');
+
+    if (episodes && title && sourceCode) {
+        container.innerHTML = renderEpisodeButtons(episodes, title, sourceCode, sourceName || '');
+    }
+
+    // Update the icon and title on the button in the modal
+    const toggleBtn = document.querySelector('#modal [data-action="toggle-order"]');
+    const orderIcon = document.querySelector('#modal [data-field="order-icon"]');
+    if (toggleBtn && orderIcon) {
+        const reversed = AppState.get('episodesReversed');
+        toggleBtn.title = reversed ? '切换为正序排列' : '切换为倒序排列';
+        orderIcon.style.transform = reversed ? 'rotate(180deg)' : 'rotate(0deg)';
     }
 }
 
