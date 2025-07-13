@@ -32,23 +32,19 @@ let universalId = '';
 function getCoreTitle(title) {
     if (typeof title !== 'string') return '';
 
-    // 第一步：像以前一样，移除标题后面跟着的括号、空格等所有内容
-    let coreTitle = title.replace(/[\s\(（【\[].*/, "").trim();
+    let coreTitle = title;
 
-    // 第二步：处理像“爱人国语”这样没有分隔符的常见后缀
-    // 定义一个常见的版本后缀列表
-    const commonSuffixes = [
-        '国语', '粤语', '台配', '中字', 
-        '高清', 'HD', '版', '季'
+    const versionTags = [
+        '国语', '粤语', '台配', '中字', '普通话',
+        '高清', 'HD', '版', '修复版'
     ];
     
-    // 构建一个正则表达式，用于匹配结尾处的这些后缀
-    // 例如，会生成 /(国语|粤语|...)$/i
-    const suffixRegex = new RegExp(`(${commonSuffixes.join('|')})$`, 'i');
+    const bracketRegex = new RegExp(`[\\s\\(（【\\[](${versionTags.join('|')})(?![0-9])\\s*[\\)）】\\]]?`, 'gi');
+    coreTitle = coreTitle.replace(bracketRegex, '').trim();
 
-    // 从第一步处理过的标题末尾，移除这些后缀
+    const suffixRegex = new RegExp(`(${versionTags.join('|')})$`, 'i');
     coreTitle = coreTitle.replace(suffixRegex, '').trim();
-    
+
     return coreTitle;
 }
 
