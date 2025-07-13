@@ -49,13 +49,11 @@ function getCoreTitle(title) {
     const suffixRegex = new RegExp(`(${versionTags.join('|')})$`, 'i');
     coreTitle = coreTitle.replace(suffixRegex, '').trim();
     
-    // --- 【新增逻辑：第一季归一化】---
     // 4. 定义“第一季”的各种常见写法
     const seasonOneTags = ['第一季', '第1季', 'Season 1', 'S01', 'Season1'];
     // 创建一个正则表达式，用于匹配并移除末尾的“第一季”标识
     const seasonOneRegex = new RegExp(`[\\s\\(（【\\[]?(${seasonOneTags.join('|')})[\\)）】\\]]?$`, 'i');
     coreTitle = coreTitle.replace(seasonOneRegex, '').trim();
-    // --- 【新增结束】---
 
     // 5. 移除所有剩余的空格字符，确保 "老友记 第一季" 和 "老友记第一季" 结果一致
     coreTitle = coreTitle.replace(/\s+/g, '');
