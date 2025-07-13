@@ -34,11 +34,16 @@ function getCoreTitle(title) {
 
     let coreTitle = title;
 
-    // 1. 定义一个明确的、可安全移除的“版本”标签列表
+    // --- 【核心修改开始】---
+    // 1. 扩充版本标签列表，加入常见的简称
     const versionTags = [
-        '国语', '粤语', '台配', '中字', '普通话',
+        '国语', '国', 
+        '粤语', '粤',
+        '台配', '台',
+        '中字', '普通话',
         '高清', 'HD', '版', '修复版'
     ];
+    // --- 【修改结束】---
     
     // 2. 创建一个更智能的正则表达式，用于移除被括号或空格包裹的版本标签
     //    它会跳过包含数字的括号内容，以保护 (第一季) 这样的情况
@@ -55,7 +60,7 @@ function getCoreTitle(title) {
     const seasonOneRegex = new RegExp(`[\\s\\(（【\\[]?(${seasonOneTags.join('|')})[\\)）】\\]]?$`, 'i');
     coreTitle = coreTitle.replace(seasonOneRegex, '').trim();
 
-    // 5. 移除所有剩余的空格字符，确保 "老友记 第一季" 和 "老友记第一季" 结果一致
+    // 5. 移除所有剩余的空格字符
     coreTitle = coreTitle.replace(/\s+/g, '');
 
     return coreTitle;
