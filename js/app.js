@@ -1,8 +1,4 @@
-/**
- * 主应用程序逻辑
- * 使用AppState进行状态管理，DOMCache进行DOM元素缓存
- */
-
+// 主应用程序逻辑 使用AppState进行状态管理，DOMCache进行DOM元素缓存
 // Basic AppState Implementation
 const AppState = (function () {
     const state = new Map();
@@ -50,22 +46,14 @@ const DOMCache = (function () {
     };
 })();
 
-/**
- * 显示详情
- * @param {HTMLElement} element - 包含数据属性的元素
- */
+// 显示详情
 function showDetails(element) {
     const id = element.dataset.id;
     const sourceCode = element.dataset.source;
     console.log(`STUB: showDetails called for element with ID: ${id}, Source: ${sourceCode}`);
 }
 
-/**
- * 文本净化函数
- * 重要：这是一个基本的存根。真实实现需要强大的XSS保护。
- * @param {string} text - 需要净化的文本
- * @returns {string} - 净化后的文本
- */
+//文本净化函数
 function sanitizeText(text) {
     if (typeof text !== 'string') return '';
     return text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -127,13 +115,7 @@ function playVideo(url, title, episodeIndex, sourceName = '', sourceCode = '', v
     window.location.href = playerUrl.toString();
 }
 
-/**
- * 生成视频统一标识符，用于跨线路共享播放进度
- * @param {string} title 视频标题
- * @param {string} year 年份
- * @param {number} episodeIndex 集数索引
- * @returns {string} 统一标识符
- */
+// 生成视频统一标识符，用于跨线路共享播放进度
 function generateUniversalId(title, year, episodeIndex) {
     // 移除标题中的特殊字符和空格，转换为小写   
     const normalizedTitle = title.toLowerCase().replace(/[^\w\u4e00-\u9fa5]/g, '').replace(/\s+/g, '');
@@ -277,12 +259,7 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     window.location.href = playerUrl.toString();
 }
 
-/**
- * 从localStorage获取布尔配置
- * @param {string} key - 配置键
- * @param {boolean} defaultValue - 默认值
- * @returns {boolean} - 配置值
- */
+//从localStorage获取布尔配置
 function getBoolConfig(key, defaultValue) {
     const value = localStorage.getItem(key);
     if (value === null) return defaultValue;
@@ -481,7 +458,7 @@ function search(options = {}) {
         sessionStorage.removeItem('searchQuery');
         sessionStorage.removeItem('searchResults');
         sessionStorage.removeItem('searchSelectedAPIs');
-        sessionStorage.removeItem('videoSourceMap'); // 确保这个也清除
+        sessionStorage.removeItem('videoSourceMap');
         console.log('[缓存] 已在执行新搜索前清除旧缓存。');
     } catch (e) {
         console.error('清除 sessionStorage 失败:', e);
@@ -622,10 +599,8 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
             if (!videoSourceMap[key]) {
                 videoSourceMap[key] = [];
             }
-            // --- 【核心修改】---
             // 将完整的 item 对象存入，以便播放页获取所有元数据
             videoSourceMap[key].push(item);
-            // --- 【修改结束】---
         });
         sessionStorage.setItem('videoSourceMap', JSON.stringify(videoSourceMap));
     } catch (e) {
@@ -867,7 +842,7 @@ async function getVideoDetail(id, sourceCode, apiUrl = '') {
             0,
             sourceName,
             sourceCode,
-            id // vod_id
+            id
         );
     } catch (error) {
         if (searchResults) {
@@ -1051,8 +1026,6 @@ window.copyLinks = copyLinks;
 window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 
 // 显示视频剧集模态框
-// In js/app.js
-
 async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackData) {
     showLoading('加载剧集信息...');
 
@@ -1092,13 +1065,10 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         localStorage.setItem('currentEpisodes', JSON.stringify(data.episodes));
         localStorage.setItem('currentVideoTitle', title);
 
-        // --- CORE REFACTORING ---
-        // 1. Get and clone the main template
         const template = document.getElementById('video-details-template');
         if (!template) return showToast('详情模板未找到!', 'error');
         const modalContent = template.content.cloneNode(true);
 
-        // 2. Populate metadata and description
         const videoInfo = data.videoInfo || {};
         const fields = {
             type: videoInfo.type || fallbackData.typeName || '未知',
@@ -1115,26 +1085,21 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             if (el) el.textContent = value;
         }
 
-        // 3. Render and inject episode buttons
         const episodeButtonsGrid = modalContent.querySelector('[data-field="episode-buttons-grid"]');
         if (episodeButtonsGrid) {
             episodeButtonsGrid.innerHTML = renderEpisodeButtons(data.episodes, title, sourceCode, selectedApi.name);
         }
 
-        // 4. Attach event listeners to the new controls
         modalContent.querySelector('[data-action="copy-links"]').addEventListener('click', copyLinks);
         modalContent.querySelector('[data-action="toggle-order"]').addEventListener('click', () => {
-            // We pass the grid container to the UI function so it knows what to update
             toggleEpisodeOrderUI(episodeButtonsGrid);
         });
 
-        // Initial state for the order icon
         const orderIcon = modalContent.querySelector('[data-field="order-icon"]');
         if (orderIcon) {
             orderIcon.style.transform = (AppState.get('episodesReversed') || false) ? 'rotate(180deg)' : 'rotate(0deg)';
         }
 
-        // 5. Show the modal
         const tempDiv = document.createElement('div');
         tempDiv.appendChild(modalContent);
         showModal(tempDiv.innerHTML, `${title} (${selectedApi.name})`);
@@ -1147,7 +1112,6 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
 
 function toggleEpisodeOrderUI(container) {
     if (!container) {
-        // Find the container in the currently open modal if not passed directly
         container = document.querySelector('#modalContent [data-field="episode-buttons-grid"]');
         if (!container) return;
     }
@@ -1155,7 +1119,6 @@ function toggleEpisodeOrderUI(container) {
     let currentReversedState = AppState.get('episodesReversed') || false;
     AppState.set('episodesReversed', !currentReversedState);
 
-    // Re-render the buttons inside the provided container
     const episodes = AppState.get('currentEpisodes');
     const title = AppState.get('currentVideoTitle');
     const sourceName = AppState.get('currentSourceName');
@@ -1165,7 +1128,6 @@ function toggleEpisodeOrderUI(container) {
         container.innerHTML = renderEpisodeButtons(episodes, title, sourceCode, sourceName || '');
     }
 
-    // Update the icon and title on the button in the modal
     const toggleBtn = document.querySelector('#modal [data-action="toggle-order"]');
     const orderIcon = document.querySelector('#modal [data-field="order-icon"]');
     if (toggleBtn && orderIcon) {
