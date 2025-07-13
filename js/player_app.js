@@ -28,15 +28,28 @@ let availableAlternativeSources = [];
 let adFilteringEnabled = false;
 let universalId = '';
 
-/**
- * 提取核心标题，用于匹配同一作品的不同版本
- * @param {string} title - 原始标题
- * @returns {string} - 处理后的核心标题
- */
+// 提取核心标题，用于匹配同一作品的不同版本
 function getCoreTitle(title) {
     if (typeof title !== 'string') return '';
-    // 移除标题后面跟着的括号、空格等所有内容
-    return title.replace(/[\s\(（【\[].*/, "").trim();
+
+    // 第一步：像以前一样，移除标题后面跟着的括号、空格等所有内容
+    let coreTitle = title.replace(/[\s\(（【\[].*/, "").trim();
+
+    // 第二步：处理像“爱人国语”这样没有分隔符的常见后缀
+    // 定义一个常见的版本后缀列表
+    const commonSuffixes = [
+        '国语', '粤语', '台配', '中字', 
+        '高清', 'HD', '版', '季'
+    ];
+    
+    // 构建一个正则表达式，用于匹配结尾处的这些后缀
+    // 例如，会生成 /(国语|粤语|...)$/i
+    const suffixRegex = new RegExp(`(${commonSuffixes.join('|')})$`, 'i');
+
+    // 从第一步处理过的标题末尾，移除这些后缀
+    coreTitle = coreTitle.replace(suffixRegex, '').trim();
+    
+    return coreTitle;
 }
 
 // 生成视频统一标识符，用于跨线路共享播放进度
@@ -418,7 +431,6 @@ async function doEpisodeSwitch(index, url) {
         player.play().catch(e => console.warn("Autoplay after episode switch was prevented.", e));
     }
 }
-
 
 (async function initializePage() {
     document.addEventListener('DOMContentLoaded', async () => {
