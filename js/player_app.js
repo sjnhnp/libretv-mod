@@ -443,43 +443,39 @@ async function doEpisodeSwitch(index, url) {
         currentVideoTypeName = urlParams.get('typeName') || '';
 
         const sourceMapJSON = sessionStorage.getItem('videoSourceMap');
-    if (sourceMapJSON) {
-        try {
-            const sourceMap = JSON.parse(sourceMapJSON);
-            const clickedTitle = urlParams.get('title') ? fullyDecode(urlParams.get('title')) : '';
-            const clickedYear = urlParams.get('year') || '';
-            
-            // 1. 以用户点击的卡片为基准，提取核心标题
-            const coreClickedTitle = getCoreTitle(clickedTitle);
+        if (sourceMapJSON) {
+            try {
+                const sourceMap = JSON.parse(sourceMapJSON);
+                const clickedTitle = urlParams.get('title') ? fullyDecode(urlParams.get('title')) : '';
+                const clickedYear = urlParams.get('year') || '';
 
-            // --- 【核心修改开始】---
-            const relevantSources = [];
-            
-            // 2. 遍历所有搜索结果，而不仅仅是同名结果
-            for (const key in sourceMap) {
-                if (sourceMap.hasOwnProperty(key)) {
-                    const [keyTitle, keyYear] = key.split('|');
-                    
-                    // 3. 提取当前遍历项的核心标题
-                    const coreKeyTitle = getCoreTitle(keyTitle);
+                // 1. 以用户点击的卡片为基准，提取核心标题
+                const coreClickedTitle = getCoreTitle(clickedTitle);
 
-                    // 4. 核心匹配逻辑：核心标题相同，且年份匹配
-                    if (coreKeyTitle === coreClickedTitle && (!clickedYear || !keyYear || keyYear === clickedYear)) {
-                        
-                        const sources = sourceMap[key];
-                        
-                        sources.forEach(source => {
-                            // 5. 为每条线路附加其原始标题，用于后续生成显示名称
-                            relevantSources.push({
-                                ...source,
-                                originalTitle: keyTitle, // 保存原始标题
+                // --- 【核心修改开始】---
+                const relevantSources = [];
+
+                // 2. 遍历所有搜索结果
+                for (const key in sourceMap) {
+                    if (sourceMap.hasOwnProperty(key)) {
+                        const [keyTitle, keyYear] = key.split('|');
+                        const coreKeyTitle = getCoreTitle(keyTitle);
+
+                        // 3. 核心匹配逻辑：核心标题相同，且年份匹配
+                        if (coreKeyTitle === coreClickedTitle && (!clickedYear || !keyYear || keyYear === clickedYear)) {
+                            const sources = sourceMap[key];
+                            sources.forEach(source => {
+                                // 4. 为每条线路附加其完整的原始标题，这在后续步骤中至关重要
+                                relevantSources.push({
+                                    ...source,
+                                    originalTitle: keyTitle,
+                                });
                             });
-                        });
+                        }
                     }
                 }
-            }
-            availableAlternativeSources = relevantSources;
-            // --- 【核心修改结束】---
+                availableAlternativeSources = relevantSources;
+                // --- 【核心修改结束】---
             } catch (e) {
                 console.error("从 sessionStorage 读取线路失败:", e);
                 availableAlternativeSources = [];
@@ -1011,37 +1007,42 @@ function setupLineSwitching() {
         if (skipDropdown) skipDropdown.classList.add('hidden');
         dropdown.innerHTML = '';
 
+        // 获取当前正在播放的线路code和视频ID，用于高亮显示
         const currentSourceCode = new URLSearchParams(window.location.search).get('source_code');
-        const currentId = vodIdForPlayer;
+        const currentId = vodIdForPlayer; 
 
-        if (availableAlternativeSources.length > 1) {
+        if (availableAlternativeSources.length > 0) {
             availableAlternativeSources.forEach(source => {
                 const item = document.createElement('button');
 
-                // --- 【核心修改开始】---
-                // 1. 提取版本标签 (用原始标题减去核心标题)
+                // --- 动态生成线路显示名称的核心逻辑 ---
+                
+                // 1. 获取该线路的原始标题，并提取其核心标题
                 const coreTitle = getCoreTitle(source.originalTitle);
+                
+                // 2. 尝试从原始标题中提取版本标签
                 let versionTag = source.originalTitle.replace(coreTitle, '').trim();
                 
-                // 如果版本标签为空，则使用备注作为补充
+                // 3. 如果标题中没有版本信息，则使用 remarks 字段作为补充
                 if (!versionTag && source.remarks) {
                     versionTag = source.remarks;
                 }
                 
-                // 2. 美化标签
+                // 4. 美化版本标签，确保格式统一（例如，都带上括号）
                 if (versionTag && !/^[\[\(【（]/.test(versionTag)) {
                     versionTag = `(${versionTag})`;
                 }
 
-                // 3. 生成最终显示名称
+                // 5. 组合成最终的显示名称，例如 "黑木耳 (粤语)" 或 "天涯资源 (更新至21集)"
                 item.textContent = `${source.name} ${versionTag}`.trim();
-                // --- 【核心修改结束】---
+
+                // --- 逻辑结束 ---
 
                 item.dataset.sourceCode = source.code;
-                item.dataset.vodId = source.vod_id;
+                item.dataset.vodId = source.vod_id; // 传递唯一的 VOD ID
                 item.className = 'w-full text-left px-3 py-2 rounded text-sm transition-colors hover:bg-gray-700';
                 
-                // 判断当前播放的是哪条线路
+                // 使用 code 和 vod_id 双重判断来确定当前播放线路，确保精准高亮
                 if (source.code === currentSourceCode && source.vod_id === currentId) {
                     item.classList.add('line-active', 'bg-blue-600', 'text-white');
                     item.disabled = true;
@@ -1056,7 +1057,8 @@ function setupLineSwitching() {
         dropdown.classList.toggle('hidden');
     };
 
-    // ... 函数的事件监听部分保持不变 ...
+    // --- 事件监听部分 ---
+    // (这部分保持不变，以确保功能完整)
     if (!button._lineSwitchListenerAttached) {
         button.addEventListener('click', showLinesFromCache);
         button._lineSwitchListenerAttached = true;
@@ -1066,7 +1068,7 @@ function setupLineSwitching() {
             const target = e.target.closest('button[data-source-code]');
             if (target && !target.disabled) {
                 dropdown.classList.add('hidden');
-                // 切换线路时，第二个参数 newVodId 已被我们的新 switchLine 逻辑忽略，所以传递什么都可以
+                // 调用 switchLine 时，传递唯一的 vodId
                 switchLine(target.dataset.sourceCode, target.dataset.vodId);
             }
         });
@@ -1082,14 +1084,13 @@ function setupLineSwitching() {
     }
 }
 
-async function switchLine(newSourceCode, newVodId_IGNORED) {
+async function switchLine(newSourceCode, newVodId) {
     if (!player || !currentVideoTitle) {
         showError("无法切换线路：播放器或视频信息丢失");
         return;
     }
 
-    const targetSourceInfo = availableAlternativeSources.find(source => source.code === newSourceCode);
-
+    const targetSourceInfo = availableAlternativeSources.find(source => source.vod_id === newVodId);
     if (!targetSourceInfo || !targetSourceInfo.vod_id) {
         showError(`切换失败：未能在可用线路中找到“${newSourceCode}”的有效ID。`);
         return;
