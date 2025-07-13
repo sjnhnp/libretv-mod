@@ -31,17 +31,13 @@ let universalId = '';
 // 提取核心标题，用于匹配同一作品的不同版本
 function getCoreTitle(title) {
     if (typeof title !== 'string') return '';
-
     let coreTitle = title;
-
-    // --- 【核心修改开始】---
-    // 1. 扩充版本标签列表，加入常见的简称
     const versionTags = [
         '国语', '国', 
         '粤语', '粤',
         '台配', '台',
         '中字', '普通话',
-        '高清', 'HD', '版', '修复版'
+        '高清', 'HD', '版', '修复版', 'TC', '蓝光', '4K',
     ];
     // --- 【修改结束】---
     
