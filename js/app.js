@@ -1026,6 +1026,8 @@ window.copyLinks = copyLinks;
 window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 
 // 显示视频剧集模态框
+// In js/app.js
+
 async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackData) {
     showLoading('加载剧集信息...');
 
@@ -1127,7 +1129,7 @@ function toggleEpisodeOrderUI(container) {
     if (episodes && title && sourceCode) {
         container.innerHTML = renderEpisodeButtons(episodes, title, sourceCode, sourceName || '');
     }
-
+  
     const toggleBtn = document.querySelector('#modal [data-action="toggle-order"]');
     const orderIcon = document.querySelector('#modal [data-field="order-icon"]');
     if (toggleBtn && orderIcon) {
