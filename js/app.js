@@ -622,12 +622,10 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
             if (!videoSourceMap[key]) {
                 videoSourceMap[key] = [];
             }
-            // 只存储必要信息
-            videoSourceMap[key].push({
-                name: item.source_name,
-                code: item.source_code,
-                vod_id: item.vod_id
-            });
+            // --- 【核心修改】---
+            // 将完整的 item 对象存入，以便播放页获取所有元数据
+            videoSourceMap[key].push(item);
+            // --- 【修改结束】---
         });
         sessionStorage.setItem('videoSourceMap', JSON.stringify(videoSourceMap));
     } catch (e) {
