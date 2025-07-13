@@ -44,7 +44,7 @@
     <nav aria-label="设置功能" class="fixed top-4 right-4 z-10">
         <div class="flex items-center space-x-2">
 
-          <!--  <a href="https://www.olevod.com/nav/%E7%94%B5%E5%BD%B1/%E5%85%A8%E9%83%A8%E5%9C%B0%E5%8C%BA/%E5%85%A8%E9%83%A8%E5%B9%B4%E4%BB%BD/%E5%85%A8%E9%83%A8%E7%B1%BB%E5%9E%8B/%E5%85%A8%E9%83%A8/%E5%85%A8%E9%83%A8/%E6%9C%80%E6%96%B0.html"
+            <!--  <a href="https://www.olevod.com/nav/%E7%94%B5%E5%BD%B1/%E5%85%A8%E9%83%A8%E5%9C%B0%E5%8C%BA/%E5%85%A8%E9%83%A8%E5%B9%B4%E4%BB%BD/%E5%85%A8%E9%83%A8%E7%B1%BB%E5%9E%8B/%E5%85%A8%E9%83%A8/%E5%85%A8%E9%83%A8/%E6%9C%80%E6%96%B0.html"
                 target="_blank" rel="noopener noreferrer"
                 class="bg-[#222] hover:bg-[#333] border border-[#333] hover:border-white rounded-lg px-3 py-1.5 flex items-center gap-1 transition-colors"
                 aria-label="抓取最新" type="button">
@@ -460,7 +460,6 @@
         window.__ENV__.SETTINGS_PASSWORD = "{{SETTINGS_PASSWORD}}";
     </script>
 
-
     <!-- Templates -->
     <template id="search-result-template">
         <div class="card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full shadow-sm hover:shadow-md"
@@ -488,6 +487,25 @@
                         <span class="result-source-name hidden">数据源</span>
                     </div>
                 </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="video-details-template">
+        <div class="text-white text-sm">
+            <div class="grid grid-cols-2 gap-x-4 gap-y-2 mb-4">
+                <div><span class="text-gray-400">类型：</span><span data-field="type"></span></div>
+                <div><span class="text-gray-400">年份：</span><span data-field="year"></span></div>
+                <div><span class="text-gray-400">地区：</span><span data-field="area"></span></div>
+                <div><span class="text-gray-400">导演：</span><span data-field="director"></span></div>
+                <div class="col-span-2"><span class="text-gray-400">主演：</span><span data-field="actor"></span></div>
+                <div class="col-span-2"><span class="text-gray-400">备注：</span><span data-field="remarks"></span></div>
+            </div>
+            <div class="mb-4">
+                <h4 class="font-semibold text-gray-300 mb-1">简介：</h4>
+                <p class="text-gray-400 text-xs leading-relaxed" data-field="description"></p>
+            </div>
+            <div data-field="episodesContainer">
             </div>
         </div>
     </template>

@@ -1070,65 +1070,66 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         }
 
         const response = await fetch(detailApiUrl);
-        if (!response.ok) {
-            throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
-        }
-
+        if (!response.ok) throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
+        
         const data = await response.json();
         hideLoading();
 
-        if (data.code !== 200 || !data.episodes || !data.episodes.length === 0) {
+        if (data.code !== 200 || !data.episodes || data.episodes.length === 0) {
             showToast(data.msg || '未找到剧集信息', 'warning');
             return;
         }
 
-        // --- 恢复所有必要的 AppState 设置（采纳您的修正） ---
+        // (AppState and localStorage logic remains the same)
         AppState.set('currentEpisodes', data.episodes);
         AppState.set('currentVideoTitle', title);
         AppState.set('currentSourceName', selectedApi.name);
         AppState.set('currentSourceCode', sourceCode);
+        AppState.set('currentVideoId', id);
         AppState.set('currentVideoYear', fallbackData.year);
         AppState.set('currentVideoTypeName', fallbackData.typeName);
         AppState.set('currentVideoKey', fallbackData.videoKey);
-        AppState.set('currentVideoId', id);
-
-        // 更新 localStorage，供播放器页面使用
         localStorage.setItem('currentEpisodes', JSON.stringify(data.episodes));
         localStorage.setItem('currentVideoTitle', title);
 
-        // 合并数据以在弹窗中显示最全信息
+        // 1. Get the template from the DOM
+        const template = document.getElementById('video-details-template');
+        if (!template) {
+            showToast('详情模板未找到!', 'error');
+            return;
+        }
+
+        // 2. Clone the template content
+        const modalContent = template.content.cloneNode(true);
         const videoInfo = data.videoInfo || {};
-        const finalType = videoInfo.type || fallbackData.typeName || '未知';
-        const finalYear = videoInfo.year || fallbackData.year || '未知';
-        const finalArea = videoInfo.area || fallbackData.area || '未知';
-        const finalDirector = videoInfo.director || fallbackData.director || '未知';
-        const finalActor = videoInfo.actor || fallbackData.actor || '未知';
-        const finalRemarks = videoInfo.remarks || fallbackData.remarks || '无';
-        const finalDesc = (videoInfo.desc || '').replace(/<[^>]+>/g, '').trim() || fallbackData.blurb || '暂无简介。';
 
-        // 构建并显示模态框
-        const modalContentHtml = `
-            <div class="text-white text-sm">
-                <div class="grid grid-cols-2 gap-x-4 gap-y-2 mb-4">
-                    <div><span class="text-gray-400">类型：</span>${finalType}</div>
-                    <div><span class="text-gray-400">年份：</span>${finalYear}</div>
-                    <div><span class="text-gray-400">地区：</span>${finalArea}</div>
-                    <div><span class="text-gray-400">导演：</span>${finalDirector}</div>
-                    <div class="col-span-2"><span class="text-gray-400">主演：</span>${finalActor}</div>
-                    <div class="col-span-2"><span class="text-gray-400">备注：</span>${finalRemarks}</div>
-                </div>
-                <div class="mb-4">
-                    <h4 class="font-semibold text-gray-300 mb-1">简介：</h4>
-                    <p class="text-gray-400 text-xs leading-relaxed">${finalDesc}</p>
-                </div>
-                <div id="episodesContainer">
-                    ${renderEpisodeButtons(data.episodes, title, sourceCode, selectedApi.name)}
-                </div>
-            </div>
-        `;
+        // 3. Populate the cloned template with data
+        const fields = {
+            type: videoInfo.type || fallbackData.typeName || '未知',
+            year: videoInfo.year || fallbackData.year || '未知',
+            area: videoInfo.area || fallbackData.area || '未知',
+            director: videoInfo.director || fallbackData.director || '未知',
+            actor: videoInfo.actor || fallbackData.actor || '未知',
+            remarks: videoInfo.remarks || fallbackData.remarks || '无',
+            description: (videoInfo.desc || '').replace(/<[^>]+>/g, '').trim() || fallbackData.blurb || '暂无简介。',
+        };
 
-        showModal(modalContentHtml, `${title} (${selectedApi.name})`);
+        for (const [key, value] of Object.entries(fields)) {
+            const el = modalContent.querySelector(`[data-field="${key}"]`);
+            if (el) el.textContent = value;
+        }
+        
+        // 4. Render and append the episode buttons
+        const episodesContainer = modalContent.querySelector('[data-field="episodesContainer"]');
+        if (episodesContainer) {
+            // renderEpisodeButtons now returns an HTML string, so we set innerHTML
+            episodesContainer.innerHTML = renderEpisodeButtons(data.episodes, title, sourceCode, selectedApi.name);
+        }
 
+        const tempDiv = document.createElement('div');
+        tempDiv.appendChild(modalContent);
+        showModal(tempDiv.innerHTML, `${title} (${selectedApi.name})`);
+        
     } catch (error) {
         hideLoading();
         showToast(`获取剧集信息失败: ${error.message}`, 'error');
