@@ -28,6 +28,17 @@ let availableAlternativeSources = [];
 let adFilteringEnabled = false;
 let universalId = '';
 
+/**
+ * 归一化标题，用于匹配同一作品的不同版本
+ * @param {string} title - 原始标题
+ * @returns {string} - 归一化后的核心标题
+ */
+function getNormalizedTitle(title) {
+    if (typeof title !== 'string') return '';
+    // 移除各种括号、空格，并转为小写，以便于比较
+    return title.replace(/[\s\[\(【（].*?[\)\]】）]/g, "").trim().toLowerCase();
+}
+
 // 生成视频统一标识符，用于跨线路共享播放进度
 function generateUniversalId(title, year, episodeIndex) {
     // 移除标题中的特殊字符和空格，转换为小写 
@@ -435,24 +446,40 @@ async function doEpisodeSwitch(index, url) {
         if (sourceMapJSON) {
             try {
                 const sourceMap = JSON.parse(sourceMapJSON);
-                const videoKey = urlParams.get('videoKey');
-                if (videoKey && sourceMap[videoKey]) {
-                    availableAlternativeSources = sourceMap[videoKey];
-                } else {
-                    const titleParam = urlParams.get('title') ? decodeURIComponent(urlParams.get('title')) : '';
-                    const yearParam = urlParams.get('year') || '';
-                    const fallbackKey = `${titleParam}|${yearParam}`;
-                    if (sourceMap[fallbackKey]) {
-                        availableAlternativeSources = sourceMap[fallbackKey];
-                    } else {
-                        for (const key in sourceMap) {
-                            if (key.startsWith(`${titleParam}|`)) {
-                                availableAlternativeSources = sourceMap[key];
-                                break;
-                            }
+                const clickedTitle = urlParams.get('title') ? fullyDecode(urlParams.get('title')) : '';
+                const clickedYear = urlParams.get('year') || '';
+                const normalizedClickedTitle = getNormalizedTitle(clickedTitle);
+
+                // 遍历整个 videoSourceMap 来构建相关线路列表
+                const relevantSources = [];
+                for (const key in sourceMap) {
+                    if (sourceMap.hasOwnProperty(key)) {
+                        const [keyTitle, keyYear] = key.split('|');
+                        const normalizedKeyTitle = getNormalizedTitle(keyTitle);
+
+                        // 核心匹配逻辑：核心标题相同，且年份相同（如果年份存在）
+                        if (normalizedKeyTitle === normalizedClickedTitle && (!clickedYear || !keyYear || keyYear === clickedYear)) {
+                            const sources = sourceMap[key];
+
+                            // 为每条线路生成新的、更具描述性的名称
+                            sources.forEach(source => {
+                                // 提取版本差异部分，如 "(国语)"
+                                let versionTag = keyTitle.replace(normalizedClickedTitle, '').trim();
+                                // 美化一下，如果不是以括号开头，则加上括号
+                                if (versionTag && !/^[\[\(【（]/.test(versionTag)) {
+                                    versionTag = `(${versionTag})`;
+                                }
+
+                                relevantSources.push({
+                                    ...source,
+                                    // 新的显示名称，例如 "暴风资源 (国语)"
+                                    displayName: `${source.name} ${versionTag}`.trim()
+                                });
+                            });
                         }
                     }
                 }
+                availableAlternativeSources = relevantSources;
             } catch (e) {
                 console.error("从 sessionStorage 读取线路失败:", e);
                 availableAlternativeSources = [];
@@ -986,7 +1013,7 @@ function setupLineSwitching() {
         if (availableAlternativeSources.length > 1) {
             availableAlternativeSources.forEach(source => {
                 const item = document.createElement('button');
-                item.textContent = source.name;
+                item.textContent = source.displayName || source.name; 
                 item.dataset.sourceCode = source.code;
                 item.dataset.vodId = source.vod_id;
                 item.className = 'w-full text-left px-3 py-2 rounded text-sm transition-colors hover:bg-gray-700';
