@@ -1070,10 +1070,10 @@ async function switchLine(newSourceCode, newVodId) {
 
         const detailRes = await fetch(`/api/detail?id=${newVodId}&source=${newSourceCode}`);
         const detailData = await detailRes.json();
-        if (detailData.code !== 200 || !detailData.episodes || detailData.episodes.length === 0) {
+        if (detailData.code !== 200 || !detailData.episodes || !detailData.episodes.length === 0) {
             throw new Error(`在线路“${targetSourceItem.source_name}”上获取剧集列表失败`);
         }
-
+        
         const newEps = detailData.episodes;
         const timeToSeek = player.currentTime;
 
@@ -1082,7 +1082,7 @@ async function switchLine(newSourceCode, newVodId) {
         currentEpisodes = newEps;
         window.currentEpisodes = newEps;
         localStorage.setItem('currentEpisodes', JSON.stringify(newEps));
-
+        
         currentVideoTitle = targetSourceItem.vod_name;
         currentVideoYear = targetSourceItem.vod_year;
         currentVideoTypeName = targetSourceItem.type_name;
@@ -1109,22 +1109,25 @@ async function switchLine(newSourceCode, newVodId) {
 
         universalId = generateUniversalId(currentVideoTitle, currentVideoYear, targetEpisodeIndex);
         newUrlForBrowser.searchParams.set('universalId', universalId);
-
+        
         window.history.replaceState({}, '', newUrlForBrowser.toString());
 
         // 3. 更新播放器和页面显示
         nextSeekPosition = timeToSeek;
         const processedUrl = await processVideoUrl(newEpisodeUrl);
+        
+        // 在更新播放源的同时，明确地更新播放器组件的标题
         player.src = { src: processedUrl, type: 'application/x-mpegurl' };
-        player.play();
+        player.title = currentVideoTitle; // 命令播放器UI更新标题
 
+        player.play();
+        
         renderEpisodes();
         updateEpisodeInfo();
-
-        // 重新渲染线路列表以高亮新的当前线路
+        
         const dropdown = document.getElementById('line-switch-dropdown');
-        if (dropdown) dropdown.innerHTML = ''; // 清空以备下次点击时重新渲染
-
+        if(dropdown) dropdown.innerHTML = ''; 
+        
         if (loadingEl) loadingEl.style.display = 'none';
         showMessage(`已切换到线路: ${targetSourceItem.source_name}`, 'success');
 
