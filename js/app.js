@@ -1088,7 +1088,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
 
         const episodeButtonsGrid = modalContent.querySelector('[data-field="episode-buttons-grid"]');
         if (episodeButtonsGrid) {
-            episodeButtonsGrid.innerHTML = renderEpisodeButtons(data.episodes, title, sourceCode, selectedApi.name);
+            episodeButtonsGrid.innerHTML = renderEpisodeButtons(data.episodes, title, sourceCode, selectedApi.name, effectiveTypeName);
         }
 
         modalContent.querySelector('[data-action="copy-links"]').addEventListener('click', copyLinks);
