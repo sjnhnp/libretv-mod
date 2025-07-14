@@ -30,67 +30,61 @@ let universalId = '';
 
 // 提取核心标题，用于匹配同一作品的不同版本
 function getCoreTitle(title, typeName = '') {
-    // 确保输入标题是字符串类型，否则返回空字符串
     if (typeof title !== 'string') {
         return '';
     }
 
-    let coreTitle = title;
+    let workTitle = title;
+    const originalTitle = title; // 保留原始标题用于后续处理
 
-    // 将中文数字（一到十）替换为阿拉伯数字。
-    const numeralMap = {
-        '一': '1', '二': '2', '三': '3', '四': '4', '五': '5',
-        '六': '6', '七': '7', '八': '8', '九': '9', '十': '10'
-    };
-    coreTitle = coreTitle.replace(/[一二三四五六七八九十]/g, (match) => numeralMap[match]);
+    // --- 步骤 1: 统一并提取季数 ---
+    const numeralMap = { '一': '1', '二': '2', '三': '3', '四': '4', '五': '5', '六': '6', '七': '7', '八': '8', '九': '9', '十': '10' };
+    workTitle = workTitle.replace(/[一二三四五六七八九十]/g, (match) => numeralMap[match]);
 
-    // 2. 定义一个被认为是“电影”的类型列表
-    // 包含常见的电影类型，用于确定是否需要去除副标题。
+    let seasonNumber = 1; // 如果标题中没有明确季数，默认为第一季
+    // 正则表达式现在使用捕获组 (\d+) 来提取数字
+    const seasonMatch = workTitle.match(/(?:第|Season\s*)(\d+)[季部]/i); 
+    if (seasonMatch && seasonMatch[1]) {
+        seasonNumber = parseInt(seasonMatch[1], 10);
+    }
+    // 将季数格式化为 "_SXX" 的形式，例如 "_S01", "_S12"
+    const seasonIdentifier = `_S${String(seasonNumber).padStart(2, '0')}`;
+
+
+    // --- 步骤 2: 获取剧集的基础名称 (Base Name) ---
+    let baseName = originalTitle;
+
+    // 仅对电影类型移除副标题
     const movieLikeTypes = [
         '电影', '剧情片', '动作片', '冒险片', '同性片', '喜剧片', '奇幻片',
         '恐怖片', '悬疑片', '惊悚片', '灾难片', '爱情片', '犯罪片', '科幻片',
         '动画电影', '歌舞片', '战争片', '经典片', '网络电影', '其它片',
         '电影片', '理论片', '纪录片', '动画片'
     ];
-
-    // 仅当类型匹配时，才移除副标题
-    // 如果 `typeName` 包含上述任何电影类型，则移除标题中的冒号及之后的所有内容（通常是副标题）。
     if (movieLikeTypes.some(type => typeName.includes(type))) {
-        coreTitle = coreTitle.replace(/[:：].*/, '').trim();
+        baseName = baseName.replace(/[:：].*/, '').trim();
     }
 
-    // 3. 后续所有处理逻辑均来自V13，保持不变...
-    // 移除标题中的各种版本标签、画质标识和季数信息。
+    // 从基础名称中移除所有已知的季数和版本标签
+    const seasonRegex = new RegExp('[\\s\\(（【\\[]?(?:第[一二三四五六七八九十\\d]+[季部]|Season\\s*\\d+)[\\)）】\\]]?', 'gi');
+    baseName = baseName.replace(seasonRegex, '').trim();
 
-    // 定义常见的版本和画质标签
-    const versionTags = [
-        '国语', '国',
-        '粤语', '粤',
-        '台配', '台',
-        '中字', '普通话',
-        '高清', 'HD', '版', '修复版', 'TC', '蓝光', '4K',
-    ];
-
-    // 移除括号及其内部的版本标签（如 "(HD)", "[国语]"）
-    // 使用非捕获组 `(?![0-9])` 确保不会匹配到数字（避免误删类似 "S01" 中的 "01"）。
+    const versionTags = [ '国语', '国', '粤语', '粤', '台配', '台', '中字', '普通话', '高清', 'HD', '版', '修复版', 'TC', '蓝光', '4K' ];
     const bracketRegex = new RegExp(`[\\s\\(（【\\[](${versionTags.join('|')})(?![0-9])\\s*[\\)）】\\]]?`, 'gi');
-    coreTitle = coreTitle.replace(bracketRegex, '').trim();
-
-    // 移除位于标题末尾的版本标签
+    baseName = baseName.replace(bracketRegex, '').trim();
     const suffixRegex = new RegExp(`(${versionTags.join('|')})$`, 'i');
-    coreTitle = coreTitle.replace(suffixRegex, '').trim();
+    baseName = baseName.replace(suffixRegex, '').trim();
+    
+    // 清理最终的基础名称
+    baseName = baseName.replace(/\s+/g, '').trim();
 
-    // 定义表示“第一季”的常见标签
-    const seasonOneTags = ['第一季', '第1季', 'Season 1', 'S01', 'Season1'];
+    // --- 步骤 3: 组合成最终的唯一聚合键 ---
+    // 对于电影或没有明确季数的单集作品，可以不加季数标识符以简化
+    if (movieLikeTypes.some(type => typeName.includes(type)) && !seasonMatch) {
+        return baseName;
+    }
 
-    // 移除标题末尾的第一季标签（如 "第一季", "S01"）
-    const seasonOneRegex = new RegExp(`[\\s\\(（【\\[]?(${seasonOneTags.join('|')})[\\)）】\\]]?$`, 'i');
-    coreTitle = coreTitle.replace(seasonOneRegex, '').trim();
-
-    // 移除标题中多余的空格，确保最终标题紧凑。
-    coreTitle = coreTitle.replace(/\s+/g, '');
-
-    return coreTitle;
+    return `${baseName}${seasonIdentifier}`;
 }
 
 // 生成视频统一标识符，用于跨线路共享播放进度
@@ -1039,7 +1033,6 @@ function setupSkipDropdownEvents() {
     });
 }
 
-
 function setupLineSwitching() {
     const button = document.getElementById('line-switch-button');
     const dropdown = document.getElementById('line-switch-dropdown');
@@ -1057,15 +1050,35 @@ function setupLineSwitching() {
             availableAlternativeSources.forEach(source => {
                 const item = document.createElement('button');
 
+                // 1. 从视频标题(vod_name)中提取版本标签，例如 "粤语", "第二季" 等
                 const coreTitle = getCoreTitle(source.vod_name);
-                let versionTag = source.vod_name.replace(coreTitle, '').trim();
-                if (!versionTag && source.vod_remarks) {
-                    versionTag = source.vod_remarks;
+                const versionTag = source.vod_name.replace(coreTitle, '').trim();
+
+                // 2. 获取备注信息，即更新状态，例如 "已完结", "更新至40集"
+                const remarks = source.vod_remarks ? source.vod_remarks.trim() : '';
+
+                // 3. 创建一个数组，用于存放所有需要显示的标签
+                const allTags = [];
+                
+                // 如果版本标签存在，就清理一下格式（比如去掉开头的冒号）并加入数组
+                if (versionTag) {
+                    allTags.push(versionTag.replace(/^[:：\s]+/, '').trim());
                 }
-                if (versionTag && !/^[\[\(【（]/.test(versionTag)) {
-                    versionTag = `(${versionTag})`;
+                // 如果更新状态存在，也加入数组
+                if (remarks) {
+                    allTags.push(remarks);
                 }
-                item.textContent = `${source.source_name} ${versionTag}`.trim();
+
+                // 4. 构建最终的标签字符串
+                let tagsDisplay = '';
+                if (allTags.length > 0) {
+                    // 如果数组中有内容，用 ", " 连接它们，并用括号包裹
+                    // 这样就能得到 "(粤语, 已完结)" 或 "(悉尼 第二季, 全40集)" 这样的效果
+                    tagsDisplay = `(${allTags.join(', ')})`;
+                }
+
+                // 5. 设置最终的按钮显示文本
+                item.textContent = `${source.source_name} ${tagsDisplay}`.trim();
 
                 item.dataset.sourceCode = source.source_code;
                 item.dataset.vodId = source.vod_id;
