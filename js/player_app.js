@@ -55,13 +55,6 @@ function chineseToArab(chnNum) {
 }
 
 // 提取核心标题，用于匹配同一作品的不同版本
-// File: js/player_app.js
-
-/**
- * 最终版 V15：通过语义化识别，生成统一的【核心标题+季数】ID (清理冗余逻辑)
- * @param {string} title - 原始标题
- * @returns {string} - 标准化的、可供比较的最终ID，格式如 "a_s1"
- */
 function getCoreTitle(title) {
     if (typeof title !== 'string') return '';
 
