@@ -34,53 +34,48 @@ function getCoreTitle(title, typeName = '') {
         return '';
     }
 
-    let workTitle = title;
-    const originalTitle = title; // 保留原始标题用于后续处理
+    let baseName = title;
 
-    // --- 步骤 1: 统一并提取季数 ---
-    const numeralMap = { '一': '1', '二': '2', '三': '3', '四': '4', '五': '5', '六': '6', '七': '7', '八': '8', '九': '9', '十': '10' };
-    workTitle = workTitle.replace(/[一二三四五六七八九十]/g, (match) => numeralMap[match]);
-
-    let seasonNumber = 1; // 如果标题中没有明确季数，默认为第一季
-    // 正则表达式现在使用捕获组 (\d+) 来提取数字
-    const seasonMatch = workTitle.match(/(?:第|Season\s*)(\d+)[季部]/i); 
-    if (seasonMatch && seasonMatch[1]) {
-        seasonNumber = parseInt(seasonMatch[1], 10);
-    }
-    // 将季数格式化为 "_SXX" 的形式，例如 "_S01", "_S12"
-    const seasonIdentifier = `_S${String(seasonNumber).padStart(2, '0')}`;
-
-
-    // --- 步骤 2: 获取剧集的基础名称 (Base Name) ---
-    let baseName = originalTitle;
-
-    // 仅对电影类型移除副标题
+    // --- 步骤 1: 仅对电影类型移除副标题 ---
     const movieLikeTypes = [
         '电影', '剧情片', '动作片', '冒险片', '同性片', '喜剧片', '奇幻片',
         '恐怖片', '悬疑片', '惊悚片', '灾难片', '爱情片', '犯罪片', '科幻片',
         '动画电影', '歌舞片', '战争片', '经典片', '网络电影', '其它片',
         '电影片', '理论片', '纪录片', '动画片'
     ];
-    if (movieLikeTypes.some(type => typeName.includes(type))) {
+    if (movieLikeTypes.some(type => typeName && typeName.includes(type))) {
         baseName = baseName.replace(/[:：].*/, '').trim();
     }
 
-    // 从基础名称中移除所有已知的季数和版本标签
+    // --- 步骤 2: 提取并统一季数 ---
+    const numeralMap = { '一': '1', '二': '2', '三': '3', '四': '4', '五': '5', '六': '6', '七': '7', '八': '8', '九': '9', '十': '10' };
+    let normalizedTitle = title.replace(/[一二三四五六七八九十]/g, (match) => numeralMap[match]);
+
+    let seasonNumber = 1;
+    const seasonMatch = normalizedTitle.match(/(?:第|Season\s*)(\d+)[季部]/i);
+    if (seasonMatch) {
+        seasonNumber = parseInt(seasonMatch[1], 10);
+    }
+    const seasonIdentifier = `_S${String(seasonNumber).padStart(2, '0')}`;
+
+    // --- 步骤 3: 从基础名称中移除所有版本和季数标签，得到纯净的剧名 ---
+
+    // 移除季数信息
     const seasonRegex = new RegExp('[\\s\\(（【\\[]?(?:第[一二三四五六七八九十\\d]+[季部]|Season\\s*\\d+)[\\)）】\\]]?', 'gi');
     baseName = baseName.replace(seasonRegex, '').trim();
 
-    const versionTags = [ '国语', '国', '粤语', '粤', '台配', '台', '中字', '普通话', '高清', 'HD', '版', '修复版', 'TC', '蓝光', '4K' ];
+    // 【关键修复】恢复移除语言等版本标签的逻辑，以实现聚合
+    const versionTags = ['国语', '国', '粤语', '粤', '台配', '台', '中字', '普通话', '高清', 'HD', '版', '修复版', 'TC', '蓝光', '4K'];
     const bracketRegex = new RegExp(`[\\s\\(（【\\[](${versionTags.join('|')})(?![0-9])\\s*[\\)）】\\]]?`, 'gi');
     baseName = baseName.replace(bracketRegex, '').trim();
     const suffixRegex = new RegExp(`(${versionTags.join('|')})$`, 'i');
     baseName = baseName.replace(suffixRegex, '').trim();
-    
+
     // 清理最终的基础名称
     baseName = baseName.replace(/\s+/g, '').trim();
 
-    // --- 步骤 3: 组合成最终的唯一聚合键 ---
-    // 对于电影或没有明确季数的单集作品，可以不加季数标识符以简化
-    if (movieLikeTypes.some(type => typeName.includes(type)) && !seasonMatch) {
+    // --- 步骤 4: 组合成最终的唯一聚合键 ---
+    if (movieLikeTypes.some(type => typeName && typeName.includes(type)) && !seasonMatch) {
         return baseName;
     }
 
@@ -471,11 +466,8 @@ async function doEpisodeSwitch(index, url) {
     document.addEventListener('DOMContentLoaded', async () => {
         const urlParams = new URLSearchParams(window.location.search);
 
-        // 【修改】读取 af 参数
         adFilteringEnabled = urlParams.get('af') === '1';
-
         universalId = urlParams.get('universalId') || '';
-
         let episodeUrlForPlayer = urlParams.get('url');
 
         function fullyDecode(str) {
@@ -489,25 +481,27 @@ async function doEpisodeSwitch(index, url) {
         currentEpisodeIndex = parseInt(urlParams.get('index') || '0', 10);
         vodIdForPlayer = urlParams.get('id') || '';
         currentVideoYear = urlParams.get('year') || '';
-        currentVideoTypeName = urlParams.get('typeName') || '';
+        currentVideoTypeName = urlParams.get('typeName') || ''; // 已获取当前视频的 typeName
 
         const sourceMapJSON = sessionStorage.getItem('videoSourceMap');
         if (sourceMapJSON) {
             try {
                 const sourceMap = JSON.parse(sourceMapJSON);
-                const clickedTitle = urlParams.get('title') ? fullyDecode(urlParams.get('title')) : '';
-                const clickedYear = urlParams.get('year') || '';
 
-                const coreClickedTitle = getCoreTitle(clickedTitle);
+                const coreClickedTitle = getCoreTitle(currentVideoTitle, currentVideoTypeName);
 
                 const relevantSources = [];
                 for (const key in sourceMap) {
                     if (sourceMap.hasOwnProperty(key)) {
-                        const [keyTitle, keyYear] = key.split('|');
-                        const coreKeyTitle = getCoreTitle(keyTitle);
+                        const sourceItem = sourceMap[key][0]; // 获取一个代表性的源信息
+                        if (!sourceItem) continue;
+
+                        const coreKeyTitle = getCoreTitle(sourceItem.vod_name, sourceItem.type_name);
+
+                        const clickedYear = currentVideoYear;
+                        const keyYear = sourceItem.vod_year;
 
                         if (coreKeyTitle === coreClickedTitle && (!clickedYear || !keyYear || keyYear === clickedYear)) {
-                            // 直接将完整的 item 对象添加到聚合列表中
                             relevantSources.push(...sourceMap[key]);
                         }
                     }
@@ -553,7 +547,7 @@ async function doEpisodeSwitch(index, url) {
                     if (wantsToResume) {
                         nextSeekPosition = savedProgress;
                     } else {
-                        clearVideoProgressForEpisode(currentEpisodeIndex);
+                        clearVideoProgressForEpisode(universalId);
                         nextSeekPosition = 0;
                     }
                 }
@@ -1050,35 +1044,36 @@ function setupLineSwitching() {
             availableAlternativeSources.forEach(source => {
                 const item = document.createElement('button');
 
-                // 1. 从视频标题(vod_name)中提取版本标签，例如 "粤语", "第二季" 等
-                const coreTitle = getCoreTitle(source.vod_name);
-                const versionTag = source.vod_name.replace(coreTitle, '').trim();
+                // --- 独立的显示逻辑 ---
+                const vodName = source.vod_name || '';
+                const remarks = source.vod_remarks || '';
 
-                // 2. 获取备注信息，即更新状态，例如 "已完结", "更新至40集"
-                const remarks = source.vod_remarks ? source.vod_remarks.trim() : '';
+                // 1. 定义所有可能的版本和季数标签
+                const allVersionTags = ['国语', '粤语', '台配', '中字', '普通话', '高清', 'HD', '修复版', 'TC', '蓝光', '4K'];
+                const seasonRegex = /(第[一二三四五六七八九十\d]+[季部]|Season\s*\d+)/i;
 
-                // 3. 创建一个数组，用于存放所有需要显示的标签
-                const allTags = [];
-                
-                // 如果版本标签存在，就清理一下格式（比如去掉开头的冒号）并加入数组
-                if (versionTag) {
-                    allTags.push(versionTag.replace(/^[:：\s]+/, '').trim());
+                // 2. 从标题中提取所有匹配的标签
+                const foundTags = [];
+                allVersionTags.forEach(tag => {
+                    if (vodName.includes(tag)) {
+                        foundTags.push(tag);
+                    }
+                });
+                const seasonMatch = vodName.match(seasonRegex);
+                if (seasonMatch) {
+                    foundTags.push(seasonMatch[0]);
                 }
-                // 如果更新状态存在，也加入数组
                 if (remarks) {
-                    allTags.push(remarks);
+                    foundTags.push(remarks);
                 }
 
-                // 4. 构建最终的标签字符串
+                // 3. 组合成最终的显示文本
                 let tagsDisplay = '';
-                if (allTags.length > 0) {
-                    // 如果数组中有内容，用 ", " 连接它们，并用括号包裹
-                    // 这样就能得到 "(粤语, 已完结)" 或 "(悉尼 第二季, 全40集)" 这样的效果
-                    tagsDisplay = `(${allTags.join(', ')})`;
+                if (foundTags.length > 0) {
+                    tagsDisplay = `(${foundTags.join(', ')})`;
                 }
-
-                // 5. 设置最终的按钮显示文本
                 item.textContent = `${source.source_name} ${tagsDisplay}`.trim();
+                // --- 显示逻辑结束 ---
 
                 item.dataset.sourceCode = source.source_code;
                 item.dataset.vodId = source.vod_id;
@@ -1139,7 +1134,7 @@ async function switchLine(newSourceCode, newVodId) {
         if (detailData.code !== 200 || !detailData.episodes || !detailData.episodes.length === 0) {
             throw new Error(`在线路“${targetSourceItem.source_name}”上获取剧集列表失败`);
         }
-        
+
         const newEps = detailData.episodes;
         const timeToSeek = player.currentTime;
 
@@ -1148,7 +1143,7 @@ async function switchLine(newSourceCode, newVodId) {
         currentEpisodes = newEps;
         window.currentEpisodes = newEps;
         localStorage.setItem('currentEpisodes', JSON.stringify(newEps));
-        
+
         currentVideoTitle = targetSourceItem.vod_name;
         currentVideoYear = targetSourceItem.vod_year;
         currentVideoTypeName = targetSourceItem.type_name;
@@ -1175,25 +1170,25 @@ async function switchLine(newSourceCode, newVodId) {
 
         universalId = generateUniversalId(currentVideoTitle, currentVideoYear, targetEpisodeIndex);
         newUrlForBrowser.searchParams.set('universalId', universalId);
-        
+
         window.history.replaceState({}, '', newUrlForBrowser.toString());
 
         // 3. 更新播放器和页面显示
         nextSeekPosition = timeToSeek;
         const processedUrl = await processVideoUrl(newEpisodeUrl);
-        
+
         // 在更新播放源的同时，明确地更新播放器组件的标题
         player.src = { src: processedUrl, type: 'application/x-mpegurl' };
         player.title = currentVideoTitle; // 命令播放器UI更新标题
 
         player.play();
-        
+
         renderEpisodes();
         updateEpisodeInfo();
-        
+
         const dropdown = document.getElementById('line-switch-dropdown');
-        if(dropdown) dropdown.innerHTML = ''; 
-        
+        if (dropdown) dropdown.innerHTML = '';
+
         if (loadingEl) loadingEl.style.display = 'none';
         showMessage(`已切换到线路: ${targetSourceItem.source_name}`, 'success');
 
