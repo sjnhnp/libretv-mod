@@ -28,38 +28,84 @@ let availableAlternativeSources = [];
 let adFilteringEnabled = false;
 let universalId = '';
 
+// 中文数字字符串转换为阿拉伯数字 (支持1-99)
+function chineseToArab(chnNum) {
+    if (!isNaN(chnNum)) return parseInt(chnNum, 10); // 如果已经是数字，直接返回
+
+    const chnMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
+
+    let total = 0;
+    if (chnNum === '十') {
+        return 10;
+    }
+    
+    const parts = chnNum.split('十');
+    
+    if (parts.length === 2) {
+        // 处理 "二十三"、"十一"、"三十" 等情况
+        const tenPart = parts[0] ? chnMap[parts[0]] : 1;
+        const digitPart = parts[1] ? chnMap[parts[1]] : 0;
+        total = tenPart * 10 + digitPart;
+    } else if (chnNum.length === 1) {
+        // 处理 "一" 到 "九"
+        total = chnMap[chnNum];
+    }
+    
+    return total;
+}
+
 // 提取核心标题，用于匹配同一作品的不同版本
+// File: js/player_app.js
+
+/**
+ * 最终版 V15：通过语义化识别，生成统一的【核心标题+季数】ID (清理冗余逻辑)
+ * @param {string} title - 原始标题
+ * @returns {string} - 标准化的、可供比较的最终ID，格式如 "a_s1"
+ */
 function getCoreTitle(title) {
     if (typeof title !== 'string') return '';
-    let coreTitle = title;
-    const versionTags = [
-        '国语', '国', 
-        '粤语', '粤',
-        '台配', '台',
-        '中字', '普通话',
-        '高清', 'HD', '版', '修复版', 'TC', '蓝光', '4K',
+
+    let baseTitle = title;
+    let season = 1; // 默认季数为1
+
+    // 1. 中文数字转阿拉伯数字的辅助工具
+    const chineseToArab = (chnNum) => {
+        if (!isNaN(chnNum)) return parseInt(chnNum, 10);
+        const chnMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
+        if (chnNum === '十') return 10;
+        if (chnNum.startsWith('十')) return 10 + chnMap[chnNum[1]];
+        if (chnNum.endsWith('十')) return chnMap[chnNum[0]] * 10;
+        if (chnNum.length === 3) return chnMap[chnNum[0]] * 10 + chnMap[chnNum[2]];
+        return chnMap[chnNum];
+    };
+
+    // 2. 统一直定季数格式
+    const seasonPatterns = [
+        /(?:第(\d+|[一二三四五六七八九十]+)季)/,
+        /(?:Season\s*(\d+))/i,
+        /(?:S(\d+))/i
     ];
-    // --- 【修改结束】---
+
+    for (const pattern of seasonPatterns) {
+        const match = baseTitle.match(pattern);
+        if (match && match[1]) {
+            season = chineseToArab(match[1]);
+            baseTitle = baseTitle.replace(match[0], '');
+            break;
+        }
+    }
+
+    // 3. 移除明确的版本标签（国语、高清等）
+    const versionTags = ['国语', '国', '粤语', '粤', '台配', '台', '中字', '普通话', '高清', 'HD', '版', '修复版', 'TC', '蓝光', '4K'];
+    const versionRegex = new RegExp(`[\\s\\(（【\\[]?(${versionTags.join('|')})[\\)）】\\]]?`, 'gi');
+    baseTitle = baseTitle.replace(versionRegex, '').trim();
     
-    // 2. 创建一个更智能的正则表达式，用于移除被括号或空格包裹的版本标签
-    //    它会跳过包含数字的括号内容，以保护 (第一季) 这样的情况
-    const bracketRegex = new RegExp(`[\\s\\(（【\\[](${versionTags.join('|')})(?![0-9])\\s*[\\)）】\\]]?`, 'gi');
-    coreTitle = coreTitle.replace(bracketRegex, '').trim();
+    // 4. 移除副标题和所有剩余的括号、空格
+    baseTitle = baseTitle.replace(/[:：].*/, '').trim();
+    baseTitle = baseTitle.replace(/[()\[\]【】（）]/g, '').replace(/\s+/g, '').toLowerCase();
 
-    // 3. 创建另一个正则表达式，用于移除末尾的、没有括号的版本标签
-    const suffixRegex = new RegExp(`(${versionTags.join('|')})$`, 'i');
-    coreTitle = coreTitle.replace(suffixRegex, '').trim();
-    
-    // 4. 定义“第一季”的各种常见写法
-    const seasonOneTags = ['第一季', '第1季', 'Season 1', 'S01', 'Season1'];
-    // 创建一个正则表达式，用于匹配并移除末尾的“第一季”标识
-    const seasonOneRegex = new RegExp(`[\\s\\(（【\\[]?(${seasonOneTags.join('|')})[\\)）】\\]]?$`, 'i');
-    coreTitle = coreTitle.replace(seasonOneRegex, '').trim();
-
-    // 5. 移除所有剩余的空格字符
-    coreTitle = coreTitle.replace(/\s+/g, '');
-
-    return coreTitle;
+    // 5. 组合成最终的、统一格式的ID
+    return `${baseTitle}_s${season}`;
 }
 
 // 生成视频统一标识符，用于跨线路共享播放进度
