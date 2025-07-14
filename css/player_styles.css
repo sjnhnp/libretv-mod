@@ -997,3 +997,20 @@ header {
   opacity: 0;
   transition: opacity .3s ease-in-out;
 }
+
+/* 为综艺节目等长文本集数按钮提供的样式 */
+.episode-button-long-text {
+  /* 文字过长时显示省略号 ... */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  /* 确保按钮内的文本正确对齐 */
+  display: inline-block;
+  vertical-align: middle;
+  text-align: center;
+
+  /* 确保按钮不会被内容撑开而超出其网格容器 */
+  max-width: 100%; 
+  box-sizing: border-box; /* 确保内边距不会导致溢出 */
+}

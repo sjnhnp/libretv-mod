@@ -810,16 +810,43 @@ function renderEpisodes() {
         grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-4">没有可用的剧集</div>';
         return;
     }
+
+    // 步骤 1: 定义综艺节目的类型关键词
+    const varietyShowTypes = ['综艺'];
+
+    // 步骤 2: 判断当前播放的是否为综艺节目
+    const isVarietyShow = varietyShowTypes.some(type => currentVideoTypeName && currentVideoTypeName.includes(type));
+
     const order = [...Array(currentEpisodes.length).keys()];
     if (episodesReversed) order.reverse();
     order.forEach(idx => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = idx === currentEpisodeIndex ? 'p-2 rounded episode-active' : 'p-2 rounded bg-[#222] hover:bg-[#333] text-gray-300';
-        btn.textContent = idx + 1;
         btn.dataset.index = idx;
+
+        // 根据判断结果设置按钮的样式和文本内容
+        if (isVarietyShow) {
+            // 是综艺节目，从数据源 "名称$地址" 中提取名称
+            const episodeName = (currentEpisodes[idx] || '').split('$')[0];
+            btn.textContent = episodeName || `第 ${idx + 1} 集`; // 如果名称为空，则使用序号作为后备
+            btn.title = episodeName; // 鼠标悬浮时显示完整名称
+            
+            // 为长文本按钮添加特殊样式和基础样式
+            btn.className = idx === currentEpisodeIndex 
+                ? 'p-2 rounded episode-active episode-button-long-text' 
+                : 'p-2 rounded bg-[#222] hover:bg-[#333] text-gray-300 episode-button-long-text';
+
+        } else {
+            // 不是综艺节目，保持原有的数字序号
+            btn.textContent = idx + 1;
+            btn.className = idx === currentEpisodeIndex 
+                ? 'p-2 rounded episode-active' 
+                : 'p-2 rounded bg-[#222] hover:bg-[#333] text-gray-300';
+        }
+        
         grid.appendChild(btn);
     });
+    
     if (!grid._sListenerBound) {
         grid.addEventListener('click', evt => {
             const target = evt.target.closest('button[data-index]');

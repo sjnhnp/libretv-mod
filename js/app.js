@@ -1145,24 +1145,41 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
     const currentReversedState = AppState.get('episodesReversed') || false;
     const vodId = AppState.get('currentVideoId') || '';
     const year = AppState.get('currentVideoYear') || '';
-    const typeName = AppState.get('currentVideoTypeName') || '';
+    const typeName = AppState.get('currentVideoTypeName') || ''; 
     const videoKey = AppState.get('currentVideoKey') || '';
 
     const displayEpisodes = currentReversedState ? [...episodes].reverse() : [...episodes];
+
+    const varietyShowTypes = ['综艺'];
+    const isVarietyShow = varietyShowTypes.some(type => typeName && typeName.includes(type));
 
     return displayEpisodes.map((episodeUrl, displayIndex) => {
         const originalIndex = currentReversedState ? (episodes.length - 1 - displayIndex) : displayIndex;
         const safeVideoTitle = encodeURIComponent(videoTitle);
         const safeSourceName = encodeURIComponent(sourceName);
 
+        // 根据是否为综艺节目，生成不同的按钮文本和 title
+        let buttonText = '';
+        let buttonTitle = '';
+        let extraClasses = '';
+
+        if (isVarietyShow) {
+            buttonText = (episodeUrl || '').split('$')[0] || `第 ${originalIndex + 1} 集`;
+            buttonTitle = buttonText; // 悬浮提示就是按钮的文本
+            extraClasses = 'episode-button-long-text'; // 添加长文本样式类
+        } else {
+            buttonText = `第 ${originalIndex + 1} 集`;
+            buttonTitle = buttonText;
+        }
+
         return `
             <button 
                 onclick="playVideo('${episodeUrl}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}', '${vodId}', '${year}', '${typeName}', '${videoKey}')" 
-                class="episode-btn px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate"
+                class="episode-btn px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate ${extraClasses}"
                 data-index="${originalIndex}"
-                title="第 ${originalIndex + 1} 集" 
+                title="${buttonTitle}" 
             >
-                第 ${originalIndex + 1} 集
+                ${buttonText}
             </button>`;
     }).join('');
 }
