@@ -29,22 +29,23 @@ let adFilteringEnabled = false;
 let universalId = '';
 
 // 提取核心标题，用于匹配同一作品的不同版本
-function getCoreTitle(title) {
+function getCoreTitle(title, typeName = '') {
     if (typeof title !== 'string') return '';
-
     let coreTitle = title;
 
-    // 1. 将标题中的中文数字统一转换为阿拉伯数字
-    const numeralMap = {
-        '一': '1', '二': '2', '三': '3', '四': '4', '五': '5',
-        '六': '6', '七': '7', '八': '8', '九': '9', '十': '10'
-    };
+    // 1. 数字归一化 (来自V13)
+    const numeralMap = { '一': '1', '二': '2', '三': '3', '四': '4', '五': '5', '六': '6', '七': '7', '八': '8', '九': '9', '十': '10' };
     coreTitle = coreTitle.replace(/[一二三四五六七八九十]/g, (match) => numeralMap[match]);
 
-    // 2. 移除副标题
-    coreTitle = coreTitle.replace(/[:：].*/, '').trim();
-
-    // 3. 定义版本标签列表
+    // 2.定义一个被认为是“电影”的类型列表
+    const movieLikeTypes = ['电影', '剧情片', '动作片', '冒险片', '同性片', '喜剧片', '奇幻片', '恐怖片', '悬疑片', '惊悚片', '灾难片', '爱情片', '犯罪片', '科幻片', '动画电影', '歌舞片', '战争片', '经典片', '网络电影', '其它片', '电影片', '理论片', '纪录片', '动画片'];
+    
+    // 仅当类型匹配时，才移除副标题
+    if (movieLikeTypes.some(type => typeName.includes(type))) {
+        coreTitle = coreTitle.replace(/[:：].*/, '').trim();
+    }
+    
+    // 3. 后续所有处理逻辑均来自V13，保持不变...
     const versionTags = [
         '国语', '国', 
         '粤语', '粤',
@@ -52,21 +53,13 @@ function getCoreTitle(title) {
         '中字', '普通话',
         '高清', 'HD', '版', '修复版', 'TC', '蓝光', '4K',
     ];
-    
-    // 4. 移除带括号的版本标签
     const bracketRegex = new RegExp(`[\\s\\(（【\\[](${versionTags.join('|')})(?![0-9])\\s*[\\)）】\\]]?`, 'gi');
     coreTitle = coreTitle.replace(bracketRegex, '').trim();
-
-    // 5. 移除末尾的、无括号的版本标签
     const suffixRegex = new RegExp(`(${versionTags.join('|')})$`, 'i');
     coreTitle = coreTitle.replace(suffixRegex, '').trim();
-    
-    // 6. 特殊处理“第一季”
     const seasonOneTags = ['第一季', '第1季', 'Season 1', 'S01', 'Season1'];
     const seasonOneRegex = new RegExp(`[\\s\\(（【\\[]?(${seasonOneTags.join('|')})[\\)）】\\]]?$`, 'i');
     coreTitle = coreTitle.replace(seasonOneRegex, '').trim();
-
-    // 7. 移除所有剩余的空格字符
     coreTitle = coreTitle.replace(/\s+/g, '');
 
     return coreTitle;
