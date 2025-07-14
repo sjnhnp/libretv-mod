@@ -1070,8 +1070,9 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         const modalContent = template.content.cloneNode(true);
 
         const videoInfo = data.videoInfo || {};
+        const effectiveTypeName = videoInfo.type || fallbackData.typeName || '';
         const fields = {
-            type: videoInfo.type || fallbackData.typeName || '未知',
+            type: effectiveTypeName || '未知',
             year: videoInfo.year || fallbackData.year || '未知',
             area: videoInfo.area || fallbackData.area || '未知',
             director: videoInfo.director || fallbackData.director || '未知',
@@ -1123,9 +1124,10 @@ function toggleEpisodeOrderUI(container) {
     const title = AppState.get('currentVideoTitle');
     const sourceName = AppState.get('currentSourceName');
     const sourceCode = AppState.get('currentSourceCode');
+    const typeName = AppState.get('currentVideoTypeName');
 
     if (episodes && title && sourceCode) {
-        container.innerHTML = renderEpisodeButtons(episodes, title, sourceCode, sourceName || '');
+        container.innerHTML = renderEpisodeButtons(episodes, title, sourceCode, sourceName || '', typeName);
     }
 
     const toggleBtn = document.querySelector('#modal [data-action="toggle-order"]');
@@ -1137,7 +1139,7 @@ function toggleEpisodeOrderUI(container) {
     }
 }
 
-function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
+function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, typeName) {
     if (!episodes || episodes.length === 0) {
         return '<p class="text-center text-gray-500 col-span-full">暂无剧集信息</p>';
     }
@@ -1145,7 +1147,7 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
     const currentReversedState = AppState.get('episodesReversed') || false;
     const vodId = AppState.get('currentVideoId') || '';
     const year = AppState.get('currentVideoYear') || '';
-    const typeName = AppState.get('currentVideoTypeName') || ''; // 从 AppState 获取当前视频类型
+    //const typeName = AppState.get('currentVideoTypeName') || '';
     const videoKey = AppState.get('currentVideoKey') || '';
 
     const displayEpisodes = currentReversedState ? [...episodes].reverse() : [...episodes];
