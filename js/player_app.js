@@ -29,10 +29,6 @@ let adFilteringEnabled = false;
 let universalId = '';
 
 // 提取核心标题，用于匹配同一作品的不同版本
-/**
- * 最终修正版：生成用于聚合的唯一核心标题（聚合键）。
- * 修复了函数末尾的变量引用错误，确保函数能正确执行完毕。
- */
 function getCoreTitle(title, typeName = '') {
     if (typeof title !== 'string') {
         return '';
@@ -42,7 +38,7 @@ function getCoreTitle(title, typeName = '') {
 
     // 步骤 1: 使用正则表达式，仅对电影类型移除副标题
     const movieKeywords = [
-        '电影', '剧情', '动作', '冒险', '同性', '喜剧', '奇幻', 
+        '电影', '剧情', '动作', '冒险', '同性', '喜剧', '奇幻',
         '恐怖', '悬疑', '惊悚', '灾难', '爱情', '犯罪', '科幻', '抢先',
         '动画', '歌舞', '战争', '经典', '网络', '其它', '理论', '纪录'
     ];
@@ -455,7 +451,6 @@ async function doEpisodeSwitch(index, url) {
     updateBrowserHistory(url);
 
     if (player) {
-        // 【修改】切换剧集时也要经过URL处理
         const processedUrl = await processVideoUrl(url);
         player.src = { src: processedUrl, type: 'application/x-mpegurl' };
         player.play().catch(e => console.warn("Autoplay after episode switch was prevented.", e));
@@ -493,7 +488,7 @@ async function doEpisodeSwitch(index, url) {
                 const relevantSources = [];
                 for (const key in sourceMap) {
                     if (sourceMap.hasOwnProperty(key)) {
-                        const sourceItem = sourceMap[key][0]; // 获取一个代表性的源信息
+                        const sourceItem = sourceMap[key][0];
                         if (!sourceItem) continue;
 
                         const coreKeyTitle = getCoreTitle(sourceItem.vod_name, sourceItem.type_name);
