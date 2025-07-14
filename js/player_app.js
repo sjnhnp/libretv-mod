@@ -41,7 +41,7 @@ function getCoreTitle(title, typeName = '') {
         '电影', '剧情片', '动作片', '冒险片', '同性片', '喜剧片', '奇幻片',
         '恐怖片', '悬疑片', '惊悚片', '灾难片', '爱情片', '犯罪片', '科幻片',
         '动画电影', '歌舞片', '战争片', '经典片', '网络电影', '其它片',
-        '电影片', '理论片', '纪录片', '动画片'
+        '电影片', '理论片', '纪录片', '动画片', '恐怖',
     ];
     if (movieLikeTypes.some(type => typeName && typeName.includes(type))) {
         baseName = baseName.replace(/[:：].*/, '').trim();
