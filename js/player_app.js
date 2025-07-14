@@ -29,6 +29,10 @@ let adFilteringEnabled = false;
 let universalId = '';
 
 // 提取核心标题，用于匹配同一作品的不同版本
+/**
+ * 最终修正版：生成用于聚合的唯一核心标题（聚合键）。
+ * 修复了函数末尾的变量引用错误，确保函数能正确执行完毕。
+ */
 function getCoreTitle(title, typeName = '') {
     if (typeof title !== 'string') {
         return '';
@@ -36,7 +40,7 @@ function getCoreTitle(title, typeName = '') {
 
     let baseName = title;
 
-    // --- 步骤 1: 仅对电影类型移除副标题 ---
+    // 步骤 1: 使用正则表达式，仅对电影类型移除副标题
     const movieKeywords = [
         '电影', '剧情', '动作', '冒险', '同性', '喜剧', '奇幻', 
         '恐怖', '悬疑', '惊悚', '灾难', '爱情', '犯罪', '科幻', '抢先',
@@ -47,7 +51,7 @@ function getCoreTitle(title, typeName = '') {
         baseName = baseName.replace(/[:：].*/, '').trim();
     }
 
-    // --- 步骤 2: 提取并统一季数 ---
+    // 步骤 2: 提取并统一季数
     const numeralMap = { '一': '1', '二': '2', '三': '3', '四': '4', '五': '5', '六': '6', '七': '7', '八': '8', '九': '9', '十': '10' };
     let normalizedTitle = title.replace(/[一二三四五六七八九十]/g, (match) => numeralMap[match]);
 
@@ -58,24 +62,20 @@ function getCoreTitle(title, typeName = '') {
     }
     const seasonIdentifier = `_S${String(seasonNumber).padStart(2, '0')}`;
 
-    // --- 步骤 3: 从基础名称中移除所有版本和季数标签，得到纯净的剧名 ---
-
-    // 移除季数信息
+    // 步骤 3: 从基础名称中移除所有版本和季数标签，得到纯净的剧名
     const seasonRegex = new RegExp('[\\s\\(（【\\[]?(?:第[一二三四五六七八九十\\d]+[季部]|Season\\s*\\d+)[\\)）】\\]]?', 'gi');
     baseName = baseName.replace(seasonRegex, '').trim();
 
-    // 【关键修复】恢复移除语言等版本标签的逻辑，以实现聚合
     const versionTags = ['国语', '国', '粤语', '粤', '台配', '台', '中字', '普通话', '高清', 'HD', '版', '修复版', 'TC', '蓝光', '4K'];
     const bracketRegex = new RegExp(`[\\s\\(（【\\[](${versionTags.join('|')})(?![0-9])\\s*[\\)）】\\]]?`, 'gi');
     baseName = baseName.replace(bracketRegex, '').trim();
     const suffixRegex = new RegExp(`(${versionTags.join('|')})$`, 'i');
     baseName = baseName.replace(suffixRegex, '').trim();
 
-    // 清理最终的基础名称
     baseName = baseName.replace(/\s+/g, '').trim();
 
-    // --- 步骤 4: 组合成最终的唯一聚合键 ---
-    if (movieLikeTypes.some(type => typeName && typeName.includes(type)) && !seasonMatch) {
+    // 步骤 4: 使用正确的变量 `movieRegex` 来进行判断
+    if (typeName && movieRegex.test(typeName) && !seasonMatch) {
         return baseName;
     }
 
