@@ -30,36 +30,64 @@ let universalId = '';
 
 // 提取核心标题，用于匹配同一作品的不同版本
 function getCoreTitle(title, typeName = '') {
-    if (typeof title !== 'string') return '';
+    // 确保输入标题是字符串类型，否则返回空字符串
+    if (typeof title !== 'string') {
+        return '';
+    }
+
     let coreTitle = title;
 
-    // 1. 数字归一化 (来自V13)
-    const numeralMap = { '一': '1', '二': '2', '三': '3', '四': '4', '五': '5', '六': '6', '七': '7', '八': '8', '九': '9', '十': '10' };
+    // 将中文数字（一到十）替换为阿拉伯数字。
+    const numeralMap = {
+        '一': '1', '二': '2', '三': '3', '四': '4', '五': '5',
+        '六': '6', '七': '7', '八': '8', '九': '9', '十': '10'
+    };
     coreTitle = coreTitle.replace(/[一二三四五六七八九十]/g, (match) => numeralMap[match]);
 
-    // 2.定义一个被认为是“电影”的类型列表
-    const movieLikeTypes = ['电影', '剧情片', '动作片', '冒险片', '同性片', '喜剧片', '奇幻片', '恐怖片', '悬疑片', '惊悚片', '灾难片', '爱情片', '犯罪片', '科幻片', '动画电影', '歌舞片', '战争片', '经典片', '网络电影', '其它片', '电影片', '理论片', '纪录片', '动画片'];
-    
+    // 2. 定义一个被认为是“电影”的类型列表
+    // 包含常见的电影类型，用于确定是否需要去除副标题。
+    const movieLikeTypes = [
+        '电影', '剧情片', '动作片', '冒险片', '同性片', '喜剧片', '奇幻片',
+        '恐怖片', '悬疑片', '惊悚片', '灾难片', '爱情片', '犯罪片', '科幻片',
+        '动画电影', '歌舞片', '战争片', '经典片', '网络电影', '其它片',
+        '电影片', '理论片', '纪录片', '动画片'
+    ];
+
     // 仅当类型匹配时，才移除副标题
+    // 如果 `typeName` 包含上述任何电影类型，则移除标题中的冒号及之后的所有内容（通常是副标题）。
     if (movieLikeTypes.some(type => typeName.includes(type))) {
         coreTitle = coreTitle.replace(/[:：].*/, '').trim();
     }
-    
+
     // 3. 后续所有处理逻辑均来自V13，保持不变...
+    // 移除标题中的各种版本标签、画质标识和季数信息。
+
+    // 定义常见的版本和画质标签
     const versionTags = [
-        '国语', '国', 
+        '国语', '国',
         '粤语', '粤',
         '台配', '台',
         '中字', '普通话',
         '高清', 'HD', '版', '修复版', 'TC', '蓝光', '4K',
     ];
+
+    // 移除括号及其内部的版本标签（如 "(HD)", "[国语]"）
+    // 使用非捕获组 `(?![0-9])` 确保不会匹配到数字（避免误删类似 "S01" 中的 "01"）。
     const bracketRegex = new RegExp(`[\\s\\(（【\\[](${versionTags.join('|')})(?![0-9])\\s*[\\)）】\\]]?`, 'gi');
     coreTitle = coreTitle.replace(bracketRegex, '').trim();
+
+    // 移除位于标题末尾的版本标签
     const suffixRegex = new RegExp(`(${versionTags.join('|')})$`, 'i');
     coreTitle = coreTitle.replace(suffixRegex, '').trim();
+
+    // 定义表示“第一季”的常见标签
     const seasonOneTags = ['第一季', '第1季', 'Season 1', 'S01', 'Season1'];
+
+    // 移除标题末尾的第一季标签（如 "第一季", "S01"）
     const seasonOneRegex = new RegExp(`[\\s\\(（【\\[]?(${seasonOneTags.join('|')})[\\)）】\\]]?$`, 'i');
     coreTitle = coreTitle.replace(seasonOneRegex, '').trim();
+
+    // 移除标题中多余的空格，确保最终标题紧凑。
     coreTitle = coreTitle.replace(/\s+/g, '');
 
     return coreTitle;
