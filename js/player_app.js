@@ -37,13 +37,13 @@ function getCoreTitle(title, typeName = '') {
     let baseName = title;
 
     // --- 步骤 1: 仅对电影类型移除副标题 ---
-    const movieLikeTypes = [
-        '电影', '剧情片', '动作片', '冒险片', '同性片', '喜剧片', '奇幻片',
-        '恐怖片', '悬疑片', '惊悚片', '灾难片', '爱情片', '犯罪片', '科幻片',
-        '动画电影', '歌舞片', '战争片', '经典片', '网络电影', '其它片',
-        '电影片', '理论片', '纪录片', '动画片', '恐怖',
+    const movieKeywords = [
+        '电影', '剧情', '动作', '冒险', '同性', '喜剧', '奇幻', 
+        '恐怖', '悬疑', '惊悚', '灾难', '爱情', '犯罪', '科幻', '抢先',
+        '动画', '歌舞', '战争', '经典', '网络', '其它', '理论', '纪录'
     ];
-    if (movieLikeTypes.some(type => typeName && typeName.includes(type))) {
+    const movieRegex = new RegExp(movieKeywords.join('|'));
+    if (typeName && movieRegex.test(typeName)) {
         baseName = baseName.replace(/[:：].*/, '').trim();
     }
 
@@ -1044,21 +1044,30 @@ function setupLineSwitching() {
             availableAlternativeSources.forEach(source => {
                 const item = document.createElement('button');
 
-                // --- 独立的显示逻辑 ---
                 const vodName = source.vod_name || '';
                 const remarks = source.vod_remarks || '';
 
-                // 1. 定义所有可能的版本和季数标签
-                const allVersionTags = ['国语', '粤语', '台配', '中字', '普通话', '高清', 'HD', '修复版', 'TC', '蓝光', '4K'];
+                const allVersionTags = ['国语', '国', '粤语', '粤', '台配', '台', '中字', '普通话', '高清', 'HD', '修复版', 'TC', '蓝光', '4K'];
                 const seasonRegex = /(第[一二三四五六七八九十\d]+[季部]|Season\s*\d+)/i;
 
-                // 2. 从标题中提取所有匹配的标签
                 const foundTags = [];
                 allVersionTags.forEach(tag => {
                     if (vodName.includes(tag)) {
                         foundTags.push(tag);
                     }
                 });
+
+                // 为了避免 "国语" 和 "国" 同时被匹配，做一个简单的去重
+                if (foundTags.includes('国语') && foundTags.includes('国')) {
+                    foundTags.splice(foundTags.indexOf('国'), 1);
+                }
+                if (foundTags.includes('粤语') && foundTags.includes('粤')) {
+                    foundTags.splice(foundTags.indexOf('粤'), 1);
+                }
+                if (foundTags.includes('台配') && foundTags.includes('台')) {
+                    foundTags.splice(foundTags.indexOf('台'), 1);
+                }
+
                 const seasonMatch = vodName.match(seasonRegex);
                 if (seasonMatch) {
                     foundTags.push(seasonMatch[0]);
@@ -1067,13 +1076,11 @@ function setupLineSwitching() {
                     foundTags.push(remarks);
                 }
 
-                // 3. 组合成最终的显示文本
                 let tagsDisplay = '';
                 if (foundTags.length > 0) {
                     tagsDisplay = `(${foundTags.join(', ')})`;
                 }
                 item.textContent = `${source.source_name} ${tagsDisplay}`.trim();
-                // --- 显示逻辑结束 ---
 
                 item.dataset.sourceCode = source.source_code;
                 item.dataset.vodId = source.vod_id;
