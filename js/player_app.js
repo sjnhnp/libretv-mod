@@ -819,34 +819,56 @@ function renderEpisodes() {
 
     const order = [...Array(currentEpisodes.length).keys()];
     if (episodesReversed) order.reverse();
-
     order.forEach(idx => {
+
         const btn = document.createElement('button');
+
         btn.type = 'button';
+
         btn.dataset.index = idx;
 
+
         const episodeData = currentEpisodes[idx] || '';
+
         const parts = episodeData.split('$');
 
+        const episodeName = parts.length > 1 ? parts[0] : '';
+
         // 步骤 3: 如果是综艺类型，并且数据格式正确，就显示名称
-        if (isVarietyShow && parts.length > 1 && parts[0].trim()) {
-            const episodeName = parts[0];
+        if (isVarietyShow && episodeName.trim()) {
+
+            // 综艺类型：显示源数据中的剧集名称
+
             btn.textContent = episodeName;
+
             btn.title = episodeName;
-            btn.className = idx === currentEpisodeIndex 
-                ? 'p-2 rounded episode-active episode-button-long-text' 
+
+            btn.className = idx === currentEpisodeIndex
+
+                ? 'p-2 rounded episode-active episode-button-long-text'
+
                 : 'p-2 rounded bg-[#222] hover:bg-[#333] text-gray-300 episode-button-long-text';
+
         } else {
-            // 否则 (是普通剧集 或 综艺数据格式不正确)，一律显示数字序号
+
+            // 普通类型：显示数字序号
+
             btn.textContent = idx + 1;
-            btn.className = idx === currentEpisodeIndex 
-                ? 'p-2 rounded episode-active' 
+
+            btn.className = idx === currentEpisodeIndex
+
+                ? 'p-2 rounded episode-active'
+
                 : 'p-2 rounded bg-[#222] hover:bg-[#333] text-gray-300';
+
         }
-        
+
+
+
         grid.appendChild(btn);
+
     });
-    
+
     if (!grid._sListenerBound) {
         grid.addEventListener('click', evt => {
             const target = evt.target.closest('button[data-index]');

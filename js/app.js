@@ -1248,33 +1248,52 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, type
         const safeVideoTitle = encodeURIComponent(videoTitle);
         const safeSourceName = encodeURIComponent(sourceName);
 
+        const parts = (episodeUrl || '').split('$');
+        const episodeName = parts.length > 1 ? parts[0] : '';
+
         let buttonText = '';
         let buttonTitle = '';
         let extraClasses = '';
 
-        const parts = (episodeUrl || '').split('$');
-        const episodeName = parts[0];
-
         // 如果是综艺类型，并且数据格式正确，就显示名称
-        if (isVarietyShow && parts.length > 1 && episodeName.trim()) {
+
+        if (isVarietyShow && episodeName.trim()) {
+
             buttonText = episodeName;
+
             buttonTitle = episodeName;
+
             extraClasses = 'episode-button-long-text';
+
         } else {
+
             // 否则，一律显示“第 X 集”
+
             buttonText = `第 ${originalIndex + 1} 集`;
+
             buttonTitle = `第 ${originalIndex + 1} 集`;
+
         }
 
+
         return `
-            <button 
-                onclick="playVideo('${episodeUrl}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}', '${vodId}', '${year}', '${typeName}', '${videoKey}')" 
-                class="episode-btn px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate ${extraClasses}"
-                data-index="${originalIndex}"
-                title="${buttonTitle}" 
-            >
-                ${buttonText}
-            </button>`;
+
+        <button 
+
+            onclick="playVideo('${episodeUrl}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}', '${vodId}', '${year}', '${typeName}', '${videoKey}')" 
+
+            class="episode-btn px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate ${extraClasses}"
+
+            data-index="${originalIndex}"
+
+            title="${buttonTitle}" 
+
+        >
+
+            ${buttonText}
+
+        </button>`;
+
     }).join('');
 }
 
