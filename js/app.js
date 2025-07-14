@@ -1145,12 +1145,14 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
     const currentReversedState = AppState.get('episodesReversed') || false;
     const vodId = AppState.get('currentVideoId') || '';
     const year = AppState.get('currentVideoYear') || '';
-    const typeName = AppState.get('currentVideoTypeName') || '';
+    const typeName = AppState.get('currentVideoTypeName') || ''; // 从 AppState 获取当前视频类型
     const videoKey = AppState.get('currentVideoKey') || '';
 
     const displayEpisodes = currentReversedState ? [...episodes].reverse() : [...episodes];
 
-    const varietyRegex = /(\d{6,8}|期)/;
+    // 定义需要特殊处理的类型关键词
+    const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
+    const isVarietyShow = varietyShowTypes.some(type => typeName && typeName.includes(type));
 
     return displayEpisodes.map((episodeUrl, displayIndex) => {
         const originalIndex = currentReversedState ? (episodes.length - 1 - displayIndex) : displayIndex;
@@ -1164,11 +1166,13 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
         const parts = (episodeUrl || '').split('$');
         const episodeName = parts[0];
 
-        if (parts.length > 1 && varietyRegex.test(episodeName)) {
+        // 如果是综艺类型，并且数据格式正确，就显示名称
+        if (isVarietyShow && parts.length > 1 && episodeName.trim()) {
             buttonText = episodeName;
             buttonTitle = episodeName;
             extraClasses = 'episode-button-long-text';
         } else {
+            // 否则，一律显示“第 X 集”
             buttonText = `第 ${originalIndex + 1} 集`;
             buttonTitle = `第 ${originalIndex + 1} 集`;
         }

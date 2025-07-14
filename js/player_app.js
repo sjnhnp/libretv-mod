@@ -811,6 +811,12 @@ function renderEpisodes() {
         return;
     }
 
+    // 步骤 1: 定义需要特殊处理的类型关键词
+    const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
+
+    // 步骤 2: 直接根据视频的`typeName`判断
+    const isVarietyShow = varietyShowTypes.some(type => currentVideoTypeName && currentVideoTypeName.includes(type));
+
     const order = [...Array(currentEpisodes.length).keys()];
     if (episodesReversed) order.reverse();
 
@@ -821,21 +827,23 @@ function renderEpisodes() {
 
         const episodeData = currentEpisodes[idx] || '';
         const parts = episodeData.split('$');
-        const episodeName = parts[0];
 
-        const varietyRegex = /(\d{6,8}|期)/;
-        if (parts.length > 1 && varietyRegex.test(episodeName)) {
+        // 步骤 3: 如果是综艺类型，并且数据格式正确，就显示名称
+        if (isVarietyShow && parts.length > 1 && parts[0].trim()) {
+            const episodeName = parts[0];
             btn.textContent = episodeName;
             btn.title = episodeName;
             btn.className = idx === currentEpisodeIndex 
                 ? 'p-2 rounded episode-active episode-button-long-text' 
                 : 'p-2 rounded bg-[#222] hover:bg-[#333] text-gray-300 episode-button-long-text';
         } else {
+            // 否则 (是普通剧集 或 综艺数据格式不正确)，一律显示数字序号
             btn.textContent = idx + 1;
             btn.className = idx === currentEpisodeIndex 
                 ? 'p-2 rounded episode-active' 
                 : 'p-2 rounded bg-[#222] hover:bg-[#333] text-gray-300';
         }
+        
         grid.appendChild(btn);
     });
     
