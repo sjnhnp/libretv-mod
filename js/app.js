@@ -805,17 +805,35 @@ async function getVideoDetail(id, sourceCode, apiUrl = '') {
         const response = await fetch(url);
         const data = await response.json();
 
-        if (data.code !== 200 || !Array.isArray(data.episodes) || data.episodes.length === 0) {
-            throw new Error(data.msg || '获取视频详情失败');
+        // +++ 剧集解析逻辑 - 支持多种格式 +++
+        let episodes = [];
+
+        // 情况1：标准episodes数组
+        if (Array.isArray(data.episodes) && data.episodes.length > 0) {
+            episodes = data.episodes;
+        }
+        // 情况2：从vod_play_url解析
+        else if (data.vod_play_url) {
+            console.warn("使用备用字段 vod_play_url 解析剧集");
+            episodes = parseVodPlayUrl(data.vod_play_url);
+        }
+        // 情况3：从HTML内容解析（当响应是HTML时）
+        else if (typeof data === 'string' && data.includes('stui-content__playlist')) {
+            console.warn("从HTML内容解析剧集数据");
+            episodes = parseHtmlEpisodeList(data);
+        }
+
+        if (episodes.length === 0) {
+            throw new Error('未找到剧集信息');
         }
 
         // 保存视频信息到状态
-        AppState.set('currentEpisodes', data.episodes);
+        AppState.set('currentEpisodes', episodes);
         AppState.set('currentVideoTitle', data.videoInfo?.title || '未知视频');
         AppState.set('currentEpisodeIndex', 0);
 
         // 保存到localStorage（用于播放器页面）
-        localStorage.setItem('currentEpisodes', JSON.stringify(data.episodes));
+        localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
         localStorage.setItem('currentVideoTitle', data.videoInfo?.title || '未知视频');
         localStorage.setItem('currentEpisodeIndex', '0');
 
@@ -825,7 +843,7 @@ async function getVideoDetail(id, sourceCode, apiUrl = '') {
         }
 
         // 使用playVideo函数播放第一集
-        const firstEpisode = data.episodes[0];
+        const firstEpisode = episodes[0];
         // 尝试从API表查 sourceName
         let sourceName = '';
         if (sourceCode.startsWith('custom_') && window.APISourceManager?.getCustomApiInfo) {
@@ -851,6 +869,75 @@ async function getVideoDetail(id, sourceCode, apiUrl = '') {
         showToast('获取视频详情失败: ' + error.message, 'error');
     }
 }
+
+// 解析HTML中的剧集列表
+function parseHtmlEpisodeList(html) {
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const episodes = [];
+
+        // 选择所有播放列表项
+        const items = doc.querySelectorAll('.stui-content__playlist li a.copy_text');
+
+        items.forEach(item => {
+            // 获取剧集名称（第一个文本节点）
+            let name = "";
+            for (const node of item.childNodes) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    name = node.textContent.trim();
+                    break;
+                }
+            }
+
+            // 获取URL（hidden-xs span的内容）
+            const urlSpan = item.querySelector('span.hidden-xs');
+            let url = urlSpan ? urlSpan.textContent.trim() : '';
+
+            // 移除URL开头的$符号（如果存在）
+            if (url.startsWith('$')) {
+                url = url.substring(1);
+            }
+
+            if (name && url) {
+                episodes.push(`${name}$${url}`);
+            }
+        });
+
+        return episodes;
+    } catch (e) {
+        console.error("解析HTML剧集失败", e);
+        return [];
+    }
+}
+
+// 解析vod_play_url格式
+function parseVodPlayUrl(vodPlayUrl) {
+    const episodes = [];
+
+    // 第一步：按#分割不同剧集
+    const segments = vodPlayUrl.split('#');
+
+    segments.forEach(segment => {
+        // 第二步：每个segment按$分割名称和URL
+        const parts = segment.split('$');
+
+        if (parts.length >= 2) {
+            // 获取名称（第一部分）
+            const name = parts[0].trim();
+            // 获取URL（最后部分）
+            const url = parts[parts.length - 1].trim();
+
+            // 过滤无效条目
+            if (name && url && url.startsWith('http')) {
+                episodes.push(`${name}$${url}`);
+            }
+        }
+    });
+
+    return episodes;
+}
+
 
 // 重置到首页
 function resetToHome() {
@@ -1164,7 +1251,7 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, type
         let buttonText = '';
         let buttonTitle = '';
         let extraClasses = '';
-        
+
         const parts = (episodeUrl || '').split('$');
         const episodeName = parts[0];
 
