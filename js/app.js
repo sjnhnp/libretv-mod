@@ -1145,31 +1145,32 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName) {
     const currentReversedState = AppState.get('episodesReversed') || false;
     const vodId = AppState.get('currentVideoId') || '';
     const year = AppState.get('currentVideoYear') || '';
-    const typeName = AppState.get('currentVideoTypeName') || ''; 
+    const typeName = AppState.get('currentVideoTypeName') || '';
     const videoKey = AppState.get('currentVideoKey') || '';
 
     const displayEpisodes = currentReversedState ? [...episodes].reverse() : [...episodes];
 
-    const varietyShowTypes = ['综艺'];
-    const isVarietyShow = varietyShowTypes.some(type => typeName && typeName.includes(type));
+    const varietyRegex = /(\d{6,8}|期)/;
 
     return displayEpisodes.map((episodeUrl, displayIndex) => {
         const originalIndex = currentReversedState ? (episodes.length - 1 - displayIndex) : displayIndex;
         const safeVideoTitle = encodeURIComponent(videoTitle);
         const safeSourceName = encodeURIComponent(sourceName);
 
-        // 根据是否为综艺节目，生成不同的按钮文本和 title
         let buttonText = '';
         let buttonTitle = '';
         let extraClasses = '';
+        
+        const parts = (episodeUrl || '').split('$');
+        const episodeName = parts[0];
 
-        if (isVarietyShow) {
-            buttonText = (episodeUrl || '').split('$')[0] || `第 ${originalIndex + 1} 集`;
-            buttonTitle = buttonText; // 悬浮提示就是按钮的文本
-            extraClasses = 'episode-button-long-text'; // 添加长文本样式类
+        if (parts.length > 1 && varietyRegex.test(episodeName)) {
+            buttonText = episodeName;
+            buttonTitle = episodeName;
+            extraClasses = 'episode-button-long-text';
         } else {
             buttonText = `第 ${originalIndex + 1} 集`;
-            buttonTitle = buttonText;
+            buttonTitle = `第 ${originalIndex + 1} 集`;
         }
 
         return `
