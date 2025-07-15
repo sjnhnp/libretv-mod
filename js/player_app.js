@@ -590,6 +590,11 @@ function setupAllUI() {
             saveVideoSpecificProgress();
         }
     });
+
+    // 增强功能的初始化现在被正确地放在这里
+    setTimeout(() => {
+        initializeElegantEnhancements();
+    }, 100);
 }
 
 function updateUIForNewEpisode() {
@@ -646,6 +651,10 @@ function setupPlayerControls() {
 
     const lockButton = document.getElementById('lock-button');
     if (lockButton) lockButton.addEventListener('click', toggleLockScreen);
+
+    // 为复制按钮绑定事件监听器
+    const copyLinkBtn = document.getElementById('copy-link-button');
+    if (copyLinkBtn) copyLinkBtn.addEventListener('click', copyLinks);
 }
 
 function handleKeyboardShortcuts(e) {
@@ -1779,49 +1788,38 @@ function ensureCompatibility() {
     // 确保原有的 toggleEpisodeOrder 函数的图标更新逻辑
     const orderButton = document.getElementById('order-button');
     if (orderButton && typeof window.toggleEpisodeOrder === 'function') {
-        const originalToggleOrder = window.toggleEpisodeOrder;
-
-        // 增强排序按钮的视觉反馈
         orderButton.addEventListener('click', () => {
             setTimeout(() => {
-                // 检查当前是否为倒序状态
                 const orderIcon = document.getElementById('order-icon');
                 if (orderIcon) {
-                    const isReversed = orderIcon.style.transform === 'rotate(180deg)';
+                    
+                     const isReversed = orderIcon.style.transform === 'rotate(180deg)';
                     orderButton.classList.toggle('active', isReversed);
                 }
             }, 100);
         });
     }
 
-    // 确保原有的 setupSkipDropdownEvents 函数仍然有效
-    const skipButton = document.getElementById('skip-control-button');
+    // 增强跳过设置下拉菜单的样式
     const skipDropdown = document.getElementById('skip-control-dropdown');
-
-    if (skipButton && skipDropdown) {
-        // 为跳过设置下拉菜单添加增强样式
+    if (skipDropdown) {
         skipDropdown.classList.add('elegant-dropdown');
-
         const skipContent = skipDropdown.querySelector('div');
         if (skipContent) {
             skipContent.classList.add('elegant-dropdown-content');
         }
-
         const skipInputGroups = skipDropdown.querySelectorAll('.flex.items-center');
         skipInputGroups.forEach(group => {
             group.classList.add('elegant-input-group');
         });
-
         const skipInputs = skipDropdown.querySelectorAll('input');
         skipInputs.forEach(input => {
             input.classList.add('elegant-input');
         });
-
         const skipLabels = skipDropdown.querySelectorAll('label');
         skipLabels.forEach(label => {
             label.classList.add('elegant-label');
         });
-
         const skipButtons = skipDropdown.querySelectorAll('button');
         skipButtons.forEach((button, index) => {
             if (index === 0) {
@@ -1832,12 +1830,9 @@ function ensureCompatibility() {
         });
     }
 
-    // 确保原有的线路切换功能保持不变
-    const lineButton = document.getElementById('line-switch-button');
+    // 增强线路切换下拉菜单的样式
     const lineDropdown = document.getElementById('line-switch-dropdown');
-
-    if (lineButton && lineDropdown) {
-        // 为线路切换下拉菜单添加增强样式
+    if (lineDropdown) {
         lineDropdown.classList.add('elegant-dropdown');
     }
 }
@@ -1846,13 +1841,11 @@ function ensureCompatibility() {
 // 注意：这个函数在页面加载后初始化所有增强功能
 
 function initializeElegantEnhancements() {
-    // 等待 DOM 完全加载
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initializeElegantEnhancements);
         return;
     }
 
-    // 初始化所有增强功能
     try {
         enhanceContainer();
         enhanceHeader();
@@ -1876,84 +1869,25 @@ function initializeElegantEnhancements() {
     }
 }
 
-// ==================== 在原有的 setupAllUI 函数基础上添加增强功能 ====================
-// 注意：这部分代码不会修改原有的 setupAllUI 函数，而是在其基础上添加增强功能
-
-// 保存原有的 setupAllUI 函数
-const originalSetupAllUI = window.setupAllUI;
-
-// 创建增强版的 setupAllUI 函数
-function setupAllUI() {
-    // 先调用原有的 setupAllUI 函数
-    if (originalSetupAllUI && typeof originalSetupAllUI === 'function') {
-        originalSetupAllUI();
-    } else {
-        // 如果原有函数不存在，执行原有的设置逻辑
-        updateEpisodeInfo();
-        renderEpisodes();
-        setupPlayerControls();
-        updateButtonStates();
-        updateOrderButton();
-        setupLineSwitching();
-        setupSkipControls();
-        setupSkipDropdownEvents();
-        setupRememberEpisodeProgressToggle();
-
-        document.addEventListener('keydown', handleKeyboardShortcuts);
-        window.addEventListener('beforeunload', () => {
-            saveCurrentProgress();
-            saveVideoSpecificProgress();
-        });
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') {
-                saveCurrentProgress();
-                saveVideoSpecificProgress();
-            }
-        });
-    }
-
-    // 在原有功能设置完成后，添加增强功能
-    setTimeout(() => {
-        initializeElegantEnhancements();
-    }, 100);
-}
-
-// 替换全局的 setupAllUI 函数
-window.setupAllUI = setupAllUI;
-
 // ==================== 自动初始化 ====================
-// 注意：这部分代码会在页面加载时自动初始化增强功能
 
 // 如果页面已经加载完成，立即初始化
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        // 延迟一点时间，确保原有的初始化逻辑先执行
         setTimeout(initializeElegantEnhancements, 200);
     });
 } else {
-    // 页面已经加载完成，延迟初始化
     setTimeout(initializeElegantEnhancements, 200);
 }
 
 // ==================== 保持原有的导出函数 ====================
 // 注意：确保所有原有的全局函数保持不变
 
-// 这些函数保持原有的导出，不做任何修改
-if (typeof window.playNextEpisode === 'undefined') {
-    window.playNextEpisode = playNextEpisode;
-}
-if (typeof window.playPreviousEpisode === 'undefined') {
-    window.playPreviousEpisode = playPreviousEpisode;
-}
-if (typeof window.copyLinks === 'undefined') {
-    window.copyLinks = copyLinks;
-}
-if (typeof window.toggleEpisodeOrder === 'undefined') {
-    window.toggleEpisodeOrder = toggleEpisodeOrder;
-}
-if (typeof window.toggleLockScreen === 'undefined') {
-    window.toggleLockScreen = toggleLockScreen;
-}
+window.playNextEpisode = playNextEpisode;
+window.playPreviousEpisode = playPreviousEpisode;
+window.copyLinks = copyLinks;
+window.toggleEpisodeOrder = toggleEpisodeOrder;
+window.toggleLockScreen = toggleLockScreen;
 
 // ==================== 完成标记 ====================
 console.log('🎬 播放器增强脚本已加载，所有原有功能保持不变');
