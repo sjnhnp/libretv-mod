@@ -1280,21 +1280,41 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, type
         const parts = (episodeString || '').split('$');
         const episodeName = parts.length > 1 ? parts[0].trim() : '';
 
-        let buttonText = isVarietyShow && episodeName ? episodeName : `第 ${originalIndex + 1} 集`;
-        let buttonTitle = isVarietyShow && episodeName ? episodeName : `第 ${originalIndex + 1} 集`;
+        let buttonText = '';
+        let buttonTitle = '';
+        let buttonClasses = ''; // 动态设置按钮类
 
-        // 统一使用一个基础 class，具体样式由父容器的 class 和 CSS 决定
-        let buttonClasses = 'episode-btn';
-        if (originalIndex === AppState.get('currentEpisodeIndex')) {
-            buttonClasses += ' episode-active';
+        if (isVarietyShow) {
+            // --- 综艺节目 ---
+            buttonText = episodeName || `第${originalIndex + 1}集`;
+            buttonTitle = buttonText;
+            buttonClasses = 'episode-btn'; 
+        } else {
+            // --- 非综艺节目 (电视剧等) ---
+            buttonText = `第 ${originalIndex + 1} 集`; // 保持带空格的 "第 X 集"
+            buttonTitle = buttonText;
+            // **核心修改**: 应用 old2.txt 中的样式类
+            buttonClasses = 'episode-btn px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate';
         }
+
+        // 为当前播放的集数添加高亮类
+        // 注意：old2.txt 的激活样式依赖于一个独立的 episode-active 类，这里我们不添加它，让全局CSS处理
+        // if (originalIndex === AppState.get('currentEpisodeIndex')) {
+        //     buttonClasses += ' episode-active';
+        // }
 
         const safeVideoTitle = encodeURIComponent(videoTitle);
         const safeSourceName = encodeURIComponent(sourceName);
 
+        // 从剧集字符串中提取真实的播放URL
+        let playUrl = episodeString;
+        if (episodeString.includes('$')) {
+            playUrl = episodeString.split('$').pop();
+        }
+
         return `
             <button 
-                onclick="playVideo('${episodeString}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}', '${vodId}', '${year}', '${typeName}', '${videoKey}')" 
+                onclick="playVideo('${playUrl}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}', '${vodId}', '${year}', '${typeName}', '${videoKey}')" 
                 class="${buttonClasses}"
                 data-index="${originalIndex}"
                 title="${buttonTitle}" 
