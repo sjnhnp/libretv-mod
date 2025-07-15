@@ -254,6 +254,7 @@ async function handleApiRequest(url) {
     // 辅助函数，智能拼接URL参数
     const appendQueryParams = (baseUrl, params) => {
         if (!baseUrl) return '';
+        // 核心修正：如果基础URL已经有参数，则用 '&' 连接，否则用 '?'
         return baseUrl.includes('?') ? `${baseUrl}&${params}` : `${baseUrl}?${params}`;
     };
 
@@ -269,12 +270,18 @@ async function handleApiRequest(url) {
                 throw new Error('无效的API来源');
             }
 
-            const baseUrl = source.startsWith('custom_')
-                ? customApi
-                : API_SITES[source].api;
+            const baseUrl = source.startsWith('custom_') ? customApi : API_SITES[source].api;
 
-            const searchParams = `${API_CONFIG.search.path}${encodeURIComponent(searchQuery)}`;
+            // ▼▼▼ 核心逻辑修改 ▼▼▼
+            // 判断API地址是否是 .php 文件，如果是，则不加 `ac=videolist`
+            let searchParams;
+            if (baseUrl.endsWith('.php')) {
+                searchParams = `wd=${encodeURIComponent(searchQuery)}`;
+            } else {
+                searchParams = `${API_CONFIG.search.path}${encodeURIComponent(searchQuery)}`;
+            }
             const apiUrl = appendQueryParams(baseUrl, searchParams);
+            // ▲▲▲ 核心逻辑修改 ▲▲▲
 
             try {
                 const result = await fetchWithTimeout(
@@ -314,15 +321,30 @@ async function handleApiRequest(url) {
                     return await handleSpecialSourceDetail(id, sourceCode);
                 }
                 else if (sourceCode.startsWith('custom_') && url.searchParams.get('useDetail') === 'true') {
-                    // (此部分保持不变)
+                    // (此部分逻辑保持不变)
+                    const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
+                    const apiInfo = window.APISourceManager.getCustomApiInfo(customIndex);
+                    if (apiInfo) {
+                        const detailScrapeUrl = apiInfo.detail || customApi;
+                        return await handleCustomApiSpecialDetail(id, detailScrapeUrl);
+                    } else {
+                        throw new Error(`自定义API信息未找到 (source: ${sourceCode})`);
+                    }
                 }
                 else {
                     const baseUrl = sourceCode.startsWith('custom_')
                         ? customApi
                         : API_SITES[sourceCode].api;
 
-                    const detailParams = `${API_CONFIG.detail.path}${id}`;
+                    // ▼▼▼ 同样应用智能拼接逻辑到详情页 ▼▼▼
+                    let detailParams;
+                    if (baseUrl.endsWith('.php')) {
+                        detailParams = `ids=${id}`;
+                    } else {
+                        detailParams = `${API_CONFIG.detail.path}${id}`;
+                    }
                     const detailUrl = appendQueryParams(baseUrl, detailParams);
+                    // ▲▲▲ 同样应用智能拼接逻辑到详情页 ▲▲▲
 
                     const result = await fetchWithTimeout(
                         PROXY_URL + encodeURIComponent(detailUrl),
@@ -338,13 +360,9 @@ async function handleApiRequest(url) {
                         const playFroms = (videoDetail.vod_play_from || '').split('$$$');
                         const urlGroups = videoDetail.vod_play_url.split('$$$');
 
-                        // 默认使用第一个播放源
                         const mainSourceUrls = urlGroups[0] || '';
                         episodes = mainSourceUrls.split('#')
-                            .map(ep => {
-                                // 保持 "名称$链接" 的完整格式
-                                return ep.includes('$') ? ep : '';
-                            })
+                            .map(ep => ep.includes('$') ? ep : '')
                             .filter(Boolean);
                     }
 
@@ -356,8 +374,6 @@ async function handleApiRequest(url) {
                     return JSON.stringify({
                         code: 200,
                         episodes,
-                        episodes_from: videoDetail.vod_play_from,
-                        vod_play_url: videoDetail.vod_play_url,
                         videoInfo: {
                             title: videoDetail.vod_name,
                             cover: videoDetail.vod_pic,
