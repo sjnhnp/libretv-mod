@@ -878,27 +878,36 @@ body {
 }
 }
 
-/* 综艺按钮独有样式 */
-.variety-episode-button {
+/* 综艺按钮专用样式 (首页弹窗) */
+
+/* 综艺节目容器的自适应网格布局 */
+.variety-grid-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+/* 综艺节目按钮的样式 */
+.variety-grid-layout .episode-btn {
   /* 外观 */
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 8px 14px;
+  padding: 8px 12px;
   border-radius: 6px;
   font-size: 0.875rem;
   color: white;
   transition: all 0.2s ease;
+  cursor: pointer;
 
   /* 文本溢出处理 */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: center;
-
-  /* 布局：让它在grid单元格里正常显示 */
-  width: 100%; 
+  width: 100%;
 }
-.variety-episode-button:hover {
+
+.variety-grid-layout .episode-btn:hover {
   background: rgba(255, 255, 255, 0.15);
   border-color: var(--primary-color);
 }

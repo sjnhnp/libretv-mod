@@ -802,27 +802,34 @@ function clearCurrentVideoAllEpisodeProgresses() {
     }
 }
 
-// 文件: js/player_app.js
-
 function renderEpisodes() {
     const grid = document.getElementById('episode-grid');
     if (!grid) { setTimeout(renderEpisodes, 100); return; }
 
-    // ... (其他不变的代码)
     const container = document.getElementById('episodes-container');
-    if (container) {
-        container.classList.toggle('hidden', currentEpisodes.length <= 1);
-    }
+    if (container) { container.classList.toggle('hidden', currentEpisodes.length <= 1); }
+
     const countSpan = document.getElementById('episodes-count');
-    if (countSpan) countSpan.textContent = `共 ${currentEpisodes.length} 集`;
+    if (countSpan) { countSpan.textContent = `共 ${currentEpisodes.length} 集`; }
+
+    const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
+    const isVarietyShow = varietyShowTypes.some(type => currentVideoTypeName && currentVideoTypeName.includes(type));
+
+    // **核心修改**：根据类型切换容器的CSS类
+    if (isVarietyShow) {
+        // 如果是综艺，使用我们新的自适应网格布局类
+        grid.className = 'episode-grid-container variety-grid-layout';
+    } else {
+        // 如果是普通剧集，恢复HTML里原始的、紧凑的网格布局类
+        grid.className = 'episode-grid grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2';
+    }
+
     grid.innerHTML = '';
     if (!currentEpisodes.length) {
         grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-4">没有可用的剧集</div>';
         return;
     }
 
-    const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
-    const isVarietyShow = varietyShowTypes.some(type => currentVideoTypeName && currentVideoTypeName.includes(type));
     const orderedEpisodes = episodesReversed ? [...currentEpisodes].reverse() : [...currentEpisodes];
 
     orderedEpisodes.forEach((episodeData, index) => {
@@ -836,16 +843,11 @@ function renderEpisodes() {
         const episodeName = parts.length > 1 ? parts[0].trim() : '';
 
         if (isVarietyShow && episodeName) {
-            // ============== 综艺节目按钮 ==============
             btn.textContent = episodeName;
             btn.title = episodeName;
-            btn.classList.add('variety-episode-button'); // 添加特殊类
         } else {
-            // ============== 普通剧集按钮 ==============
             btn.textContent = originalIndex + 1;
             btn.title = `第 ${originalIndex + 1} 集`;
-            // 使用原始的、包含Tailwind内联样式的类
-            btn.className = 'p-2 rounded bg-[#222] hover:bg-[#333] text-gray-300';
         }
 
         if (originalIndex === currentEpisodeIndex) {

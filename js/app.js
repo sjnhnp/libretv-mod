@@ -1275,53 +1275,48 @@ function toggleEpisodeOrderUI(container) {
     }
 }
 
+// 文件: js/app.js
+
 function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, typeName) {
+    // --- 这部分代码无需修改，保持原样 ---
     if (!episodes || episodes.length === 0) {
         return '<p class="text-center text-gray-500 col-span-full">暂无剧集信息</p>';
     }
-
     const currentReversedState = AppState.get('episodesReversed') || false;
     const vodId = AppState.get('currentVideoId') || '';
     const year = AppState.get('currentVideoYear') || '';
     const videoKey = AppState.get('currentVideoKey') || '';
-
     const displayEpisodes = currentReversedState ? [...episodes].reverse() : [...episodes];
-
     const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
     const isVarietyShow = varietyShowTypes.some(type => typeName && typeName.includes(type));
+    // --- 以上代码无需修改 ---
+
+    // **核心修改**：找到按钮容器，如果是综艺，就动态改变它的CSS类
+    const container = document.querySelector('[data-field="episode-buttons-grid"]');
+    if (container) {
+        if (isVarietyShow) {
+            // 如果是综艺，使用我们新的自适应网格布局类
+            container.className = 'variety-grid-layout';
+        } else {
+            // 如果是普通剧集，恢复HTML模板里原始的、紧凑的网格布局类
+            container.className = 'grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2';
+        }
+    }
 
     return displayEpisodes.map((episodeString, displayIndex) => {
         const originalIndex = currentReversedState ? (episodes.length - 1 - displayIndex) : displayIndex;
-
         const parts = (episodeString || '').split('$');
         const episodeName = parts.length > 1 ? parts[0].trim() : '';
 
-        let buttonText = '';
-        let buttonTitle = '';
-        let buttonClasses = 'episode-btn '; // 基础类名
+        let buttonText = isVarietyShow && episodeName ? episodeName : `第 ${originalIndex + 1} 集`;
+        let buttonTitle = isVarietyShow && episodeName ? episodeName : `第 ${originalIndex + 1} 集`;
 
-        if (isVarietyShow && episodeName) {
-            // ============== 综艺节目按钮 ==============
-            buttonText = episodeName;
-            buttonTitle = episodeName;
-            // 添加特殊的综艺按钮类，并且移除所有布局和内边距相关的类
-            buttonClasses += 'variety-episode-button'; 
-            if (originalIndex === AppState.get('currentEpisodeIndex')) {
-                buttonClasses += ' episode-active';
-            }
-
-        } else {
-            // ============== 普通剧集按钮 ==============
-            buttonText = `第 ${originalIndex + 1} 集`;
-            buttonTitle = `第 ${originalIndex + 1} 集`;
-            // 使用原始的、包含Tailwind内联样式的类
-            buttonClasses += 'px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate';
-            if (originalIndex === AppState.get('currentEpisodeIndex')) {
-                buttonClasses += ' episode-active';
-            }
+        // 按钮本身不再需要特殊的class来控制布局，只控制激活状态
+        let buttonClasses = 'episode-btn';
+        if (originalIndex === AppState.get('currentEpisodeIndex')) {
+            buttonClasses += ' episode-active';
         }
 
-        // onclick 事件中的第一个参数应该是完整的 episodeString
         const safeVideoTitle = encodeURIComponent(videoTitle);
         const safeSourceName = encodeURIComponent(sourceName);
 
