@@ -89,6 +89,17 @@ function generateUniversalId(title, year, episodeIndex) {
 }
 
 // 实用工具函数
+function hidePlayerOverlays() {
+    const errorElement = document.getElementById('error');
+    if (errorElement) {
+        errorElement.style.display = 'none';
+    }
+    const loadingElement = document.getElementById('loading');
+    if (loadingElement) {
+        loadingElement.style.display = 'none';
+    }
+}
+
 function showToast(message, type = 'info', duration = 3000) {
 
     const toast = document.getElementById('toast');
@@ -135,18 +146,14 @@ function showMessage(text, type = 'info', duration = 3000) {
     }, duration);
 }
 
-
 function showError(message) {
-    const loadingEl = document.getElementById('loading');
+    hidePlayerOverlays();
+
     const errorElement = document.getElementById('error');
     if (errorElement) {
         const errorTextElement = errorElement.querySelector('.text-xl.font-bold');
         if (errorTextElement) errorTextElement.textContent = message;
         errorElement.style.display = 'flex';
-        if (loadingEl) {
-            loadingEl.classList.remove('hidden');
-            loadingEl.style.display = 'flex';
-        }
     }
     showMessage(message, 'error');
 }
@@ -397,6 +404,8 @@ function addPlayerEventListeners() {
 }
 
 async function playEpisode(index) {
+    hidePlayerOverlays();
+
     if (isNavigatingToEpisode || index < 0 || index >= currentEpisodes.length) {
         return;
     }
@@ -413,11 +422,10 @@ async function playEpisode(index) {
         const currentUniversalId = generateUniversalId(currentVideoTitle, currentVideoYear, index);
         const allProgress = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
         const savedProgress = allProgress[currentUniversalId];
-
         if (savedProgress && savedProgress > 5) {
             const wantsToResume = await showProgressRestoreModal({
                 title: "继续播放？",
-                content: `《${currentVideoTitle}》第 ${index + 1}，<br> <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> `,
+                content: `《${currentVideoTitle}》第 ${index + 1} 集，<br> <span style="color:#00ccff">${formatPlayerTime(savedProgress)}</span> `,
                 confirmText: "YES",
                 cancelText: "NO"
             });
@@ -1269,9 +1277,17 @@ function setupRememberEpisodeProgressToggle() {
 }
 
 function retryLastAction() {
+    hidePlayerOverlays();
+
     const errorEl = document.getElementById('error');
     if (errorEl) errorEl.style.display = 'none';
+    
     if (!lastFailedAction) {
+        if (player && player.currentSrc) {
+            console.log("重试：重新加载当前视频源。");
+            player.src = player.currentSrc; // 重新设置源
+            player.play().catch(e => console.error("重试播放失败", e));
+        }
         return;
     }
     if (lastFailedAction.type === 'switchLine') {
@@ -1284,7 +1300,7 @@ function retryLastAction() {
         lastFailedAction = null;
         if (player && player.currentSrc) {
             player.src = player.currentSrc;
-            player.play();
+            player.play().catch(e => console.error("重试播放失败", e));
         }
     }
 }
