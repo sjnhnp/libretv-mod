@@ -1945,7 +1945,7 @@ function initializeElegantEnhancements() {
         enhanceMessage();
         enhanceProgressModal();
         enhanceShortcutHint();
-        setupCopyLinkButton(); // 新增：修复复制按钮
+        //setupCopyLinkButton(); // 新增：修复复制按钮
         ensureCompatibility();
         
         // 延迟初始化设置面板，确保所有元素都准备好了
