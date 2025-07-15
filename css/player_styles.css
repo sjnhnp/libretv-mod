@@ -1787,11 +1787,6 @@ header {
     gap: 0.5rem !important;
   }
 
-  .elegant-dropdown {
-    min-width: 160px !important;
-    max-width: 250px !important;
-  }
-
   .elegant-progress-card {
     min-width: 0 !important;
     max-width: 95vw !important;
