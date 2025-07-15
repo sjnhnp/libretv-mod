@@ -817,8 +817,13 @@ async function getVideoDetail(id, sourceCode, apiUrl = '') {
         let url = `/api/detail?id=${id}&source=${sourceCode}`;
 
         // 对于自定义API，添加customApi参数
-        if (sourceCode === 'custom' && apiUrl) {
-            url += `&customApi=${encodeURIComponent(apiUrl)}&useDetail=true`;
+        if (sourceCode.startsWith('custom_') && apiUrl) {
+            url += `&customApi=${encodeURIComponent(apiUrl)}`;
+        }
+        
+        // 对于需要HTML抓取的内置源，确保添加useDetail=true
+        if (!sourceCode.startsWith('custom_') && API_SITES[sourceCode] && API_SITES[sourceCode].detail) {
+             url += `&useDetail=true`;
         }
 
         const response = await fetch(url);
@@ -826,20 +831,20 @@ async function getVideoDetail(id, sourceCode, apiUrl = '') {
 
         // +++ 剧集解析逻辑 - 支持多种格式 +++
         let episodes = [];
-
-        // 情况1：标准episodes数组
+        
+        // 情况1：标准episodes数组 (来自HTML抓取)
         if (Array.isArray(data.episodes) && data.episodes.length > 0) {
             episodes = data.episodes;
         }
-        // 情况2：从vod_play_url解析
-        else if (data.vod_play_url) {
-            console.warn("使用备用字段 vod_play_url 解析剧集");
-            episodes = parseVodPlayUrl(data.vod_play_url);
+        // 情况2：从vod_play_url解析 (来自标准JSON API)
+        else if (data.videoInfo && data.videoInfo.vod_play_url) {
+            console.warn("从 videoInfo.vod_play_url 解析剧集");
+            episodes = parseVodPlayUrl(data.videoInfo.vod_play_url);
         }
-        // 情况3：从HTML内容解析（当响应是HTML时）
-        else if (typeof data === 'string' && data.includes('stui-content__playlist')) {
-            console.warn("从HTML内容解析剧集数据");
-            episodes = parseHtmlEpisodeList(data);
+        // 兼容旧版API返回结构
+        else if (data.vod_play_url) {
+            console.warn("使用根对象的 vod_play_url 解析剧集");
+            episodes = parseVodPlayUrl(data.vod_play_url);
         }
 
         if (episodes.length === 0) {
@@ -933,12 +938,21 @@ function parseHtmlEpisodeList(html) {
 // 解析vod_play_url格式
 function parseVodPlayUrl(vodPlayUrl) {
     const episodes = [];
+    if (!vodPlayUrl || typeof vodPlayUrl !== 'string') return episodes;
 
-    // 第一步：按#分割不同剧集
-    const segments = vodPlayUrl.split('#');
+    // 首先按 `$$$` 分割不同的播放源
+    const sourceGroups = vodPlayUrl.split('$$$');
+
+    // 优先选择包含.m3u8的播放列表，如果没有，则选择第一个非空列表
+    let targetGroup = sourceGroups.find(group => group.includes('.m3u8')) || sourceGroups.find(group => group.trim() !== '');
+
+    if (!targetGroup) return episodes; // 如果没有找到有效的播放列表组
+
+    // 按 # 分割剧集
+    const segments = targetGroup.split('#');
 
     segments.forEach(segment => {
-        // 第二步：每个segment按$分割名称和URL
+        // 每个segment按$分割名称和URL
         const parts = segment.split('$');
 
         if (parts.length >= 2) {
@@ -956,7 +970,6 @@ function parseVodPlayUrl(vodPlayUrl) {
 
     return episodes;
 }
-
 
 // 重置到首页
 function resetToHome() {
