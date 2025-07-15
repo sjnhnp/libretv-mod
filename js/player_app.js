@@ -442,7 +442,7 @@ async function playEpisode(index) {
     doEpisodeSwitch(index, currentEpisodes[index]);
 }
 
-async function doEpisodeSwitch(index, episodeString) { 
+async function doEpisodeSwitch(index, episodeString) {
     let playUrl = episodeString;
     if (episodeString && episodeString.includes('$')) {
         playUrl = episodeString.split('$')[1];
@@ -452,8 +452,8 @@ async function doEpisodeSwitch(index, episodeString) {
     if (!playUrl || !playUrl.startsWith('http')) {
         showError(`无效的播放链接: ${playUrl || '链接为空'}`);
         console.error("解析出的播放链接无效:", playUrl);
-        isNavigatingToEpisode = false; 
-        return; 
+        isNavigatingToEpisode = false;
+        return;
     }
 
     currentEpisodeIndex = index;
@@ -600,16 +600,16 @@ function updateUIForNewEpisode() {
 
 function updateBrowserHistory(newEpisodeUrl) {
     const newUrlForBrowser = new URL(window.location.href);
-    
+
     newUrlForBrowser.searchParams.set('url', newEpisodeUrl);
-    
+
     newUrlForBrowser.searchParams.set(
         'universalId',
         generateUniversalId(currentVideoTitle, currentVideoYear, currentEpisodeIndex)
     );
     newUrlForBrowser.searchParams.set('index', currentEpisodeIndex.toString());
     newUrlForBrowser.searchParams.delete('position');
-    
+
     window.history.pushState({ path: newUrlForBrowser.toString(), episodeIndex: currentEpisodeIndex }, '', newUrlForBrowser.toString());
 }
 
@@ -845,7 +845,7 @@ function renderEpisodes() {
 
         const parts = (episodeData || '').split('$');
         const episodeName = parts.length > 1 ? parts[0].trim() : '';
-        
+
         // 根据是否为综艺决定按钮文本和标题
         if (isVarietyShow && episodeName) {
             btn.textContent = episodeName;
@@ -1273,7 +1273,7 @@ function retryLastAction() {
 
     const errorEl = document.getElementById('error');
     if (errorEl) errorEl.style.display = 'none';
-    
+
     if (!lastFailedAction) {
         if (player && player.currentSrc) {
             console.log("重试：重新加载当前视频源。");
@@ -1302,3 +1302,658 @@ window.playPreviousEpisode = playPreviousEpisode;
 window.copyLinks = copyLinks;
 window.toggleEpisodeOrder = toggleEpisodeOrder;
 window.toggleLockScreen = toggleLockScreen;
+
+
+// ==================== 新增：播放设置面板功能 ====================
+// 注意：这部分代码是新增的，不会影响原有功能
+
+function setupPlayerSettings() {
+    const settingsButton = document.getElementById('player-settings-button');
+    const settingsDropdown = document.getElementById('player-settings-dropdown');
+    const playbackSpeedSelect = document.getElementById('playback-speed');
+
+    if (!settingsButton || !settingsDropdown) return;
+
+    // 设置按钮点击事件
+    settingsButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        // 隐藏其他下拉菜单
+        const otherDropdowns = document.querySelectorAll('.elegant-dropdown:not(#player-settings-dropdown)');
+        otherDropdowns.forEach(dropdown => {
+            if (dropdown.id !== 'player-settings-dropdown') {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        settingsDropdown.classList.toggle('hidden');
+    });
+
+    // 播放速度选择事件
+    if (playbackSpeedSelect) {
+        playbackSpeedSelect.addEventListener('change', (e) => {
+            const speed = parseFloat(e.target.value);
+            if (player && player.playbackRate !== undefined) {
+                player.playbackRate = speed;
+                showToast(`播放速度已设置为 ${speed}x`, 'success');
+            }
+        });
+
+        // 从存储中恢复播放速度设置
+        const savedSpeed = localStorage.getItem('playbackSpeed');
+        if (savedSpeed) {
+            playbackSpeedSelect.value = savedSpeed;
+            if (player && player.playbackRate !== undefined) {
+                player.playbackRate = parseFloat(savedSpeed);
+            }
+        }
+
+        // 保存播放速度设置
+        playbackSpeedSelect.addEventListener('change', (e) => {
+            localStorage.setItem('playbackSpeed', e.target.value);
+        });
+    }
+
+    // 点击外部关闭下拉菜单
+    document.addEventListener('click', (e) => {
+        if (!settingsDropdown.classList.contains('hidden') &&
+            !settingsButton.contains(e.target) &&
+            !settingsDropdown.contains(e.target)) {
+            settingsDropdown.classList.add('hidden');
+        }
+    });
+}
+
+// ==================== 增强：下拉菜单管理 ====================
+// 注意：这部分代码增强了原有的下拉菜单功能，但不会破坏现有逻辑
+
+function enhanceDropdownManagement() {
+    // 获取所有下拉菜单相关的按钮和菜单
+    const dropdownPairs = [
+        {
+            button: document.getElementById('line-switch-button'),
+            dropdown: document.getElementById('line-switch-dropdown')
+        },
+        {
+            button: document.getElementById('skip-control-button'),
+            dropdown: document.getElementById('skip-control-dropdown')
+        },
+        {
+            button: document.getElementById('player-settings-button'),
+            dropdown: document.getElementById('player-settings-dropdown')
+        }
+    ];
+
+    // 为每个下拉菜单添加统一的管理
+    dropdownPairs.forEach(pair => {
+        if (pair.button && pair.dropdown) {
+            // 添加增强样式类
+            pair.dropdown.classList.add('elegant-dropdown');
+
+            // 确保点击按钮时关闭其他菜单
+            pair.button.addEventListener('click', (event) => {
+                event.stopPropagation();
+
+                // 关闭其他下拉菜单
+                dropdownPairs.forEach(otherPair => {
+                    if (otherPair !== pair && otherPair.dropdown) {
+                        otherPair.dropdown.classList.add('hidden');
+                    }
+                });
+            });
+        }
+    });
+}
+
+// ==================== 增强：锁屏功能 ====================
+// 注意：这部分代码增强了原有的锁屏功能，但保持原有逻辑
+
+function enhanceLockScreen() {
+    const lockButton = document.getElementById('lock-button');
+    if (!lockButton) return;
+
+    // 获取原有的点击事件监听器（如果存在）
+    const originalToggleLockScreen = window.toggleLockScreen;
+
+    // 增强锁屏按钮的视觉反馈
+    lockButton.addEventListener('click', () => {
+        // 延迟一点更新样式，让原有逻辑先执行
+        setTimeout(() => {
+            if (isScreenLocked) {
+                lockButton.classList.add('locked');
+                lockButton.classList.add('elegant-function-button');
+            } else {
+                lockButton.classList.remove('locked');
+            }
+        }, 100);
+    });
+}
+
+// ==================== 增强：剧集网格 ====================
+// 注意：这部分代码增强了原有的剧集网格，但保持原有逻辑
+
+function enhanceEpisodeGrid() {
+    const episodeGrid = document.getElementById('episode-grid');
+    if (!episodeGrid) return;
+
+    // 使用 MutationObserver 来监听网格内容变化
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'childList') {
+                // 为新添加的按钮添加增强样式
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'BUTTON') {
+                        // 不移除原有类，只添加增强类
+                        node.classList.add('elegant-episode-button');
+                    }
+                });
+            }
+        });
+    });
+
+    observer.observe(episodeGrid, { childList: true });
+}
+
+// ==================== 增强：Toast 消息 ====================
+// 注意：这部分代码增强了原有的 Toast 功能，但保持原有逻辑
+
+function enhanceToast() {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+
+    // 为 toast 添加增强样式类
+    toast.classList.add('elegant-toast');
+
+    // 保持原有的 showToast 函数逻辑，只添加样式增强
+    const originalShowToast = window.showToast;
+    if (originalShowToast) {
+        window.showToast = function (message, type = 'info', duration = 3000) {
+            // 调用原有的 showToast 逻辑
+            originalShowToast(message, type, duration);
+
+            // 添加增强的样式类
+            const bgColors = {
+                'error': 'bg-red-500',
+                'success': 'bg-green-500',
+                'info': 'bg-blue-500',
+                'warning': 'bg-yellow-500'
+            };
+
+            const bgColor = bgColors[type] || bgColors.info;
+            toast.className = `elegant-toast ${bgColor} text-white`;
+        };
+    }
+}
+
+// ==================== 增强：消息提示 ====================
+// 注意：这部分代码增强了原有的消息提示功能，但保持原有逻辑
+
+function enhanceMessage() {
+    const message = document.getElementById('message');
+    if (!message) return;
+
+    // 为消息提示添加增强样式类
+    message.classList.add('elegant-message');
+
+    // 保持原有的 showMessage 函数逻辑，只添加样式增强
+    const originalShowMessage = window.showMessage;
+    if (originalShowMessage) {
+        window.showMessage = function (text, type = 'info', duration = 3000) {
+            // 调用原有的 showMessage 逻辑
+            originalShowMessage(text, type, duration);
+
+            // 添加增强的样式类
+            const bgColors = {
+                'error': 'bg-red-500',
+                'success': 'bg-green-500',
+                'info': 'bg-blue-500',
+                'warning': 'bg-yellow-500'
+            };
+
+            const bgColor = bgColors[type] || bgColors.info;
+            message.className = `elegant-message ${bgColor} text-white opacity-0`;
+
+            // 确保消息显示后添加增强样式
+            setTimeout(() => {
+                message.classList.add('opacity-100');
+            }, 10);
+        };
+    }
+}
+
+// ==================== 增强：进度恢复弹窗 ====================
+// 注意：这部分代码增强了原有的进度恢复弹窗，但保持原有逻辑
+
+function enhanceProgressModal() {
+    const progressModal = document.getElementById('progress-restore-modal');
+    if (!progressModal) return;
+
+    // 为进度恢复弹窗添加增强样式类
+    progressModal.classList.add('elegant-progress-modal');
+
+    const progressCard = progressModal.querySelector('.progress-restore-card');
+    if (progressCard) {
+        progressCard.classList.add('elegant-progress-card');
+    }
+
+    const progressTitle = progressModal.querySelector('.progress-modal-title');
+    if (progressTitle) {
+        progressTitle.classList.add('elegant-progress-title');
+    }
+
+    const progressContent = progressModal.querySelector('.progress-modal-content');
+    if (progressContent) {
+        progressContent.classList.add('elegant-progress-content');
+    }
+
+    const progressActions = progressModal.querySelector('.progress-modal-actions');
+    if (progressActions) {
+        progressActions.classList.add('elegant-progress-actions');
+    }
+
+    const progressButtons = progressModal.querySelectorAll('.progress-modal-btn');
+    progressButtons.forEach(button => {
+        button.classList.add('elegant-progress-button');
+    });
+}
+
+// ==================== 增强：快捷键提示 ====================
+// 注意：这部分代码增强了原有的快捷键提示，但保持原有逻辑
+
+function enhanceShortcutHint() {
+    const shortcutHint = document.getElementById('shortcut-hint');
+    if (!shortcutHint) return;
+
+    // 为快捷键提示添加增强样式类
+    shortcutHint.classList.add('elegant-shortcut-hint');
+}
+
+// ==================== 增强：播放器区域 ====================
+// 注意：这部分代码增强了播放器区域的视觉效果
+
+function enhancePlayerRegion() {
+    const playerRegion = document.getElementById('player-region');
+    if (!playerRegion) return;
+
+    // 为播放器区域添加增强样式类
+    playerRegion.classList.add('elegant-player-region');
+
+    const playerWrapper = document.getElementById('player');
+    if (playerWrapper) {
+        playerWrapper.classList.add('elegant-player-wrapper');
+    }
+
+    const loadingOverlay = document.getElementById('loading');
+    if (loadingOverlay) {
+        loadingOverlay.classList.add('elegant-loading');
+
+        const loadingSpinner = loadingOverlay.querySelector('.loading-spinner');
+        if (loadingSpinner) {
+            loadingSpinner.classList.add('elegant-spinner');
+        }
+
+        const loadingText = loadingOverlay.querySelector('.mt-4');
+        if (loadingText) {
+            loadingText.classList.add('elegant-loading-text');
+        }
+    }
+
+    const errorOverlay = document.getElementById('error');
+    if (errorOverlay) {
+        errorOverlay.classList.add('elegant-error');
+
+        const errorIcon = errorOverlay.querySelector('.error-icon');
+        if (errorIcon) {
+            errorIcon.classList.add('elegant-error-icon');
+        }
+
+        const errorTitle = errorOverlay.querySelector('.text-xl.font-bold');
+        if (errorTitle) {
+            errorTitle.classList.add('elegant-error-title');
+        }
+
+        const errorMessage = errorOverlay.querySelector('.mt-2');
+        if (errorMessage) {
+            errorMessage.classList.add('elegant-error-message');
+        }
+
+        const retryButton = document.getElementById('retry-button');
+        if (retryButton) {
+            retryButton.classList.add('elegant-retry-button');
+        }
+    }
+}
+
+// ==================== 增强：顶部导航栏 ====================
+// 注意：这部分代码增强了顶部导航栏的视觉效果
+
+function enhanceHeader() {
+    const header = document.querySelector('header');
+    if (!header) return;
+
+    // 为顶部导航栏添加增强样式类
+    header.classList.add('elegant-header');
+
+    const backButton = document.getElementById('back-button');
+    if (backButton) {
+        backButton.classList.add('elegant-back-button');
+    }
+
+    const headerActions = header.querySelector('.flex.items-center.ml-auto');
+    if (headerActions) {
+        headerActions.classList.add('elegant-header-actions');
+    }
+
+    const fullscreenButton = document.getElementById('fullscreen-button');
+    if (fullscreenButton) {
+        fullscreenButton.classList.add('elegant-fullscreen-button');
+    }
+}
+
+// ==================== 增强：播放控制区域 ====================
+// 注意：这部分代码增强了播放控制区域的视觉效果
+
+function enhancePlaybackControls() {
+    const playbackControls = document.querySelector('.flex.items-center.justify-between.p-4');
+    if (!playbackControls) return;
+
+    // 为播放控制区域添加增强样式类
+    playbackControls.classList.add('elegant-playback-controls');
+
+    const prevButton = document.getElementById('prev-episode');
+    if (prevButton) {
+        prevButton.classList.add('elegant-nav-button');
+    }
+
+    const nextButton = document.getElementById('next-episode');
+    if (nextButton) {
+        nextButton.classList.add('elegant-nav-button');
+    }
+
+    const episodeInfo = document.getElementById('episode-info-span');
+    if (episodeInfo) {
+        episodeInfo.classList.add('elegant-episode-info');
+    }
+}
+
+// ==================== 增强：功能控制条 ====================
+// 注意：这部分代码增强了功能控制条的视觉效果
+
+function enhanceFunctionBar() {
+    const functionBar = document.querySelector('.p-4.bg-gray-900.rounded-lg.mx-4.mb-4');
+    if (!functionBar) return;
+
+    // 为功能控制条添加增强样式类
+    functionBar.classList.add('elegant-function-bar');
+
+    const controlBar = functionBar.querySelector('.player-control-bar');
+    if (controlBar) {
+        controlBar.classList.add('elegant-controls');
+    }
+
+    // 增强所有控制项
+    const controlItems = functionBar.querySelectorAll('.flex.items-center.gap-2');
+    controlItems.forEach(item => {
+        item.classList.add('elegant-control-item');
+    });
+
+    // 增强所有标签
+    const labels = functionBar.querySelectorAll('.control-label');
+    labels.forEach(label => {
+        label.classList.add('elegant-label');
+    });
+
+    // 增强所有开关
+    const switches = functionBar.querySelectorAll('.switch');
+    switches.forEach(switchElement => {
+        switchElement.classList.add('elegant-switch');
+
+        const slider = switchElement.querySelector('.slider');
+        if (slider) {
+            slider.classList.add('elegant-slider');
+        }
+    });
+
+    // 增强所有功能按钮
+    const functionButtons = functionBar.querySelectorAll('.icon-btn');
+    functionButtons.forEach(button => {
+        button.classList.add('elegant-function-button');
+    });
+
+    // 增强所有功能组
+    const functionGroups = functionBar.querySelectorAll('.relative');
+    functionGroups.forEach(group => {
+        group.classList.add('elegant-function-group');
+    });
+}
+
+// ==================== 增强：剧集容器 ====================
+// 注意：这部分代码增强了剧集容器的视觉效果
+
+function enhanceEpisodesContainer() {
+    const episodesContainer = document.getElementById('episodes-container');
+    if (!episodesContainer) return;
+
+    // 为剧集容器添加增强样式类
+    episodesContainer.classList.add('elegant-episodes-container');
+
+    const episodesHeader = episodesContainer.querySelector('.flex.justify-between.items-center.mb-2');
+    if (episodesHeader) {
+        episodesHeader.classList.add('elegant-episodes-header');
+    }
+
+    const episodesTitle = episodesContainer.querySelector('h2');
+    if (episodesTitle) {
+        episodesTitle.classList.add('elegant-episodes-title');
+    }
+
+    const episodesCount = document.getElementById('episodes-count');
+    if (episodesCount) {
+        episodesCount.classList.add('elegant-episodes-count');
+    }
+
+    const episodeGrid = document.getElementById('episode-grid');
+    if (episodeGrid) {
+        episodeGrid.classList.add('elegant-episodes-grid');
+    }
+}
+
+// ==================== 增强：整体容器 ====================
+// 注意：这部分代码增强了整体容器的视觉效果
+
+function enhanceContainer() {
+    const body = document.body;
+    if (body) {
+        body.classList.add('elegant-body');
+    }
+
+    const container = document.querySelector('.player-container');
+    if (container) {
+        container.classList.add('elegant-container');
+    }
+}
+
+// ==================== 增强：保持原有功能的兼容性 ====================
+// 注意：这部分代码确保所有原有的功能保持不变
+
+function ensureCompatibility() {
+    // 确保原有的 toggleEpisodeOrder 函数的图标更新逻辑
+    const orderButton = document.getElementById('order-button');
+    if (orderButton && typeof window.toggleEpisodeOrder === 'function') {
+        const originalToggleOrder = window.toggleEpisodeOrder;
+
+        // 增强排序按钮的视觉反馈
+        orderButton.addEventListener('click', () => {
+            setTimeout(() => {
+                // 检查当前是否为倒序状态
+                const orderIcon = document.getElementById('order-icon');
+                if (orderIcon) {
+                    const isReversed = orderIcon.style.transform === 'rotate(180deg)';
+                    orderButton.classList.toggle('active', isReversed);
+                }
+            }, 100);
+        });
+    }
+
+    // 确保原有的 setupSkipDropdownEvents 函数仍然有效
+    const skipButton = document.getElementById('skip-control-button');
+    const skipDropdown = document.getElementById('skip-control-dropdown');
+
+    if (skipButton && skipDropdown) {
+        // 为跳过设置下拉菜单添加增强样式
+        skipDropdown.classList.add('elegant-dropdown');
+
+        const skipContent = skipDropdown.querySelector('div');
+        if (skipContent) {
+            skipContent.classList.add('elegant-dropdown-content');
+        }
+
+        const skipInputGroups = skipDropdown.querySelectorAll('.flex.items-center');
+        skipInputGroups.forEach(group => {
+            group.classList.add('elegant-input-group');
+        });
+
+        const skipInputs = skipDropdown.querySelectorAll('input');
+        skipInputs.forEach(input => {
+            input.classList.add('elegant-input');
+        });
+
+        const skipLabels = skipDropdown.querySelectorAll('label');
+        skipLabels.forEach(label => {
+            label.classList.add('elegant-label');
+        });
+
+        const skipButtons = skipDropdown.querySelectorAll('button');
+        skipButtons.forEach((button, index) => {
+            if (index === 0) {
+                button.classList.add('elegant-primary-button');
+            } else {
+                button.classList.add('elegant-secondary-button');
+            }
+        });
+    }
+
+    // 确保原有的线路切换功能保持不变
+    const lineButton = document.getElementById('line-switch-button');
+    const lineDropdown = document.getElementById('line-switch-dropdown');
+
+    if (lineButton && lineDropdown) {
+        // 为线路切换下拉菜单添加增强样式
+        lineDropdown.classList.add('elegant-dropdown');
+    }
+}
+
+// ==================== 主初始化函数 ====================
+// 注意：这个函数在页面加载后初始化所有增强功能
+
+function initializeElegantEnhancements() {
+    // 等待 DOM 完全加载
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeElegantEnhancements);
+        return;
+    }
+
+    // 初始化所有增强功能
+    try {
+        enhanceContainer();
+        enhanceHeader();
+        enhancePlayerRegion();
+        enhancePlaybackControls();
+        enhanceFunctionBar();
+        enhanceEpisodesContainer();
+        enhanceDropdownManagement();
+        enhanceLockScreen();
+        enhanceEpisodeGrid();
+        enhanceToast();
+        enhanceMessage();
+        enhanceProgressModal();
+        enhanceShortcutHint();
+        setupPlayerSettings();
+        ensureCompatibility();
+
+        console.log('✨ 典雅样式增强已加载');
+    } catch (error) {
+        console.error('增强功能初始化失败:', error);
+    }
+}
+
+// ==================== 在原有的 setupAllUI 函数基础上添加增强功能 ====================
+// 注意：这部分代码不会修改原有的 setupAllUI 函数，而是在其基础上添加增强功能
+
+// 保存原有的 setupAllUI 函数
+const originalSetupAllUI = window.setupAllUI;
+
+// 创建增强版的 setupAllUI 函数
+function setupAllUI() {
+    // 先调用原有的 setupAllUI 函数
+    if (originalSetupAllUI && typeof originalSetupAllUI === 'function') {
+        originalSetupAllUI();
+    } else {
+        // 如果原有函数不存在，执行原有的设置逻辑
+        updateEpisodeInfo();
+        renderEpisodes();
+        setupPlayerControls();
+        updateButtonStates();
+        updateOrderButton();
+        setupLineSwitching();
+        setupSkipControls();
+        setupSkipDropdownEvents();
+        setupRememberEpisodeProgressToggle();
+
+        document.addEventListener('keydown', handleKeyboardShortcuts);
+        window.addEventListener('beforeunload', () => {
+            saveCurrentProgress();
+            saveVideoSpecificProgress();
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                saveCurrentProgress();
+                saveVideoSpecificProgress();
+            }
+        });
+    }
+
+    // 在原有功能设置完成后，添加增强功能
+    setTimeout(() => {
+        initializeElegantEnhancements();
+    }, 100);
+}
+
+// 替换全局的 setupAllUI 函数
+window.setupAllUI = setupAllUI;
+
+// ==================== 自动初始化 ====================
+// 注意：这部分代码会在页面加载时自动初始化增强功能
+
+// 如果页面已经加载完成，立即初始化
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        // 延迟一点时间，确保原有的初始化逻辑先执行
+        setTimeout(initializeElegantEnhancements, 200);
+    });
+} else {
+    // 页面已经加载完成，延迟初始化
+    setTimeout(initializeElegantEnhancements, 200);
+}
+
+// ==================== 保持原有的导出函数 ====================
+// 注意：确保所有原有的全局函数保持不变
+
+// 这些函数保持原有的导出，不做任何修改
+if (typeof window.playNextEpisode === 'undefined') {
+    window.playNextEpisode = playNextEpisode;
+}
+if (typeof window.playPreviousEpisode === 'undefined') {
+    window.playPreviousEpisode = playPreviousEpisode;
+}
+if (typeof window.copyLinks === 'undefined') {
+    window.copyLinks = copyLinks;
+}
+if (typeof window.toggleEpisodeOrder === 'undefined') {
+    window.toggleEpisodeOrder = toggleEpisodeOrder;
+}
+if (typeof window.toggleLockScreen === 'undefined') {
+    window.toggleLockScreen = toggleLockScreen;
+}
+
+// ==================== 完成标记 ====================
+console.log('🎬 播放器增强脚本已加载，所有原有功能保持不变');

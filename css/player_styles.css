@@ -1035,3 +1035,773 @@ header {
   background: #333;
   color: #fff;
 }
+
+/* ==================== 典雅风格增强样式 ==================== */
+
+/* 色彩变量定义 */
+:root {
+  /* 主色调 - 深邃典雅 */
+  --elegant-bg-primary: #0f0f0f;
+  --elegant-bg-secondary: #1a1a1a;
+  --elegant-bg-tertiary: #252525;
+  
+  /* 强调色 - 暖棕金 */
+  --elegant-accent-primary: #8b7355;
+  --elegant-accent-secondary: #a0845c;
+  --elegant-accent-hover: #b8936a;
+  
+  /* 文字颜色 */
+  --elegant-text-primary: #f5f5f5;
+  --elegant-text-secondary: #c0c0c0;
+  --elegant-text-tertiary: #999999;
+  
+  /* 透明度 */
+  --elegant-overlay-light: rgba(37, 37, 37, 0.85);
+  --elegant-overlay-medium: rgba(37, 37, 37, 0.95);
+  --elegant-overlay-dark: rgba(15, 15, 15, 0.98);
+  
+  /* 阴影 */
+  --elegant-shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --elegant-shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --elegant-shadow-strong: 0 8px 32px rgba(0, 0, 0, 0.5);
+  
+  /* 边框 */
+  --elegant-border-subtle: 1px solid rgba(255, 255, 255, 0.1);
+  --elegant-border-medium: 1px solid rgba(255, 255, 255, 0.15);
+  --elegant-border-accent: 1px solid var(--elegant-accent-primary);
+  
+  /* 过渡动画 */
+  --elegant-transition-fast: 0.15s ease-in-out;
+  --elegant-transition-medium: 0.25s ease-in-out;
+  --elegant-transition-slow: 0.4s ease-in-out;
+}
+
+/* ==================== 全局增强 ==================== */
+.elegant-body {
+  background: linear-gradient(135deg, var(--elegant-bg-primary), var(--elegant-bg-secondary));
+  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.elegant-container {
+  background: var(--elegant-bg-primary);
+  box-shadow: var(--elegant-shadow-strong);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 1rem;
+  max-width: calc(100% - 2rem);
+}
+
+/* ==================== 顶部导航栏增强 ==================== */
+.elegant-header {
+  background: var(--elegant-overlay-light);
+  border-bottom: var(--elegant-border-subtle);
+  backdrop-filter: blur(10px);
+}
+
+.elegant-back-button:hover {
+  color: var(--elegant-accent-secondary) !important;
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateX(-2px);
+}
+
+.elegant-fullscreen-button:hover {
+  color: var(--elegant-accent-secondary) !important;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ==================== 播放器区域增强 ==================== */
+.elegant-player-region {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--elegant-shadow-strong);
+  margin: 1rem;
+}
+
+/* 加载状态增强 */
+.elegant-loading {
+  background: var(--elegant-overlay-dark);
+  backdrop-filter: blur(10px);
+}
+
+.elegant-spinner {
+  border-top-color: var(--elegant-accent-primary);
+}
+
+.elegant-loading-text {
+  color: var(--elegant-text-secondary);
+  font-weight: 500;
+}
+
+/* 错误状态增强 */
+.elegant-error {
+  background: var(--elegant-overlay-dark);
+  backdrop-filter: blur(10px);
+}
+
+.elegant-error-title {
+  color: var(--elegant-text-primary);
+}
+
+.elegant-error-message {
+  color: var(--elegant-text-secondary);
+}
+
+.elegant-retry-button {
+  background: linear-gradient(135deg, var(--elegant-accent-primary), var(--elegant-accent-secondary)) !important;
+  border: none !important;
+  transition: all var(--elegant-transition-medium) !important;
+}
+
+.elegant-retry-button:hover {
+  background: linear-gradient(135deg, var(--elegant-accent-secondary), var(--elegant-accent-hover)) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--elegant-shadow-medium);
+}
+
+/* ==================== 播放控制增强 ==================== */
+.elegant-playback-controls {
+  background: var(--elegant-overlay-light);
+  border-top: var(--elegant-border-subtle);
+  border-bottom: var(--elegant-border-subtle);
+  backdrop-filter: blur(10px);
+}
+
+.elegant-nav-button {
+  background: var(--elegant-bg-tertiary) !important;
+  color: var(--elegant-text-secondary) !important;
+  border: var(--elegant-border-subtle) !important;
+  transition: all var(--elegant-transition-medium) !important;
+  box-shadow: var(--elegant-shadow-subtle);
+}
+
+.elegant-nav-button:hover:not(:disabled) {
+  background: var(--elegant-accent-primary) !important;
+  color: var(--elegant-text-primary) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--elegant-shadow-medium);
+}
+
+.elegant-nav-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.elegant-episode-info {
+  color: var(--elegant-text-primary) !important;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* ==================== 功能控制条增强 ==================== */
+.elegant-function-bar {
+  background: var(--elegant-overlay-light) !important;
+  border: var(--elegant-border-subtle) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--elegant-shadow-medium);
+}
+
+.elegant-control-item {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  transition: all var(--elegant-transition-medium);
+}
+
+.elegant-control-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ==================== 开关增强 ==================== */
+
+.elegant-switch .elegant-slider {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: var(--elegant-border-subtle) !important;
+  transition: all var(--elegant-transition-medium) !important;
+}
+
+.elegant-switch .elegant-slider:before {
+  box-shadow: var(--elegant-shadow-subtle) !important;
+}
+
+.elegant-switch input:checked + .elegant-slider {
+  background: var(--elegant-accent-primary) !important;
+  border-color: var(--elegant-accent-secondary) !important;
+}
+
+.elegant-switch input:checked + .elegant-slider:before {
+  background: var(--elegant-text-primary) !important;
+}
+
+.elegant-switch:hover .elegant-slider {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.elegant-switch input:checked:hover + .elegant-slider {
+  background: var(--elegant-accent-hover) !important;
+}
+
+/* ==================== 功能按钮增强 ==================== */
+.elegant-function-button {
+  background: var(--elegant-bg-tertiary) !important;
+  color: var(--elegant-text-secondary) !important;
+  border: var(--elegant-border-subtle) !important;
+  transition: all var(--elegant-transition-medium) !important;
+  box-shadow: var(--elegant-shadow-subtle);
+}
+
+.elegant-function-button:hover {
+  background: var(--elegant-accent-primary) !important;
+  color: var(--elegant-text-primary) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--elegant-shadow-medium);
+}
+
+.elegant-function-button:active {
+  transform: translateY(-1px);
+}
+
+/* 特殊状态的按钮 */
+.elegant-function-button.active {
+  background: var(--elegant-accent-primary) !important;
+  color: var(--elegant-text-primary) !important;
+}
+
+.elegant-function-button.locked {
+  background: #8b4513 !important;
+  color: var(--elegant-text-primary) !important;
+}
+
+.elegant-function-button.locked:hover {
+  background: #a0522d !important;
+}
+
+/* ==================== 下拉菜单增强 ==================== */
+.elegant-dropdown {
+  background: var(--elegant-overlay-medium) !important;
+  border: var(--elegant-border-medium) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--elegant-shadow-strong) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+.elegant-dropdown:not(.hidden) {
+  animation: elegant-dropdown-show 0.25s ease-out;
+}
+
+@keyframes elegant-dropdown-show {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.elegant-dropdown-content {
+  padding: 1rem;
+}
+
+/* ==================== 跳过设置下拉菜单增强 ==================== */
+.elegant-input-group {
+  margin-bottom: 1rem;
+}
+
+.elegant-input-group:last-of-type {
+  margin-bottom: 1.5rem;
+}
+
+.elegant-input-group .elegant-label {
+  color: var(--elegant-text-secondary) !important;
+  font-weight: 500;
+}
+
+.elegant-input-group .elegant-input {
+  background: var(--elegant-bg-tertiary) !important;
+  color: var(--elegant-text-primary) !important;
+  border: var(--elegant-border-subtle) !important;
+  transition: all var(--elegant-transition-medium) !important;
+}
+
+.elegant-input-group .elegant-input:focus {
+  outline: none !important;
+  border-color: var(--elegant-accent-primary) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 0 0 2px rgba(139, 115, 85, 0.2) !important;
+}
+
+.elegant-input-group .elegant-input::placeholder {
+  color: var(--elegant-text-tertiary) !important;
+}
+
+.elegant-primary-button {
+  background: linear-gradient(135deg, var(--elegant-accent-primary), var(--elegant-accent-secondary)) !important;
+  border: none !important;
+  transition: all var(--elegant-transition-medium) !important;
+  box-shadow: var(--elegant-shadow-subtle);
+}
+
+.elegant-primary-button:hover {
+  background: linear-gradient(135deg, var(--elegant-accent-secondary), var(--elegant-accent-hover)) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--elegant-shadow-medium);
+}
+
+.elegant-secondary-button {
+  background: var(--elegant-bg-tertiary) !important;
+  color: var(--elegant-text-secondary) !important;
+  border: var(--elegant-border-subtle) !important;
+  transition: all var(--elegant-transition-medium) !important;
+}
+
+.elegant-secondary-button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--elegant-text-primary) !important;
+}
+
+/* ==================== 播放设置下拉菜单增强 ==================== */
+.elegant-setting-group {
+  margin-bottom: 1rem;
+}
+
+.elegant-setting-title {
+  color: var(--elegant-text-primary) !important;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: var(--elegant-border-subtle);
+  letter-spacing: 0.5px;
+}
+
+.elegant-setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.elegant-setting-item:last-child {
+  border-bottom: none;
+}
+
+.elegant-setting-label {
+  color: var(--elegant-text-secondary) !important;
+  font-weight: 500;
+  flex: 1;
+}
+
+.elegant-select {
+  background: var(--elegant-bg-tertiary) !important;
+  color: var(--elegant-text-primary) !important;
+  border: var(--elegant-border-subtle) !important;
+  border-radius: 6px !important;
+  padding: 0.5rem 0.75rem !important;
+  transition: all var(--elegant-transition-medium) !important;
+  min-width: 80px;
+  margin-left: 1rem;
+}
+
+.elegant-select:focus {
+  outline: none !important;
+  border-color: var(--elegant-accent-primary) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.elegant-select option {
+  background: var(--elegant-bg-tertiary) !important;
+  color: var(--elegant-text-primary) !important;
+}
+
+/* ==================== 线路切换下拉菜单增强 ==================== */
+.elegant-dropdown button {
+  background: transparent !important;
+  color: var(--elegant-text-secondary) !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  transition: all var(--elegant-transition-medium) !important;
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem 1rem;
+}
+
+.elegant-dropdown button:last-child {
+  border-bottom: none !important;
+}
+
+.elegant-dropdown button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--elegant-text-primary) !important;
+}
+
+.elegant-dropdown button.line-active {
+  background: var(--elegant-accent-primary) !important;
+  color: white !important;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.elegant-dropdown button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==================== 剧集选择增强 ==================== */
+.elegant-episodes-container {
+  background: var(--elegant-overlay-light) !important;
+  border: var(--elegant-border-subtle) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--elegant-shadow-medium);
+  padding: 1.5rem !important;
+}
+
+.elegant-episodes-header {
+  border-bottom: var(--elegant-border-subtle) !important;
+  padding-bottom: 0.75rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.elegant-episodes-title {
+  color: var(--elegant-text-primary) !important;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.elegant-episodes-count {
+  color: var(--elegant-text-tertiary) !important;
+  font-weight: 500;
+}
+
+.elegant-episodes-grid button {
+  background: var(--elegant-bg-tertiary) !important;
+  color: var(--elegant-text-secondary) !important;
+  border: var(--elegant-border-subtle) !important;
+  transition: all var(--elegant-transition-medium) !important;
+  box-shadow: var(--elegant-shadow-subtle);
+}
+
+.elegant-episodes-grid button:hover {
+  background: var(--elegant-accent-primary) !important;
+  color: var(--elegant-text-primary) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--elegant-shadow-medium);
+}
+
+.elegant-episodes-grid button.episode-active {
+  background: linear-gradient(135deg, var(--elegant-accent-primary), var(--elegant-accent-secondary)) !important;
+  color: white !important;
+  font-weight: 600;
+  box-shadow: var(--elegant-shadow-medium);
+}
+
+/* ==================== 快捷键提示增强 ==================== */
+.elegant-shortcut-hint {
+  background: var(--elegant-overlay-dark) !important;
+  color: var(--elegant-text-primary) !important;
+  border: var(--elegant-border-medium) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--elegant-shadow-strong) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* ==================== 消息提示增强 ==================== */
+.elegant-message {
+  border: var(--elegant-border-subtle) !important;
+  box-shadow: var(--elegant-shadow-medium) !important;
+  backdrop-filter: blur(10px) !important;
+  border-radius: 8px !important;
+  max-width: 300px;
+}
+
+/* ==================== 进度恢复弹窗增强 ==================== */
+.elegant-progress-modal {
+  background: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.elegant-progress-card {
+  background: var(--elegant-overlay-medium) !important;
+  border: var(--elegant-border-medium) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--elegant-shadow-strong) !important;
+  backdrop-filter: blur(20px) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.elegant-progress-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--elegant-accent-primary), transparent);
+}
+
+.elegant-progress-title {
+  color: var(--elegant-text-primary) !important;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.elegant-progress-content {
+  color: var(--elegant-text-secondary) !important;
+}
+
+.elegant-progress-button {
+  transition: all var(--elegant-transition-medium) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-weight: 500;
+}
+
+.elegant-progress-button.confirm {
+  background: linear-gradient(135deg, var(--elegant-accent-primary), var(--elegant-accent-secondary)) !important;
+  color: white !important;
+  box-shadow: var(--elegant-shadow-subtle);
+}
+
+.elegant-progress-button.confirm:hover {
+  background: linear-gradient(135deg, var(--elegant-accent-secondary), var(--elegant-accent-hover)) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--elegant-shadow-medium);
+}
+
+.elegant-progress-button.cancel {
+  background: var(--elegant-bg-tertiary) !important;
+  color: var(--elegant-text-secondary) !important;
+  border: var(--elegant-border-subtle) !important;
+}
+
+.elegant-progress-button.cancel:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--elegant-text-primary) !important;
+}
+
+/* ==================== 锁屏状态增强 ==================== */
+.player-container.player-locked .elegant-function-bar > *:not(.player-settings-container) {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.player-container.player-locked .elegant-playback-controls {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.player-container.player-locked .elegant-episodes-container {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.player-container.player-locked #lock-button {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+/* ==================== Toast 提示增强 ==================== */
+.elegant-toast {
+  background: var(--elegant-overlay-medium) !important;
+  border: var(--elegant-border-subtle) !important;
+  box-shadow: var(--elegant-shadow-medium) !important;
+  backdrop-filter: blur(10px) !important;
+  border-radius: 8px !important;
+}
+
+/* ==================== 响应式设计增强 ==================== */
+@media (max-width: 768px) {
+  .elegant-container {
+    margin: 0.5rem;
+    max-width: calc(100% - 1rem);
+  }
+  
+  .elegant-player-region {
+    margin: 0.75rem;
+    height: auto;
+    aspect-ratio: 16/9;
+  }
+  
+  .elegant-playback-controls {
+    padding: 0.75rem 1rem;
+  }
+  
+  .elegant-nav-button {
+    padding: 0.5rem 1rem !important;
+    font-size: 0.8rem !important;
+    min-width: 100px !important;
+  }
+  
+  .elegant-function-bar {
+    padding: 0.75rem 1rem !important;
+  }
+  
+  .elegant-control-item {
+    padding: 0.4rem 0.75rem !important;
+  }
+  
+  .elegant-function-button {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.8rem !important;
+    min-width: 70px !important;
+  }
+  
+  .elegant-function-button span {
+    display: none !important;
+  }
+  
+  .elegant-episodes-container {
+    margin: 0.75rem 1rem !important;
+    padding: 1rem !important;
+  }
+  
+  .elegant-episodes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)) !important;
+    gap: 0.5rem !important;
+  }
+  
+  .elegant-dropdown {
+    min-width: 160px !important;
+    max-width: 250px !important;
+  }
+  
+  .elegant-progress-card {
+    min-width: 0 !important;
+    max-width: 95vw !important;
+    margin: 1rem !important;
+    padding: 1.5rem !important;
+  }
+  
+  .elegant-progress-actions {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+  
+  .elegant-progress-button {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .elegant-function-bar {
+    padding: 0.5rem !important;
+  }
+  
+  .elegant-control-item {
+    padding: 0.3rem 0.5rem !important;
+  }
+  
+  .elegant-function-button {
+    padding: 0.4rem 0.5rem !important;
+    min-width: 60px !important;
+  }
+  
+  .elegant-episodes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)) !important;
+  }
+}
+
+/* ==================== 滚动条美化 ==================== */
+.elegant-episodes-grid::-webkit-scrollbar,
+.elegant-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.elegant-episodes-grid::-webkit-scrollbar-track,
+.elegant-dropdown::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.elegant-episodes-grid::-webkit-scrollbar-thumb,
+.elegant-dropdown::-webkit-scrollbar-thumb {
+  background: var(--elegant-accent-primary);
+  border-radius: 3px;
+  transition: background var(--elegant-transition-medium);
+}
+
+.elegant-episodes-grid::-webkit-scrollbar-thumb:hover,
+.elegant-dropdown::-webkit-scrollbar-thumb:hover {
+  background: var(--elegant-accent-secondary);
+}
+
+/* ==================== 动画增强 ==================== */
+@keyframes elegant-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.elegant-loading-text {
+  animation: elegant-pulse 2s infinite;
+}
+
+@keyframes elegant-glow {
+  0%, 100% { box-shadow: var(--elegant-shadow-subtle); }
+  50% { box-shadow: var(--elegant-shadow-medium); }
+}
+
+.elegant-function-button.active {
+  animation: elegant-glow 2s infinite;
+}
+
+/* ==================== 特殊效果增强 ==================== */
+.elegant-dropdown-content::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid var(--elegant-bg-tertiary);
+}
+
+/* 综艺按钮专用样式保持不变 */
+.variety-grid-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.variety-grid-layout button {
+  background: #222;
+  color: #d1d5db;
+  border: 1px solid #333;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  width: 100%;
+}
+
+.variety-grid-layout button:hover {
+  background: #333;
+  color: #fff;
+}
+
+/* 增强综艺按钮样式 */
+.variety-grid-layout.elegant-episodes-grid button {
+  background: var(--elegant-bg-tertiary) !important;
+  color: var(--elegant-text-secondary) !important;
+  border: var(--elegant-border-subtle) !important;
+  transition: all var(--elegant-transition-medium) !important;
+  box-shadow: var(--elegant-shadow-subtle);
+}
+
+.variety-grid-layout.elegant-episodes-grid button:hover {
+  background: var(--elegant-accent-primary) !important;
+  color: var(--elegant-text-primary) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--elegant-shadow-medium);
+}
