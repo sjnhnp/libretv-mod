@@ -123,32 +123,15 @@
             </button>
         </div>
 
-        <!-- 功能控制条 - 保持原有结构，只添加新功能 -->
+        <!-- 功能控制条 - 重新设计，移除自动播放和记住进度 -->
         <div class="p-4 bg-gray-900 rounded-lg mx-4 mb-4 elegant-function-bar">
             <div class="player-control-bar elegant-controls">
-                <!-- 原有的自动播放控件 -->
-                <div class="flex items-center gap-2 elegant-control-item">
-                    <span id="autoplay-label" class="control-label elegant-label">自动播放</span>
-                    <label class="switch elegant-switch">
-                        <input type="checkbox" id="autoplay-next" checked aria-labelledby="autoplay-label">
-                        <span class="slider elegant-slider"></span>
-                    </label>
-                </div>
 
-                <!-- 原有的记住进度控件 -->
-                <div class="flex items-center gap-2 elegant-control-item">
-                    <span id="remember-episode-progress-label" class="control-label elegant-label">记住进度</span>
-                    <label class="switch elegant-switch">
-                        <input type="checkbox" id="remember-episode-progress-toggle" checked
-                            aria-labelledby="remember-episode-progress-label">
-                        <span class="slider elegant-slider"></span>
-                    </label>
-                </div>
-
-                <!-- 原有的线路切换 -->
+                <!-- 线路切换 - 保持原有逻辑 -->
                 <div class="relative line-switch-container elegant-function-group">
                     <button id="line-switch-button"
-                        class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors flex items-center gap-1 px-2 elegant-function-button">
+                        class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors flex items-center gap-1 px-2 elegant-function-button"
+                        aria-label="切换线路">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
                             stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -156,10 +139,10 @@
                         </svg>
                         <span class="text-sm">线路</span>
                     </button>
-                    <div id="line-switch-dropdown" class="hidden elegant-dropdown"></div>
+                    <div id="line-switch-dropdown" class="hidden elegant-dropdown elegant-solid-dropdown"></div>
                 </div>
 
-                <!-- 原有的跳过控制 -->
+                <!-- 跳过控制 - 保持原有逻辑 -->
                 <div class="relative skip-control-container elegant-function-group">
                     <button id="skip-control-button" title="跳过设置"
                         class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors elegant-function-button"
@@ -171,7 +154,7 @@
                         </svg>
                         <span class="text-sm hidden sm:inline">跳过</span>
                     </button>
-                    <div id="skip-control-dropdown" class="hidden elegant-dropdown">
+                    <div id="skip-control-dropdown" class="hidden elegant-dropdown elegant-solid-dropdown">
                         <div class="elegant-dropdown-content">
                             <div class="flex items-center mb-2 elegant-input-group">
                                 <label for="skip-intro-input"
@@ -205,7 +188,7 @@
                     <span class="text-sm hidden sm:inline">复制</span>
                 </button>
 
-                <!-- 原有的排序 -->
+                <!-- 排序 - 保持原有逻辑 -->
                 <button id="order-button"
                     class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors elegant-function-button"
                     aria-label="切换剧集顺序">
@@ -217,7 +200,7 @@
                     <span class="text-sm hidden sm:inline">排序</span>
                 </button>
 
-                <!-- 原有的锁屏 -->
+                <!-- 锁屏 - 保持原有逻辑 -->
                 <button id="lock-button"
                     class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors elegant-function-button"
                     aria-label="锁定/解锁屏幕控制">
@@ -230,7 +213,7 @@
                     <span class="text-sm hidden sm:inline">锁屏</span>
                 </button>
 
-                <!-- 新增：播放设置 -->
+                <!-- 播放设置 - 新增，包含自动播放和记住进度 -->
                 <div class="relative player-settings-container elegant-function-group">
                     <button id="player-settings-button"
                         class="icon-btn bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors elegant-function-button"
@@ -245,10 +228,30 @@
                         </svg>
                         <span class="text-sm hidden sm:inline">设置</span>
                     </button>
-                    <div id="player-settings-dropdown" class="hidden elegant-dropdown">
+                    <div id="player-settings-dropdown" class="hidden elegant-dropdown elegant-solid-dropdown">
                         <div class="elegant-dropdown-content">
                             <div class="elegant-setting-group">
                                 <label class="elegant-setting-title">播放控制</label>
+
+                                <!-- 自动播放下一集 -->
+                                <div class="elegant-setting-item">
+                                    <span class="elegant-setting-label">自动播放下一集</span>
+                                    <label class="elegant-switch">
+                                        <input type="checkbox" id="autoplay-next" checked>
+                                        <span class="elegant-switch-slider"></span>
+                                    </label>
+                                </div>
+
+                                <!-- 记住播放进度 -->
+                                <div class="elegant-setting-item">
+                                    <span class="elegant-setting-label">记住播放进度</span>
+                                    <label class="elegant-switch">
+                                        <input type="checkbox" id="remember-episode-progress-toggle" checked>
+                                        <span class="elegant-switch-slider"></span>
+                                    </label>
+                                </div>
+
+                                <!-- 播放速度 -->
                                 <div class="elegant-setting-item">
                                     <span class="elegant-setting-label">播放速度</span>
                                     <select id="playback-speed" class="elegant-select">

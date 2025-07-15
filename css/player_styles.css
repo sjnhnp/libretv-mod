@@ -304,18 +304,19 @@ input:disabled+.slider {
 
 /* 响应式调整 */
 @media (max-width: 768px) {
+
   #prev-episode,
   #next-episode {
     padding: 0.4rem 0.6rem;
     font-size: 0.8125rem;
   }
-  
+
   #prev-episode svg,
   #next-episode svg {
     width: 16px;
     height: 16px;
   }
-  
+
   #episode-info-span {
     font-size: 0.8125rem;
   }
@@ -807,7 +808,7 @@ input:disabled+.slider {
   background: linear-gradient(145deg, rgba(20, 24, 35, 0.95), rgba(30, 35, 50, 0.95));
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 
+  box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.3),
     0 0 0 1px rgba(255, 255, 255, 0.05);
   padding: 12px;
@@ -908,7 +909,7 @@ input:disabled+.slider {
     width: clamp(160px, 80vw, 200px);
     padding: 10px;
   }
-  
+
   #line-switch-dropdown button {
     padding: 8px 10px;
     font-size: 0.8125rem;
@@ -1044,32 +1045,32 @@ header {
   --elegant-bg-primary: #0f0f0f;
   --elegant-bg-secondary: #1a1a1a;
   --elegant-bg-tertiary: #252525;
-  
+
   /* 强调色 - 暖棕金 */
   --elegant-accent-primary: #8b7355;
   --elegant-accent-secondary: #a0845c;
   --elegant-accent-hover: #b8936a;
-  
+
   /* 文字颜色 */
   --elegant-text-primary: #f5f5f5;
   --elegant-text-secondary: #c0c0c0;
   --elegant-text-tertiary: #999999;
-  
+
   /* 透明度 */
   --elegant-overlay-light: rgba(37, 37, 37, 0.85);
   --elegant-overlay-medium: rgba(37, 37, 37, 0.95);
   --elegant-overlay-dark: rgba(15, 15, 15, 0.98);
-  
+
   /* 阴影 */
   --elegant-shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.3);
   --elegant-shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.4);
   --elegant-shadow-strong: 0 8px 32px rgba(0, 0, 0, 0.5);
-  
+
   /* 边框 */
   --elegant-border-subtle: 1px solid rgba(255, 255, 255, 0.1);
   --elegant-border-medium: 1px solid rgba(255, 255, 255, 0.15);
   --elegant-border-accent: 1px solid var(--elegant-accent-primary);
-  
+
   /* 过渡动画 */
   --elegant-transition-fast: 0.15s ease-in-out;
   --elegant-transition-medium: 0.25s ease-in-out;
@@ -1225,12 +1226,12 @@ header {
   box-shadow: var(--elegant-shadow-subtle) !important;
 }
 
-.elegant-switch input:checked + .elegant-slider {
+.elegant-switch input:checked+.elegant-slider {
   background: var(--elegant-accent-primary) !important;
   border-color: var(--elegant-accent-secondary) !important;
 }
 
-.elegant-switch input:checked + .elegant-slider:before {
+.elegant-switch input:checked+.elegant-slider:before {
   background: var(--elegant-text-primary) !important;
 }
 
@@ -1238,7 +1239,7 @@ header {
   background: rgba(255, 255, 255, 0.15) !important;
 }
 
-.elegant-switch input:checked:hover + .elegant-slider {
+.elegant-switch input:checked:hover+.elegant-slider {
   background: var(--elegant-accent-hover) !important;
 }
 
@@ -1278,12 +1279,41 @@ header {
 }
 
 /* ==================== 下拉菜单增强 ==================== */
+
 .elegant-dropdown {
   background: var(--elegant-overlay-medium) !important;
   border: var(--elegant-border-medium) !important;
   border-radius: 12px !important;
   box-shadow: var(--elegant-shadow-strong) !important;
   backdrop-filter: blur(20px) !important;
+}
+
+.elegant-solid-dropdown {
+  background: rgba(15, 15, 15, 0.98) !important;
+  /* 更不透明的背景 */
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 针对线路切换和跳过设置的特殊处理 */
+
+#line-switch-dropdown.elegant-solid-dropdown,
+#skip-control-dropdown.elegant-solid-dropdown,
+#player-settings-dropdown.elegant-solid-dropdown {
+  background: rgba(15, 15, 15, 0.98) !important;
+  backdrop-filter: blur(30px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+/* 下拉菜单内容样式增强 */
+
+.elegant-solid-dropdown .elegant-dropdown-content {
+  background: transparent;
+  color: var(--elegant-text-primary);
 }
 
 .elegant-dropdown:not(.hidden) {
@@ -1295,6 +1325,7 @@ header {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1368,11 +1399,13 @@ header {
 }
 
 .elegant-setting-title {
+  display: block;
   color: var(--elegant-text-primary) !important;
+  font-size: 0.9rem;
   font-weight: 600;
   margin-bottom: 1rem;
   padding-bottom: 0.5rem;
-  border-bottom: var(--elegant-border-subtle);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   letter-spacing: 0.5px;
 }
 
@@ -1390,16 +1423,78 @@ header {
 
 .elegant-setting-label {
   color: var(--elegant-text-secondary) !important;
+  font-size: 0.875rem;
   font-weight: 500;
   flex: 1;
+}
+
+/* 播放设置中的开关样式 */
+
+.elegant-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  margin-left: 1rem;
+}
+
+.elegant-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.elegant-switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 26px;
+  transition: all var(--elegant-transition-medium);
+}
+
+.elegant-switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background: var(--elegant-text-primary);
+  border-radius: 50%;
+  transition: all var(--elegant-transition-medium);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.elegant-switch input:checked+.elegant-switch-slider {
+  background: var(--elegant-accent-primary);
+  border-color: var(--elegant-accent-secondary);
+}
+
+.elegant-switch input:checked+.elegant-switch-slider:before {
+  transform: translateX(22px);
+}
+
+.elegant-switch:hover .elegant-switch-slider {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.elegant-switch input:checked:hover+.elegant-switch-slider {
+  background: var(--elegant-accent-hover);
 }
 
 .elegant-select {
   background: var(--elegant-bg-tertiary) !important;
   color: var(--elegant-text-primary) !important;
-  border: var(--elegant-border-subtle) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 6px !important;
   padding: 0.5rem 0.75rem !important;
+  font-size: 0.875rem;
+  cursor: pointer;
   transition: all var(--elegant-transition-medium) !important;
   min-width: 80px;
   margin-left: 1rem;
@@ -1584,7 +1679,7 @@ header {
 }
 
 /* ==================== 锁屏状态增强 ==================== */
-.player-container.player-locked .elegant-function-bar > *:not(.player-settings-container) {
+.player-container.player-locked .elegant-function-bar>*:not(.player-settings-container) {
   pointer-events: none;
   opacity: 0.5;
 }
@@ -1619,68 +1714,68 @@ header {
     margin: 0.5rem;
     max-width: calc(100% - 1rem);
   }
-  
+
   .elegant-player-region {
     margin: 0.75rem;
     height: auto;
     aspect-ratio: 16/9;
   }
-  
+
   .elegant-playback-controls {
     padding: 0.75rem 1rem;
   }
-  
+
   .elegant-nav-button {
     padding: 0.5rem 1rem !important;
     font-size: 0.8rem !important;
     min-width: 100px !important;
   }
-  
+
   .elegant-function-bar {
     padding: 0.75rem 1rem !important;
   }
-  
+
   .elegant-control-item {
     padding: 0.4rem 0.75rem !important;
   }
-  
+
   .elegant-function-button {
     padding: 0.5rem 0.75rem !important;
     font-size: 0.8rem !important;
     min-width: 70px !important;
   }
-  
+
   .elegant-function-button span {
     display: none !important;
   }
-  
+
   .elegant-episodes-container {
     margin: 0.75rem 1rem !important;
     padding: 1rem !important;
   }
-  
+
   .elegant-episodes-grid {
     grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)) !important;
     gap: 0.5rem !important;
   }
-  
+
   .elegant-dropdown {
     min-width: 160px !important;
     max-width: 250px !important;
   }
-  
+
   .elegant-progress-card {
     min-width: 0 !important;
     max-width: 95vw !important;
     margin: 1rem !important;
     padding: 1.5rem !important;
   }
-  
+
   .elegant-progress-actions {
     flex-direction: column !important;
     gap: 0.75rem !important;
   }
-  
+
   .elegant-progress-button {
     width: 100% !important;
   }
@@ -1690,16 +1785,16 @@ header {
   .elegant-function-bar {
     padding: 0.5rem !important;
   }
-  
+
   .elegant-control-item {
     padding: 0.3rem 0.5rem !important;
   }
-  
+
   .elegant-function-button {
     padding: 0.4rem 0.5rem !important;
     min-width: 60px !important;
   }
-  
+
   .elegant-episodes-grid {
     grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)) !important;
   }
@@ -1731,8 +1826,15 @@ header {
 
 /* ==================== 动画增强 ==================== */
 @keyframes elegant-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .elegant-loading-text {
@@ -1740,8 +1842,15 @@ header {
 }
 
 @keyframes elegant-glow {
-  0%, 100% { box-shadow: var(--elegant-shadow-subtle); }
-  50% { box-shadow: var(--elegant-shadow-medium); }
+
+  0%,
+  100% {
+    box-shadow: var(--elegant-shadow-subtle);
+  }
+
+  50% {
+    box-shadow: var(--elegant-shadow-medium);
+  }
 }
 
 .elegant-function-button.active {
