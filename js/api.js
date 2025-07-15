@@ -271,7 +271,8 @@ async function handleApiRequest(url) {
             
             let searchParams;
             if (baseUrl.endsWith('.php')) {
-                searchParams = `wd=${encodeURIComponent(searchQuery)}`;
+                // 对于PHP接口，搜索时使用 ac=videolist
+                searchParams = `ac=videolist&wd=${encodeURIComponent(searchQuery)}`;
             } else {
                 searchParams = `${API_CONFIG.search.path}${encodeURIComponent(searchQuery)}`;
             }
@@ -322,11 +323,16 @@ async function handleApiRequest(url) {
                     const baseUrl = sourceCode.startsWith('custom_') ? customApi : API_SITES[sourceCode].api;
                     
                     let detailParams;
+                    
+                    // --- 核心修正开始 ---
                     if (baseUrl.endsWith('.php')) {
-                        detailParams = `ids=${id}`;
+                        // 对于PHP接口，获取详情时明确使用 ac=detail
+                        detailParams = `ac=detail&ids=${id}`;
                     } else {
                         detailParams = `${API_CONFIG.detail.path}${id}`;
                     }
+                    // --- 核心修正结束 ---
+
                     const detailUrl = appendQueryParams(baseUrl, detailParams);
                     
                     const result = await fetchWithTimeout(
@@ -338,11 +344,10 @@ async function handleApiRequest(url) {
                     
                     const videoDetail = result.list[0];
 
-                    // ▼▼▼ 核心修正：返回完整的原始数据 ▼▼▼
                     return JSON.stringify({
                         code: 200,
-                        vod_play_url: videoDetail.vod_play_url, // 直接传递原始播放列表
-                        vod_play_from: videoDetail.vod_play_from, // 直接传递原始播放源
+                        vod_play_url: videoDetail.vod_play_url,
+                        vod_play_from: videoDetail.vod_play_from,
                         videoInfo: {
                             title: videoDetail.vod_name,
                             cover: videoDetail.vod_pic,
@@ -359,7 +364,6 @@ async function handleApiRequest(url) {
                             source_code: sourceCode
                         }
                     });
-                    // ▲▲▲ 核心修正结束 ▲▲▲
                 }
             } catch (error) {
                 console.error(`Error in detail processing for source ${sourceCode}, id ${id}:`, error);
