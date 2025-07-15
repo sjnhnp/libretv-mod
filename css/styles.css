@@ -879,22 +879,36 @@ body {
 }
 
 /* 适用于所有剧集按钮容器的自适应网格布局 */
+/* 1. 剧集容器：采用自适应填充的网格布局 */
 .episode-grid-container {
   display: grid;
-  /* 核心：让网格根据内容自动填充列，每列最小宽度为其内容的自然宽度 */
-  grid-template-columns: repeat(auto-fill, minmax(min-content, 1fr));
+  /* 核心：自动填充列，每列最小150px，最大平分剩余空间 */
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); 
   gap: 8px; /* 按钮间距 */
+  padding: 0.5rem 0;
 }
 
-/* 确保长文本按钮不会被截断 */
-.episode-button-long-text {
-  white-space: nowrap; /* 文本不换行，让按钮自己变宽 */
+/* 2. 容器内所有按钮的统一外观和溢出处理 */
+.episode-grid-container button {
+  /* 外观 */
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: white;
+  transition: all 0.2s ease;
+  
+  /* 文本溢出处理 */
+  white-space: nowrap;      /* 确保文本在一行内 */
+  overflow: hidden;         /* 隐藏超出的部分 */
+  text-overflow: ellipsis;  /* 显示省略号 */
+  text-align: center;       /* 文本居中 */
+  width: 100%;              /* 撑满网格单元 */
 }
 
-/* 移除首页弹窗按钮的宽度限制（如果有） */
-#episodesGrid button, .episode-grid-container button {
-  /* 确保没有 max-width 或 width 属性限制它 */
-  max-width: none;
-  overflow: visible;
-  text-overflow: clip;
+/* 3. 悬停效果 */
+.episode-grid-container button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--primary-color);
 }

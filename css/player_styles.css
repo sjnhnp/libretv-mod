@@ -91,15 +91,47 @@ media-player {
   font-weight: bold;
 }
 
-/* 适用于所有剧集按钮容器的自适应网格布局 */
+/* 1. 剧集容器：采用自适应填充的网格布局 */
 .episode-grid-container {
   max-height: 30vh;
   overflow-y: auto;
   padding: 1rem 0;
   display: grid;
-  /* 核心：让网格根据内容自动填充列，每列最小宽度为其内容的自然宽度 */
-  grid-template-columns: repeat(auto-fill, minmax(min-content, 1fr));
+  /* 核心：自动填充列，每列最小150px，最大平分剩余空间 */
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 8px; /* 按钮间距 */
+}
+
+/* 2. 容器内所有按钮的统一外观和溢出处理 */
+.episode-grid-container button {
+  /* 外观 */
+  background: #222;
+  color: #d1d5db;
+  border: 1px solid #333;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px; /* 统一样式 */
+  transition: all 0.2s ease;
+
+  /* 文本溢出处理 */
+  white-space: nowrap;      /* 确保文本在一行内 */
+  overflow: hidden;         /* 隐藏超出的部分 */
+  text-overflow: ellipsis;  /* 显示省略号 */
+  text-align: center;       /* 文本居中 */
+  width: 100%;              /* 撑满网格单元 */
+}
+
+/* 3. 悬停和激活效果 */
+.episode-grid-container button:hover {
+  background: #333;
+  color: #fff;
+}
+
+.episode-grid-container button.episode-active {
+  background: #3b82f6 !important;
+  border-color: #60a5fa !important;
+  color: #fff !important;
+  font-weight: bold;
 }
 
 /* 自定义开关样式 */
@@ -1001,11 +1033,4 @@ header {
   color: white;
   opacity: 0;
   transition: opacity .3s ease-in-out;
-}
-
-/* 为综艺节目等长文本集数按钮提供的样式 */
-.episode-button-long-text {
-  white-space: nowrap; /* 文本不换行，让按钮自己变宽 */
-  overflow: visible;
-  text-overflow: clip;
 }
