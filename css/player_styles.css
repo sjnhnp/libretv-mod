@@ -91,60 +91,10 @@ media-player {
   font-weight: bold;
 }
 
-/* 1. 按钮容器 (保持不变，使用 Flexbox) */
-.episode-grid-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 0.5rem 0;
-  /* 播放页特定样式 */
+.episode-grid {
   max-height: 30vh;
   overflow-y: auto;
-}
-
-/* 2. 所有按钮的【默认样式】(小方块，用于1,2,3...) */
-.episode-grid-container button {
-  /* 尺寸和形状 */
-  width: 2.75rem;  /* 约 44px，提供一个方形的舒适点击区域 */
-  height: 2.75rem; /* 约 44px */
-  padding: 0;      /* 移除内边距，让数字能完美居中 */
-  border-radius: 6px;
-
-  /* 内容对齐 */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  /* 其他基础样式 */
-  background: #222;
-  color: #d1d5db;
-  border: 1px solid #333;
-  transition: all 0.2s ease;
-  font-size: 0.875rem;
-  flex-shrink: 0; /* 防止被压缩 */
-  cursor: pointer;
-}
-
-/* 3. 【仅】综艺长标题按钮的【覆盖样式】 */
-.episode-grid-container .episode-button-long-text {
-  width: auto;          /* 覆盖：宽度由内容自适应 */
-  height: auto;         /* 覆盖：高度由内容自适应 */
-  padding: 8px 14px;    /* 覆盖：恢复左右内边距，让长文本有呼吸空间 */
-  white-space: nowrap;  /* 确保长标题不换行 */
-}
-
-/* 4. 悬停和激活状态 (对所有按钮通用) */
-.episode-grid-container button:hover {
-  background: #333;
-  border-color: #555;
-  color: #fff;
-}
-
-.episode-grid-container button.episode-active {
-  background: #3b82f6 !important;
-  border-color: #60a5fa !important;
-  color: #fff !important;
-  font-weight: bold;
+  padding: 1rem 0;
 }
 
 /* 自定义开关样式 */
@@ -1046,4 +996,29 @@ header {
   color: white;
   opacity: 0;
   transition: opacity .3s ease-in-out;
+}
+
+/* 综艺按钮独有样式 */
+.variety-episode-button {
+  /* 外观 */
+  background: #222;
+  color: #d1d5db;
+  border: 1px solid #333;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+
+  /* 文本溢出处理 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+
+  /* 布局：让它在grid单元格里正常显示 */
+  width: 100%;
+}
+.variety-episode-button:hover {
+  background: #333;
+  color: #fff;
 }

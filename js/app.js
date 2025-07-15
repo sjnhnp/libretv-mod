@@ -1283,66 +1283,57 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, type
     const currentReversedState = AppState.get('episodesReversed') || false;
     const vodId = AppState.get('currentVideoId') || '';
     const year = AppState.get('currentVideoYear') || '';
-    //const typeName = AppState.get('currentVideoTypeName') || '';
     const videoKey = AppState.get('currentVideoKey') || '';
 
     const displayEpisodes = currentReversedState ? [...episodes].reverse() : [...episodes];
 
-    // 定义需要特殊处理的类型关键词
     const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
     const isVarietyShow = varietyShowTypes.some(type => typeName && typeName.includes(type));
 
-    return displayEpisodes.map((episodeUrl, displayIndex) => {
+    return displayEpisodes.map((episodeString, displayIndex) => {
         const originalIndex = currentReversedState ? (episodes.length - 1 - displayIndex) : displayIndex;
-        const safeVideoTitle = encodeURIComponent(videoTitle);
-        const safeSourceName = encodeURIComponent(sourceName);
 
-        const parts = (episodeUrl || '').split('$');
-        const episodeName = parts.length > 1 ? parts[0] : '';
+        const parts = (episodeString || '').split('$');
+        const episodeName = parts.length > 1 ? parts[0].trim() : '';
 
         let buttonText = '';
         let buttonTitle = '';
-        let extraClasses = '';
+        let buttonClasses = 'episode-btn '; // 基础类名
 
-        // 如果是综艺类型，并且数据格式正确，就显示名称
-
-        if (isVarietyShow && episodeName.trim()) {
-
+        if (isVarietyShow && episodeName) {
+            // ============== 综艺节目按钮 ==============
             buttonText = episodeName;
-
             buttonTitle = episodeName;
-
-            extraClasses = 'episode-button-long-text';
+            // 添加特殊的综艺按钮类，并且移除所有布局和内边距相关的类
+            buttonClasses += 'variety-episode-button'; 
+            if (originalIndex === AppState.get('currentEpisodeIndex')) {
+                buttonClasses += ' episode-active';
+            }
 
         } else {
-
-            // 否则，一律显示“第 X 集”
-
+            // ============== 普通剧集按钮 ==============
             buttonText = `第 ${originalIndex + 1} 集`;
-
             buttonTitle = `第 ${originalIndex + 1} 集`;
-
+            // 使用原始的、包含Tailwind内联样式的类
+            buttonClasses += 'px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate';
+            if (originalIndex === AppState.get('currentEpisodeIndex')) {
+                buttonClasses += ' episode-active';
+            }
         }
 
+        // onclick 事件中的第一个参数应该是完整的 episodeString
+        const safeVideoTitle = encodeURIComponent(videoTitle);
+        const safeSourceName = encodeURIComponent(sourceName);
 
         return `
-
-        <button 
-
-            onclick="playVideo('${episodeUrl}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}', '${vodId}', '${year}', '${typeName}', '${videoKey}')" 
-
-            class="episode-btn px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate ${extraClasses}"
-
-            data-index="${originalIndex}"
-
-            title="${buttonTitle}" 
-
-        >
-
-            ${buttonText}
-
-        </button>`;
-
+            <button 
+                onclick="playVideo('${episodeString}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}', '${vodId}', '${year}', '${typeName}', '${videoKey}')" 
+                class="${buttonClasses}"
+                data-index="${originalIndex}"
+                title="${buttonTitle}" 
+            >
+                ${buttonText}
+            </button>`;
     }).join('');
 }
 

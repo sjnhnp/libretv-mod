@@ -802,21 +802,19 @@ function clearCurrentVideoAllEpisodeProgresses() {
     }
 }
 
+// 文件: js/player_app.js
+
 function renderEpisodes() {
     const grid = document.getElementById('episode-grid');
-    if (!grid) { 
-        setTimeout(renderEpisodes, 100); 
-        return; 
-    }
+    if (!grid) { setTimeout(renderEpisodes, 100); return; }
+
+    // ... (其他不变的代码)
     const container = document.getElementById('episodes-container');
     if (container) {
         container.classList.toggle('hidden', currentEpisodes.length <= 1);
     }
     const countSpan = document.getElementById('episodes-count');
-    if (countSpan) {
-        countSpan.textContent = `共 ${currentEpisodes.length} 集`;
-    }
-    
+    if (countSpan) countSpan.textContent = `共 ${currentEpisodes.length} 集`;
     grid.innerHTML = '';
     if (!currentEpisodes.length) {
         grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-4">没有可用的剧集</div>';
@@ -828,30 +826,28 @@ function renderEpisodes() {
     const orderedEpisodes = episodesReversed ? [...currentEpisodes].reverse() : [...currentEpisodes];
 
     orderedEpisodes.forEach((episodeData, index) => {
-        // 对于倒序列表，我们需要计算出它在原始列表中的索引
         const originalIndex = episodesReversed ? (currentEpisodes.length - 1 - index) : index;
-        
+
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.dataset.index = originalIndex;
 
-        // 1. 设置所有按钮的通用基础样式
-        // 注意：这里的class已经移到CSS文件中，JS只负责添加状态和类型类
-        
         const parts = (episodeData || '').split('$');
         const episodeName = parts.length > 1 ? parts[0].trim() : '';
 
-        // 2. 根据类型决定内容和特定样式
         if (isVarietyShow && episodeName) {
+            // ============== 综艺节目按钮 ==============
             btn.textContent = episodeName;
             btn.title = episodeName;
-            btn.classList.add('episode-button-long-text'); // 添加长文本样式类
+            btn.classList.add('variety-episode-button'); // 添加特殊类
         } else {
+            // ============== 普通剧集按钮 ==============
             btn.textContent = originalIndex + 1;
             btn.title = `第 ${originalIndex + 1} 集`;
+            // 使用原始的、包含Tailwind内联样式的类
+            btn.className = 'p-2 rounded bg-[#222] hover:bg-[#333] text-gray-300';
         }
-        
-        // 3. 标记当前正在播放的集数
+
         if (originalIndex === currentEpisodeIndex) {
             btn.classList.add('episode-active');
         }
@@ -862,13 +858,10 @@ function renderEpisodes() {
     if (!grid._sListenerBound) {
         grid.addEventListener('click', evt => {
             const target = evt.target.closest('button[data-index]');
-            if (target) {
-                playEpisode(+target.dataset.index);
-            }
+            if (target) playEpisode(+target.dataset.index);
         });
         grid._sListenerBound = true;
     }
-
     updateEpisodeInfo();
     updateButtonStates();
 }
