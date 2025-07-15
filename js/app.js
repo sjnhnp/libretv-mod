@@ -1132,101 +1132,116 @@ window.copyLinks = copyLinks;
 window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 
 // 显示视频剧集模态框
+
 async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackData) {
-    showLoading('处理中...');
-    const videoDataMap = AppState.get('videoDataMap');
-    const videoData = videoDataMap ? videoDataMap.get(id.toString()) : null;
-    if (!videoData) {
+    showLoading('获取剧集详情...');
+
+    try {
+        let detailApiUrl = `/api/detail?id=${encodeURIComponent(id)}&source=${encodeURIComponent(sourceCode)}`;
+        if (apiUrl) { 
+            detailApiUrl += `&customApi=${encodeURIComponent(apiUrl)}`;
+        }
+
+        const response = await fetch(detailApiUrl);
+        if (!response.ok) {
+            throw new Error(`网络请求失败，状态码: ${response.status}`);
+        }
+        const data = await response.json();
+
+        if (data.code !== 200 || !data.videoInfo) {
+            throw new Error(data.msg || '未能获取到有效的视频详情');
+        }
+        // 从获取到的新数据中解析剧集
+        let episodes = [];
+        const videoInfo = data.videoInfo;
+        const vodPlayUrl = data.vod_play_url || videoInfo.vod_play_url || ''; // 兼容不同数据结构
+        const vodPlayFrom = data.vod_play_from || videoInfo.vod_play_from || '';
+
+        if (vodPlayUrl) {
+            const playFroms = vodPlayFrom.split('$$$');
+            const urlGroups = vodPlayUrl.split('$$$');
+            const sourceNameForMatch = APISourceManager.getSelectedApi(sourceCode)?.name || '';
+            
+            let sourceIndex = playFroms.indexOf(sourceNameForMatch);
+            if (sourceIndex === -1) sourceIndex = 0; // 找不到匹配的播放源，默认用第一个
+
+            if (urlGroups[sourceIndex]) {
+                episodes = urlGroups[sourceIndex].split('#').filter(item => item && item.includes('$'));
+            }
+        }
+
+        if (episodes.length === 0) {
+            throw new Error('解析剧集列表失败，可能没有播放源');
+        }
+
         hideLoading();
-        showToast('缓存中找不到视频数据，请刷新后重试', 'error');
-        console.error(`无法从 AppState 缓存中找到 vod_id 为 ${id} 的视频数据。`);
-        return;
-    }
 
-    let episodes = [];
-    if (videoData.vod_play_url) {
-        const playFroms = (videoData.vod_play_from || '').split('$$$');
-        const urlGroups = videoData.vod_play_url.split('$$$');
-        const selectedApi = APISourceManager.getSelectedApi(sourceCode);
-        const sourceName = selectedApi ? selectedApi.name : '';
-        let sourceIndex = playFroms.indexOf(sourceName);
-        if (sourceIndex === -1) {
-            console.warn(`源名称 "${sourceName}" 未在播放列表源 [${playFroms.join(', ')}] 中找到，将默认使用第一个源。`);
-            sourceIndex = 0;
-        }
-        if (urlGroups[sourceIndex]) {
-            episodes = urlGroups[sourceIndex].split('#').filter(item => item && item.includes('$'));
-        }
-    }
+        const effectiveTitle = videoInfo.title || title;
+        const effectiveTypeName = videoInfo.type || fallbackData.typeName;
+        const sourceNameForDisplay = videoInfo.source_name || fallbackData.sourceName || '未知源';
 
-    if (episodes.length === 0) {
+        // 更新全局状态
+        AppState.set('currentEpisodes', episodes);
+        AppState.set('currentVideoTitle', effectiveTitle);
+        AppState.set('currentSourceName', sourceNameForDisplay);
+        AppState.set('currentSourceCode', sourceCode);
+        AppState.set('currentVideoId', id);
+        AppState.set('currentVideoYear', videoInfo.year || fallbackData.year);
+        AppState.set('currentVideoTypeName', effectiveTypeName);
+        AppState.set('currentVideoKey', fallbackData.videoKey);
+        localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
+        localStorage.setItem('currentVideoTitle', effectiveTitle);
+
+        // --- 渲染弹窗 ---
+        const template = document.getElementById('video-details-template');
+        if (!template) return showToast('详情模板未找到!', 'error');
+        const modalContent = template.content.cloneNode(true);
+
+        const fields = {
+            type: effectiveTypeName || '未知',
+            year: videoInfo.year || fallbackData.year || '未知',
+            area: videoInfo.area || fallbackData.area || '未知',
+            director: videoInfo.director || fallbackData.director || '未知',
+            actor: videoInfo.actor || fallbackData.actor || '未知',
+            remarks: videoInfo.remarks || fallbackData.remarks || '无',
+            description: (videoInfo.desc || fallbackData.blurb || '暂无简介。').replace(/<[^>]+>/g, '').trim(),
+            'episode-count': episodes.length,
+        };
+
+        for (const [key, value] of Object.entries(fields)) {
+            const el = modalContent.querySelector(`[data-field="${key}"]`);
+            if (el) el.textContent = value;
+        }
+
+        const episodeButtonsGrid = modalContent.querySelector('[data-field="episode-buttons-grid"]');
+        const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
+        const isVarietyShow = varietyShowTypes.some(type => effectiveTypeName && effectiveTypeName.includes(type));
+
+        if (episodeButtonsGrid) {
+            if (isVarietyShow) {
+                episodeButtonsGrid.className = 'variety-grid-layout';
+            }
+            episodeButtonsGrid.innerHTML = renderEpisodeButtons(episodes, effectiveTitle, sourceCode, sourceNameForDisplay, effectiveTypeName);
+        }
+
+        modalContent.querySelector('[data-action="copy-links"]').addEventListener('click', copyLinks);
+        modalContent.querySelector('[data-action="toggle-order"]').addEventListener('click', () => {
+            toggleEpisodeOrderUI(episodeButtonsGrid);
+        });
+        const orderIcon = modalContent.querySelector('[data-field="order-icon"]');
+        if (orderIcon) {
+            orderIcon.style.transform = (AppState.get('episodesReversed') || false) ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+
+        const tempDiv = document.createElement('div');
+        tempDiv.appendChild(modalContent);
+        showModal(tempDiv.innerHTML, `${effectiveTitle} (${sourceNameForDisplay})`);
+
+    } catch (error) {
         hideLoading();
-        showToast('解析剧集列表失败', 'error');
-        console.error('解析后的 episodes 数组为空。原始 videoData:', videoData);
-        return;
+        console.error("显示视频详情弹窗失败:", error);
+        showToast(error.message, 'error');
     }
-
-    hideLoading();
-    const effectiveTitle = videoData.vod_name || title;
-    const effectiveTypeName = videoData.type_name || fallbackData.typeName;
-    const sourceNameForDisplay = videoData.source_name || APISourceManager.getSelectedApi(sourceCode)?.name || '未知源';
-
-    AppState.set('currentEpisodes', episodes);
-    AppState.set('currentVideoTitle', effectiveTitle);
-    AppState.set('currentSourceName', sourceNameForDisplay);
-    AppState.set('currentSourceCode', sourceCode);
-    AppState.set('currentVideoId', id);
-    AppState.set('currentVideoYear', videoData.vod_year || fallbackData.year);
-    AppState.set('currentVideoTypeName', effectiveTypeName);
-    AppState.set('currentVideoKey', fallbackData.videoKey);
-    localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
-    localStorage.setItem('currentVideoTitle', effectiveTitle);
-
-    const template = document.getElementById('video-details-template');
-    if (!template) return showToast('详情模板未找到!', 'error');
-    const modalContent = template.content.cloneNode(true);
-
-    const fields = {
-        type: effectiveTypeName || '未知',
-        year: videoData.vod_year || fallbackData.year || '未知',
-        area: videoData.vod_area || fallbackData.area || '未知',
-        director: videoData.vod_director || fallbackData.director || '未知',
-        actor: videoData.vod_actor || fallbackData.actor || '未知',
-        remarks: videoData.vod_remarks || fallbackData.remarks || '无',
-        description: (videoData.vod_blurb || fallbackData.blurb || '暂无简介。').replace(/<[^>]+>/g, '').trim(),
-        'episode-count': episodes.length,
-    };
-    for (const [key, value] of Object.entries(fields)) {
-        const el = modalContent.querySelector(`[data-field="${key}"]`);
-        if (el) el.textContent = value;
-    }
-
-    const episodeButtonsGrid = modalContent.querySelector('[data-field="episode-buttons-grid"]');
-    const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
-    const isVarietyShow = varietyShowTypes.some(type => effectiveTypeName && effectiveTypeName.includes(type));
-
-    if (episodeButtonsGrid) {
-        if (isVarietyShow) {
-            // 综艺
-            episodeButtonsGrid.className = 'variety-grid-layout';
-        }
-
-        // 渲染按钮
-        episodeButtonsGrid.innerHTML = renderEpisodeButtons(episodes, effectiveTitle, sourceCode, sourceNameForDisplay, effectiveTypeName);
-    }
-
-    modalContent.querySelector('[data-action="copy-links"]').addEventListener('click', copyLinks);
-    modalContent.querySelector('[data-action="toggle-order"]').addEventListener('click', () => {
-        toggleEpisodeOrderUI(episodeButtonsGrid);
-    });
-    const orderIcon = modalContent.querySelector('[data-field="order-icon"]');
-    if (orderIcon) {
-        orderIcon.style.transform = (AppState.get('episodesReversed') || false) ? 'rotate(180deg)' : 'rotate(0deg)';
-    }
-
-    const tempDiv = document.createElement('div');
-    tempDiv.appendChild(modalContent);
-    showModal(tempDiv.innerHTML, `${effectiveTitle} (${sourceNameForDisplay})`);
 }
 
 function toggleEpisodeOrderUI(container) {
