@@ -812,6 +812,7 @@ function renderEpisodes() {
     const countSpan = document.getElementById('episodes-count');
     if (countSpan) { countSpan.textContent = `共 ${currentEpisodes.length} 集`; }
 
+    // 定义综艺类型关键词
     const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
     const isVarietyShow = varietyShowTypes.some(type => currentVideoTypeName && currentVideoTypeName.includes(type));
 
@@ -831,7 +832,6 @@ function renderEpisodes() {
     }
 
     const orderedEpisodes = episodesReversed ? [...currentEpisodes].reverse() : [...currentEpisodes];
-
     orderedEpisodes.forEach((episodeData, index) => {
         const originalIndex = episodesReversed ? (currentEpisodes.length - 1 - index) : index;
 
@@ -841,7 +841,8 @@ function renderEpisodes() {
 
         const parts = (episodeData || '').split('$');
         const episodeName = parts.length > 1 ? parts[0].trim() : '';
-
+        
+        // 根据是否为综艺决定按钮文本和标题
         if (isVarietyShow && episodeName) {
             btn.textContent = episodeName;
             btn.title = episodeName;
@@ -850,6 +851,7 @@ function renderEpisodes() {
             btn.title = `第 ${originalIndex + 1} 集`;
         }
 
+        // 高亮当前播放的集数
         if (originalIndex === currentEpisodeIndex) {
             btn.classList.add('episode-active');
         }

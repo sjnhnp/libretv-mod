@@ -1275,21 +1275,20 @@ function toggleEpisodeOrderUI(container) {
     }
 }
 
-// 文件: js/app.js
-
 function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, typeName) {
-    // --- 这部分代码无需修改，保持原样 ---
     if (!episodes || episodes.length === 0) {
         return '<p class="text-center text-gray-500 col-span-full">暂无剧集信息</p>';
     }
+
     const currentReversedState = AppState.get('episodesReversed') || false;
     const vodId = AppState.get('currentVideoId') || '';
     const year = AppState.get('currentVideoYear') || '';
     const videoKey = AppState.get('currentVideoKey') || '';
     const displayEpisodes = currentReversedState ? [...episodes].reverse() : [...episodes];
+
+    // 定义综艺类型关键词
     const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
     const isVarietyShow = varietyShowTypes.some(type => typeName && typeName.includes(type));
-    // --- 以上代码无需修改 ---
 
     // **核心修改**：找到按钮容器，如果是综艺，就动态改变它的CSS类
     const container = document.querySelector('[data-field="episode-buttons-grid"]');
@@ -1308,15 +1307,16 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, type
         const parts = (episodeString || '').split('$');
         const episodeName = parts.length > 1 ? parts[0].trim() : '';
 
+        // 根据是否为综艺决定按钮文本和标题
         let buttonText = isVarietyShow && episodeName ? episodeName : `第 ${originalIndex + 1} 集`;
         let buttonTitle = isVarietyShow && episodeName ? episodeName : `第 ${originalIndex + 1} 集`;
 
         // 按钮本身不再需要特殊的class来控制布局，只控制激活状态
-        let buttonClasses = 'episode-btn';
+        let buttonClasses = 'episode-btn'; // 使用一个基础类，具体样式由容器类决定
         if (originalIndex === AppState.get('currentEpisodeIndex')) {
             buttonClasses += ' episode-active';
         }
-
+        
         const safeVideoTitle = encodeURIComponent(videoTitle);
         const safeSourceName = encodeURIComponent(sourceName);
 
