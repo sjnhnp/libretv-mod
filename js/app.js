@@ -1135,19 +1135,11 @@ window.handleResultClick = handleResultClick;
 window.copyLinks = copyLinks;
 window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 
-// 文件: js/app.js
-
-/**
- * 显示视频剧集模态框 (最终架构修正版 - 完整无省略)
- * 不再发起网络请求，直接从缓存解析数据
- */
+// 显示视频剧集模态框
 async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackData) {
     showLoading('处理中...');
-
-    // 1. 从缓存中获取当前视频的完整数据对象
     const videoDataMap = AppState.get('videoDataMap');
     const videoData = videoDataMap ? videoDataMap.get(id.toString()) : null;
-
     if (!videoData) {
         hideLoading();
         showToast('缓存中找不到视频数据，请刷新后重试', 'error');
@@ -1155,23 +1147,17 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         return;
     }
 
-    // 2. 直接从缓存的 videoData 对象中解析 vod_play_url
     let episodes = [];
     if (videoData.vod_play_url) {
-        console.log("检测到 'vod_play_url' 字段，开始本地解析...");
-        
         const playFroms = (videoData.vod_play_from || '').split('$$$');
         const urlGroups = videoData.vod_play_url.split('$$$');
-        
         const selectedApi = APISourceManager.getSelectedApi(sourceCode);
         const sourceName = selectedApi ? selectedApi.name : '';
         let sourceIndex = playFroms.indexOf(sourceName);
-        
         if (sourceIndex === -1) {
             console.warn(`源名称 "${sourceName}" 未在播放列表源 [${playFroms.join(', ')}] 中找到，将默认使用第一个源。`);
             sourceIndex = 0;
         }
-
         if (urlGroups[sourceIndex]) {
             episodes = urlGroups[sourceIndex].split('#').filter(item => item && item.includes('$'));
         }
@@ -1183,10 +1169,8 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         console.error('解析后的 episodes 数组为空。原始 videoData:', videoData);
         return;
     }
-    
+
     hideLoading();
-    
-    // 3. 使用已有的数据更新状态
     const effectiveTitle = videoData.vod_name || title;
     const effectiveTypeName = videoData.type_name || fallbackData.typeName;
     const sourceNameForDisplay = videoData.source_name || APISourceManager.getSelectedApi(sourceCode)?.name || '未知源';
@@ -1202,12 +1186,10 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
     localStorage.setItem('currentVideoTitle', effectiveTitle);
 
-    // 4. 渲染弹窗
     const template = document.getElementById('video-details-template');
     if (!template) return showToast('详情模板未找到!', 'error');
     const modalContent = template.content.cloneNode(true);
-    
-    // --- 填充视频元数据信息 (完整版) ---
+
     const fields = {
         type: effectiveTypeName || '未知',
         year: videoData.vod_year || fallbackData.year || '未知',
@@ -1222,26 +1204,31 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         const el = modalContent.querySelector(`[data-field="${key}"]`);
         if (el) el.textContent = value;
     }
-    
-    // --- 填充剧集按钮 ---
+
     const episodeButtonsGrid = modalContent.querySelector('[data-field="episode-buttons-grid"]');
+    const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
+    const isVarietyShow = varietyShowTypes.some(type => effectiveTypeName && effectiveTypeName.includes(type));
+
     if (episodeButtonsGrid) {
+        if (isVarietyShow) {
+            // 如果是综艺, 应用老代码的自适应布局样式
+            episodeButtonsGrid.className = 'variety-grid-layout';
+        }
+        // 如果不是综艺, 则保持 template 中默认的紧凑布局样式
+
+        // 渲染按钮
         episodeButtonsGrid.innerHTML = renderEpisodeButtons(episodes, effectiveTitle, sourceCode, sourceNameForDisplay, effectiveTypeName);
     }
-    
-    // --- 绑定事件监听 ---
+
     modalContent.querySelector('[data-action="copy-links"]').addEventListener('click', copyLinks);
     modalContent.querySelector('[data-action="toggle-order"]').addEventListener('click', () => {
         toggleEpisodeOrderUI(episodeButtonsGrid);
     });
-
-    // --- 设置排序图标初始状态 ---
     const orderIcon = modalContent.querySelector('[data-field="order-icon"]');
     if (orderIcon) {
         orderIcon.style.transform = (AppState.get('episodesReversed') || false) ? 'rotate(180deg)' : 'rotate(0deg)';
     }
-    
-    // --- 显示弹窗 ---
+
     const tempDiv = document.createElement('div');
     tempDiv.appendChild(modalContent);
     showModal(tempDiv.innerHTML, `${effectiveTitle} (${sourceNameForDisplay})`);
@@ -1279,44 +1266,29 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, type
     if (!episodes || episodes.length === 0) {
         return '<p class="text-center text-gray-500 col-span-full">暂无剧集信息</p>';
     }
-
     const currentReversedState = AppState.get('episodesReversed') || false;
     const vodId = AppState.get('currentVideoId') || '';
     const year = AppState.get('currentVideoYear') || '';
     const videoKey = AppState.get('currentVideoKey') || '';
     const displayEpisodes = currentReversedState ? [...episodes].reverse() : [...episodes];
 
-    // 定义综艺类型关键词
     const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
     const isVarietyShow = varietyShowTypes.some(type => typeName && typeName.includes(type));
-
-    // **核心修改**：找到按钮容器，如果是综艺，就动态改变它的CSS类
-    const container = document.querySelector('[data-field="episode-buttons-grid"]');
-    if (container) {
-        if (isVarietyShow) {
-            // 如果是综艺，使用我们新的自适应网格布局类
-            container.className = 'variety-grid-layout';
-        } else {
-            // 如果是普通剧集，恢复HTML模板里原始的、紧凑的网格布局类
-            container.className = 'grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2';
-        }
-    }
 
     return displayEpisodes.map((episodeString, displayIndex) => {
         const originalIndex = currentReversedState ? (episodes.length - 1 - displayIndex) : displayIndex;
         const parts = (episodeString || '').split('$');
         const episodeName = parts.length > 1 ? parts[0].trim() : '';
 
-        // 根据是否为综艺决定按钮文本和标题
         let buttonText = isVarietyShow && episodeName ? episodeName : `第 ${originalIndex + 1} 集`;
         let buttonTitle = isVarietyShow && episodeName ? episodeName : `第 ${originalIndex + 1} 集`;
 
-        // 按钮本身不再需要特殊的class来控制布局，只控制激活状态
-        let buttonClasses = 'episode-btn'; // 使用一个基础类，具体样式由容器类决定
+        // 统一使用一个基础 class，具体样式由父容器的 class 和 CSS 决定
+        let buttonClasses = 'episode-btn';
         if (originalIndex === AppState.get('currentEpisodeIndex')) {
             buttonClasses += ' episode-active';
         }
-        
+
         const safeVideoTitle = encodeURIComponent(videoTitle);
         const safeSourceName = encodeURIComponent(sourceName);
 
