@@ -1133,8 +1133,6 @@ window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 
 // 显示视频剧集模态框
 
-// js/app.js - 替换此函数
-
 async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackData) {
     showLoading('获取剧集详情...');
 
@@ -1155,30 +1153,41 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             throw new Error(data.msg || '未能获取到有效的视频详情');
         }
 
-        // 从获取到的新数据中解析剧集
+        // --- 核心修正：改进剧集解析逻辑 ---
         let episodes = [];
         const videoInfo = data.videoInfo;
-        const vodPlayUrl = data.vod_play_url || videoInfo.vod_play_url || ''; // 兼容不同数据结构
+        const vodPlayUrl = data.vod_play_url || videoInfo.vod_play_url || '';
         const vodPlayFrom = data.vod_play_from || videoInfo.vod_play_from || '';
 
         if (vodPlayUrl) {
             const playFroms = vodPlayFrom.split('$$$');
             const urlGroups = vodPlayUrl.split('$$$');
             
-            // 尝试匹配播放源名称
+            // 1. 尝试通过源名称精确匹配播放列表
             const sourceInfo = APISourceManager.getSelectedApi(sourceCode);
             const sourceNameForMatch = sourceInfo ? sourceInfo.name : '';
-            
             let sourceIndex = playFroms.indexOf(sourceNameForMatch);
+
+            // 2. 如果名称匹配失败，智能选择第一个最可能有效的播放列表
             if (sourceIndex === -1) {
-                 // 找不到匹配的播放源名称时，安全地默认使用第一个播放列表
-                sourceIndex = 0;
+                // 寻找第一个包含 'm3u8' 的播放列表，这通常是最高质量的
+                sourceIndex = urlGroups.findIndex(group => group.includes('.m3u8'));
+                // 如果还是没找到，就安全地默认使用第一个非空的播放列表
+                if (sourceIndex === -1) {
+                    sourceIndex = urlGroups.findIndex(group => group && group.trim() !== '');
+                }
+                 // 如果所有播放列表都是空的，则保持-1
+                if (sourceIndex === -1) {
+                    sourceIndex = 0; // 作为最后的保障，尝试第一个，即使它是空的
+                }
             }
 
+            // 3. 提取剧集
             if (urlGroups[sourceIndex]) {
                 episodes = urlGroups[sourceIndex].split('#').filter(item => item && item.includes('$'));
             }
         }
+        // --- 修正结束 ---
 
         if (episodes.length === 0) {
             throw new Error('解析剧集列表失败，可能没有播放源');
