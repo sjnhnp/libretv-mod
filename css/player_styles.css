@@ -91,39 +91,52 @@ media-player {
   font-weight: bold;
 }
 
-/* 1. 剧集容器：采用自适应填充的网格布局 */
+/* 1. 按钮容器 (保持不变，使用 Flexbox) */
 .episode-grid-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0.5rem 0;
+  /* 播放页特定样式 */
   max-height: 30vh;
   overflow-y: auto;
-  padding: 1rem 0;
-  display: grid;
-  /* 核心：自动填充列，每列最小150px，最大平分剩余空间 */
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 8px; /* 按钮间距 */
 }
 
-/* 2. 容器内所有按钮的统一外观和溢出处理 */
+/* 2. 所有按钮的【默认样式】(小方块，用于1,2,3...) */
 .episode-grid-container button {
-  /* 外观 */
+  /* 尺寸和形状 */
+  width: 2.75rem;  /* 约 44px，提供一个方形的舒适点击区域 */
+  height: 2.75rem; /* 约 44px */
+  padding: 0;      /* 移除内边距，让数字能完美居中 */
+  border-radius: 6px;
+
+  /* 内容对齐 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* 其他基础样式 */
   background: #222;
   color: #d1d5db;
   border: 1px solid #333;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 14px; /* 统一样式 */
   transition: all 0.2s ease;
-
-  /* 文本溢出处理 */
-  white-space: nowrap;      /* 确保文本在一行内 */
-  overflow: hidden;         /* 隐藏超出的部分 */
-  text-overflow: ellipsis;  /* 显示省略号 */
-  text-align: center;       /* 文本居中 */
-  width: 100%;              /* 撑满网格单元 */
+  font-size: 0.875rem;
+  flex-shrink: 0; /* 防止被压缩 */
+  cursor: pointer;
 }
 
-/* 3. 悬停和激活效果 */
+/* 3. 【仅】综艺长标题按钮的【覆盖样式】 */
+.episode-grid-container .episode-button-long-text {
+  width: auto;          /* 覆盖：宽度由内容自适应 */
+  height: auto;         /* 覆盖：高度由内容自适应 */
+  padding: 8px 14px;    /* 覆盖：恢复左右内边距，让长文本有呼吸空间 */
+  white-space: nowrap;  /* 确保长标题不换行 */
+}
+
+/* 4. 悬停和激活状态 (对所有按钮通用) */
 .episode-grid-container button:hover {
   background: #333;
+  border-color: #555;
   color: #fff;
 }
 

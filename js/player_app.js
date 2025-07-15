@@ -166,7 +166,6 @@ function getShowIdentifier(perEpisode = true) {
 
     if (vid) return `${currentVideoTitle}_${sc}_${vid}${ep}`;
 
-    // If no video ID is available, use the first episode's URL to create a consistent identifier for the show.
     const raw = (currentEpisodes && currentEpisodes.length > 0) ? currentEpisodes[0] : '';
     if (!raw) return `${currentVideoTitle}_${sc}${ep}`;
 
@@ -211,11 +210,7 @@ function showProgressRestoreModal(opts) {
     });
 }
 
-/**
- * 根据广告过滤设置，异步处理视频URL。
- * @param {string} url 原始视频URL
- * @returns {Promise<string>} 处理后的视频URL (可能是原始URL或Blob URL)
- */
+// 根据广告过滤设置，异步处理视频URL。
 async function processVideoUrl(url) {
     // 如果未启用广告过滤，直接返回原始 URL
     if (!adFilteringEnabled) {
@@ -300,13 +295,13 @@ async function initPlayer(videoUrl, title) {
         player = null;
     }
 
-    // 【修改】在创建播放器前处理URL
+    // 在创建播放器前处理URL
     const processedUrl = await processVideoUrl(videoUrl);
 
     try {
         player = await VidstackPlayer.create({
             target: playerContainer,
-            // 【修改】使用处理过的URL
+            // 使用处理过的URL
             src: { src: processedUrl, type: 'application/x-mpegurl' },
             title: title,
             autoplay: true,
@@ -443,15 +438,13 @@ async function playEpisode(index) {
     doEpisodeSwitch(index, currentEpisodes[index]);
 }
 
-// 文件: js/player_app.js
-
 async function doEpisodeSwitch(index, episodeString) { 
     let playUrl = episodeString;
     if (episodeString && episodeString.includes('$')) {
         playUrl = episodeString.split('$')[1];
     }
 
-    // 增加一个健壮性检查，确保我们有一个有效的URL
+    // 增加一个检查，确保一个有效的URL
     if (!playUrl || !playUrl.startsWith('http')) {
         showError(`无效的播放链接: ${playUrl || '链接为空'}`);
         console.error("解析出的播放链接无效:", playUrl);
@@ -491,7 +484,7 @@ async function doEpisodeSwitch(index, episodeString) {
         currentEpisodeIndex = parseInt(urlParams.get('index') || '0', 10);
         vodIdForPlayer = urlParams.get('id') || '';
         currentVideoYear = urlParams.get('year') || '';
-        currentVideoTypeName = urlParams.get('typeName') || ''; // 已获取当前视频的 typeName
+        currentVideoTypeName = urlParams.get('typeName') || '';
 
         const sourceMapJSON = sessionStorage.getItem('videoSourceMap');
         if (sourceMapJSON) {
@@ -650,7 +643,6 @@ function setupPlayerControls() {
     const lockButton = document.getElementById('lock-button');
     if (lockButton) lockButton.addEventListener('click', toggleLockScreen);
 }
-
 
 function handleKeyboardShortcuts(e) {
     if (!player || (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName))) return;
@@ -834,53 +826,29 @@ function renderEpisodes() {
     const order = [...Array(currentEpisodes.length).keys()];
     if (episodesReversed) order.reverse();
     order.forEach(idx => {
-
         const btn = document.createElement('button');
-
         btn.type = 'button';
-
         btn.dataset.index = idx;
-
-
         const episodeData = currentEpisodes[idx] || '';
-
         const parts = episodeData.split('$');
-
         const episodeName = parts.length > 1 ? parts[0] : '';
 
         // 步骤 3: 如果是综艺类型，并且数据格式正确，就显示名称
         if (isVarietyShow && episodeName.trim()) {
-
             // 综艺类型：显示源数据中的剧集名称
-
             btn.textContent = episodeName;
-
             btn.title = episodeName;
-
             btn.className = idx === currentEpisodeIndex
-
                 ? 'p-2 rounded episode-active episode-button-long-text'
-
                 : 'p-2 rounded bg-[#222] hover:bg-[#333] text-gray-300 episode-button-long-text';
-
         } else {
-
             // 普通类型：显示数字序号
-
             btn.textContent = idx + 1;
-
             btn.className = idx === currentEpisodeIndex
-
                 ? 'p-2 rounded episode-active'
-
                 : 'p-2 rounded bg-[#222] hover:bg-[#333] text-gray-300';
-
         }
-
-
-
         grid.appendChild(btn);
-
     });
 
     if (!grid._sListenerBound) {
