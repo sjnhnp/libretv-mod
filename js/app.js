@@ -292,10 +292,8 @@ document.addEventListener('DOMContentLoaded', function () {
  * 从localStorage加载初始状态并设置到AppState，如果localStorage为空则写入默认值
  */
 function initializeAppState() {
-    // 移除硬编码的默认列表
     const selectedAPIsRaw = localStorage.getItem('selectedAPIs');
 
-    // 初始化 AppState，如果localStorage为空，则使用从config.js读取的全局默认值
     AppState.initialize({
         'selectedAPIs': JSON.parse(selectedAPIsRaw || JSON.stringify(window.DEFAULT_SELECTED_APIS)),
         'customAPIs': JSON.parse(localStorage.getItem('customAPIs') || '[]'),
@@ -305,10 +303,24 @@ function initializeAppState() {
         'episodesReversed': false
     });
 
-    // 如果localStorage中没有selectedAPIs，则将默认值写入
     if (selectedAPIsRaw === null) {
-        // 使用从config.js读取的全局默认值
         localStorage.setItem('selectedAPIs', JSON.stringify(window.DEFAULT_SELECTED_APIS));
+    }
+
+    try {
+        const cachedData = sessionStorage.getItem('videoDataCache');
+        if (cachedData) {
+            // 将存储的数组转换回 Map 对象
+            const restoredMap = new Map(JSON.parse(cachedData));
+            AppState.set('videoDataMap', restoredMap);
+            console.log('已从 sessionStorage 恢复视频元数据缓存:', restoredMap);
+        } else {
+            // 如果缓存不存在，确保 videoDataMap 是一个空的 Map
+            AppState.set('videoDataMap', new Map());
+        }
+    } catch (e) {
+        console.error('从 sessionStorage 恢复视频元数据缓存失败:', e);
+        AppState.set('videoDataMap', new Map());
     }
 }
 
@@ -516,7 +528,6 @@ function search(options = {}) {
 }
 
 // 执行搜索请求
-
 async function performSearch(query, selectedAPIs) {
     const searchPromises = selectedAPIs.map(apiId => {
         let apiUrl = `/api/search?wd=${encodeURIComponent(query)}&source=${apiId}`;
@@ -544,14 +555,11 @@ async function performSearch(query, selectedAPIs) {
     try {
         const results = await Promise.all(searchPromises);
 
-        // *** 新增核心逻辑：缓存完整的视频对象 ***
         const videoDataMap = AppState.get('videoDataMap') || new Map();
         results.forEach(result => {
             if (result.code === 200 && Array.isArray(result.list)) {
                 result.list.forEach(item => {
-                    // 使用 vod_id 作为 key，缓存整个 item 对象
                     if(item.vod_id) {
-                        // 为缓存的数据补充来源信息，以便后续使用
                         item.source_name = result.apiName;
                         item.source_code = result.apiId;
                         videoDataMap.set(item.vod_id.toString(), item);
@@ -559,14 +567,20 @@ async function performSearch(query, selectedAPIs) {
                 });
             }
         });
+    
         AppState.set('videoDataMap', videoDataMap);
-        console.log('视频元数据已缓存:', videoDataMap);
-        // *** 缓存逻辑结束 ***
+        try {
+            // Map 不能直接序列化，先转换为数组再存
+            sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
+            console.log('视频元数据已缓存至 AppState 和 sessionStorage');
+        } catch (e) {
+            console.error('缓存视频元数据到 sessionStorage 失败:', e);
+        }
         
-        return results; // 将原始结果返回给 search 函数的 .then()
+        return results;
     } catch (error) {
         console.error("执行搜索或缓存时出错:", error);
-        return []; // 返回空结果数组以避免后续流程中断
+        return [];
     }
 }
 
