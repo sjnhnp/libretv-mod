@@ -22,18 +22,18 @@ window.SITE_CONFIG = SITE_CONFIG;
 
 // API站点配置
 const API_SITES = { 
-    yzzy: { api: 'https://api.yzzy-api.com/inc/apijson.php', name: '优质资源' },
+    heimuer: { api: 'https://json.heimuer.xyz/api.php/provide/vod', name: '黑木耳', detail: 'https://heimuer.tv' },  
     bfzy: { api: 'https://bfzyapi.com/api.php/provide/vod', name: '暴风资源' },
     dyttzy: { api: 'http://caiji.dyttzyapi.com/api.php/provide/vod', name: '电影天堂', detail: 'http://caiji.dyttzyapi.com' },
-    heimuer: { api: 'https://json.heimuer.xyz/api.php/provide/vod', name: '黑木耳', detail: 'https://heimuer.tv' },  
     tyyszy: { api: 'https://tyyszy.com/api.php/provide/vod', name: '天涯资源' },  
     mdzy: { api: 'https://www.mdzyapi.com/api.php/provide/vod', name: '魔都资源' },  
-    maotai: { api: 'https://caiji.maotaizy.cc/api.php/provide/vod', name: '茅台资源' }, 
+    maotai: { api: 'https://caiji.maotaizy.cc/api.php/provide/vod', name: '茅台资源' },
+    yzzy: { api: 'https://api.yzzy-api.com/inc/apijson.php', name: '优质资源' }, 
     mozhua: { api: 'https://mozhuazy.com/api.php/provide/vod', name: '魔爪资源' }, 
+    ruyi: { api: 'https://cj.rycjapi.com/api.php/provide/vod', name: '如意资源' }, 
     wolong: { api: 'https://wolongzyw.com/api.php/provide/vod', name: '卧龙资源' }, 
     dbzy: { api: 'https://caiji.dbzy5.com/api.php/provide/vod', name: '豆瓣资源' },  
-    hwba: { api: 'https://cjhwba.com/api.php/provide/vod', name: '华为吧资源' },  
-    ruyi: { api: 'https://cj.rycjapi.com/api.php/provide/vod', name: '如意资源' },  
+    hwba: { api: 'https://cjhwba.com/api.php/provide/vod', name: '华为吧资源' },   
     jmzy: { api: 'https://api.jmzy.com/api.php/provide/vod', name: '金马资源' },
     zy360: { api: 'https://360zy.com/api.php/provide/vod', name: '360资源' }, 
     jisu: { api: 'https://jszyapi.com/api.php/provide/vod', name: '极速资源', detail: 'https://jszyapi.com' }, 
@@ -46,8 +46,8 @@ const API_SITES = {
 };
 
 window.API_SITES = API_SITES; 
-const DEFAULT_SELECTED_APIS = ["heimuer", "bfzy", "maotai", "mdzy", "tyyszy", "dyttzy"];
-window.DEFAULT_SELECTED_APIS = DEFAULT_SELECTED_APIS; 
+const DEFAULT_SELECTED_APIS = ["heimuer", "bfzy", "dyttzy", "maotai", "tyyszy"];
+window.DEFAULT_SELECTED_APIS = DEFAULT_SELECTED_APIS;
 
 // 聚合搜索配置
 const AGGREGATED_SEARCH_CONFIG = { 
@@ -58,7 +58,7 @@ const AGGREGATED_SEARCH_CONFIG = {
     showSourceBadges: true 
 };
 
-// API请求配置 (已更新 path 字段)
+// API请求配置
 const API_CONFIG = { 
     search: {
         path: '?ac=videolist&wd=', // 更新：仅含查询参数 
@@ -82,7 +82,7 @@ const API_CONFIG = {
 const M3U8_PATTERN = /\$https?:\/\/[^"'\s]+?\.m3u8/g;
 
 // 自定义播放器URL
-const CUSTOM_PLAYER_URL = 'player.html'; // 使用相对路径引用本地player.html 
+const CUSTOM_PLAYER_URL = 'player.html'; 
 
 // 预加载集数开关
 const DEFAULTS = { 
@@ -97,7 +97,7 @@ const PLAYER_CONFIG = {
     allowFullscreen: true, 
     width: '100%', 
     height: '600', 
-    timeout: 15000, // 播放器加载超时时间
+    timeout: 15000, // 播放器加载超时时间 
     autoPlayNext: true, // 默认启用自动连播功能 
     adFilteringEnabled: getBoolConfig('adFilteringEnabled', true), // 默认关闭分片广告过滤（如果localStorage无记录），开启会导致某些资源卡住 
     adFilteringStorage: 'adFilteringEnabled', // 存储广告过滤设置的键名 
