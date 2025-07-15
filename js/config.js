@@ -61,7 +61,7 @@ const AGGREGATED_SEARCH_CONFIG = {
 // API请求配置 (已更新 path 字段)
 const API_CONFIG = { 
     search: {
-        path: '?ac=videolist&wd=', // 更新：仅含查询参数 
+        path: 'ac=videolist&wd=', // 更新：仅含查询参数 
         pagePath: '?ac=videolist&wd={query}&pg={page}', // 新增：分页路径模板 
         maxPages: 50, // 新增：最大获取页数 
         headers: { 
@@ -70,7 +70,7 @@ const API_CONFIG = {
         }
     },
     detail: {
-        path: '?ac=videolist&ids=', // 更新：仅含查询参数 
+        path: 'ac=videolist&ids=', // 更新：仅含查询参数 
         headers: { 
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36', // 
             'Accept': 'application/json'
