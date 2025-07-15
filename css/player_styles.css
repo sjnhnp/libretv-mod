@@ -91,14 +91,16 @@ media-player {
   font-weight: bold;
 }
 
-.episode-grid {
-    max-height: 30vh;
-    overflow-y: auto;
-    padding: 1rem 0;
-    display: flex;         /* 新增：使用 Flexbox 布局 */
-    flex-wrap: wrap;       /* 新增：允许按钮自动换行 */
-    gap: 8px;              /* 新增：设置按钮之间的美观间距 */
-  }
+/* 适用于所有剧集按钮容器的自适应网格布局 */
+.episode-grid-container {
+  max-height: 30vh;
+  overflow-y: auto;
+  padding: 1rem 0;
+  display: grid;
+  /* 核心：让网格根据内容自动填充列，每列最小宽度为其内容的自然宽度 */
+  grid-template-columns: repeat(auto-fill, minmax(min-content, 1fr));
+  gap: 8px; /* 按钮间距 */
+}
 
 /* 自定义开关样式 */
 .switch {
@@ -1003,19 +1005,7 @@ header {
 
 /* 为综艺节目等长文本集数按钮提供的样式 */
 .episode-button-long-text {
-  /* ** 移除所有导致文本被截断的属性 ** */
-  /* white-space: nowrap; */  /* 注释掉或删除 */
-  /* overflow: hidden; */     /* 注释掉或删除 */
-  /* text-overflow: ellipsis; *//* 注释掉或删除 */
-  /* max-width: 100%; */      /* 注释掉或删除 */
-
-  /* ** 保留并新增以下属性，以实现自适应宽度 ** */
-  flex-shrink: 0;        /* 新增：防止按钮在 Flex 布局中被压缩变形 */
-  white-space: nowrap;       /* 保留：确保长标题自身不换行，让容器决定何时换行 */
-  box-sizing: border-box;  /* 保留：确保内边距和边框正确计算 */
-  
-  /* 以下为原有对齐样式，可以保留 */
-  display: inline-block;
-  vertical-align: middle;
-  text-align: center;
+  white-space: nowrap; /* 文本不换行，让按钮自己变宽 */
+  overflow: visible;
+  text-overflow: clip;
 }

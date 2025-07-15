@@ -371,14 +371,6 @@ body {
   border-radius: 8px;
 }
 
-/* 为首页弹窗的剧集容器设置Flex布局 ** */
-#episodesGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px; /* 8px 是一个比较合适的间距 */
-  justify-content: flex-start; /* 让按钮从左开始排列 */
-}
-
 #episodesGrid button {
   background: rgba(0, 204, 255, 0.08);
   border: 1px solid rgba(0, 204, 255, 0.2);
@@ -886,8 +878,23 @@ body {
 }
 }
 
-/* 为长文本按钮提供自适应样式 */
+/* 适用于所有剧集按钮容器的自适应网格布局 */
+.episode-grid-container {
+  display: grid;
+  /* 核心：让网格根据内容自动填充列，每列最小宽度为其内容的自然宽度 */
+  grid-template-columns: repeat(auto-fill, minmax(min-content, 1fr));
+  gap: 8px; /* 按钮间距 */
+}
+
+/* 确保长文本按钮不会被截断 */
 .episode-button-long-text {
-  flex-shrink: 0;
-  white-space: nowrap;
+  white-space: nowrap; /* 文本不换行，让按钮自己变宽 */
+}
+
+/* 移除首页弹窗按钮的宽度限制（如果有） */
+#episodesGrid button, .episode-grid-container button {
+  /* 确保没有 max-width 或 width 属性限制它 */
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
 }
