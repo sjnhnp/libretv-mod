@@ -804,60 +804,71 @@ function clearCurrentVideoAllEpisodeProgresses() {
 
 function renderEpisodes() {
     const grid = document.getElementById('episode-grid');
-    if (!grid) { setTimeout(renderEpisodes, 100); return; }
+    if (!grid) { 
+        setTimeout(renderEpisodes, 100); 
+        return; 
+    }
     const container = document.getElementById('episodes-container');
     if (container) {
         container.classList.toggle('hidden', currentEpisodes.length <= 1);
     }
     const countSpan = document.getElementById('episodes-count');
-    if (countSpan) countSpan.textContent = `共 ${currentEpisodes.length} 集`;
+    if (countSpan) {
+        countSpan.textContent = `共 ${currentEpisodes.length} 集`;
+    }
+    
     grid.innerHTML = '';
     if (!currentEpisodes.length) {
         grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-4">没有可用的剧集</div>';
         return;
     }
 
-    // 步骤 1: 定义需要特殊处理的类型关键词
     const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
-
-    // 步骤 2: 直接根据视频的`typeName`判断
     const isVarietyShow = varietyShowTypes.some(type => currentVideoTypeName && currentVideoTypeName.includes(type));
+    const orderedEpisodes = episodesReversed ? [...currentEpisodes].reverse() : [...currentEpisodes];
 
-    const order = [...Array(currentEpisodes.length).keys()];
-    if (episodesReversed) order.reverse();
-    order.forEach(idx => {
+    orderedEpisodes.forEach((episodeData, index) => {
+        // 对于倒序列表，我们需要计算出它在原始列表中的索引
+        const originalIndex = episodesReversed ? (currentEpisodes.length - 1 - index) : index;
+        
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.dataset.index = idx;
-        const episodeData = currentEpisodes[idx] || '';
-        const parts = episodeData.split('$');
-        const episodeName = parts.length > 1 ? parts[0] : '';
+        btn.dataset.index = originalIndex;
 
-        // 步骤 3: 如果是综艺类型，并且数据格式正确，就显示名称
-        if (isVarietyShow && episodeName.trim()) {
-            // 综艺类型：显示源数据中的剧集名称
+        // 1. 设置所有按钮的通用基础样式
+        // 注意：这里的class已经移到CSS文件中，JS只负责添加状态和类型类
+        
+        const parts = (episodeData || '').split('$');
+        const episodeName = parts.length > 1 ? parts[0].trim() : '';
+
+        // 2. 根据类型决定内容和特定样式
+        if (isVarietyShow && episodeName) {
             btn.textContent = episodeName;
             btn.title = episodeName;
-            btn.className = idx === currentEpisodeIndex
-                ? 'p-2 rounded episode-active episode-button-long-text'
-                : 'p-2 rounded bg-[#222] hover:bg-[#333] text-gray-300 episode-button-long-text';
+            btn.classList.add('episode-button-long-text'); // 添加长文本样式类
         } else {
-            // 普通类型：显示数字序号
-            btn.textContent = idx + 1;
-            btn.className = idx === currentEpisodeIndex
-                ? 'p-2 rounded episode-active'
-                : 'p-2 rounded bg-[#222] hover:bg-[#333] text-gray-300';
+            btn.textContent = originalIndex + 1;
+            btn.title = `第 ${originalIndex + 1} 集`;
         }
+        
+        // 3. 标记当前正在播放的集数
+        if (originalIndex === currentEpisodeIndex) {
+            btn.classList.add('episode-active');
+        }
+
         grid.appendChild(btn);
     });
 
     if (!grid._sListenerBound) {
         grid.addEventListener('click', evt => {
             const target = evt.target.closest('button[data-index]');
-            if (target) playEpisode(+target.dataset.index);
+            if (target) {
+                playEpisode(+target.dataset.index);
+            }
         });
         grid._sListenerBound = true;
     }
+
     updateEpisodeInfo();
     updateButtonStates();
 }
