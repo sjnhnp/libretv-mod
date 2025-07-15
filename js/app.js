@@ -1133,12 +1133,15 @@ window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 
 // 显示视频剧集模态框
 
+// js/app.js - 替换此函数
+
 async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackData) {
     showLoading('获取剧集详情...');
 
     try {
+        // 构建详情API的URL并发起网络请求
         let detailApiUrl = `/api/detail?id=${encodeURIComponent(id)}&source=${encodeURIComponent(sourceCode)}`;
-        if (apiUrl) { 
+        if (apiUrl) { // 如果是自定义API，则附加上其URL
             detailApiUrl += `&customApi=${encodeURIComponent(apiUrl)}`;
         }
 
@@ -1151,6 +1154,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         if (data.code !== 200 || !data.videoInfo) {
             throw new Error(data.msg || '未能获取到有效的视频详情');
         }
+
         // 从获取到的新数据中解析剧集
         let episodes = [];
         const videoInfo = data.videoInfo;
@@ -1160,10 +1164,16 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         if (vodPlayUrl) {
             const playFroms = vodPlayFrom.split('$$$');
             const urlGroups = vodPlayUrl.split('$$$');
-            const sourceNameForMatch = APISourceManager.getSelectedApi(sourceCode)?.name || '';
+            
+            // 尝试匹配播放源名称
+            const sourceInfo = APISourceManager.getSelectedApi(sourceCode);
+            const sourceNameForMatch = sourceInfo ? sourceInfo.name : '';
             
             let sourceIndex = playFroms.indexOf(sourceNameForMatch);
-            if (sourceIndex === -1) sourceIndex = 0; // 找不到匹配的播放源，默认用第一个
+            if (sourceIndex === -1) {
+                 // 找不到匹配的播放源名称时，安全地默认使用第一个播放列表
+                sourceIndex = 0;
+            }
 
             if (urlGroups[sourceIndex]) {
                 episodes = urlGroups[sourceIndex].split('#').filter(item => item && item.includes('$'));
@@ -1192,7 +1202,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
         localStorage.setItem('currentVideoTitle', effectiveTitle);
 
-        // --- 渲染弹窗 ---
+        // --- 渲染弹窗 --- (此部分代码保持不变)
         const template = document.getElementById('video-details-template');
         if (!template) return showToast('详情模板未找到!', 'error');
         const modalContent = template.content.cloneNode(true);
@@ -1204,7 +1214,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             director: videoInfo.director || fallbackData.director || '未知',
             actor: videoInfo.actor || fallbackData.actor || '未知',
             remarks: videoInfo.remarks || fallbackData.remarks || '无',
-            description: (videoInfo.desc || fallbackData.blurb || '暂无简介。').replace(/<[^>]+>/g, '').trim(),
+            description: (videoInfo.desc || videoInfo.vod_blurb || fallbackData.blurb || '暂无简介。').replace(/<[^>]+>/g, '').trim(),
             'episode-count': episodes.length,
         };
 
