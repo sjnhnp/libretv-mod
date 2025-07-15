@@ -443,15 +443,30 @@ async function playEpisode(index) {
     doEpisodeSwitch(index, currentEpisodes[index]);
 }
 
-async function doEpisodeSwitch(index, url) {
+// 文件: js/player_app.js
+
+async function doEpisodeSwitch(index, episodeString) { 
+    let playUrl = episodeString;
+    if (episodeString && episodeString.includes('$')) {
+        playUrl = episodeString.split('$')[1];
+    }
+
+    // 增加一个健壮性检查，确保我们有一个有效的URL
+    if (!playUrl || !playUrl.startsWith('http')) {
+        showError(`无效的播放链接: ${playUrl || '链接为空'}`);
+        console.error("解析出的播放链接无效:", playUrl);
+        isNavigatingToEpisode = false; 
+        return; 
+    }
+
     currentEpisodeIndex = index;
     window.currentEpisodeIndex = index;
 
     updateUIForNewEpisode();
-    updateBrowserHistory(url);
+    updateBrowserHistory(playUrl);
 
     if (player) {
-        const processedUrl = await processVideoUrl(url);
+        const processedUrl = await processVideoUrl(playUrl);
         player.src = { src: processedUrl, type: 'application/x-mpegurl' };
         player.play().catch(e => console.warn("Autoplay after episode switch was prevented.", e));
     }
@@ -588,17 +603,16 @@ function updateUIForNewEpisode() {
 
 function updateBrowserHistory(newEpisodeUrl) {
     const newUrlForBrowser = new URL(window.location.href);
+    
     newUrlForBrowser.searchParams.set('url', newEpisodeUrl);
+    
     newUrlForBrowser.searchParams.set(
         'universalId',
         generateUniversalId(currentVideoTitle, currentVideoYear, currentEpisodeIndex)
     );
     newUrlForBrowser.searchParams.set('index', currentEpisodeIndex.toString());
     newUrlForBrowser.searchParams.delete('position');
-    newUrlForBrowser.searchParams.set(
-        'universalId',
-        generateUniversalId(currentVideoTitle, currentVideoYear, currentEpisodeIndex)
-    );
+    
     window.history.pushState({ path: newUrlForBrowser.toString(), episodeIndex: currentEpisodeIndex }, '', newUrlForBrowser.toString());
 }
 
