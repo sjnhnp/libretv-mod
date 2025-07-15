@@ -65,13 +65,13 @@ function playVideo(episodeString, title, episodeIndex, sourceName = '', sourceCo
         return;
     }
 
-    // **核心修正：分割剧集字符串，提取真实的URL用于播放**
+    // 分割剧集字符串，提取真实的URL用于播放
     let playUrl = episodeString;
     if (episodeString.includes('$')) {
         const parts = episodeString.split('$');
-        playUrl = parts[parts.length - 1]; // URL是最后一部分
+        playUrl = parts[parts.length - 1];
     }
-    
+
     if (!playUrl || !playUrl.startsWith('http')) {
         showToast('视频链接格式无效', 'error');
         console.error('解析出的播放链接无效:', playUrl);
@@ -105,7 +105,7 @@ function playVideo(episodeString, title, episodeIndex, sourceName = '', sourceCo
     if (year) playerUrl.searchParams.set('year', year);
     if (typeName) playerUrl.searchParams.set('typeName', typeName);
     if (videoKey) playerUrl.searchParams.set('videoKey', videoKey);
-    
+
     const universalId = generateUniversalId(title, year, episodeIndex);
     playerUrl.searchParams.set('universalId', universalId);
     const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, PLAYER_CONFIG.adFilteringEnabled);
@@ -173,7 +173,7 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
             vodId = historyItem.vod_id || '';
             actualSourceName = historyItem.sourceName || '';
             actualSourceCode = historyItem.sourceCode || '';
-            videoYear = historyItem.year || ''; // 确保年份信息被读取
+            videoYear = historyItem.year || '';
         }
     } catch (e) {
         console.error("读取历史记录失败:", e);
@@ -404,12 +404,10 @@ function initializeEventListeners() {
             const enabled = e.target.checked;
             localStorage.setItem('preloadingEnabled', enabled.toString());
 
-            // 注意：这里直接修改PLAYER_CONFIG。更健壮的解决方案可能涉及在config.js模块中使用setter
             PLAYER_CONFIG.enablePreloading = enabled;
 
             showToast(enabled ? '已启用预加载' : '已禁用预加载', 'info');
 
-            // 更新预加载数量输入框的可用性
             const preloadCountInput = DOMCache.get('preloadCountInput');
             if (preloadCountInput) {
                 preloadCountInput.disabled = !enabled;
@@ -420,7 +418,6 @@ function initializeEventListeners() {
         const preloadingEnabled = getBoolConfig('preloadingEnabled', true);
         preloadingToggle.checked = preloadingEnabled;
 
-        // 注意：这里直接修改PLAYER_CONFIG。更健壮的解决方案可能涉及在config.js模块中使用setter
         PLAYER_CONFIG.enablePreloading = preloadingEnabled;
 
         // 更新预加载数量输入框的可用性
@@ -464,7 +461,7 @@ function initializeUIComponents() {
 
 // 执行搜索
 function search(options = {}) {
-    // ---在每次新搜索开始时，强制清除所有旧的搜索结果缓存 ---
+    // 在每次新搜索开始时，强制清除所有旧的搜索结果缓存
     try {
         sessionStorage.removeItem('searchQuery');
         sessionStorage.removeItem('searchResults');
@@ -540,7 +537,7 @@ async function performSearch(query, selectedAPIs) {
                 return Promise.resolve({ code: 400, msg: `自定义API ${apiId} 未找到或URL无效`, list: [], apiId });
             }
         }
-        
+
         return fetch(apiUrl)
             .then(response => response.json())
             .then(data => ({ ...data, apiId: apiId, apiName: APISourceManager.getSelectedApi(apiId)?.name || apiId }))
@@ -559,7 +556,7 @@ async function performSearch(query, selectedAPIs) {
         results.forEach(result => {
             if (result.code === 200 && Array.isArray(result.list)) {
                 result.list.forEach(item => {
-                    if(item.vod_id) {
+                    if (item.vod_id) {
                         item.source_name = result.apiName;
                         item.source_code = result.apiId;
                         videoDataMap.set(item.vod_id.toString(), item);
@@ -567,7 +564,7 @@ async function performSearch(query, selectedAPIs) {
                 });
             }
         });
-    
+
         AppState.set('videoDataMap', videoDataMap);
         try {
             // Map 不能直接序列化，先转换为数组再存
@@ -576,7 +573,7 @@ async function performSearch(query, selectedAPIs) {
         } catch (e) {
             console.error('缓存视频元数据到 sessionStorage 失败:', e);
         }
-        
+
         return results;
     } catch (error) {
         console.error("执行搜索或缓存时出错:", error);
@@ -633,8 +630,8 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
     searchResultsContainer.innerHTML = ''; // 先清空旧内容
 
     if (allResults.length === 0) {
-        resultsArea.classList.remove('hidden'); // 确保结果区域可见以显示提示
-        searchResultsCountElement.textContent = '0'; // 更新结果计数为0
+        resultsArea.classList.remove('hidden');
+        searchResultsCountElement.textContent = '0';
 
         let messageTitle;
         let messageSuggestion;
@@ -673,7 +670,6 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
     searchResultsCountElement.textContent = allResults.length.toString();
 
     const gridContainer = document.createElement('div');
-    // 确保这里的 class 与 index.html 中 #results 的 class 一致或兼容
     gridContainer.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4';
 
     const fragment = document.createDocumentFragment();
@@ -1211,10 +1207,9 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
 
     if (episodeButtonsGrid) {
         if (isVarietyShow) {
-            // 如果是综艺, 应用老代码的自适应布局样式
+            // 综艺
             episodeButtonsGrid.className = 'variety-grid-layout';
         }
-        // 如果不是综艺, 则保持 template 中默认的紧凑布局样式
 
         // 渲染按钮
         episodeButtonsGrid.innerHTML = renderEpisodeButtons(episodes, effectiveTitle, sourceCode, sourceNameForDisplay, effectiveTypeName);
@@ -1272,7 +1267,7 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, type
     const videoKey = AppState.get('currentVideoKey') || '';
     const displayEpisodes = currentReversedState ? [...episodes].reverse() : [...episodes];
 
-    const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
+    const varietyShowTypes = ['综艺', '脱口秀', '真人秀'];
     const isVarietyShow = varietyShowTypes.some(type => typeName && typeName.includes(type));
 
     return displayEpisodes.map((episodeString, displayIndex) => {
@@ -1282,26 +1277,19 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, type
 
         let buttonText = '';
         let buttonTitle = '';
-        let buttonClasses = ''; // 动态设置按钮类
+        let buttonClasses = '';
 
         if (isVarietyShow) {
-            // --- 综艺节目 ---
+            // 综艺节目
             buttonText = episodeName || `第${originalIndex + 1}集`;
             buttonTitle = buttonText;
-            buttonClasses = 'episode-btn'; 
+            buttonClasses = 'episode-btn';
         } else {
-            // --- 非综艺节目 (电视剧等) ---
-            buttonText = `第 ${originalIndex + 1} 集`; // 保持带空格的 "第 X 集"
+            // 非综艺节目
+            buttonText = `第 ${originalIndex + 1} 集`;
             buttonTitle = buttonText;
-            // **核心修改**: 应用 old2.txt 中的样式类
             buttonClasses = 'episode-btn px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate';
         }
-
-        // 为当前播放的集数添加高亮类
-        // 注意：old2.txt 的激活样式依赖于一个独立的 episode-active 类，这里我们不添加它，让全局CSS处理
-        // if (originalIndex === AppState.get('currentEpisodeIndex')) {
-        //     buttonClasses += ' episode-active';
-        // }
 
         const safeVideoTitle = encodeURIComponent(videoTitle);
         const safeSourceName = encodeURIComponent(sourceName);
@@ -1346,7 +1334,6 @@ function copyLinks() {
 }
 
 // 切换剧集排序UI并更新状态
-
 function toggleEpisodeOrderUI() {
     const container = document.getElementById('episodeButtonsContainer');
     const orderIcon = document.getElementById('orderIcon');
@@ -1372,7 +1359,6 @@ function toggleEpisodeOrderUI() {
 
     if (episodes && title && sourceCode) {
         const newButtonsHtml = renderEpisodeButtons(episodes, title, sourceCode, sourceName || '');
-        // 从返回的完整 HTML（包括外部的控制按钮div）中提取出集数按钮容器的内容
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = newButtonsHtml;
         const buttonsContainerFromRender = tempDiv.querySelector('#episodeButtonsContainer');

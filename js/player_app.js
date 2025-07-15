@@ -245,7 +245,6 @@ async function processVideoUrl(url) {
                 continue;
             }
 
-            // 处理加密密钥(key)的相对路径，将其转换为绝对路径
             if (line.startsWith('#EXT-X-KEY')) {
                 const uriMatch = line.match(/URI="([^"]+)"/);
                 if (uriMatch && uriMatch[1]) {
@@ -259,10 +258,8 @@ async function processVideoUrl(url) {
                 }
             }
 
-            // 如果当前行是片段 URI（简单按 .ts/.m3u8 判断）
             else if (line && !line.startsWith('#') && /\.(ts|m3u8)(\?|$)/i.test(line.trim())) {
                 try {
-                    // new URL 可以自动把相对路径、// 开头、绝对路径等都补全成完整 URL
                     line = new URL(line.trim(), baseUrl).href;
                 } catch (e) {
                     console.warn('URL 补全失败，保留原行:', line, e);
@@ -273,7 +270,6 @@ async function processVideoUrl(url) {
 
         const filteredM3u8 = cleanLines.join('\n');
 
-        // 3. 生成 Blob URL
         const blob = new Blob([filteredM3u8], { type: 'application/vnd.apple.mpegurl' });
         return URL.createObjectURL(blob);
 
@@ -821,15 +817,15 @@ function renderEpisodes() {
     if (countSpan) { countSpan.textContent = `共 ${currentEpisodes.length} 集`; }
 
     // 定义综艺类型关键词
-    const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
+    const varietyShowTypes = ['综艺', '脱口秀', '真人秀'];
     const isVarietyShow = varietyShowTypes.some(type => currentVideoTypeName && currentVideoTypeName.includes(type));
 
-    // **核心修改**：根据类型切换容器的CSS类
+    // 根据类型切换容器的CSS类
     if (isVarietyShow) {
-        // 如果是综艺，使用我们新的自适应网格布局类
+        // 综艺
         grid.className = 'episode-grid-container variety-grid-layout';
     } else {
-        // 如果是普通剧集，恢复HTML里原始的、紧凑的网格布局类
+        // 非综艺
         grid.className = 'episode-grid grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2';
     }
 
@@ -1099,7 +1095,7 @@ function setupLineSwitching() {
                     }
                 });
 
-                // 为了避免 "国语" 和 "国" 同时被匹配，做一个简单的去重
+                // 简单的去重：为了避免 "国语" 和 "国" 同时被匹配
                 if (foundTags.includes('国语') && foundTags.includes('国')) {
                     foundTags.splice(foundTags.indexOf('国'), 1);
                 }
@@ -1187,7 +1183,6 @@ async function switchLine(newSourceCode, newVodId) {
         const newEps = detailData.episodes;
         const timeToSeek = player.currentTime;
 
-        // 1. 更新内存中的全局JS变量
         vodIdForPlayer = newVodId;
         currentEpisodes = newEps;
         window.currentEpisodes = newEps;
@@ -1197,7 +1192,6 @@ async function switchLine(newSourceCode, newVodId) {
         currentVideoYear = targetSourceItem.vod_year;
         currentVideoTypeName = targetSourceItem.type_name;
 
-        // 2. 更新浏览器地址栏URL (无刷新)
         let targetEpisodeIndex = currentEpisodeIndex;
         if (targetEpisodeIndex >= newEps.length) {
             targetEpisodeIndex = newEps.length > 0 ? newEps.length - 1 : 0;
@@ -1222,13 +1216,11 @@ async function switchLine(newSourceCode, newVodId) {
 
         window.history.replaceState({}, '', newUrlForBrowser.toString());
 
-        // 3. 更新播放器和页面显示
         nextSeekPosition = timeToSeek;
         const processedUrl = await processVideoUrl(newEpisodeUrl);
 
-        // 在更新播放源的同时，明确地更新播放器组件的标题
         player.src = { src: processedUrl, type: 'application/x-mpegurl' };
-        player.title = currentVideoTitle; // 命令播放器UI更新标题
+        player.title = currentVideoTitle;
 
         player.play();
 
