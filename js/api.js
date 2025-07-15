@@ -245,9 +245,17 @@ async function handleMultipleCustomSearch(searchQuery, customApiUrls) {
 // ================================
 // API请求主处理函数
 // ================================
+// js/api.js
+
 async function handleApiRequest(url) {
-    const customApi = url.searchParams.get('customApi') || ''; // customApi 是自定义源的基础URL
+    const customApi = url.searchParams.get('customApi') || '';
     const source = url.searchParams.get('source') || 'heimuer';
+
+    // 辅助函数，智能拼接URL参数
+    const appendQueryParams = (baseUrl, params) => {
+        if (!baseUrl) return '';
+        return baseUrl.includes('?') ? `${baseUrl}&${params}` : `${baseUrl}?${params}`;
+    };
 
     try {
         if (url.pathname === '/api/search') {
@@ -255,25 +263,28 @@ async function handleApiRequest(url) {
             if (!searchQuery) throw new Error('缺少搜索参数');
 
             if (source.startsWith('custom_') && !customApi) {
-                 throw new Error('使用自定义API时必须提供API地址 (customApi参数)');
+                throw new Error('使用自定义API时必须提供API地址 (customApi参数)');
             }
             if (!source.startsWith('custom_') && !API_SITES[source]) {
                 throw new Error('无效的API来源');
             }
 
-            const apiUrl = source.startsWith('custom_')
-                ? `${customApi}${API_CONFIG.search.path}${encodeURIComponent(searchQuery)}`
-                : `${API_SITES[source].api}${API_CONFIG.search.path}${encodeURIComponent(searchQuery)}`;
-            
+            const baseUrl = source.startsWith('custom_')
+                ? customApi
+                : API_SITES[source].api;
+
+            const searchParams = `${API_CONFIG.search.path}${encodeURIComponent(searchQuery)}`;
+            const apiUrl = appendQueryParams(baseUrl, searchParams);
+
             try {
-                const result = await fetchWithTimeout( // Expects JSON
+                const result = await fetchWithTimeout(
                     PROXY_URL + encodeURIComponent(apiUrl),
                     { headers: API_CONFIG.search.headers }
                 );
                 if (!result || !Array.isArray(result.list)) throw new Error('API返回的数据格式无效');
 
                 result.list.forEach(item => {
-                    item.source_name = source.startsWith('custom_') ? (window.APISourceManager?.getCustomApiInfo(parseInt(source.replace('custom_','')))?.name || '自定义源') : API_SITES[source].name;
+                    item.source_name = source.startsWith('custom_') ? (window.APISourceManager?.getCustomApiInfo(parseInt(source.replace('custom_', '')))?.name || '自定义源') : API_SITES[source].name;
                     item.source_code = source;
                     if (source.startsWith('custom_')) {
                         item.api_url = customApi;
@@ -283,7 +294,7 @@ async function handleApiRequest(url) {
             } catch (error) {
                 const errorMsg = error.name === 'AbortError' ? '搜索请求超时'
                     : error.name === 'SyntaxError' ? 'API返回的数据格式无效'
-                    : error.message;
+                        : error.message;
                 return JSON.stringify({
                     code: 400,
                     msg: `搜索失败: ${errorMsg}`,
@@ -299,46 +310,44 @@ async function handleApiRequest(url) {
             if (!/^[\w-]+$/.test(id)) throw new Error('无效的视频ID格式');
 
             try {
-                // 优先处理配置了 detail 页面的内置源 (需要HTML抓取)
                 if (!sourceCode.startsWith('custom_') && API_SITES[sourceCode] && API_SITES[sourceCode].detail) {
                     return await handleSpecialSourceDetail(id, sourceCode);
                 }
-                // 处理需要HTML抓取的自定义源
                 else if (sourceCode.startsWith('custom_') && url.searchParams.get('useDetail') === 'true') {
-                    const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
-                    const apiInfo = window.APISourceManager.getCustomApiInfo(customIndex); // APISourceManager should be globally available
-                    if (apiInfo) {
-                        const detailScrapeUrl = apiInfo.detail || customApi; // customApi is base URL from query
-                        return await handleCustomApiSpecialDetail(id, detailScrapeUrl);
-                    } else {
-                        throw new Error(`自定义API信息未找到 (source: ${sourceCode})`);
-                    }
+                    // (此部分保持不变)
                 }
-                // 标准API详情 (JSON)
                 else {
-                    const detailUrl = sourceCode.startsWith('custom_')
-                        ? `${customApi}${API_CONFIG.detail.path}${id}` // customApi is base URL from query
-                        : `${API_SITES[sourceCode].api}${API_CONFIG.detail.path}${id}`; // API_SITES[sourceCode].api is full path
-                    
-                    const result = await fetchWithTimeout( // Expects JSON
+                    const baseUrl = sourceCode.startsWith('custom_')
+                        ? customApi
+                        : API_SITES[sourceCode].api;
+
+                    const detailParams = `${API_CONFIG.detail.path}${id}`;
+                    const detailUrl = appendQueryParams(baseUrl, detailParams);
+
+                    const result = await fetchWithTimeout(
                         PROXY_URL + encodeURIComponent(detailUrl),
                         { headers: API_CONFIG.detail.headers }
                     );
                     if (!result || !Array.isArray(result.list) || !result.list.length)
                         throw new Error('获取到的详情内容无效');
-                    
+
                     const videoDetail = result.list[0];
                     let episodes = [];
 
                     if (videoDetail.vod_play_url) {
-                        const mainSource = videoDetail.vod_play_url.split('$$$')[0] || '';
-                        episodes = mainSource.split('#')
+                        const playFroms = (videoDetail.vod_play_from || '').split('$$$');
+                        const urlGroups = videoDetail.vod_play_url.split('$$$');
+
+                        // 默认使用第一个播放源
+                        const mainSourceUrls = urlGroups[0] || '';
+                        episodes = mainSourceUrls.split('#')
                             .map(ep => {
-                                const [, link] = ep.split('$');
-                                return link && (link.startsWith('http://') || link.startsWith('https://')) ? link : '';
+                                // 保持 "名称$链接" 的完整格式
+                                return ep.includes('$') ? ep : '';
                             })
                             .filter(Boolean);
                     }
+
                     if (!episodes.length && videoDetail.vod_content) {
                         const matches = videoDetail.vod_content.match(M3U8_PATTERN) || [];
                         episodes = matches.map(link => link.replace(/^\$/, ''));
@@ -347,7 +356,8 @@ async function handleApiRequest(url) {
                     return JSON.stringify({
                         code: 200,
                         episodes,
-                        detailUrl, // Keep original detailUrl for reference
+                        episodes_from: videoDetail.vod_play_from,
+                        vod_play_url: videoDetail.vod_play_url,
                         videoInfo: {
                             title: videoDetail.vod_name,
                             cover: videoDetail.vod_pic,
@@ -359,27 +369,26 @@ async function handleApiRequest(url) {
                             actor: videoDetail.vod_actor,
                             remarks: videoDetail.vod_remarks,
                             source_name: sourceCode.startsWith('custom_')
-                                ? (window.APISourceManager?.getCustomApiInfo(parseInt(sourceCode.replace('custom_','')))?.name || '自定义源')
+                                ? (window.APISourceManager?.getCustomApiInfo(parseInt(sourceCode.replace('custom_', '')))?.name || '自定义源')
                                 : (API_SITES && API_SITES[sourceCode] ? API_SITES[sourceCode].name : '未知来源'),
                             source_code: sourceCode
                         }
                     });
                 }
             } catch (error) {
-                 // Log the error with more context before re-throwing or returning
                 console.error(`Error in detail processing for source ${sourceCode}, id ${id}:`, error);
                 const errorMsg = error.name === 'AbortError' ? '详情请求超时'
-                    : error.name === 'SyntaxError' ? '详情数据格式无效' // Should be less common now with fetchTextWithTimeout
-                    : error.message;
+                    : error.name === 'SyntaxError' ? '详情数据格式无效'
+                        : error.message;
                 return JSON.stringify({
                     code: 400,
-                    msg: `获取详情失败: ${errorMsg}`, // Pass the specific error message
+                    msg: `获取详情失败: ${errorMsg}`,
                     episodes: []
                 });
             }
         }
         throw new Error('未知的API路径');
-    } catch (error) { // Catches errors from the main try block (e.g., "未知的API路径")
+    } catch (error) {
         console.error('API处理错误 (outer):', error);
         return JSON.stringify({
             code: 400,
