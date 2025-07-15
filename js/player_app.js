@@ -1287,41 +1287,63 @@ window.toggleEpisodeOrder = toggleEpisodeOrder;
 window.toggleLockScreen = toggleLockScreen;
 
 
-// ==================== 新增：播放设置面板功能 ====================
-// 注意：这部分代码是新增的，不会影响原有功能
+// ==================== 播放设置面板功能 ====================
 
 function setupPlayerSettings() {
+    console.log('开始初始化播放设置面板');
+    
     const settingsButton = document.getElementById('player-settings-button');
     const settingsDropdown = document.getElementById('player-settings-dropdown');
     const playbackSpeedSelect = document.getElementById('playback-speed');
     const autoplayToggle = document.getElementById('autoplay-next');
     const rememberProgressToggle = document.getElementById('remember-episode-progress-toggle');
     
+    console.log('设置元素查找结果:', {
+        settingsButton: !!settingsButton,
+        settingsDropdown: !!settingsDropdown,
+        playbackSpeedSelect: !!playbackSpeedSelect,
+        autoplayToggle: !!autoplayToggle,
+        rememberProgressToggle: !!rememberProgressToggle
+    });
+    
     if (!settingsButton || !settingsDropdown) {
-        console.log('设置按钮或下拉菜单未找到');
+        console.error('设置按钮或下拉菜单未找到，等待重试...');
+        // 延迟重试
+        setTimeout(setupPlayerSettings, 500);
+        return;
+    }
+    
+    // 防止重复绑定事件
+    if (settingsButton._playerSettingsInitialized) {
+        console.log('播放设置已经初始化过了');
         return;
     }
     
     // 设置按钮点击事件
     settingsButton.addEventListener('click', (event) => {
         event.stopPropagation();
+        event.preventDefault();
         console.log('设置按钮被点击');
         
         // 隐藏其他下拉菜单
-        const otherDropdowns = document.querySelectorAll('.elegant-dropdown:not(#player-settings-dropdown)');
+        const otherDropdowns = document.querySelectorAll('#line-switch-dropdown, #skip-control-dropdown');
         otherDropdowns.forEach(dropdown => {
-            if (dropdown.id !== 'player-settings-dropdown') {
-                dropdown.classList.add('hidden');
-            }
+            dropdown.classList.add('hidden');
         });
         
+        // 切换设置面板显示
+        const isHidden = settingsDropdown.classList.contains('hidden');
         settingsDropdown.classList.toggle('hidden');
+        
+        console.log('设置面板状态:', isHidden ? '显示' : '隐藏');
     });
     
     // 播放速度选择事件
     if (playbackSpeedSelect) {
         playbackSpeedSelect.addEventListener('change', (e) => {
             const speed = parseFloat(e.target.value);
+            console.log('播放速度设置为:', speed);
+            
             if (player && player.playbackRate !== undefined) {
                 player.playbackRate = speed;
                 showToast(`播放速度已设置为 ${speed}x`, 'success');
@@ -1343,6 +1365,7 @@ function setupPlayerSettings() {
             autoplayEnabled = e.target.checked;
             localStorage.setItem('autoplayEnabled', autoplayEnabled.toString());
             showToast(autoplayEnabled ? '已启用自动播放' : '已禁用自动播放', 'info');
+            console.log('自动播放设置:', autoplayEnabled);
         });
         
         // 从存储中恢复自动播放设置
@@ -1364,6 +1387,7 @@ function setupPlayerSettings() {
             localStorage.setItem(REMEMBER_EPISODE_PROGRESS_ENABLED_KEY, isChecked.toString());
             const messageText = isChecked ? '将记住本视频的各集播放进度' : '将不再记住本视频的各集播放进度';
             showToast(messageText, 'info');
+            console.log('记住进度设置:', isChecked);
             
             if (!isChecked) {
                 // 如果关闭了进度记忆，清除当前视频的所有进度
@@ -1389,16 +1413,20 @@ function setupPlayerSettings() {
             !settingsButton.contains(e.target) && 
             !settingsDropdown.contains(e.target)) {
             settingsDropdown.classList.add('hidden');
+            console.log('点击外部，关闭设置面板');
         }
     });
     
-    console.log('播放设置面板已初始化');
+    // 标记已初始化
+    settingsButton._playerSettingsInitialized = true;
+    console.log('✅ 播放设置面板初始化完成');
 }
 
 // ==================== 增强：下拉菜单管理 ====================
-// 注意：这部分代码增强了原有的下拉菜单功能，但不会破坏现有逻辑
 
 function enhanceDropdownManagement() {
+    console.log('开始增强下拉菜单管理');
+    
     // 获取所有下拉菜单相关的按钮和菜单
     const dropdownPairs = [
         {
@@ -1416,81 +1444,69 @@ function enhanceDropdownManagement() {
     ];
     
     // 为每个下拉菜单添加统一的管理
-    dropdownPairs.forEach(pair => {
+    dropdownPairs.forEach((pair, index) => {
         if (pair.button && pair.dropdown) {
+            console.log(`初始化下拉菜单 ${index + 1}:`, pair.button.id);
+            
             // 添加增强样式类
             pair.dropdown.classList.add('elegant-dropdown', 'elegant-solid-dropdown');
             
-            // 确保点击按钮时关闭其他菜单
-            pair.button.addEventListener('click', (event) => {
-                event.stopPropagation();
-                
-                // 关闭其他下拉菜单
-                dropdownPairs.forEach(otherPair => {
-                    if (otherPair !== pair && otherPair.dropdown) {
-                        otherPair.dropdown.classList.add('hidden');
-                    }
+            // 确保点击按钮时关闭其他菜单（只对线路切换和跳过设置有效）
+            if (pair.button.id !== 'player-settings-button') {
+                pair.button.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    
+                    // 关闭其他下拉菜单
+                    dropdownPairs.forEach(otherPair => {
+                        if (otherPair !== pair && otherPair.dropdown) {
+                            otherPair.dropdown.classList.add('hidden');
+                        }
+                    });
                 });
-            });
+            }
         }
     });
     
-    // 全局点击事件，关闭所有下拉菜单
-    document.addEventListener('click', (e) => {
-        dropdownPairs.forEach(pair => {
-            if (pair.button && pair.dropdown && 
-                !pair.dropdown.classList.contains('hidden') && 
-                !pair.button.contains(e.target) && 
-                !pair.dropdown.contains(e.target)) {
-                pair.dropdown.classList.add('hidden');
-            }
-        });
-    });
+    console.log('✅ 下拉菜单管理增强完成');
 }
+
 
 const originalSetupAllUI = window.setupAllUI;
 
 // 创建增强版的 setupAllUI 函数
 function setupAllUI() {
-    console.log('开始初始化播放器UI');
+    console.log('🎬 开始初始化播放器UI');
     
-    // 先调用原有的 setupAllUI 函数（除了setupRememberEpisodeProgressToggle）
-    if (originalSetupAllUI && typeof originalSetupAllUI === 'function') {
-        originalSetupAllUI();
-    } else {
-        // 如果原有函数不存在，执行原有的设置逻辑
-        updateEpisodeInfo();
-        renderEpisodes();
-        setupPlayerControls();
-        updateButtonStates();
-        updateOrderButton();
-        setupLineSwitching();
-        setupSkipControls();
-        setupSkipDropdownEvents();
-        // 注意：不再调用setupRememberEpisodeProgressToggle，因为功能已移到设置面板
-        
-        document.addEventListener('keydown', handleKeyboardShortcuts);
-        window.addEventListener('beforeunload', () => {
+    updateEpisodeInfo();
+    renderEpisodes();
+    setupPlayerControls();
+    updateButtonStates();
+    updateOrderButton();
+    setupLineSwitching();
+    setupSkipControls();
+    setupSkipDropdownEvents();
+    // 注意：不再调用setupRememberEpisodeProgressToggle，因为功能已移到设置面板
+    
+    document.addEventListener('keydown', handleKeyboardShortcuts);
+    window.addEventListener('beforeunload', () => {
+        saveCurrentProgress();
+        saveVideoSpecificProgress();
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
             saveCurrentProgress();
             saveVideoSpecificProgress();
-        });
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') {
-                saveCurrentProgress();
-                saveVideoSpecificProgress();
-            }
-        });
-    }
+        }
+    });
     
-    // 在原有功能设置完成后，添加增强功能
+    // 延迟初始化增强功能
     setTimeout(() => {
         initializeElegantEnhancements();
-        setupPlayerSettings(); // 确保设置面板功能正常
-        enhanceDropdownManagement(); // 确保下拉菜单管理正常
-    }, 100);
+    }, 200);
     
-    console.log('播放器UI初始化完成');
+    console.log('✅ 播放器UI初始化完成');
 }
+
 
 // 替换全局的 setupAllUI 函数
 window.setupAllUI = setupAllUI;
@@ -1905,8 +1921,11 @@ function ensureCompatibility() {
 }
 
 function initializeElegantEnhancements() {
+    console.log('🚀 开始初始化典雅增强功能');
+    
     // 等待 DOM 完全加载
     if (document.readyState === 'loading') {
+        console.log('DOM 还在加载中，等待加载完成...');
         document.addEventListener('DOMContentLoaded', initializeElegantEnhancements);
         return;
     }
@@ -1926,8 +1945,13 @@ function initializeElegantEnhancements() {
         enhanceMessage();
         enhanceProgressModal();
         enhanceShortcutHint();
-        setupPlayerSettings(); // 重要：确保设置面板初始化
+        setupCopyLinkButton(); // 新增：修复复制按钮
         ensureCompatibility();
+        
+        // 延迟初始化设置面板，确保所有元素都准备好了
+        setTimeout(() => {
+            setupPlayerSettings();
+        }, 100);
         
         console.log('✨ 典雅样式增强已加载');
     } catch (error) {
