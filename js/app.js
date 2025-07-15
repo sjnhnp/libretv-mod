@@ -59,13 +59,6 @@ function sanitizeText(text) {
     return text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-/**
- * 播放视频 (修正版)
- * @param {string} episodeString - 格式为 "名称$链接" 或纯 "链接"
- * @param {string} title - 视频标题
- * @param {number} episodeIndex - 集数索引
- * ... 其他参数
- */
 function playVideo(episodeString, title, episodeIndex, sourceName = '', sourceCode = '', vodId = '', year = '', typeName = '', videoKey = '') {
     if (!episodeString) {
         showToast('无效的视频链接', 'error');
@@ -76,12 +69,12 @@ function playVideo(episodeString, title, episodeIndex, sourceName = '', sourceCo
     let playUrl = episodeString;
     if (episodeString.includes('$')) {
         const parts = episodeString.split('$');
-        // URL通常是最后一部分
-        playUrl = parts[parts.length - 1];
+        playUrl = parts[parts.length - 1]; // URL是最后一部分
     }
     
-    if (!playUrl.startsWith('http')) {
+    if (!playUrl || !playUrl.startsWith('http')) {
         showToast('视频链接格式无效', 'error');
+        console.error('解析出的播放链接无效:', playUrl);
         return;
     }
 
@@ -90,20 +83,20 @@ function playVideo(episodeString, title, episodeIndex, sourceName = '', sourceCo
 
     if (typeof addToViewingHistory === 'function') {
         const videoInfoForHistory = {
-            url: playUrl, // 存入历史记录的也应是纯净的URL
+            url: playUrl,
             title: title,
             episodeIndex: episodeIndex,
             sourceName: sourceName,
             sourceCode: sourceCode,
             vod_id: vodId,
             year: year,
-            episodes: AppState.get('currentEpisodes') || [] // 这里存储的是带名称的完整列表
+            episodes: AppState.get('currentEpisodes') || []
         };
         addToViewingHistory(videoInfoForHistory);
     }
 
     const playerUrl = new URL('player.html', window.location.origin);
-    playerUrl.searchParams.set('url', playUrl); // **传递给播放器的是纯净的URL**
+    playerUrl.searchParams.set('url', playUrl);
     playerUrl.searchParams.set('title', title);
     playerUrl.searchParams.set('index', episodeIndex.toString());
     if (vodId) playerUrl.searchParams.set('id', vodId);
@@ -113,7 +106,6 @@ function playVideo(episodeString, title, episodeIndex, sourceName = '', sourceCo
     if (typeName) playerUrl.searchParams.set('typeName', typeName);
     if (videoKey) playerUrl.searchParams.set('videoKey', videoKey);
     
- 
     const universalId = generateUniversalId(title, year, episodeIndex);
     playerUrl.searchParams.set('universalId', universalId);
     const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, PLAYER_CONFIG.adFilteringEnabled);
@@ -524,48 +516,58 @@ function search(options = {}) {
 }
 
 // 执行搜索请求
+
 async function performSearch(query, selectedAPIs) {
-    // 创建搜索请求数组
     const searchPromises = selectedAPIs.map(apiId => {
+        let apiUrl = `/api/search?wd=${encodeURIComponent(query)}&source=${apiId}`;
         if (apiId.startsWith('custom_')) {
-            // 自定义API搜索
             const customIndex = parseInt(apiId.replace('custom_', ''));
             const customApi = APISourceManager.getCustomApiInfo(customIndex);
-            if (customApi) {
-                return fetch(`/api/search?wd=${encodeURIComponent(query)}&source=${apiId}&customApi=${encodeURIComponent(customApi.url)}`)
-                    .then(response => response.json())
-                    .then(data => ({
-                        ...data,
-                        apiId: apiId,
-                        apiName: customApi.name
-                    }))
-                    .catch(error => ({
-                        code: 400,
-                        msg: `自定义API(${customApi.name})搜索失败: ${error.message}`,
-                        list: [],
-                        apiId: apiId
-                    }));
+            if (customApi && customApi.url) {
+                apiUrl += `&customApi=${encodeURIComponent(customApi.url)}`;
+            } else {
+                return Promise.resolve({ code: 400, msg: `自定义API ${apiId} 未找到或URL无效`, list: [], apiId });
             }
-        } else {
-            // 内置API搜索
-            return fetch(`/api/search?wd=${encodeURIComponent(query)}&source=${apiId}`)
-                .then(response => response.json())
-                .then(data => ({
-                    ...data,
-                    apiId: apiId,
-                    apiName: API_SITES[apiId]?.name || apiId
-                }))
-                .catch(error => ({
-                    code: 400,
-                    msg: `API(${API_SITES[apiId]?.name || apiId})搜索失败: ${error.message}`,
-                    list: [],
-                    apiId: apiId
-                }));
         }
+        
+        return fetch(apiUrl)
+            .then(response => response.json())
+            .then(data => ({ ...data, apiId: apiId, apiName: APISourceManager.getSelectedApi(apiId)?.name || apiId }))
+            .catch(error => ({
+                code: 400,
+                msg: `API(${apiId})搜索失败: ${error.message}`,
+                list: [],
+                apiId: apiId
+            }));
     }).filter(Boolean);
 
-    // 等待所有搜索完成
-    return Promise.all(searchPromises);
+    try {
+        const results = await Promise.all(searchPromises);
+
+        // *** 新增核心逻辑：缓存完整的视频对象 ***
+        const videoDataMap = AppState.get('videoDataMap') || new Map();
+        results.forEach(result => {
+            if (result.code === 200 && Array.isArray(result.list)) {
+                result.list.forEach(item => {
+                    // 使用 vod_id 作为 key，缓存整个 item 对象
+                    if(item.vod_id) {
+                        // 为缓存的数据补充来源信息，以便后续使用
+                        item.source_name = result.apiName;
+                        item.source_code = result.apiId;
+                        videoDataMap.set(item.vod_id.toString(), item);
+                    }
+                });
+            }
+        });
+        AppState.set('videoDataMap', videoDataMap);
+        console.log('视频元数据已缓存:', videoDataMap);
+        // *** 缓存逻辑结束 ***
+        
+        return results; // 将原始结果返回给 search 函数的 .then()
+    } catch (error) {
+        console.error("执行搜索或缓存时出错:", error);
+        return []; // 返回空结果数组以避免后续流程中断
+    }
 }
 
 function renderSearchResults(results, doubanSearchedTitle = null) {
@@ -1122,122 +1124,113 @@ window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 // 文件: js/app.js
 
 /**
- * 显示视频剧集模态框 (最终修正版)
+ * 显示视频剧集模态框 (最终架构修正版 - 完整无省略)
+ * 不再发起网络请求，直接从缓存解析数据
  */
 async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackData) {
-    showLoading('加载剧集信息...');
+    showLoading('处理中...');
 
-    const selectedApi = APISourceManager.getSelectedApi(sourceCode);
-    if (!selectedApi) {
+    // 1. 从缓存中获取当前视频的完整数据对象
+    const videoDataMap = AppState.get('videoDataMap');
+    const videoData = videoDataMap ? videoDataMap.get(id.toString()) : null;
+
+    if (!videoData) {
         hideLoading();
-        showToast('未找到有效的数据源', 'error');
+        showToast('缓存中找不到视频数据，请刷新后重试', 'error');
+        console.error(`无法从 AppState 缓存中找到 vod_id 为 ${id} 的视频数据。`);
         return;
     }
 
-    try {
-        let detailApiUrl = `/api/detail?id=${encodeURIComponent(id)}&source=${encodeURIComponent(sourceCode)}`;
-        if (selectedApi.isCustom && selectedApi.url) {
-            detailApiUrl += `&customApi=${encodeURIComponent(selectedApi.url)}`;
-        }
-
-        const response = await fetch(detailApiUrl);
-
-        const rawDataText = await response.text();
-        let data;
-        let episodes = [];
-
-        try {
-            data = JSON.parse(rawDataText);
-        } catch (e) {
-            console.warn("API响应不是有效的JSON，尝试作为HTML解析。");
-            data = rawDataText;
-        }
-
-        // ============================ 核心修正点 ============================
-        if (data && data.list && data.list[0] && data.list[0].vod_play_url) {
-            console.log("检测到 'vod_play_url' 字段，开始解析...");
-            const urlGroups = data.list[0].vod_play_url.split('$$$');
-            
-            // **修正逻辑：不再依赖名称匹配，默认使用第一个有效的播放列表**
-            // 因为第三方API的播放源标识(mtm3u8)与我们自己的源名称(黑木耳)不匹配
-            if (urlGroups.length > 0 && urlGroups[0]) {
-                 console.log("默认使用第一个播放源进行解析。");
-                 episodes = urlGroups[0].split('#').filter(item => item && item.includes('$'));
-            }
-        }
-        // ========================== 修正结束 ============================
-        else if (data && Array.isArray(data.episodes) && data.episodes.length > 0) {
-            console.log("检测到标准的 'episodes' 数组。");
-            episodes = data.episodes;
-        }
-        else if (typeof data === 'string' && data.includes('stui-content__playlist')) {
-            console.log("检测到HTML响应，开始解析DOM...");
-            episodes = parseHtmlEpisodeList(data);
-        }
-
-        if (episodes.length === 0) {
-            throw new Error('在任何已知格式中都未找到剧集信息');
-        }
-
-        // 后续代码... (保持不变)
-        // ...
-        hideLoading();
-
-        const videoInfo = (typeof data === 'object' && data.list && data.list[0]) ? data.list[0] : {};
-        const effectiveTitle = videoInfo.vod_name || title;
-        const effectiveTypeName = videoInfo.type_name || fallbackData.typeName || '';
+    // 2. 直接从缓存的 videoData 对象中解析 vod_play_url
+    let episodes = [];
+    if (videoData.vod_play_url) {
+        console.log("检测到 'vod_play_url' 字段，开始本地解析...");
         
-        AppState.set('currentEpisodes', episodes);
-        AppState.set('currentVideoTitle', effectiveTitle);
-        AppState.set('currentSourceName', selectedApi.name);
-        AppState.set('currentSourceCode', sourceCode);
-        AppState.set('currentVideoId', id);
-        AppState.set('currentVideoYear', videoInfo.vod_year || fallbackData.year);
-        AppState.set('currentVideoTypeName', effectiveTypeName);
-        AppState.set('currentVideoKey', fallbackData.videoKey);
-        localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
-        localStorage.setItem('currentVideoTitle', effectiveTitle);
-
-        const template = document.getElementById('video-details-template');
-        if (!template) return showToast('详情模板未找到!', 'error');
-        const modalContent = template.content.cloneNode(true);
+        const playFroms = (videoData.vod_play_from || '').split('$$$');
+        const urlGroups = videoData.vod_play_url.split('$$$');
         
-        // 此处有一个小BUG，当 data.episodes 为空时，data.episodes.length 会报错
-        const episodeCount = episodes.length; 
-        const fields = {
-            type: effectiveTypeName || '未知',
-            year: videoInfo.vod_year || fallbackData.year || '未知',
-            area: videoInfo.vod_area || fallbackData.area || '未知',
-            director: videoInfo.vod_director || fallbackData.director || '未知',
-            actor: videoInfo.vod_actor || fallbackData.actor || '未知',
-            remarks: videoInfo.vod_remarks || fallbackData.remarks || '无',
-            description: (videoInfo.vod_blurb || '').replace(/<[^>]+>/g, '').trim() || fallbackData.blurb || '暂无简介。',
-            'episode-count': episodeCount, // 使用修正后的集数
-        };
-        for (const [key, value] of Object.entries(fields)) {
-            const el = modalContent.querySelector(`[data-field="${key}"]`);
-            if (el) el.textContent = value;
+        const selectedApi = APISourceManager.getSelectedApi(sourceCode);
+        const sourceName = selectedApi ? selectedApi.name : '';
+        let sourceIndex = playFroms.indexOf(sourceName);
+        
+        if (sourceIndex === -1) {
+            console.warn(`源名称 "${sourceName}" 未在播放列表源 [${playFroms.join(', ')}] 中找到，将默认使用第一个源。`);
+            sourceIndex = 0;
         }
 
-        const episodeButtonsGrid = modalContent.querySelector('[data-field="episode-buttons-grid"]');
-        if (episodeButtonsGrid) {
-            episodeButtonsGrid.innerHTML = renderEpisodeButtons(episodes, effectiveTitle, sourceCode, selectedApi.name, effectiveTypeName);
+        if (urlGroups[sourceIndex]) {
+            episodes = urlGroups[sourceIndex].split('#').filter(item => item && item.includes('$'));
         }
-
-        modalContent.querySelector('[data-action="copy-links"]').addEventListener('click', copyLinks);
-        modalContent.querySelector('[data-action="toggle-order"]').addEventListener('click', () => {
-            toggleEpisodeOrderUI(episodeButtonsGrid);
-        });
-
-        const tempDiv = document.createElement('div');
-        tempDiv.appendChild(modalContent);
-        showModal(tempDiv.innerHTML, `${effectiveTitle} (${selectedApi.name})`);
-
-    } catch (error) {
-        hideLoading();
-        console.error("处理视频详情时发生严重错误:", error);
-        showToast(`获取剧集信息失败: ${error.message}`, 'error');
     }
+
+    if (episodes.length === 0) {
+        hideLoading();
+        showToast('解析剧集列表失败', 'error');
+        console.error('解析后的 episodes 数组为空。原始 videoData:', videoData);
+        return;
+    }
+    
+    hideLoading();
+    
+    // 3. 使用已有的数据更新状态
+    const effectiveTitle = videoData.vod_name || title;
+    const effectiveTypeName = videoData.type_name || fallbackData.typeName;
+    const sourceNameForDisplay = videoData.source_name || APISourceManager.getSelectedApi(sourceCode)?.name || '未知源';
+
+    AppState.set('currentEpisodes', episodes);
+    AppState.set('currentVideoTitle', effectiveTitle);
+    AppState.set('currentSourceName', sourceNameForDisplay);
+    AppState.set('currentSourceCode', sourceCode);
+    AppState.set('currentVideoId', id);
+    AppState.set('currentVideoYear', videoData.vod_year || fallbackData.year);
+    AppState.set('currentVideoTypeName', effectiveTypeName);
+    AppState.set('currentVideoKey', fallbackData.videoKey);
+    localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
+    localStorage.setItem('currentVideoTitle', effectiveTitle);
+
+    // 4. 渲染弹窗
+    const template = document.getElementById('video-details-template');
+    if (!template) return showToast('详情模板未找到!', 'error');
+    const modalContent = template.content.cloneNode(true);
+    
+    // --- 填充视频元数据信息 (完整版) ---
+    const fields = {
+        type: effectiveTypeName || '未知',
+        year: videoData.vod_year || fallbackData.year || '未知',
+        area: videoData.vod_area || fallbackData.area || '未知',
+        director: videoData.vod_director || fallbackData.director || '未知',
+        actor: videoData.vod_actor || fallbackData.actor || '未知',
+        remarks: videoData.vod_remarks || fallbackData.remarks || '无',
+        description: (videoData.vod_blurb || fallbackData.blurb || '暂无简介。').replace(/<[^>]+>/g, '').trim(),
+        'episode-count': episodes.length,
+    };
+    for (const [key, value] of Object.entries(fields)) {
+        const el = modalContent.querySelector(`[data-field="${key}"]`);
+        if (el) el.textContent = value;
+    }
+    
+    // --- 填充剧集按钮 ---
+    const episodeButtonsGrid = modalContent.querySelector('[data-field="episode-buttons-grid"]');
+    if (episodeButtonsGrid) {
+        episodeButtonsGrid.innerHTML = renderEpisodeButtons(episodes, effectiveTitle, sourceCode, sourceNameForDisplay, effectiveTypeName);
+    }
+    
+    // --- 绑定事件监听 ---
+    modalContent.querySelector('[data-action="copy-links"]').addEventListener('click', copyLinks);
+    modalContent.querySelector('[data-action="toggle-order"]').addEventListener('click', () => {
+        toggleEpisodeOrderUI(episodeButtonsGrid);
+    });
+
+    // --- 设置排序图标初始状态 ---
+    const orderIcon = modalContent.querySelector('[data-field="order-icon"]');
+    if (orderIcon) {
+        orderIcon.style.transform = (AppState.get('episodesReversed') || false) ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+    
+    // --- 显示弹窗 ---
+    const tempDiv = document.createElement('div');
+    tempDiv.appendChild(modalContent);
+    showModal(tempDiv.innerHTML, `${effectiveTitle} (${sourceNameForDisplay})`);
 }
 
 function toggleEpisodeOrderUI(container) {
