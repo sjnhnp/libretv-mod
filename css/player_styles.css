@@ -1281,18 +1281,35 @@ header {
 /* ==================== 下拉菜单增强 ==================== */
 
 .elegant-dropdown {
+  position: absolute !important;
+  bottom: 100% !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  min-width: 200px !important;
+  max-width: 300px !important;
   background: var(--elegant-overlay-medium) !important;
   border: var(--elegant-border-medium) !important;
   border-radius: 12px !important;
   box-shadow: var(--elegant-shadow-strong) !important;
+  z-index: 1000 !important;
+  margin-bottom: 8px !important;
   backdrop-filter: blur(20px) !important;
+  overflow: hidden !important;
+  /* 确保不影响父容器高度 */
+  visibility: hidden !important;
+  opacity: 0 !important;
+  transition: opacity 0.25s ease-out, visibility 0.25s ease-out !important;
 }
 
+/* 更不透明的下拉菜单 */
 .elegant-solid-dropdown {
   background: rgba(15, 15, 15, 0.98) !important;
-  /* 更不透明的背景 */
-  backdrop-filter: blur(20px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(30px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
 }
 
 /* 针对线路切换和跳过设置的特殊处理 */
@@ -1316,20 +1333,31 @@ header {
   color: var(--elegant-text-primary);
 }
 
+/* 显示状态 */
 .elegant-dropdown:not(.hidden) {
-  animation: elegant-dropdown-show 0.25s ease-out;
+  visibility: visible !important;
+  opacity: 1 !important;
+  animation: elegant-dropdown-show 0.25s ease-out !important;
 }
 
+/* 动画效果 */
 @keyframes elegant-dropdown-show {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateX(-50%) translateY(10px);
   }
-
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
   }
+}
+
+/* 确保功能按钮组容器不会被撑开 */
+.elegant-function-group {
+  position: relative !important;
+  display: inline-block !important;
+  /* 确保容器不会因为绝对定位的子元素而改变大小 */
+  overflow: visible !important;
 }
 
 .elegant-dropdown-content {
@@ -1913,4 +1941,78 @@ header {
   color: var(--elegant-text-primary) !important;
   transform: translateY(-1px);
   box-shadow: var(--elegant-shadow-medium);
+}
+
+/* 移动端智能定位修复 */
+@media (max-width: 768px) {
+  .elegant-dropdown {
+    min-width: 180px !important;
+    max-width: 90vw !important;
+    /* 移动端默认定位 */
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+  }
+  
+  /* 右侧溢出时的定位 */
+  .elegant-dropdown.position-right {
+    left: auto !important;
+    right: 0 !important;
+    transform: none !important;
+  }
+  
+  /* 左侧溢出时的定位 */
+  .elegant-dropdown.position-left {
+    left: 0 !important;
+    right: auto !important;
+    transform: none !important;
+  }
+  
+  /* 上方溢出时的定位（弹出到下方） */
+  .elegant-dropdown.position-bottom {
+    bottom: auto !important;
+    top: 100% !important;
+    margin-bottom: 0 !important;
+    margin-top: 8px !important;
+  }
+}
+
+/* 特定下拉菜单的尺寸调整 */
+#player-settings-dropdown {
+  min-width: 250px !important;
+  max-width: 320px !important;
+}
+
+#line-switch-dropdown {
+  min-width: 200px !important;
+  max-width: 280px !important;
+  max-height: 300px !important;
+  overflow-y: auto !important;
+}
+
+#skip-control-dropdown {
+  min-width: 220px !important;
+  max-width: 280px !important;
+}
+
+/* 移动端特定调整 */
+@media (max-width: 480px) {
+  .elegant-dropdown {
+    min-width: 160px !important;
+    max-width: 85vw !important;
+  }
+  
+  #player-settings-dropdown {
+    min-width: 200px !important;
+    max-width: 85vw !important;
+  }
+  
+  #line-switch-dropdown {
+    min-width: 180px !important;
+    max-width: 85vw !important;
+  }
+  
+  #skip-control-dropdown {
+    min-width: 190px !important;
+    max-width: 85vw !important;
+  }
 }

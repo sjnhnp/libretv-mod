@@ -386,11 +386,11 @@ function addPlayerEventListeners() {
         clearVideoProgressForEpisode(
             universalId || generateUniversalId(currentVideoTitle, currentVideoYear, currentEpisodeIndex)
         );
-        
+
         // 检查自动播放设置（从设置面板中获取）
         const autoplayToggle = document.getElementById('autoplay-next');
         const shouldAutoplay = autoplayToggle ? autoplayToggle.checked : autoplayEnabled;
-        
+
         if (shouldAutoplay && currentEpisodeIndex < currentEpisodes.length - 1) {
             setTimeout(() => {
                 if (videoHasEnded && !isUserSeeking) {
@@ -1291,95 +1291,90 @@ window.toggleLockScreen = toggleLockScreen;
 
 function setupPlayerSettings() {
     console.log('开始初始化播放设置面板');
-    
+
     const settingsButton = document.getElementById('player-settings-button');
     const settingsDropdown = document.getElementById('player-settings-dropdown');
     const playbackSpeedSelect = document.getElementById('playback-speed');
     const autoplayToggle = document.getElementById('autoplay-next');
     const rememberProgressToggle = document.getElementById('remember-episode-progress-toggle');
-    
-    console.log('设置元素查找结果:', {
-        settingsButton: !!settingsButton,
-        settingsDropdown: !!settingsDropdown,
-        playbackSpeedSelect: !!playbackSpeedSelect,
-        autoplayToggle: !!autoplayToggle,
-        rememberProgressToggle: !!rememberProgressToggle
-    });
-    
+
     if (!settingsButton || !settingsDropdown) {
         console.error('设置按钮或下拉菜单未找到，等待重试...');
-        // 延迟重试
         setTimeout(setupPlayerSettings, 500);
         return;
     }
-    
+
     // 防止重复绑定事件
     if (settingsButton._playerSettingsInitialized) {
         console.log('播放设置已经初始化过了');
         return;
     }
-    
+
     // 设置按钮点击事件
     settingsButton.addEventListener('click', (event) => {
         event.stopPropagation();
         event.preventDefault();
         console.log('设置按钮被点击');
-        
+
         // 隐藏其他下拉菜单
         const otherDropdowns = document.querySelectorAll('#line-switch-dropdown, #skip-control-dropdown');
         otherDropdowns.forEach(dropdown => {
             dropdown.classList.add('hidden');
         });
-        
+
         // 切换设置面板显示
         const isHidden = settingsDropdown.classList.contains('hidden');
         settingsDropdown.classList.toggle('hidden');
-        
+
         console.log('设置面板状态:', isHidden ? '显示' : '隐藏');
+
+        // 应用智能定位
+        if (isHidden) {
+            setTimeout(() => {
+                positionDropdown(settingsButton, settingsDropdown);
+            }, 10);
+        }
     });
-    
+
     // 播放速度选择事件
     if (playbackSpeedSelect) {
         playbackSpeedSelect.addEventListener('change', (e) => {
             const speed = parseFloat(e.target.value);
             console.log('播放速度设置为:', speed);
-            
+
             if (player && player.playbackRate !== undefined) {
                 player.playbackRate = speed;
                 showToast(`播放速度已设置为 ${speed}x`, 'success');
             }
-            // 保存设置
             localStorage.setItem('playbackSpeed', speed.toString());
         });
-        
+
         // 从存储中恢复播放速度设置
         const savedSpeed = localStorage.getItem('playbackSpeed');
         if (savedSpeed) {
             playbackSpeedSelect.value = savedSpeed;
         }
     }
-    
+
     // 自动播放下一集开关事件
     if (autoplayToggle) {
         autoplayToggle.addEventListener('change', (e) => {
             autoplayEnabled = e.target.checked;
             localStorage.setItem('autoplayEnabled', autoplayEnabled.toString());
             showToast(autoplayEnabled ? '已启用自动播放' : '已禁用自动播放', 'info');
-            console.log('自动播放设置:', autoplayEnabled);
         });
-        
+
         // 从存储中恢复自动播放设置
         const savedAutoplay = localStorage.getItem('autoplayEnabled');
         if (savedAutoplay !== null) {
             autoplayEnabled = savedAutoplay === 'true';
             autoplayToggle.checked = autoplayEnabled;
         } else {
-            // 默认启用自动播放
             autoplayEnabled = true;
             autoplayToggle.checked = true;
         }
     }
-    
+
     // 记住播放进度开关事件
     if (rememberProgressToggle) {
         rememberProgressToggle.addEventListener('change', (e) => {
@@ -1387,36 +1382,33 @@ function setupPlayerSettings() {
             localStorage.setItem(REMEMBER_EPISODE_PROGRESS_ENABLED_KEY, isChecked.toString());
             const messageText = isChecked ? '将记住本视频的各集播放进度' : '将不再记住本视频的各集播放进度';
             showToast(messageText, 'info');
-            console.log('记住进度设置:', isChecked);
-            
+
             if (!isChecked) {
-                // 如果关闭了进度记忆，清除当前视频的所有进度
                 if (typeof clearCurrentVideoAllEpisodeProgresses === 'function') {
                     clearCurrentVideoAllEpisodeProgresses();
                 }
             }
         });
-        
+
         // 从存储中恢复记住进度设置
         const savedRememberProgress = localStorage.getItem(REMEMBER_EPISODE_PROGRESS_ENABLED_KEY);
         if (savedRememberProgress !== null) {
             rememberProgressToggle.checked = savedRememberProgress === 'true';
         } else {
-            // 默认启用记住进度
             rememberProgressToggle.checked = true;
         }
     }
-    
+
     // 点击外部关闭下拉菜单
     document.addEventListener('click', (e) => {
-        if (!settingsDropdown.classList.contains('hidden') && 
-            !settingsButton.contains(e.target) && 
+        if (!settingsDropdown.classList.contains('hidden') &&
+            !settingsButton.contains(e.target) &&
             !settingsDropdown.contains(e.target)) {
             settingsDropdown.classList.add('hidden');
             console.log('点击外部，关闭设置面板');
         }
     });
-    
+
     // 标记已初始化
     settingsButton._playerSettingsInitialized = true;
     console.log('✅ 播放设置面板初始化完成');
@@ -1424,9 +1416,51 @@ function setupPlayerSettings() {
 
 // ==================== 增强：下拉菜单管理 ====================
 
+function positionDropdown(button, dropdown) {
+    if (!button || !dropdown) return;
+
+    // 重置所有定位类
+    dropdown.classList.remove('position-left', 'position-right', 'position-bottom');
+
+    // 获取按钮和菜单的尺寸信息
+    const buttonRect = button.getBoundingClientRect();
+    const dropdownRect = dropdown.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // 检查水平方向溢出
+    const dropdownWidth = dropdown.offsetWidth || 200; // 默认宽度
+    const buttonCenterX = buttonRect.left + buttonRect.width / 2;
+    const dropdownLeftEdge = buttonCenterX - dropdownWidth / 2;
+    const dropdownRightEdge = buttonCenterX + dropdownWidth / 2;
+
+    // 水平定位调整
+    if (dropdownRightEdge > viewportWidth - 10) {
+        // 右侧溢出，调整为右对齐
+        dropdown.classList.add('position-right');
+        console.log('下拉菜单右侧溢出，调整为右对齐');
+    } else if (dropdownLeftEdge < 10) {
+        // 左侧溢出，调整为左对齐
+        dropdown.classList.add('position-left');
+        console.log('下拉菜单左侧溢出，调整为左对齐');
+    }
+
+    // 检查垂直方向溢出
+    const dropdownHeight = dropdown.offsetHeight || 200; // 默认高度
+    const spaceAbove = buttonRect.top;
+    const spaceBelow = viewportHeight - buttonRect.bottom;
+
+    // 垂直定位调整
+    if (spaceAbove < dropdownHeight + 20 && spaceBelow > spaceAbove) {
+        // 上方空间不足，但下方空间更大，调整为下方弹出
+        dropdown.classList.add('position-bottom');
+        console.log('下拉菜单上方空间不足，调整为下方弹出');
+    }
+}
+
 function enhanceDropdownManagement() {
     console.log('开始增强下拉菜单管理');
-    
+
     // 获取所有下拉菜单相关的按钮和菜单
     const dropdownPairs = [
         {
@@ -1442,41 +1476,46 @@ function enhanceDropdownManagement() {
             dropdown: document.getElementById('player-settings-dropdown')
         }
     ];
-    
-    // 为每个下拉菜单添加统一的管理
+
+    // 为每个下拉菜单添加智能定位
     dropdownPairs.forEach((pair, index) => {
         if (pair.button && pair.dropdown) {
-            console.log(`初始化下拉菜单 ${index + 1}:`, pair.button.id);
-            
+            console.log(`初始化智能定位下拉菜单 ${index + 1}:`, pair.button.id);
+
             // 添加增强样式类
             pair.dropdown.classList.add('elegant-dropdown', 'elegant-solid-dropdown');
-            
-            // 确保点击按钮时关闭其他菜单（只对线路切换和跳过设置有效）
-            if (pair.button.id !== 'player-settings-button') {
-                pair.button.addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    
-                    // 关闭其他下拉菜单
-                    dropdownPairs.forEach(otherPair => {
-                        if (otherPair !== pair && otherPair.dropdown) {
-                            otherPair.dropdown.classList.add('hidden');
-                        }
-                    });
-                });
-            }
+
+            // 添加智能定位功能
+            const originalClick = pair.button.onclick;
+
+            // 为按钮添加点击事件（不影响原有逻辑）
+            pair.button.addEventListener('click', (event) => {
+                // 延迟执行定位，确保菜单已经显示
+                setTimeout(() => {
+                    if (!pair.dropdown.classList.contains('hidden')) {
+                        positionDropdown(pair.button, pair.dropdown);
+                    }
+                }, 10);
+            });
+
+            // 监听窗口大小变化，重新定位
+            window.addEventListener('resize', () => {
+                if (!pair.dropdown.classList.contains('hidden')) {
+                    positionDropdown(pair.button, pair.dropdown);
+                }
+            });
         }
     });
-    
-    console.log('✅ 下拉菜单管理增强完成');
-}
 
+    console.log('✅ 智能定位下拉菜单管理完成');
+}
 
 const originalSetupAllUI = window.setupAllUI;
 
 // 创建增强版的 setupAllUI 函数
 function setupAllUI() {
     console.log('🎬 开始初始化播放器UI');
-    
+
     updateEpisodeInfo();
     renderEpisodes();
     setupPlayerControls();
@@ -1486,7 +1525,7 @@ function setupAllUI() {
     setupSkipControls();
     setupSkipDropdownEvents();
     // 注意：不再调用setupRememberEpisodeProgressToggle，因为功能已移到设置面板
-    
+
     document.addEventListener('keydown', handleKeyboardShortcuts);
     window.addEventListener('beforeunload', () => {
         saveCurrentProgress();
@@ -1498,12 +1537,12 @@ function setupAllUI() {
             saveVideoSpecificProgress();
         }
     });
-    
+
     // 延迟初始化增强功能
     setTimeout(() => {
         initializeElegantEnhancements();
     }, 200);
-    
+
     console.log('✅ 播放器UI初始化完成');
 }
 
@@ -1875,8 +1914,8 @@ function ensureCompatibility() {
             setTimeout(() => {
                 const orderIcon = document.getElementById('order-icon');
                 if (orderIcon) {
-                    
-                     const isReversed = orderIcon.style.transform === 'rotate(180deg)';
+
+                    const isReversed = orderIcon.style.transform === 'rotate(180deg)';
                     orderButton.classList.toggle('active', isReversed);
                 }
             }, 100);
@@ -1922,14 +1961,14 @@ function ensureCompatibility() {
 
 function initializeElegantEnhancements() {
     console.log('🚀 开始初始化典雅增强功能');
-    
+
     // 等待 DOM 完全加载
     if (document.readyState === 'loading') {
         console.log('DOM 还在加载中，等待加载完成...');
         document.addEventListener('DOMContentLoaded', initializeElegantEnhancements);
         return;
     }
-    
+
     // 初始化所有增强功能
     try {
         enhanceContainer();
@@ -1947,12 +1986,12 @@ function initializeElegantEnhancements() {
         enhanceShortcutHint();
         //setupCopyLinkButton(); // 新增：修复复制按钮
         ensureCompatibility();
-        
+
         // 延迟初始化设置面板，确保所有元素都准备好了
         setTimeout(() => {
             setupPlayerSettings();
         }, 100);
-        
+
         console.log('✨ 典雅样式增强已加载');
     } catch (error) {
         console.error('增强功能初始化失败:', error);
