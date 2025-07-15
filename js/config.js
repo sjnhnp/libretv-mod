@@ -22,21 +22,22 @@ window.SITE_CONFIG = SITE_CONFIG;
 
 // API站点配置
 const API_SITES = { 
-    jmzy: { api: 'https://api.jmzy.com/api.php/provide/vod', name: '金马资源' },
+    yzzy: { api: 'https://api.yzzy-api.com/inc/apijson.php', name: '优质资源' },
     bfzy: { api: 'https://bfzyapi.com/api.php/provide/vod', name: '暴风资源' },
     dyttzy: { api: 'http://caiji.dyttzyapi.com/api.php/provide/vod', name: '电影天堂', detail: 'http://caiji.dyttzyapi.com' },
     heimuer: { api: 'https://json.heimuer.xyz/api.php/provide/vod', name: '黑木耳', detail: 'https://heimuer.tv' },  
     tyyszy: { api: 'https://tyyszy.com/api.php/provide/vod', name: '天涯资源' },  
+    mdzy: { api: 'https://www.mdzyapi.com/api.php/provide/vod', name: '魔都资源' },  
+    maotai: { api: 'https://caiji.maotaizy.cc/api.php/provide/vod', name: '茅台资源' }, 
+    mozhua: { api: 'https://mozhuazy.com/api.php/provide/vod', name: '魔爪资源' }, 
+    ruyi: { api: 'https://cj.rycjapi.com/api.php/provide/vod', name: '如意资源' }, 
     wolong: { api: 'https://wolongzyw.com/api.php/provide/vod', name: '卧龙资源' }, 
     dbzy: { api: 'https://caiji.dbzy5.com/api.php/provide/vod', name: '豆瓣资源' },  
-    hwba: { api: 'https://cjhwba.com/api.php/provide/vod', name: '华为吧资源' },  
-    ruyi: { api: 'https://cj.rycjapi.com/api.php/provide/vod', name: '如意资源' }, 
-    maotai: { api: 'https://caiji.maotaizy.cc/api.php/provide/vod', name: '茅台资源' },  
+    hwba: { api: 'https://cjhwba.com/api.php/provide/vod', name: '华为吧资源' },   
+    jmzy: { api: 'https://api.jmzy.com/api.php/provide/vod', name: '金马资源' },
     zy360: { api: 'https://360zy.com/api.php/provide/vod', name: '360资源' }, 
     jisu: { api: 'https://jszyapi.com/api.php/provide/vod', name: '极速资源', detail: 'https://jszyapi.com' }, 
     huya: { api: 'https://www.huyaapi.com/api.php/provide/vod', name: '虎牙资源', detail: 'https://www.huyaapi.com', },  
-    mozhua: { api: 'https://mozhuazy.com/api.php/provide/vod', name: '魔爪资源' }, 
-    mdzy: { api: 'https://www.mdzyapi.com/api.php/provide/vod', name: '魔都资源' },  
     zuid: { api: 'https://api.zuidapi.com/api.php/provide/vod', name: '最大资源' },  
     baidu: { api: 'https://api.apibdzy.com/api.php/provide/vod', name: '百度云资源' }, 
     wujin: { api: 'https://api.wujinapi.me/api.php/provide/vod', name: '无尽资源' }, 
@@ -45,10 +46,10 @@ const API_SITES = {
 };
 
 window.API_SITES = API_SITES; 
-const DEFAULT_SELECTED_APIS = ["heimuer", "bfzy", "maotai", "mdzy", "tyyszy", "dyttzy"];
-window.DEFAULT_SELECTED_APIS = DEFAULT_SELECTED_APIS; 
+const DEFAULT_SELECTED_APIS = ["heimuer", "bfzy", "yzzy", "maotai", "mdzy", "tyyszy", "dyttzy"];
+window.DEFAULT_SELECTED_APIS = DEFAULT_SELECTED_APIS;
 
-// 聚合搜索配置
+// 聚合搜索配置 (与 renew.txt 原有保持一致)
 const AGGREGATED_SEARCH_CONFIG = { 
     enabled: true, 
     timeout: 8000, // 单个源超时时间（毫秒） 
@@ -60,7 +61,7 @@ const AGGREGATED_SEARCH_CONFIG = {
 // API请求配置 (已更新 path 字段)
 const API_CONFIG = { 
     search: {
-        path: 'ac=videolist&wd=', // 更新：仅含查询参数 
+        path: '?ac=videolist&wd=', // 更新：仅含查询参数 
         pagePath: '?ac=videolist&wd={query}&pg={page}', // 新增：分页路径模板 
         maxPages: 50, // 新增：最大获取页数 
         headers: { 
@@ -69,7 +70,7 @@ const API_CONFIG = {
         }
     },
     detail: {
-        path: 'ac=videolist&ids=', // 更新：仅含查询参数 
+        path: '?ac=videolist&ids=', // 更新：仅含查询参数 
         headers: { 
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36', // 
             'Accept': 'application/json'
@@ -96,7 +97,7 @@ const PLAYER_CONFIG = {
     allowFullscreen: true, 
     width: '100%', 
     height: '600', 
-    timeout: 15000, // 播放器加载超时时间
+    timeout: 15000, // 播放器加载超时时间 
     autoPlayNext: true, // 默认启用自动连播功能 
     adFilteringEnabled: getBoolConfig('adFilteringEnabled', true), // 默认关闭分片广告过滤（如果localStorage无记录），开启会导致某些资源卡住 
     adFilteringStorage: 'adFilteringEnabled', // 存储广告过滤设置的键名 
