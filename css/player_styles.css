@@ -769,10 +769,11 @@ media-player .vds-controls {
 }
 
 #skip-control-dropdown #apply-skip-settings {
-  background: rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, var(--elegant-accent-primary), var(--elegant-accent-secondary));
   color: #ffffff;
   margin-bottom: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--elegant-accent-secondary);
+  box-shadow: var(--elegant-shadow-subtle);
 }
 
 #skip-control-dropdown #apply-skip-settings:hover {
@@ -782,9 +783,10 @@ media-player .vds-controls {
 }
 
 #skip-control-dropdown #reset-skip-settings {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, rgba(139, 115, 85, 0.3), rgba(160, 132, 92, 0.2));
+  color: var(--elegant-accent-secondary);
+  border: 1px solid var(--elegant-accent-primary);
+  box-shadow: var(--elegant-shadow-subtle);
 }
 
 #skip-control-dropdown #reset-skip-settings:hover {
