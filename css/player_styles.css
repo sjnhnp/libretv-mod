@@ -216,6 +216,28 @@ input:disabled+.slider {
   pointer-events: none !important;
 }
 
+/* 修复Vidstack播放器控制条z-index层级问题 */
+/* 确保播放器控制条不会覆盖功能控制条和剧集选择区域 */
+media-player .vds-controls {
+  z-index: 50 !important;
+}
+
+/* 确保功能控制条和剧集选择区域在播放器控制条之上 */
+.elegant-function-bar {
+  z-index: 100 !important;
+  position: relative !important;
+}
+
+.elegant-episodes-container {
+  z-index: 100 !important;
+  position: relative !important;
+}
+
+.elegant-playback-controls {
+  z-index: 100 !important;
+  position: relative !important;
+}
+
 /* 允许视频区域的点击事件通过 */
 .player-locked .vds-video-container {
   pointer-events: auto !important;
@@ -1306,7 +1328,7 @@ header {
   background: rgba(15, 15, 15, 0.98) !important;
   backdrop-filter: blur(30px) !important;
   border: 1px solid rgba(255, 255, 255, 0.25) !important;
-  box-shadow: 
+  box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.6),
     0 0 0 1px rgba(255, 255, 255, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
@@ -1346,6 +1368,7 @@ header {
     opacity: 0;
     transform: translateX(-50%) translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
@@ -1947,21 +1970,21 @@ header {
     left: 50% !important;
     transform: translateX(-50%) !important;
   }
-  
+
   /* 右侧溢出时的定位 */
   .elegant-dropdown.position-right {
     left: auto !important;
     right: 0 !important;
     transform: none !important;
   }
-  
+
   /* 左侧溢出时的定位 */
   .elegant-dropdown.position-left {
     left: 0 !important;
     right: auto !important;
     transform: none !important;
   }
-  
+
   /* 上方溢出时的定位（弹出到下方） */
   .elegant-dropdown.position-bottom {
     bottom: auto !important;
@@ -1975,6 +1998,10 @@ header {
 #player-settings-dropdown {
   min-width: 250px !important;
   max-width: 320px !important;
+  /* 修复桌面浏览器设置菜单溢出右边屏幕的问题 */
+  right: 0 !important;
+  left: auto !important;
+  transform: none !important;
 }
 
 #line-switch-dropdown {
@@ -1995,17 +2022,21 @@ header {
     min-width: 160px !important;
     max-width: 85vw !important;
   }
-  
+
   #player-settings-dropdown {
     min-width: 200px !important;
     max-width: 85vw !important;
+    /* 移动端也保持右对齐，避免溢出 */
+    right: 0 !important;
+    left: auto !important;
+    transform: none !important;
   }
-  
+
   #line-switch-dropdown {
     min-width: 180px !important;
     max-width: 85vw !important;
   }
-  
+
   #skip-control-dropdown {
     min-width: 190px !important;
     max-width: 85vw !important;
