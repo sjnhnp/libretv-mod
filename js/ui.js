@@ -223,28 +223,26 @@ let lastFocusedElement = null;
  * @param {string} content 模态框内容
  * @param {string} title 模态框标题（可选）
  */
-function showModal(content, title = '') {
+function showModal(contentNode, title = '') { 
     const modal = getElement('modal');
     const modalContent = getElement('modalContent');
     const modalTitle = getElement('modalTitle');
 
     if (!modal || !modalContent) return;
 
-    // 保存当前焦点元素，以便关闭时恢复
     lastFocusedElement = document.activeElement;
 
-    // 设置内容
-    modalContent.innerHTML = content;
+    // 关键修复：从 .innerHTML 赋值改为 .appendChild
+    modalContent.innerHTML = ''; // 先清空旧内容
+    modalContent.appendChild(contentNode); // 直接附加带有事件监听的DOM节点
+
     if (modalTitle && title) modalTitle.textContent = title;
 
-    // 显示模态框
     modal.classList.remove('hidden');
     modal.setAttribute('aria-hidden', 'false');
 
-    // 设置焦点陷阱
     setupFocusTrap(modal);
 
-    // 将焦点移至模态框内的第一个可聚焦元素
     const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
     if (focusableElements.length) {
         focusableElements[0].focus();

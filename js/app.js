@@ -1228,8 +1228,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     }
 
     const tempDiv = document.createElement('div');
-    tempDiv.appendChild(modalContent);
-    showModal(tempDiv.innerHTML, `${effectiveTitle} (${sourceNameForDisplay})`);
+    showModal(modalContent, `${effectiveTitle} (${sourceNameForDisplay})`);
 }
 
 function toggleEpisodeOrderUI(container) {
