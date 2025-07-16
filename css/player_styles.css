@@ -301,6 +301,7 @@ media-player * {
   font-weight: 600 !important;
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
   transform: translateY(-1px) !important;
+  border-radius: 8px !important; /* 保持与非选中状态一致的圆角 */
 }
 
 /* 现代简约图标按钮样式 */
