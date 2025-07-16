@@ -66,6 +66,15 @@ body::-webkit-scrollbar-thumb:hover,
   min-height: 100vh;
 }
 
+/* 修复Android Chrome地址栏隐藏时底部白色背景问题 */
+html, body {
+  background-color: var(--page-gradient-start);
+  min-height: 100vh;
+  /* 确保页面至少占满视口高度 */
+  overflow-x: hidden;
+  /* 防止水平滚动 */
+}
+
 /* -------- 4. 按钮 & 卡片过渡（优化） -------- */
 button,
 .card-hover {
