@@ -958,7 +958,6 @@ function copyLinks() {
     });
 }
 
-// --- toggleLockScreen 函数 ---
 function toggleLockScreen() {
     if (!player) {
         console.warn("播放器未初始化，无法锁定屏幕。");
@@ -967,48 +966,60 @@ function toggleLockScreen() {
 
     // 1. 切换锁定状态
     isScreenLocked = !isScreenLocked;
-    player.keyDisabled = isScreenLocked; // 禁用播放器内置快捷键
+    player.keyDisabled = isScreenLocked;
 
     const playerContainer = document.querySelector('.player-container');
     const lockButton = document.getElementById('lock-button');
     const lockIcon = document.getElementById('lock-icon');
 
-    // 2. 切换主容器的锁定class和锁屏按钮的激活class
+    // 2. 切换主容器和锁屏按钮的激活 Class
     playerContainer?.classList.toggle('player-locked', isScreenLocked);
-    lockButton?.classList.toggle('lock-active', isScreenLocked); // 新增：为锁屏按钮添加高亮状态
+    lockButton?.classList.toggle('lock-active', isScreenLocked);
 
-    // 3. 精准禁用/启用其他控件
-    // 禁用/启用 上一集、下一集 按钮
-    document.getElementById('prev-episode')?.toggleAttribute('inert', isScreenLocked);
-    document.getElementById('next-episode')?.toggleAttribute('inert', isScreenLocked);
-    // 禁用/启用 整个选集容器
-    document.getElementById('episodes-container')?.toggleAttribute('inert', isScreenLocked);
-
-    // 禁用/启用 功能控制条中的所有其他按钮
+    // 3. 【核心修复】精准禁用/启用其他所有控件及其容器
     const controlBar = document.querySelector('.player-control-bar');
     if (controlBar) {
-        const buttonsInBar = controlBar.querySelectorAll('button');
-        buttonsInBar.forEach(button => {
-            // 只处理非锁屏按钮
-            if (button.id !== 'lock-button') {
-                button.toggleAttribute('inert', isScreenLocked);
-                // 如果解锁，需要确保下拉菜单是关闭的
-                if (!isScreenLocked) {
-                    const dropdown = button.parentElement.querySelector('[id$="-dropdown"]');
+        // 遍历所有按钮的父容器
+        const buttonContainers = controlBar.querySelectorAll('.control-btn-container');
+        buttonContainers.forEach(container => {
+            const button = container.querySelector('button');
+            // 如果容器内的按钮不是锁屏按钮
+            if (button && button.id !== 'lock-button') {
+                // 为整个容器添加禁用样式和inert属性
+                container.classList.toggle('control-disabled', isScreenLocked);
+                container.toggleAttribute('inert', isScreenLocked);
+
+                // 锁屏时，确保其关联的下拉菜单是隐藏的
+                if (isScreenLocked) {
+                    const dropdown = container.querySelector('[id$="-dropdown"]');
                     dropdown?.classList.add('hidden');
                 }
             }
         });
     }
+    
+    // 单独处理上一集/下一集/选集区域
+    document.getElementById('prev-episode')?.toggleAttribute('inert', isScreenLocked);
+    document.getElementById('next-episode')?.toggleAttribute('inert', isScreenLocked);
+    document.getElementById('episodes-container')?.toggleAttribute('inert', isScreenLocked);
 
     // 4. 更新锁屏按钮的图标和提示信息
     if (lockIcon) {
         if (isScreenLocked) {
-            lockIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="control-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`; // 实心锁图标
+            lockIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="control-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`;
             showMessage('屏幕已锁定', 'info', 2000);
         } else {
-            lockIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="control-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`; // 空心锁图标
+            lockIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="control-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
             showMessage('屏幕已解锁', 'info', 1500);
+        }
+    }
+
+    // 5. 恢复：为视频元素添加/移除单击事件
+    const mediaElement = player.querySelector('video');
+    if (mediaElement) {
+        mediaElement.removeEventListener('click', handleMediaClick);
+        if (isScreenLocked) {
+            mediaElement.addEventListener('click', handleMediaClick);
         }
     }
 }

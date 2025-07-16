@@ -571,6 +571,27 @@ media-player * {
   font-size: 0.875rem;
 }
 
+/* 锁屏按钮激活状态的高亮样式 */
+.control-btn.lock-active {
+  background: var(--primary-color) !important;
+  color: white !important;
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
+  transform: translateY(-1px);
+}
+
+/* 新增：被禁用的控制按钮容器的样式 */
+.control-btn-container.control-disabled {
+  pointer-events: none; /* 彻底禁用鼠标事件，无法再触发 hover 或 click */
+  opacity: 0.4;         /* 视觉上变暗，表示不可用 */
+  filter: grayscale(80%); /* （可选）进一步灰度化，增强禁用感 */
+}
+
+/* 强化：确保锁屏按钮激活时，其容器的透明度不会被错误影响 */
+#lock-button.lock-active {
+  opacity: 1 !important;
+}
+
 .control-btn:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.4);
@@ -602,15 +623,6 @@ media-player * {
     /* 与上一集/下一集按钮保持一致的图标文字间距 */
     min-height: 44px;
     /* 确保与上一集/下一集按钮高度一致 */
-  }
-
-  /* 锁屏按钮激活状态的高亮样式 */
-  .control-btn.lock-active {
-    background: var(--primary-color) !important;
-    color: white !important;
-    border-color: var(--accent-color) !important;
-    box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
-    transform: translateY(-1px);
   }
 
   .control-text {
