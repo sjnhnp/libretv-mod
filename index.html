@@ -86,10 +86,12 @@
         class="history-panel fixed left-0 top-0 h-full bg-black/20 backdrop-blur-xl border-r border-white/10 p-6 z-40 transform -translate-x-full transition-transform duration-300"
         aria-label="观看历史" tabindex="-1">
         <div class="flex justify-between items-center mb-8">
-            <button id="closeHistoryPanelButton" class="text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl p-2 transition-all duration-300" aria-label="关闭历史"
-                type="button">
+            <button id="closeHistoryPanelButton"
+                class="text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl p-2 transition-all duration-300"
+                aria-label="关闭历史" type="button">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
                 </svg>
             </button>
             <h3 class="text-2xl font-bold gradient-text mx-auto">观看历史</h3>
@@ -98,7 +100,8 @@
         <div id="historyList" class="pb-4" role="region" aria-live="polite">
             <div class="text-center text-white/60 py-12">
                 <svg class="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
                 <p class="text-lg font-medium">暂无观看记录</p>
                 <p class="text-sm text-white/40 mt-2">开始观看视频后，历史记录会显示在这里</p>
@@ -118,17 +121,20 @@
         aria-label="设置面板" tabindex="-1">
         <div class="flex justify-between items-center mb-8">
             <h3 class="text-2xl font-bold gradient-text">设置</h3>
-            <button id="closeSettingsPanelButton" class="text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl p-2 transition-all duration-300" aria-label="关闭设置"
-                type="button">
+            <button id="closeSettingsPanelButton"
+                class="text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl p-2 transition-all duration-300"
+                aria-label="关闭设置" type="button">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
                 </svg>
             </button>
         </div>
 
         <div class="space-y-6">
             <!-- 数据源区域 -->
-            <section class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 shadow-lg" aria-label="数据源设置">
+            <section class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 shadow-lg"
+                aria-label="数据源设置">
                 <label class="block text-lg font-semibold text-white/90 mb-4 pb-2 border-b border-white/10">
                     数据源设置
                 </label>
@@ -136,17 +142,16 @@
                 <!-- 批量操作按钮 -->
                 <div class="flex flex-wrap gap-2 mb-4">
                     <button onclick="selectAllAPIs(true)"
-                        class="px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-sm rounded-lg font-medium transition-all duration-300" type="button">全选</button>
+                        class="px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-sm rounded-lg font-medium transition-all duration-300"
+                        type="button">全选</button>
                     <button onclick="selectAllAPIs(false)"
                         class="px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 text-white/90 hover:text-white text-sm rounded-lg font-medium transition-all duration-300"
                         type="button">全不选</button>
-                    <button onclick="selectAllAPIs(true, true)"
-                        class="px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 text-white/90 hover:text-white text-sm rounded-lg font-medium transition-all duration-300"
-                        type="button">全选普通资源</button>
                 </div>
 
                 <!-- API选择区域 -->
-                <div class="max-h-48 overflow-y-auto bg-white/5 backdrop-blur-sm border border-white/10 p-3 rounded-xl mb-4">
+                <div
+                    class="max-h-48 overflow-y-auto bg-white/5 backdrop-blur-sm border border-white/10 p-3 rounded-xl mb-4">
                     <div id="apiCheckboxes" class="grid grid-cols-2 gap-3" role="group" aria-label="API选择列表"></div>
                 </div>
 
@@ -157,7 +162,8 @@
             </section>
 
             <!-- 自定义API管理 -->
-            <section class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 shadow-lg" aria-label="自定义API">
+            <section class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 shadow-lg"
+                aria-label="自定义API">
                 <div class="flex justify-between items-center mb-4">
                     <label class="block text-lg font-semibold text-white/90 pb-2 border-b border-white/10 w-full">
                         自定义API
@@ -167,7 +173,8 @@
                         aria-label="添加自定义API" type="button">+</button>
                 </div>
                 <div id="customApisList" class="max-h-40 overflow-y-auto mb-4"></div>
-                <div id="addCustomApiForm" class="hidden mt-4 p-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl">
+                <div id="addCustomApiForm"
+                    class="hidden mt-4 p-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl">
                     <input type="text" id="customApiName" placeholder="API名称"
                         class="w-full bg-white/10 border border-white/20 text-white px-4 py-3 rounded-lg mb-3 focus:outline-none focus:border-white/40 transition-all duration-300"
                         autocomplete="off">
@@ -191,11 +198,12 @@
             </section>
 
             <!-- 内容过滤及功能区 -->
-            <section class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 shadow-lg" aria-label="功能开关">
+            <section class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 shadow-lg"
+                aria-label="功能开关">
                 <label class="block text-lg font-semibold text-white/90 mb-4 pb-2 border-b border-white/10">
                     功能开关
                 </label>
-                
+
                 <!-- 滤黄开关 -->
                 <div class="bg-white/5 rounded-xl p-4 mb-4">
                     <div class="flex items-center justify-between">
@@ -209,12 +217,16 @@
                             <input type="checkbox" id="yellowFilterToggle"
                                 class="opacity-0 absolute w-full h-full cursor-pointer z-10" aria-checked="false"
                                 role="switch" aria-labelledby="yellowFilterLabel">
-                            <div class="toggle-bg bg-white/20 w-12 h-6 rounded-full transition-all duration-300 ease-in-out"></div>
-                            <div class="toggle-dot absolute w-5 h-5 bg-white rounded-full top-0.5 left-0.5 transition-all duration-300 ease-in-out shadow-lg"></div>
+                            <div
+                                class="toggle-bg bg-white/20 w-12 h-6 rounded-full transition-all duration-300 ease-in-out">
+                            </div>
+                            <div
+                                class="toggle-dot absolute w-5 h-5 bg-white rounded-full top-0.5 left-0.5 transition-all duration-300 ease-in-out shadow-lg">
+                            </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 广告过滤 -->
                 <div class="bg-white/5 rounded-xl p-4 mb-4">
                     <div class="flex items-center justify-between">
@@ -229,12 +241,16 @@
                         <div class="relative inline-block w-12 align-middle select-none">
                             <input type="checkbox" id="adFilterToggle"
                                 class="opacity-0 absolute w-full h-full cursor-pointer z-10" aria-checked="false">
-                            <div class="toggle-bg bg-white/20 w-12 h-6 rounded-full transition-all duration-300 ease-in-out"></div>
-                            <div class="toggle-dot absolute w-5 h-5 bg-white rounded-full top-0.5 left-0.5 transition-all duration-300 ease-in-out shadow-lg"></div>
+                            <div
+                                class="toggle-bg bg-white/20 w-12 h-6 rounded-full transition-all duration-300 ease-in-out">
+                            </div>
+                            <div
+                                class="toggle-dot absolute w-5 h-5 bg-white rounded-full top-0.5 left-0.5 transition-all duration-300 ease-in-out shadow-lg">
+                            </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 豆瓣推荐 -->
                 <div class="bg-white/5 rounded-xl p-4 mb-4">
                     <div class="flex items-center justify-between">
@@ -249,12 +265,16 @@
                         <div class="relative inline-block w-12 align-middle select-none">
                             <input type="checkbox" id="doubanToggle"
                                 class="opacity-0 absolute w-full h-full cursor-pointer z-10" aria-checked="false">
-                            <div class="toggle-bg bg-white/20 w-12 h-6 rounded-full transition-all duration-300 ease-in-out"></div>
-                            <div class="toggle-dot absolute w-5 h-5 bg-white rounded-full top-0.5 left-0.5 transition-all duration-300 ease-in-out shadow-lg"></div>
+                            <div
+                                class="toggle-bg bg-white/20 w-12 h-6 rounded-full transition-all duration-300 ease-in-out">
+                            </div>
+                            <div
+                                class="toggle-dot absolute w-5 h-5 bg-white rounded-full top-0.5 left-0.5 transition-all duration-300 ease-in-out shadow-lg">
+                            </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 播放预加载 -->
                 <div class="bg-white/5 rounded-xl p-4">
                     <div class="flex items-center justify-between">
@@ -287,11 +307,16 @@
             <!-- 标题部分 -->
             <header class="text-center mb-8" role="banner">
                 <div class="flex justify-center items-center mb-6">
-                    <a href="#" onclick="resetToHome(); return false;" class="flex items-center group" aria-label="返回首页">
+                    <a href="#" onclick="resetToHome(); return false;" class="flex items-center group"
+                        aria-label="返回首页">
                         <div class="relative">
-                            <div class="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl blur-lg opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
-                            <div class="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-4 group-hover:border-white/20 transition-all duration-300">
-                                <svg class="w-12 h-12 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <div
+                                class="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl blur-lg opacity-30 group-hover:opacity-50 transition-opacity duration-300">
+                            </div>
+                            <div
+                                class="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-4 group-hover:border-white/20 transition-all duration-300">
+                                <svg class="w-12 h-12 text-white/90" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
                                     </path>
@@ -309,39 +334,46 @@
                     <form id="searchForm" onsubmit="event.preventDefault(); search();">
                         <div class="relative group">
                             <!-- 搜索框背景光效 -->
-                            <div class="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 to-purple-600/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                            
+                            <div
+                                class="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 to-purple-600/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                            </div>
+
                             <!-- 搜索框主体 -->
-                            <div class="relative flex items-stretch h-16 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                            <div
+                                class="relative flex items-stretch h-16 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
                                 <button id="homeButton" type="button" onclick="resetToHome()"
                                     class="px-6 flex items-center justify-center bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 shadow-lg"
                                     aria-label="返回首页" title="返回首页">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                                        </path>
                                     </svg>
                                     <span class="hidden sm:inline">首页</span>
                                 </button>
-                                
+
                                 <input type="text" id="searchInput"
                                     class="flex-1 bg-transparent text-white px-6 py-0 focus:outline-none placeholder-white/50 text-lg"
                                     placeholder="搜索你想看的影视内容..." autocomplete="off" aria-label="视频搜索框">
-                                
+
                                 <button type="submit"
                                     class="px-6 flex items-center justify-center bg-gradient-to-r from-purple-600 to-indigo-500 text-white font-medium hover:from-purple-700 hover:to-indigo-600 transition-all duration-300 shadow-lg"
                                     aria-label="搜索按钮">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                     </svg>
                                     <span class="hidden sm:inline">搜索</span>
                                 </button>
                             </div>
                         </div>
                     </form>
-                    
+
                     <!-- 搜索历史标签 -->
-                    <div id="recentSearches" class="mt-6 flex flex-wrap gap-3 justify-center" aria-label="最近搜索记录" aria-live="polite">
+                    <div id="recentSearches" class="mt-6 flex flex-wrap gap-3 justify-center" aria-label="最近搜索记录"
+                        aria-live="polite">
                     </div>
-                    
+
                     <div id="searchFeedbackArea" class="w-full text-center mt-8 hidden">
                     </div>
                 </div>
@@ -403,14 +435,16 @@
     <div id="modal"
         class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center transition-opacity duration-300 z-40"
         role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true" tabindex="-1">
-        <div class="bg-black/20 backdrop-blur-xl border border-white/10 p-8 rounded-2xl w-11/12 max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
+        <div
+            class="bg-black/20 backdrop-blur-xl border border-white/10 p-8 rounded-2xl w-11/12 max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
             <div class="flex justify-between items-center mb-8 flex-none">
                 <h2 id="modalTitle" class="text-3xl font-bold gradient-text break-words pr-4 max-w-[80%]"></h2>
                 <button id="closeModalButton"
-                    class="text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl p-2 transition-all duration-300 flex-shrink-0" aria-label="关闭详情"
-                    type="button">
+                    class="text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl p-2 transition-all duration-300 flex-shrink-0"
+                    aria-label="关闭详情" type="button">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
                     </svg>
                 </button>
             </div>
@@ -423,14 +457,16 @@
     <div id="passwordModal"
         class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-[65] transition-opacity duration-300"
         role="dialog" aria-modal="true" aria-labelledby="passwordModalTitle" aria-hidden="true" tabindex="-1">
-        <div class="bg-black/20 backdrop-blur-xl border border-white/10 p-8 rounded-2xl w-11/12 max-w-md max-h-[90vh] flex flex-col shadow-2xl">
+        <div
+            class="bg-black/20 backdrop-blur-xl border border-white/10 p-8 rounded-2xl w-11/12 max-w-md max-h-[90vh] flex flex-col shadow-2xl">
             <div class="flex justify-between items-center mb-8 flex-none">
                 <h2 id="passwordModalTitle" class="text-2xl font-bold gradient-text">访问验证</h2>
                 <button id="closePasswordModalButton"
                     class="text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl p-2 transition-all duration-300 flex-shrink-0 hidden"
                     aria-label="关闭验证" type="button">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
                     </svg>
                 </button>
             </div>
@@ -461,9 +497,10 @@
     </div>
 
     <!-- 加载提示 -->
-    <div id="loading" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50" role="status"
-        aria-live="polite" aria-hidden="true" tabindex="-1">
-        <div class="bg-black/20 backdrop-blur-xl border border-white/10 p-8 rounded-2xl flex items-center space-x-4 shadow-2xl">
+    <div id="loading" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50"
+        role="status" aria-live="polite" aria-hidden="true" tabindex="-1">
+        <div
+            class="bg-black/20 backdrop-blur-xl border border-white/10 p-8 rounded-2xl flex items-center space-x-4 shadow-2xl">
             <div class="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" aria-label="加载中">
             </div>
             <p class="text-white/90 text-lg font-medium">加载中...</p>
