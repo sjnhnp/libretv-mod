@@ -957,7 +957,6 @@ function parseVodPlayUrl(vodPlayUrl) {
     return episodes;
 }
 
-
 // 重置到首页
 function resetToHome() {
     const searchInput = DOMCache.get('searchInput');
@@ -985,12 +984,9 @@ function resetToHome() {
         const showDouban = getBoolConfig('doubanEnabled', false);
         doubanArea.classList.toggle('hidden', !showDouban);
 
-        const doubanContent = getElement('douban-hot-content');
-        // 如果豆瓣热门应该显示，但其内容区域是空的，则主动加载数据
-        if (showDouban && doubanContent && !doubanContent.hasChildNodes()) {
-            // 获取当前选中的类型（电影/电视剧）以加载正确的内容
-            const activeType = document.querySelector('#douban-hot-tabs .douban-tab-active')?.dataset.type || 'movie';
-            loadDoubanHot(activeType);
+        // 如果豆瓣热门应该显示，则调用其专属的检查加载函数
+        if (showDouban && typeof window.reloadDoubanIfNeeded === 'function') {
+            window.reloadDoubanIfNeeded();
         }
     }
 
