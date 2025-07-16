@@ -529,12 +529,26 @@ media-player * {
 /* 现代简约控制条布局 */
 .player-control-bar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  /* 统一间距，移动端和桌面端一致 */
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: space-evenly;
-  /* 均匀分布，确保间距一致 */
+  justify-content: flex-end; /* 按钮靠右对齐 */
+  gap: 10px; /* 统一固定间距 */
+  width: 100%;
+}
+
+/* 控制按钮容器包装器 */
+.player-control-bar-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 控制按钮容器 */
+.control-btn-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 统一控制按钮样式 */
@@ -543,21 +557,16 @@ media-player * {
   align-items: center;
   justify-content: center;
   min-width: 40px;
-  /* 减小最小宽度 */
   min-height: 40px;
-  /* 减小最小高度 */
   padding: 0.5rem;
-  /* 减小padding */
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
-  /* 与其他按钮保持一致 */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
   font-size: 0.875rem;
-  /* 减小字体 */
 }
 
 .control-btn:hover {
@@ -568,7 +577,8 @@ media-player * {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.control-btn svg {
+/* 统一控制图标大小 */
+.control-icon {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
@@ -597,31 +607,36 @@ media-player * {
 
 /* 移动端样式 - 只显示图标，统一大小 */
 @media (max-width: 768px) {
-  .player-control-bar {
-    gap: 0;
-    /* 移除间距，让按钮完全均匀分布 */
-    justify-content: space-evenly;
-    /* 完全均匀分布 */
-    flex-wrap: nowrap;
-    /* 防止换行 */
+  /* 控制按钮容器包装器 */
+  .player-control-bar-wrapper {
     width: 100%;
-    /* 确保占满宽度 */
+  }
+  
+  /* 控制按钮容器 */
+  .control-btn-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+  }
+  
+  .player-control-bar {
+    gap: 0; /* 移除间距 */
+    justify-content: space-between; /* 均匀分布 */
+    flex-wrap: nowrap; /* 防止换行 */
+    width: 100%; /* 确保占满宽度 */
   }
 
   .control-btn {
-    min-width: 36px;
-    /* 与上一集/下一集按钮保持一致 */
-    min-height: 36px;
-    /* 与上一集/下一集按钮保持一致 */
-    padding: 0.375rem;
-    /* 减小padding，与上一集/下一集按钮一致 */
+    width: 100%; /* 占满容器宽度 */
+    height: 40px; /* 固定高度 */
+    min-width: unset; /* 移除最小宽度限制 */
+    min-height: 40px; /* 确保最小高度 */
+    padding: 0; /* 移除内边距 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
     gap: 0;
-    flex: 1;
-    /* 让每个按钮平均分配空间 */
-    max-width: 48px;
-    /* 限制最大宽度 */
-    margin: 0 0.125rem;
-    /* 添加微小的左右边距 */
+    border-radius: 8px; /* 稍微减小圆角，更统一 */
   }
 
   /* 移动端隐藏文字 */
@@ -629,33 +644,10 @@ media-player * {
     display: none !important;
   }
 
-  /* 统一所有按钮内的SVG图标大小 */
-  .control-btn svg,
-  #play-settings-button svg,
-  #line-switch-button svg,
-  #skip-control-button svg,
-  button[onclick="copyLinks()"] svg,
-  #order-button svg,
-  #lock-button svg {
-    width: 16px !important;
-    /* 统一所有图标大小 */
-    height: 16px !important;
-  }
-
-  /* 确保跳过按钮和其他按钮大小一致 */
-  #skip-control-button {
-    min-width: 36px;
-    /* 与其他按钮保持一致 */
-    min-height: 36px;
-    /* 与其他按钮保持一致 */
-    padding: 0.375rem;
-    /* 与其他按钮保持一致 */
-    flex: 1;
-    /* 与其他按钮保持一致 */
-    max-width: 48px;
-    /* 与其他按钮保持一致 */
-    margin: 0 0.125rem;
-    /* 与其他按钮保持一致 */
+  /* 统一所有按钮内的图标大小 */
+  .control-icon {
+    width: 18px !important; /* 统一所有图标大小 */
+    height: 18px !important;
   }
 }
 
