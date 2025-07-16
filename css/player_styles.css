@@ -83,13 +83,7 @@ media-player {
   margin-bottom: 10px;
 }
 
-/* 选集按钮样式 */
-.episode-active {
-  background: var(--elegant-accent-primary) !important;
-  border-color: var(--elegant-accent-secondary) !important;
-  color: #fff !important;
-  font-weight: bold;
-}
+/* 选集按钮样式 - 已删除，使用下方的黄色样式 */
 
 .episode-grid {
   max-height: 30vh;
