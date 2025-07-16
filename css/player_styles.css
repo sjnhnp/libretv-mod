@@ -743,6 +743,10 @@ media-player .vds-controls {
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #skip-control-dropdown button::before {
