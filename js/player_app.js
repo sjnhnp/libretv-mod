@@ -1042,9 +1042,14 @@ function setupSkipControls() {
     if (!skipButton || !dropdown || !skipIntroInput || !skipOutroInput || !applyBtn || !resetBtn) return;
     skipButton.addEventListener('click', (event) => {
         event.stopPropagation();
-        const lineDropdown = document.getElementById('line-switch-dropdown');
-        if (lineDropdown) lineDropdown.classList.add('hidden');
-        dropdown.classList.toggle('hidden');
+        // 先检查当前状态，如果要显示则关闭其他菜单
+        const isHidden = dropdown.classList.contains('hidden');
+        if (isHidden) {
+            closeAllDropdowns();
+            dropdown.classList.remove('hidden');
+        } else {
+            dropdown.classList.add('hidden');
+        }
     });
     applyBtn.addEventListener('click', () => {
         const introTime = parseInt(skipIntroInput.value) || 0;
@@ -1084,8 +1089,11 @@ function setupLineSwitching() {
 
     const showLinesFromCache = (event) => {
         event.stopPropagation();
-        const skipDropdown = document.getElementById('skip-control-dropdown');
-        if (skipDropdown) skipDropdown.classList.add('hidden');
+        // 先检查当前状态，如果要显示则关闭其他菜单
+        const isHidden = dropdown.classList.contains('hidden');
+        if (isHidden) {
+            closeAllDropdowns();
+        }
         dropdown.innerHTML = '';
 
         const currentId = vodIdForPlayer;
@@ -1147,7 +1155,11 @@ function setupLineSwitching() {
         } else {
             dropdown.innerHTML = `<div class="text-center text-sm text-gray-500 py-2">无其他可用线路</div>`;
         }
-        dropdown.classList.toggle('hidden');
+        if (isHidden) {
+            dropdown.classList.remove('hidden');
+        } else {
+            dropdown.classList.add('hidden');
+        }
     };
 
     if (!button._lineSwitchListenerAttached) {
@@ -1287,10 +1299,9 @@ function togglePlaySettingsDropdown() {
     
     const isHidden = dropdown.classList.contains('hidden');
     
-    // 关闭其他下拉菜单
-    closeAllDropdowns();
-    
+    // 如果要显示设置菜单，先关闭其他下拉菜单
     if (isHidden) {
+        closeAllDropdowns();
         dropdown.classList.remove('hidden');
         // 确保播放设置事件已初始化
         setupPlaySettingsEvents();
