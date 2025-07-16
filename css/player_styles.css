@@ -445,7 +445,7 @@ input:disabled+.slider {
   flex-wrap: wrap;
   gap: 1rem;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end; /* 靠右对齐 */
 }
 
 /* 统一控制按钮样式 */
@@ -482,7 +482,7 @@ input:disabled+.slider {
 /* 桌面端显示文字 */
 @media (min-width: 769px) {
   .player-control-bar {
-    justify-content: flex-start;
+    justify-content: flex-end; /* 桌面端也靠右对齐 */
     gap: 1rem;
   }
   
@@ -500,7 +500,7 @@ input:disabled+.slider {
 @media (max-width: 768px) {
   .player-control-bar {
     gap: 0.5rem;
-    justify-content: center;
+    justify-content: center; /* 移动端居中 */
   }
   
   .control-btn {
@@ -754,7 +754,7 @@ input:disabled+.slider {
     0 10px 30px rgba(0, 0, 0, 0.3),
     0 0 0 1px rgba(255, 255, 255, 0.05);
   padding: 16px;
-  z-index: 2222;
+  z-index: 10000;
   margin-bottom: 8px;
   backdrop-filter: blur(20px);
 }
@@ -918,9 +918,35 @@ input:disabled+.slider {
     0 10px 30px rgba(0, 0, 0, 0.3),
     0 0 0 1px rgba(255, 255, 255, 0.05);
   padding: 12px;
-  z-index: 2223;
+  z-index: 10000;
   margin-bottom: 8px;
   backdrop-filter: blur(20px);
+}
+
+/* 移动端防止溢出 */
+@media (max-width: 768px) {
+  #line-switch-dropdown {
+    width: clamp(160px, 80vw, 200px);
+    padding: 10px;
+    /* 防止溢出到屏幕左侧 */
+    left: auto;
+    right: 0;
+    transform: translateX(0);
+  }
+  
+  /* 如果按钮靠近右边缘，调整下拉菜单位置 */
+  .line-switch-container:last-child #line-switch-dropdown,
+  .line-switch-container:nth-last-child(-n+2) #line-switch-dropdown {
+    right: 0;
+    left: auto;
+  }
+  
+  /* 如果按钮靠近左边缘，调整下拉菜单位置 */
+  .line-switch-container:first-child #line-switch-dropdown,
+  .line-switch-container:nth-child(-n+2) #line-switch-dropdown {
+    left: 0;
+    right: auto;
+  }
 }
 
 #line-switch-dropdown:not(.hidden) {
@@ -1049,9 +1075,31 @@ input:disabled+.slider {
     0 10px 30px rgba(0, 0, 0, 0.3),
     0 0 0 1px rgba(255, 255, 255, 0.05);
   padding: 16px;
-  z-index: 2224;
+  z-index: 10000;
   margin-bottom: 8px;
   backdrop-filter: blur(20px);
+}
+
+/* 播放速率选择框样式 */
+#playback-speed-select {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.875rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+#playback-speed-select:focus {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+#playback-speed-select option {
+  background: rgba(20, 24, 35, 0.95);
+  color: #ffffff;
 }
 
 #play-settings-dropdown:not(.hidden) {

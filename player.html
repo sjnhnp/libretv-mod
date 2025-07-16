@@ -137,7 +137,7 @@
                         </svg>
                         <span class="control-text text-sm">设置</span>
                     </button>
-                    <div id="play-settings-dropdown" class="hidden absolute right-0 bottom-full mb-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl shadow-xl p-4 w-52">
+                    <div id="play-settings-dropdown" class="hidden absolute right-0 bottom-full mb-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl shadow-xl p-4 w-56">
                         <div class="flex items-center justify-between mb-3">
                             <span class="text-white/90 text-sm font-medium">自动播放</span>
                             <label class="switch">
@@ -145,12 +145,23 @@
                                 <span class="slider"></span>
                             </label>
                         </div>
-                        <div class="flex items-center justify-between">
+                        <div class="flex items-center justify-between mb-3">
                             <span class="text-white/90 text-sm font-medium">记住进度</span>
                             <label class="switch">
                                 <input type="checkbox" id="remember-episode-progress-toggle" checked aria-label="记住进度">
                                 <span class="slider"></span>
                             </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-white/90 text-sm font-medium">播放速率</span>
+                            <select id="playback-speed-select" class="bg-white/10 text-white/90 rounded-lg px-2 py-1 text-sm border border-white/20 focus:border-white/40 focus:outline-none">
+                                <option value="0.5">0.5x</option>
+                                <option value="0.75">0.75x</option>
+                                <option value="1" selected>1x</option>
+                                <option value="1.25">1.25x</option>
+                                <option value="1.5">1.5x</option>
+                                <option value="2">2x</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -179,6 +190,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 5l7 7-7 7M15 5l7 7-7 7" />
                         </svg>
+                        <span class="control-text text-sm">跳过</span>
                     </button>
                     <div id="skip-control-dropdown"
                         class="hidden absolute right-0 bottom-full mb-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl shadow-xl p-4 w-52">
@@ -208,6 +220,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                     </svg>
+                    <span class="control-text text-sm">复制</span>
                 </button>
                 
                 <!-- 剧集顺序按钮 -->
@@ -219,6 +232,7 @@
                         stroke-linejoin="round" style="transition: transform 0.3s ease;">
                         <polyline points="6 9 12 15 18 9"></polyline>
                     </svg>
+                    <span class="control-text text-sm">顺序</span>
                 </button>
                 
                 <!-- 锁屏按钮 -->
@@ -231,6 +245,7 @@
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                         <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                     </svg>
+                    <span class="control-text text-sm">锁屏</span>
                 </button>
             </div>
         </div>

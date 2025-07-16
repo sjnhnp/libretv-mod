@@ -332,6 +332,12 @@ async function initPlayer(videoUrl, title) {
         window.player = player;
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
+        
+        // 应用保存的播放速率
+        const savedSpeed = localStorage.getItem('playbackSpeed') || '1';
+        if (player.playbackRate !== undefined) {
+            player.playbackRate = parseFloat(savedSpeed);
+        }
     } catch (error) {
         console.error("Vidstack Player 创建失败:", error);
         showError("播放器初始化失败");
@@ -1286,6 +1292,8 @@ function togglePlaySettingsDropdown() {
     
     if (isHidden) {
         dropdown.classList.remove('hidden');
+        // 确保播放设置事件已初始化
+        setupPlaySettingsEvents();
     } else {
         dropdown.classList.add('hidden');
     }
@@ -1308,6 +1316,32 @@ function setupPlaySettingsEvents() {
         });
         
         autoplayToggle.setAttribute('data-initialized', 'true');
+    }
+    
+    // 设置播放速率
+    const speedSelect = document.getElementById('playback-speed-select');
+    if (speedSelect && !speedSelect.hasAttribute('data-initialized')) {
+        // 从localStorage读取设置
+        const savedSpeed = localStorage.getItem('playbackSpeed') || '1';
+        speedSelect.value = savedSpeed;
+        
+        // 应用当前速率到播放器
+        if (player && player.playbackRate !== undefined) {
+            player.playbackRate = parseFloat(savedSpeed);
+        }
+        
+        speedSelect.addEventListener('change', function(event) {
+            const speed = parseFloat(event.target.value);
+            localStorage.setItem('playbackSpeed', speed.toString());
+            
+            if (player && player.playbackRate !== undefined) {
+                player.playbackRate = speed;
+                const speedText = speed === 1 ? '正常速度' : `${speed}x 速度`;
+                showMessage(`播放速率已设置为 ${speedText}`, 'info');
+            }
+        });
+        
+        speedSelect.setAttribute('data-initialized', 'true');
     }
     
     // 记住进度功能已在setupRememberEpisodeProgressToggle中处理
