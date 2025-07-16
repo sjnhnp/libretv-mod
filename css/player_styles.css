@@ -1,8 +1,9 @@
-/* 基本布局和播放器相关样式 */
+/* 基本布局和播放器相关样式（现代简约风格） */
 .player-container {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
+  background: var(--page-gradient-start);
 }
 
 /* 播放器区域 */
@@ -228,47 +229,80 @@ input:disabled+.slider {
 
 /* end 锁屏样式 */
 
-/* 选集按钮样式（未选中） */
+/* 选集按钮样式（现代简约风格） */
 #episode-grid button:not(.episode-active) {
-  background: #222;
-  color: #d1d5db;
-  border: 1px solid #333;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 0.875rem;
 }
 
 #episode-grid button:not(.episode-active):hover {
-  background: #333;
-  color: #fff
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* 仅图标按钮的统一尺寸 */
+/* 选集按钮激活状态（现代简约风格） */
+.episode-active {
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color)) !important;
+  border-color: var(--primary-color) !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* 现代简约图标按钮样式 */
 .icon-btn {
-  padding: 0.5rem;
+  padding: 0.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 统一播放控制按钮样式 */
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 统一播放控制按钮样式（现代简约风格） */
 #prev-episode,
 #next-episode {
-  /* 减小按钮尺寸，与控制栏按钮保持一致 */
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.85);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  color: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 #prev-episode:hover:not(:disabled),
 #next-episode:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
   color: #ffffff;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
 #prev-episode:active:not(:disabled),
@@ -278,7 +312,7 @@ input:disabled+.slider {
 
 #prev-episode:disabled,
 #next-episode:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
   transform: none;
 }
@@ -289,33 +323,39 @@ input:disabled+.slider {
   height: 18px;
 }
 
-/* 确保集数信息也有一致的样式 */
+/* 确保集数信息也有一致的现代简约样式 */
 #episode-info-span {
-  font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.85);
-  font-weight: 500;
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 0.5rem 1rem;
 }
 
 /* 统一所有控制按钮的间距和排版 */
-.flex.items-center.justify-between.p-4 {
-  padding: 0.75rem 1rem;
+.flex.items-center.justify-between.p-6 {
+  padding: 1.5rem;
   margin-bottom: 0.5rem;
 }
 
 /* 响应式调整 */
 @media (max-width: 768px) {
+
   #prev-episode,
   #next-episode {
     padding: 0.4rem 0.6rem;
     font-size: 0.8125rem;
   }
-  
+
   #prev-episode svg,
   #next-episode svg {
     width: 16px;
     height: 16px;
   }
-  
+
   #episode-info-span {
     font-size: 0.8125rem;
   }
@@ -399,13 +439,19 @@ input:disabled+.slider {
   display: none
 }
 
-/* 让整排控件靠右 */
+/* 现代简约控制条布局 */
 .player-control-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
   align-items: center;
+}
+
+@media (min-width: 768px) {
+  .player-control-bar {
+    grid-template-columns: 1fr auto auto auto auto auto auto;
+    gap: 1rem;
+  }
 }
 
 @media (max-width: 900px) {
@@ -807,7 +853,7 @@ input:disabled+.slider {
   background: linear-gradient(145deg, rgba(20, 24, 35, 0.95), rgba(30, 35, 50, 0.95));
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 
+  box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.3),
     0 0 0 1px rgba(255, 255, 255, 0.05);
   padding: 12px;
@@ -908,7 +954,7 @@ input:disabled+.slider {
     width: clamp(160px, 80vw, 200px);
     padding: 10px;
   }
-  
+
   #line-switch-dropdown button {
     padding: 8px 10px;
     font-size: 0.8125rem;
