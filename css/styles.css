@@ -154,6 +154,21 @@ button,
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
+/* 修复搜索按钮在移动端的图标居中问题 */
+@media (max-width: 640px) {
+  /* 当搜索文字隐藏时，移除图标的右边距 */
+  button[aria-label="搜索按钮"] svg {
+    margin-right: 0 !important;
+  }
+  
+  /* 确保搜索按钮内容居中 */
+  button[aria-label="搜索按钮"] {
+    justify-content: center !important;
+    padding: 0.75rem !important;
+    min-width: 48px;
+  }
+}
+
 /* -------- 7. 设置面板（现代简约风格） -------- */
 .settings-panel {
   transform: translateX(100%);
