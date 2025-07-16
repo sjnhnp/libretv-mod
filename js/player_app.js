@@ -903,7 +903,7 @@ function updateEpisodeInfo() {
     if (window.currentEpisodes && window.currentEpisodes.length > 1) {
         const currentDisplayNumber = window.currentEpisodeIndex + 1;
         episodeInfoSpan.textContent = `第 ${currentDisplayNumber} / ${totalEpisodes} 集`;
-        episodeInfoSpan.style.display = 'inline-block'; // 显示集数信息
+        episodeInfoSpan.style.display = 'flex'; // 显示集数信息
         const episodesCountEl = document.getElementById('episodes-count');
         if (episodesCountEl) episodesCountEl.textContent = `共 ${totalEpisodes} 集`;
     } else {

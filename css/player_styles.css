@@ -395,7 +395,7 @@ media-player * {
   /* 减小padding，与按钮一致 */
   height: auto;
   /* 确保高度自适应 */
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
 }
