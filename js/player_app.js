@@ -588,6 +588,8 @@ function setupAllUI() {
     setupPlaySettingsEvents();
     document.addEventListener('keydown', handleKeyboardShortcuts);
     document.addEventListener('click', handleDocumentClick);
+    // 添加触摸事件监听，用于移动端菜单关闭
+    document.addEventListener('touchstart', handleDocumentTouch);
     window.addEventListener('beforeunload', () => {
         saveCurrentProgress();
         saveVideoSpecificProgress();
@@ -1378,6 +1380,18 @@ function handleDocumentClick(event) {
     const playSettingsContainer = document.querySelector('.play-settings-container');
     const lineSwitchContainer = document.querySelector('.line-switch-container');
     const skipControlContainer = document.querySelector('.skip-control-container');
+    const playerRegion = document.getElementById('player-region');
+    const playerContainer = document.getElementById('player');
+    
+    // 检查是否点击了播放器区域
+    const isPlayerAreaClick = (playerRegion && playerRegion.contains(event.target)) || 
+                             (playerContainer && playerContainer.contains(event.target));
+    
+    // 如果点击了播放器区域，直接关闭所有下拉菜单
+    if (isPlayerAreaClick) {
+        closeAllDropdowns();
+        return;
+    }
     
     // 如果点击不在任何下拉容器内，关闭所有下拉菜单
     if (playSettingsContainer && !playSettingsContainer.contains(event.target)) {
@@ -1399,6 +1413,35 @@ function handleDocumentClick(event) {
         if (dropdown && !dropdown.classList.contains('hidden')) {
             dropdown.classList.add('hidden');
         }
+    }
+}
+
+// 处理移动端触摸事件，用于关闭下拉菜单
+function handleDocumentTouch(event) {
+    const playSettingsContainer = document.querySelector('.play-settings-container');
+    const lineSwitchContainer = document.querySelector('.line-switch-container');
+    const skipControlContainer = document.querySelector('.skip-control-container');
+    const playerRegion = document.getElementById('player-region');
+    const playerContainer = document.getElementById('player');
+    
+    // 检查是否触摸了播放器区域
+    const isPlayerAreaTouch = (playerRegion && playerRegion.contains(event.target)) || 
+                             (playerContainer && playerContainer.contains(event.target));
+    
+    // 如果触摸了播放器区域，直接关闭所有下拉菜单
+    if (isPlayerAreaTouch) {
+        closeAllDropdowns();
+        return;
+    }
+    
+    // 如果触摸不在任何下拉容器内，关闭所有下拉菜单
+    const isOutsideAllContainers = 
+        (!playSettingsContainer || !playSettingsContainer.contains(event.target)) &&
+        (!lineSwitchContainer || !lineSwitchContainer.contains(event.target)) &&
+        (!skipControlContainer || !skipControlContainer.contains(event.target));
+    
+    if (isOutsideAllContainers) {
+        closeAllDropdowns();
     }
 }
 
