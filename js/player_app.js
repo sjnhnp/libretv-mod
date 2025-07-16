@@ -579,7 +579,9 @@ function setupAllUI() {
     setupSkipControls();
     setupSkipDropdownEvents();
     setupRememberEpisodeProgressToggle();
+    setupPlaySettingsEvents();
     document.addEventListener('keydown', handleKeyboardShortcuts);
+    document.addEventListener('click', handleDocumentClick);
     window.addEventListener('beforeunload', () => {
         saveCurrentProgress();
         saveVideoSpecificProgress();
@@ -646,6 +648,10 @@ function setupPlayerControls() {
 
     const lockButton = document.getElementById('lock-button');
     if (lockButton) lockButton.addEventListener('click', toggleLockScreen);
+    
+    // 播放设置按钮
+    const playSettingsButton = document.getElementById('play-settings-button');
+    if (playSettingsButton) playSettingsButton.addEventListener('click', togglePlaySettingsDropdown);
 }
 
 function handleKeyboardShortcuts(e) {
@@ -1266,6 +1272,89 @@ function setupRememberEpisodeProgressToggle() {
             clearCurrentVideoAllEpisodeProgresses();
         }
     });
+}
+
+// 播放设置下拉菜单功能
+function togglePlaySettingsDropdown() {
+    const dropdown = document.getElementById('play-settings-dropdown');
+    if (!dropdown) return;
+    
+    const isHidden = dropdown.classList.contains('hidden');
+    
+    // 关闭其他下拉菜单
+    closeAllDropdowns();
+    
+    if (isHidden) {
+        dropdown.classList.remove('hidden');
+    } else {
+        dropdown.classList.add('hidden');
+    }
+}
+
+function setupPlaySettingsEvents() {
+    // 设置自动播放切换
+    const autoplayToggle = document.getElementById('autoplay-next');
+    if (autoplayToggle && !autoplayToggle.hasAttribute('data-initialized')) {
+        // 从localStorage读取设置
+        const savedAutoplay = localStorage.getItem('autoplayEnabled');
+        autoplayEnabled = savedAutoplay !== 'false';
+        autoplayToggle.checked = autoplayEnabled;
+        
+        autoplayToggle.addEventListener('change', function(event) {
+            autoplayEnabled = event.target.checked;
+            localStorage.setItem('autoplayEnabled', autoplayEnabled.toString());
+            const messageText = autoplayEnabled ? '已开启自动播放下一集' : '已关闭自动播放下一集';
+            showMessage(messageText, 'info');
+        });
+        
+        autoplayToggle.setAttribute('data-initialized', 'true');
+    }
+    
+    // 记住进度功能已在setupRememberEpisodeProgressToggle中处理
+}
+
+function closeAllDropdowns() {
+    const dropdowns = [
+        'play-settings-dropdown',
+        'line-switch-dropdown', 
+        'skip-control-dropdown'
+    ];
+    
+    dropdowns.forEach(id => {
+        const dropdown = document.getElementById(id);
+        if (dropdown && !dropdown.classList.contains('hidden')) {
+            dropdown.classList.add('hidden');
+        }
+    });
+}
+
+// 处理文档点击事件，用于关闭下拉菜单
+function handleDocumentClick(event) {
+    const playSettingsContainer = document.querySelector('.play-settings-container');
+    const lineSwitchContainer = document.querySelector('.line-switch-container');
+    const skipControlContainer = document.querySelector('.skip-control-container');
+    
+    // 如果点击不在任何下拉容器内，关闭所有下拉菜单
+    if (playSettingsContainer && !playSettingsContainer.contains(event.target)) {
+        const dropdown = document.getElementById('play-settings-dropdown');
+        if (dropdown && !dropdown.classList.contains('hidden')) {
+            dropdown.classList.add('hidden');
+        }
+    }
+    
+    if (lineSwitchContainer && !lineSwitchContainer.contains(event.target)) {
+        const dropdown = document.getElementById('line-switch-dropdown');
+        if (dropdown && !dropdown.classList.contains('hidden')) {
+            dropdown.classList.add('hidden');
+        }
+    }
+    
+    if (skipControlContainer && !skipControlContainer.contains(event.target)) {
+        const dropdown = document.getElementById('skip-control-dropdown');
+        if (dropdown && !dropdown.classList.contains('hidden')) {
+            dropdown.classList.add('hidden');
+        }
+    }
 }
 
 function retryLastAction() {
