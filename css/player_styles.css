@@ -85,8 +85,8 @@ media-player {
 
 /* 选集按钮样式 */
 .episode-active {
-  background: #3b82f6 !important;
-  border-color: #60a5fa !important;
+  background: var(--elegant-accent-primary) !important;
+  border-color: var(--elegant-accent-secondary) !important;
   color: #fff !important;
   font-weight: bold;
 }
@@ -1766,8 +1766,8 @@ header {
 /* ==================== 响应式设计增强 ==================== */
 @media (max-width: 768px) {
   .elegant-container {
-    margin: 0.5rem;
-    max-width: calc(100% - 1rem);
+    margin: 0.5rem 0;
+    max-width: 100%;
   }
 
   .elegant-player-region {
