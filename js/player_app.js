@@ -1477,7 +1477,50 @@ function enhanceDropdownManagement() {
         }
     ];
 
-    // 为每个下拉菜单添加智能定位
+    // 关闭所有下拉菜单
+    function closeAllDropdowns(except = null) {
+        dropdownPairs.forEach(pair => {
+            if (pair.dropdown && pair.dropdown !== except) {
+                pair.dropdown.classList.add('hidden');
+            }
+        });
+    }
+
+    // 检查菜单是否会溢出屏幕右边
+    function checkOverflow(dropdown, button) {
+        if (!dropdown || !button) return false;
+        
+        const dropdownRect = dropdown.getBoundingClientRect();
+        const buttonRect = button.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        
+        // 计算菜单右边缘位置
+        const dropdownRight = buttonRect.right;
+        
+        return dropdownRight > viewportWidth - 20; // 留20px边距
+    }
+
+    // 调整菜单位置防止溢出
+    function adjustDropdownPosition(dropdown, button) {
+        if (!dropdown || !button) return;
+        
+        // 重置样式
+        dropdown.style.left = 'auto';
+        dropdown.style.right = '0';
+        
+        // 强制重新计算布局
+        dropdown.offsetHeight;
+        
+        // 检查是否溢出
+        if (checkOverflow(dropdown, button)) {
+            // 如果溢出，改为从左边展开
+            dropdown.style.right = 'auto';
+            dropdown.style.left = '0';
+            console.log(`📍 ${dropdown.id} 菜单位置已调整为左对齐`);
+        }
+    }
+
+    // 为每个下拉菜单添加智能定位和互斥功能
     dropdownPairs.forEach((pair, index) => {
         if (pair.button && pair.dropdown) {
             console.log(`初始化智能定位下拉菜单 ${index + 1}:`, pair.button.id);
@@ -1485,27 +1528,80 @@ function enhanceDropdownManagement() {
             // 添加增强样式类
             pair.dropdown.classList.add('elegant-dropdown', 'elegant-solid-dropdown');
 
-            // 添加智能定位功能
-            const originalClick = pair.button.onclick;
-
-            // 为按钮添加点击事件（不影响原有逻辑）
+            // 为按钮添加点击事件（实现菜单互斥）
             pair.button.addEventListener('click', (event) => {
-                // 延迟执行定位，确保菜单已经显示
-                setTimeout(() => {
-                    if (!pair.dropdown.classList.contains('hidden')) {
-                        positionDropdown(pair.button, pair.dropdown);
-                    }
-                }, 10);
+                event.preventDefault();
+                event.stopPropagation();
+                
+                const isCurrentlyHidden = pair.dropdown.classList.contains('hidden');
+                
+                // 先关闭其他所有菜单
+                closeAllDropdowns(pair.dropdown);
+                
+                if (isCurrentlyHidden) {
+                    // 显示当前菜单
+                    pair.dropdown.classList.remove('hidden');
+                    
+                    // 调整位置防止溢出
+                    setTimeout(() => {
+                        adjustDropdownPosition(pair.dropdown, pair.button);
+                    }, 10);
+                    
+                    console.log(`📂 ${pair.dropdown.id} 菜单已打开`);
+                } else {
+                    // 隐藏当前菜单
+                    pair.dropdown.classList.add('hidden');
+                    console.log(`📁 ${pair.dropdown.id} 菜单已关闭`);
+                }
             });
 
             // 监听窗口大小变化，重新定位
             window.addEventListener('resize', () => {
                 if (!pair.dropdown.classList.contains('hidden')) {
-                    positionDropdown(pair.button, pair.dropdown);
+                    adjustDropdownPosition(pair.dropdown, pair.button);
                 }
             });
         }
     });
+
+    // 点击页面其他地方关闭所有菜单
+    function handleDocumentClick(e) {
+        // 检查点击是否在任何菜单或按钮内
+        let clickedInsideMenu = false;
+        
+        dropdownPairs.forEach(pair => {
+            if ((pair.button && pair.button.contains(e.target)) || 
+                (pair.dropdown && pair.dropdown.contains(e.target))) {
+                clickedInsideMenu = true;
+            }
+        });
+        
+        // 如果点击在菜单外，关闭所有菜单
+        if (!clickedInsideMenu) {
+            closeAllDropdowns();
+        }
+    }
+
+    // 移除可能存在的旧事件监听器
+    document.removeEventListener('click', document._dropdownDocumentClickHandler);
+    
+    // 添加新的文档点击事件监听器
+    document._dropdownDocumentClickHandler = handleDocumentClick;
+    document.addEventListener('click', document._dropdownDocumentClickHandler);
+
+    // ESC键关闭所有菜单
+    function handleKeyDown(e) {
+        if (e.key === 'Escape') {
+            closeAllDropdowns();
+        }
+    }
+
+    // 移除可能存在的旧keydown监听器
+    document.removeEventListener('keydown', document._dropdownKeydownHandler);
+    
+    // 添加新的keydown事件监听器
+    document._dropdownKeydownHandler = handleKeyDown;
+    document.addEventListener('keydown', document._dropdownKeydownHandler);
 
     console.log('✅ 智能定位下拉菜单管理完成');
 }
@@ -1524,6 +1620,7 @@ function setupAllUI() {
     setupLineSwitching();
     setupSkipControls();
     setupSkipDropdownEvents();
+    setupDropdownMenus();
     // 注意：不再调用setupRememberEpisodeProgressToggle，因为功能已移到设置面板
 
     document.addEventListener('keydown', handleKeyboardShortcuts);
@@ -2021,3 +2118,196 @@ window.playPreviousEpisode = playPreviousEpisode;
 window.copyLinks = copyLinks;
 window.toggleEpisodeOrder = toggleEpisodeOrder;
 window.toggleLockScreen = toggleLockScreen;
+
+// ==================== 菜单管理功能 ====================
+
+/**
+ * 设置下拉菜单管理
+ * 解决菜单互斥、层级和溢出问题
+ */
+function setupDropdownMenus() {
+    console.log('🎛️ 初始化下拉菜单管理');
+
+    // 所有下拉菜单的配置
+    const dropdownConfigs = [
+        {
+            buttonId: 'line-switch-button',
+            dropdownId: 'line-switch-dropdown',
+            name: '线路切换'
+        },
+        {
+            buttonId: 'skip-control-button', 
+            dropdownId: 'skip-control-dropdown',
+            name: '跳过设置'
+        },
+        {
+            buttonId: 'player-settings-button',
+            dropdownId: 'player-settings-dropdown', 
+            name: '播放设置'
+        }
+    ];
+
+    // 关闭所有下拉菜单
+    function closeAllDropdowns(except = null) {
+        dropdownConfigs.forEach(config => {
+            if (config.dropdownId !== except) {
+                const dropdown = document.getElementById(config.dropdownId);
+                if (dropdown) {
+                    dropdown.classList.add('hidden');
+                }
+            }
+        });
+    }
+
+    // 检查菜单是否会溢出屏幕右边
+    function checkOverflow(dropdown, button) {
+        if (!dropdown || !button) return false;
+        
+        const dropdownRect = dropdown.getBoundingClientRect();
+        const buttonRect = button.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        
+        // 计算菜单右边缘位置
+        const dropdownRight = buttonRect.right;
+        
+        return dropdownRight > viewportWidth - 20; // 留20px边距
+    }
+
+    // 调整菜单位置防止溢出
+    function adjustDropdownPosition(dropdown, button) {
+        if (!dropdown || !button) return;
+        
+        // 重置样式
+        dropdown.style.left = 'auto';
+        dropdown.style.right = '0';
+        
+        // 强制重新计算布局
+        dropdown.offsetHeight;
+        
+        // 检查是否溢出
+        if (checkOverflow(dropdown, button)) {
+            // 如果溢出，改为从左边展开
+            dropdown.style.right = 'auto';
+            dropdown.style.left = '0';
+            console.log(`📍 ${dropdown.id} 菜单位置已调整为左对齐`);
+        }
+    }
+
+    // 切换下拉菜单显示状态
+    function toggleDropdown(dropdownId, buttonId) {
+        const dropdown = document.getElementById(dropdownId);
+        const button = document.getElementById(buttonId);
+        
+        if (!dropdown || !button) {
+            console.warn(`⚠️ 菜单元素未找到: ${dropdownId} 或 ${buttonId}`);
+            return;
+        }
+
+        const isCurrentlyHidden = dropdown.classList.contains('hidden');
+        
+        // 先关闭其他所有菜单
+        closeAllDropdowns(dropdownId);
+        
+        if (isCurrentlyHidden) {
+            // 显示当前菜单
+            dropdown.classList.remove('hidden');
+            
+            // 调整位置防止溢出
+            setTimeout(() => {
+                adjustDropdownPosition(dropdown, button);
+            }, 10);
+            
+            console.log(`📂 ${dropdownId} 菜单已打开`);
+        } else {
+            // 隐藏当前菜单
+            dropdown.classList.add('hidden');
+            console.log(`📁 ${dropdownId} 菜单已关闭`);
+        }
+    }
+
+    // 为每个菜单按钮绑定事件
+    dropdownConfigs.forEach(config => {
+        const button = document.getElementById(config.buttonId);
+        if (button) {
+            // 移除可能存在的旧事件监听器
+            button.removeEventListener('click', button._dropdownClickHandler);
+            
+            // 创建新的事件处理器
+            button._dropdownClickHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleDropdown(config.dropdownId, config.buttonId);
+            };
+            
+            button.addEventListener('click', button._dropdownClickHandler);
+            console.log(`✅ ${config.name}菜单按钮事件已绑定`);
+        } else {
+            console.warn(`⚠️ 未找到按钮: ${config.buttonId}`);
+        }
+    });
+
+    // 点击页面其他地方关闭所有菜单
+    function handleDocumentClick(e) {
+        // 检查点击是否在任何菜单或按钮内
+        let clickedInsideMenu = false;
+        
+        dropdownConfigs.forEach(config => {
+            const button = document.getElementById(config.buttonId);
+            const dropdown = document.getElementById(config.dropdownId);
+            
+            if ((button && button.contains(e.target)) || 
+                (dropdown && dropdown.contains(e.target))) {
+                clickedInsideMenu = true;
+            }
+        });
+        
+        // 如果点击在菜单外，关闭所有菜单
+        if (!clickedInsideMenu) {
+            closeAllDropdowns();
+        }
+    }
+
+    // 移除可能存在的旧事件监听器
+    document.removeEventListener('click', document._dropdownDocumentClickHandler);
+    
+    // 添加新的文档点击事件监听器
+    document._dropdownDocumentClickHandler = handleDocumentClick;
+    document.addEventListener('click', document._dropdownDocumentClickHandler);
+
+    // 窗口大小改变时重新调整菜单位置
+    function handleResize() {
+        dropdownConfigs.forEach(config => {
+            const dropdown = document.getElementById(config.dropdownId);
+            const button = document.getElementById(config.buttonId);
+            
+            if (dropdown && !dropdown.classList.contains('hidden')) {
+                adjustDropdownPosition(dropdown, button);
+            }
+        });
+    }
+
+    // 移除可能存在的旧resize监听器
+    window.removeEventListener('resize', window._dropdownResizeHandler);
+    
+    // 添加新的resize事件监听器
+    window._dropdownResizeHandler = handleResize;
+    window.addEventListener('resize', window._dropdownResizeHandler);
+
+    // ESC键关闭所有菜单
+    function handleKeyDown(e) {
+        if (e.key === 'Escape') {
+            closeAllDropdowns();
+        }
+    }
+
+    // 移除可能存在的旧keydown监听器
+    document.removeEventListener('keydown', document._dropdownKeydownHandler);
+    
+    // 添加新的keydown事件监听器
+    document._dropdownKeydownHandler = handleKeyDown;
+    document.addEventListener('keydown', document._dropdownKeydownHandler);
+
+    console.log('✅ 下拉菜单管理初始化完成');
+}
+
+// 播放设置功能已经在现有的setupPlayerSettings函数中实现
