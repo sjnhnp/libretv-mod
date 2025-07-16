@@ -1335,49 +1335,4 @@ function copyLinks() {
     });
 }
 
-// 切换剧集排序UI并更新状态
-function toggleEpisodeOrderUI() {
-    const container = document.getElementById('episodeButtonsContainer');
-    const orderIcon = document.getElementById('orderIcon');
-    const toggleBtn = document.getElementById('toggleEpisodeOrderBtn');
-
-    if (!container || !orderIcon || !toggleBtn) return;
-
-    let currentReversedState = AppState.get('episodesReversed') || false;
-    currentReversedState = !currentReversedState;
-    AppState.set('episodesReversed', currentReversedState);
-
-    // 更新图标的旋转状态
-    orderIcon.style.transform = currentReversedState ? 'rotate(180deg)' : 'rotate(0deg)';
-
-    // 更新按钮的 title 属性来提供状态反馈
-    toggleBtn.title = currentReversedState ? '切换为正序排列' : '切换为倒序排列';
-
-    // 重新渲染集数按钮部分 (保持不变)
-    const episodes = AppState.get('currentEpisodes');
-    const title = AppState.get('currentVideoTitle');
-    const sourceName = AppState.get('currentSourceName');
-    const sourceCode = AppState.get('currentSourceCode');
-
-    if (episodes && title && sourceCode) {
-        const newButtonsHtml = renderEpisodeButtons(episodes, title, sourceCode, sourceName || '');
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = newButtonsHtml;
-        const buttonsContainerFromRender = tempDiv.querySelector('#episodeButtonsContainer');
-        if (buttonsContainerFromRender) {
-            container.innerHTML = buttonsContainerFromRender.innerHTML;
-        } else {
-            const parsedDoc = new DOMParser().parseFromString(newButtonsHtml, 'text/html');
-            const newEpisodeButtonsContent = parsedDoc.getElementById('episodeButtonsContainer');
-            if (newEpisodeButtonsContent) {
-                container.innerHTML = newEpisodeButtonsContent.innerHTML;
-            } else {
-                console.error("无法从 renderEpisodeButtons 的输出中提取集数按钮。");
-            }
-        }
-    } else {
-        console.error("无法重新渲染剧集按钮：缺少必要的状态信息。");
-    }
-}
-
 window.showVideoEpisodesModal = showVideoEpisodesModal;
