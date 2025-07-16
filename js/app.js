@@ -984,6 +984,14 @@ function resetToHome() {
     if (doubanArea) {
         const showDouban = getBoolConfig('doubanEnabled', false);
         doubanArea.classList.toggle('hidden', !showDouban);
+
+        const doubanContent = getElement('douban-hot-content');
+        // 如果豆瓣热门应该显示，但其内容区域是空的，则主动加载数据
+        if (showDouban && doubanContent && !doubanContent.hasChildNodes()) {
+            // 获取当前选中的类型（电影/电视剧）以加载正确的内容
+            const activeType = document.querySelector('#douban-hot-tabs .douban-tab-active')?.dataset.type || 'movie';
+            loadDoubanHot(activeType);
+        }
     }
 
     // 清理搜索缓存
@@ -997,7 +1005,6 @@ function resetToHome() {
 
     renderSearchHistory();
 }
-
 
 // 导出需要在全局访问的函数
 window.search = search;
