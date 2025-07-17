@@ -309,9 +309,10 @@ async function initPlayer(videoUrl, title) {
             title: title,
             autoplay: true,
             preload: 'auto',
-            seekTime: 10,  
-            clickToFullscreen: true, 
-            layout: new VidstackPlayerLayout(),
+            layout: new VidstackPlayerLayout({
+                seekTime: 10,
+                clickToFullscreen: true
+            }),
             // layout: new PlyrLayout(),
             // controls: true,
             playsInline: true,
@@ -334,7 +335,7 @@ async function initPlayer(videoUrl, title) {
         window.player = player;
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
-        
+
         // 应用保存的播放速率
         const savedSpeed = localStorage.getItem('playbackSpeed') || '1';
         if (player.playbackRate !== undefined) {
@@ -450,7 +451,7 @@ async function playEpisode(index) {
     doEpisodeSwitch(index, currentEpisodes[index]);
 }
 
-async function doEpisodeSwitch(index, episodeString) { 
+async function doEpisodeSwitch(index, episodeString) {
     let playUrl = episodeString;
     if (episodeString && episodeString.includes('$')) {
         playUrl = episodeString.split('$')[1];
@@ -460,8 +461,8 @@ async function doEpisodeSwitch(index, episodeString) {
     if (!playUrl || !playUrl.startsWith('http')) {
         showError(`无效的播放链接: ${playUrl || '链接为空'}`);
         console.error("解析出的播放链接无效:", playUrl);
-        isNavigatingToEpisode = false; 
-        return; 
+        isNavigatingToEpisode = false;
+        return;
     }
 
     currentEpisodeIndex = index;
@@ -612,16 +613,16 @@ function updateUIForNewEpisode() {
 
 function updateBrowserHistory(newEpisodeUrl) {
     const newUrlForBrowser = new URL(window.location.href);
-    
+
     newUrlForBrowser.searchParams.set('url', newEpisodeUrl);
-    
+
     newUrlForBrowser.searchParams.set(
         'universalId',
         generateUniversalId(currentVideoTitle, currentVideoYear, currentEpisodeIndex)
     );
     newUrlForBrowser.searchParams.set('index', currentEpisodeIndex.toString());
     newUrlForBrowser.searchParams.delete('position');
-    
+
     window.history.pushState({ path: newUrlForBrowser.toString(), episodeIndex: currentEpisodeIndex }, '', newUrlForBrowser.toString());
 }
 
@@ -658,7 +659,7 @@ function setupPlayerControls() {
 
     const lockButton = document.getElementById('lock-button');
     if (lockButton) lockButton.addEventListener('click', toggleLockScreen);
-    
+
     // 播放设置按钮
     const playSettingsButton = document.getElementById('play-settings-button');
     if (playSettingsButton) playSettingsButton.addEventListener('click', togglePlaySettingsDropdown);
@@ -861,7 +862,7 @@ function renderEpisodes() {
 
         const parts = (episodeData || '').split('$');
         const episodeName = parts.length > 1 ? parts[0].trim() : '';
-        
+
         // 根据是否为综艺决定按钮文本和标题
         if (isVarietyShow && episodeName) {
             btn.textContent = episodeName;
@@ -999,7 +1000,7 @@ function toggleLockScreen() {
             }
         });
     }
-    
+
     // 单独处理上一集/下一集/选集区域
     document.getElementById('prev-episode')?.toggleAttribute('inert', isScreenLocked);
     document.getElementById('next-episode')?.toggleAttribute('inert', isScreenLocked);
@@ -1329,9 +1330,9 @@ function setupRememberEpisodeProgressToggle() {
 function togglePlaySettingsDropdown() {
     const dropdown = document.getElementById('play-settings-dropdown');
     if (!dropdown) return;
-    
+
     const isHidden = dropdown.classList.contains('hidden');
-    
+
     // 如果要显示设置菜单，先关闭其他下拉菜单
     if (isHidden) {
         closeAllDropdowns();
@@ -1351,53 +1352,53 @@ function setupPlaySettingsEvents() {
         const savedAutoplay = localStorage.getItem('autoplayEnabled');
         autoplayEnabled = savedAutoplay !== 'false';
         autoplayToggle.checked = autoplayEnabled;
-        
-        autoplayToggle.addEventListener('change', function(event) {
+
+        autoplayToggle.addEventListener('change', function (event) {
             autoplayEnabled = event.target.checked;
             localStorage.setItem('autoplayEnabled', autoplayEnabled.toString());
             const messageText = autoplayEnabled ? '已开启自动播放下一集' : '已关闭自动播放下一集';
             showMessage(messageText, 'info');
         });
-        
+
         autoplayToggle.setAttribute('data-initialized', 'true');
     }
-    
+
     // 设置播放速率
     const speedSelect = document.getElementById('playback-speed-select');
     if (speedSelect && !speedSelect.hasAttribute('data-initialized')) {
         // 从localStorage读取设置
         const savedSpeed = localStorage.getItem('playbackSpeed') || '1';
         speedSelect.value = savedSpeed;
-        
+
         // 应用当前速率到播放器
         if (player && player.playbackRate !== undefined) {
             player.playbackRate = parseFloat(savedSpeed);
         }
-        
-        speedSelect.addEventListener('change', function(event) {
+
+        speedSelect.addEventListener('change', function (event) {
             const speed = parseFloat(event.target.value);
             localStorage.setItem('playbackSpeed', speed.toString());
-            
+
             if (player && player.playbackRate !== undefined) {
                 player.playbackRate = speed;
                 const speedText = speed === 1 ? '正常速度' : `${speed}x 速度`;
                 showMessage(`播放速率已设置为 ${speedText}`, 'info');
             }
         });
-        
+
         speedSelect.setAttribute('data-initialized', 'true');
     }
-    
+
     // 记住进度功能已在setupRememberEpisodeProgressToggle中处理
 }
 
 function closeAllDropdowns() {
     const dropdowns = [
         'play-settings-dropdown',
-        'line-switch-dropdown', 
+        'line-switch-dropdown',
         'skip-control-dropdown'
     ];
-    
+
     dropdowns.forEach(id => {
         const dropdown = document.getElementById(id);
         if (dropdown && !dropdown.classList.contains('hidden')) {
@@ -1413,17 +1414,17 @@ function handleDocumentClick(event) {
     const skipControlContainer = document.querySelector('.skip-control-container');
     const playerRegion = document.getElementById('player-region');
     const playerContainer = document.getElementById('player');
-    
+
     // 检查是否点击了播放器区域
-    const isPlayerAreaClick = (playerRegion && playerRegion.contains(event.target)) || 
-                             (playerContainer && playerContainer.contains(event.target));
-    
+    const isPlayerAreaClick = (playerRegion && playerRegion.contains(event.target)) ||
+        (playerContainer && playerContainer.contains(event.target));
+
     // 如果点击了播放器区域，直接关闭所有下拉菜单
     if (isPlayerAreaClick) {
         closeAllDropdowns();
         return;
     }
-    
+
     // 如果点击不在任何下拉容器内，关闭所有下拉菜单
     if (playSettingsContainer && !playSettingsContainer.contains(event.target)) {
         const dropdown = document.getElementById('play-settings-dropdown');
@@ -1431,14 +1432,14 @@ function handleDocumentClick(event) {
             dropdown.classList.add('hidden');
         }
     }
-    
+
     if (lineSwitchContainer && !lineSwitchContainer.contains(event.target)) {
         const dropdown = document.getElementById('line-switch-dropdown');
         if (dropdown && !dropdown.classList.contains('hidden')) {
             dropdown.classList.add('hidden');
         }
     }
-    
+
     if (skipControlContainer && !skipControlContainer.contains(event.target)) {
         const dropdown = document.getElementById('skip-control-dropdown');
         if (dropdown && !dropdown.classList.contains('hidden')) {
@@ -1454,23 +1455,23 @@ function handleDocumentTouch(event) {
     const skipControlContainer = document.querySelector('.skip-control-container');
     const playerRegion = document.getElementById('player-region');
     const playerContainer = document.getElementById('player');
-    
+
     // 检查是否触摸了播放器区域
-    const isPlayerAreaTouch = (playerRegion && playerRegion.contains(event.target)) || 
-                             (playerContainer && playerContainer.contains(event.target));
-    
+    const isPlayerAreaTouch = (playerRegion && playerRegion.contains(event.target)) ||
+        (playerContainer && playerContainer.contains(event.target));
+
     // 如果触摸了播放器区域，直接关闭所有下拉菜单
     if (isPlayerAreaTouch) {
         closeAllDropdowns();
         return;
     }
-    
+
     // 如果触摸不在任何下拉容器内，关闭所有下拉菜单
-    const isOutsideAllContainers = 
+    const isOutsideAllContainers =
         (!playSettingsContainer || !playSettingsContainer.contains(event.target)) &&
         (!lineSwitchContainer || !lineSwitchContainer.contains(event.target)) &&
         (!skipControlContainer || !skipControlContainer.contains(event.target));
-    
+
     if (isOutsideAllContainers) {
         closeAllDropdowns();
     }
@@ -1481,7 +1482,7 @@ function retryLastAction() {
 
     const errorEl = document.getElementById('error');
     if (errorEl) errorEl.style.display = 'none';
-    
+
     if (!lastFailedAction) {
         if (player && player.currentSrc) {
             console.log("重试：重新加载当前视频源。");
