@@ -1,0 +1,11 @@
+# Cloudflare Pages Redirects Configuration
+
+# Redirect root to main.html for Stage 1 testing
+/ /main.html 302
+
+# API proxy redirects (for future API integration)
+/api/search/* https://api.example.com/search/:splat 200
+/api/detail/* https://api.example.com/detail/:splat 200
+
+# Fallback for SPA routing
+/main/* /main.html 200

@@ -1,0 +1,22 @@
+{
+  "name": "x-video-player",
+  "version": "1.0.0",
+  "description": "X - 纯粹的在线播放器 (左右两栏布局版本)",
+  "main": "main.html",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "serve": "npx serve .",
+    "deploy": "wrangler pages deploy . --project-name=x-video-player"
+  },
+  "keywords": [
+    "video",
+    "player",
+    "streaming",
+    "vidstack"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
