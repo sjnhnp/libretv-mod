@@ -371,9 +371,21 @@ async function search() {
 // 执行搜索请求
 async function performSearch(query, selectedAPIs) {
     const searchPromises = selectedAPIs.map(apiId => {
-        const apiUrl = `/api/search?wd=${encodeURIComponent(query)}&source=${apiId}`;
+        // 使用代理转发API请求
+        const apiBaseUrl = API_SITES[apiId]?.api || '';
+        if (!apiBaseUrl) {
+            return Promise.resolve({
+                code: 400,
+                msg: `API源 ${apiId} 未找到或配置无效`,
+                list: [],
+                apiId: apiId
+            });
+        }
         
-        return fetch(apiUrl)
+        const searchPath = `?ac=videolist&wd=${encodeURIComponent(query)}`;
+        const proxyUrl = `/proxy/${encodeURIComponent(apiBaseUrl + searchPath)}`;
+        
+        return fetch(proxyUrl)
             .then(response => response.json())
             .then(data => ({ 
                 ...data, 
@@ -544,9 +556,16 @@ async function getVideoDetail(id, sourceCode, itemData) {
     }
 
     try {
-        let url = `/api/detail?id=${id}&source=${sourceCode}`;
-
-        const response = await fetch(url);
+        // 使用代理获取详情
+        const apiBaseUrl = API_SITES[sourceCode]?.api || '';
+        if (!apiBaseUrl) {
+            throw new Error(`API源 ${sourceCode} 未找到或配置无效`);
+        }
+        
+        const detailPath = `?ac=videolist&ids=${id}`;
+        const proxyUrl = `/proxy/${encodeURIComponent(apiBaseUrl + detailPath)}`;
+        
+        const response = await fetch(proxyUrl);
         const data = await response.json();
 
         if (data.code !== 200) {
@@ -604,12 +623,300 @@ async function getVideoDetail(id, sourceCode, itemData) {
     }
 }
 
-// 暴露全局函数
-window.resetToHome = resetToHome;
-window.playVideo = playVideo;
-window.showToast = showToast;
-window.search = search;
-window.searchFromHistory = searchFromHistory;
+// 历史记录面板
+function showHistoryPanel() {
+    showToast('历史记录功能正在开发中', 'info');
+    
+    // 创建历史记录面板
+    const historyPanel = document.createElement('div');
+    historyPanel.id = 'historyPanel';
+    historyPanel.className = 'panel-overlay';
+    
+    historyPanel.innerHTML = `
+        <div class="panel-container">
+            <div class="panel-header">
+                <h2 class="panel-title">观看历史</h2>
+                <button class="panel-close-btn" id="closeHistoryBtn">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="panel-content">
+                <p class="text-center text-gray-400 py-10">历史记录功能正在开发中...</p>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(historyPanel);
+    
+    // 添加关闭按钮事件
+    const closeBtn = document.getElementById('closeHistoryBtn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            document.body.removeChild(historyPanel);
+        });
+    }
+    
+    // 点击面板外部关闭
+    historyPanel.addEventListener('click', (e) => {
+        if (e.target === historyPanel) {
+            document.body.removeChild(historyPanel);
+        }
+    });
+    if (!document.getElementById('panel-styles')) {
+        style.id = 'panel-styles';
+        style.textContent = `
+            .panel-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0, 0, 0, 0.7);
+                z-index: 1000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: fadeIn 0.2s ease-out;
+            }
+            
+            .panel-container {
+                width: 90%;
+                max-width: 500px;
+                max-height: 80vh;
+                background-color: var(--bg-secondary);
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+                animation: slideUp 0.3s ease-out;
+            }
+            
+            .panel-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 16px 20px;
+                border-bottom: 1px solid var(--border-color);
+            }
+            
+            .panel-title {
+                font-size: 18px;
+                font-weight: 600;
+                color: var(--text-primary);
+            }
+            
+          n {
+t;
+        one;
+                color: var(--text-secondary);
+                cursor: pointer;
+    4px;
+               0%;
+                display: flex;
+                align-items: center;
+    enter;
+            }
+            
+    r {
+              hover);
+            }
+    
+            .pnt {
+                padding: 20px;
+                overf: auto;
+                max-height: calc(80vh - 60px);
+            }
+            
+           
+     }
+    
+            }
+            
+            @keyframes slid{
+                from { transform: translateY(30px); opacity: 0; }
+                to { tran }
+            }
+        `;
+        document.head.apd(style);
+    }
+}
+
+// 设置面板
+funct
+nfo');
+    
+    // 创建设置面板
+v');
+    settingsPanel.id = 'settingsPanel';
+    settingsPanel.className = 'panel-overlay';
+    
+    settingsPanelTML = `
+        <div class="panel-container">
+            <div class="r">
+                <h2 class="panel-title">设置</h2>
+     tn">
+    ">
+                        <path stroke-linecap="round" stroke-linejoin=path>
+                    </svg>
+                </button>
+     iv>
+    nt">
+                <div class="
+   omHistory;Fr searchory =stomHisearchFr;
+window.= searchsearch 
+window.= showToast;owToast 
+window.sho; playVide =ideoyVdow.plaHome;
+win= resetToresetToHome dow.全局函数
+win 暴露
+//
+}
+}          });
+
+  `, 'info');'}'开启' : '关闭nabled ? gErinte告过滤已${adFilst(`广showToa       
+     );bledlteringEna', adFiedabllteringEn('adFi.setItemlStorage     loca     cked;
+  t.che.targe = enablederingE     adFilt  
+     , (e) => {r('change'steneLiaddEventggle.  adFilterToed;
+      nabladFilteringE = edle.checkFilterTogg        ad {
+gle)terTogif (adFille');
+    rToggyId('adFiltetElementBgeent. documggle =adFilterTo   const   
+ 
+    }
+  ;
+        })`, 'info');开启' : '关闭'} ? 'yEnabledlautop已${a`自动播放owToast(          shabled);
+  yEn autoplaEnabled',utoplay.setItem('arageocalSto           l;
+ et.checkeded = e.targtoplayEnabl        au   ) => {
+ e', (ener('changventListedE.adTogglelay  autop
+      Enabled;autoplayked = ggle.checplayTo  auto      {
+layToggle) autopf (  i
+  yToggle');toplaau('lementByIdgetEument.ggle = doct autoplayTo  cons件
+   // 添加设置切换事    
+   e);
+    }
+ndChild(styld.appeument.hea doc      ;
+ 
+        `    }       
+ ow-y: auto;    overfl            t: 200px;
+-heigh   max          ist {
+   pi-sources-l        .a          
+     }
+    
+         );nslateX(20pxsform: tra      tran        efore {
+  h:checked:be-switc   .toggl         
+     }
+               
+    s;rm 0.3on: transfo    transiti           white;
+  round-color:     backg      px;
+     eft: 2    l        ;
+     top: 2px            
+   %;ius: 50 border-rad            
+   t: 16px;igh        he
+        dth: 16px;wi                solute;
+absition:           po   '';
+     content:             efore {
+  :be-switch      .toggl    
+           }
+              b82f6);
+ nt-color, #3r(--accecolor: vaund-ckgro    ba      ed {
+      ckh:chewitcgle-s       .tog               
+       }
+    3s;
+   d-color 0.ackgroun bransition:           tter;
+     r: poin       curso;
+         ve: relati  position         
+     us: 20px;border-radi              rtiary);
+   var(--bg-tend-color:  backgrou            : 20px;
+   height               px;
+   width: 40            none;
+  earance:       app         witch {
+.toggle-s                
+ 
+                }nter;
+   r: poisour       c
+         er;s: centn-item     alig    
+       ace-between;spfy-content:      justi          y: flex;
+ pla       dis   {
+      bel lags-settin     .         
+     
+          });
+       border-color var(--lid1px so-bottom: rder         bo    
+   10px 0;   padding:         em {
+     settings-it      .
+                 }
+          mary);
+   r(--text-pri: va     color          px;
+ : 12in-bottom      marg        : 600;
+  nt-weight fo              ze: 16px;
+ t-si       fon         
+oup-title {-grings   .sett              
+    
+          }
+     tom: 24px;in-bot   marg          
+   s-group {ing   .sett         `
+ ntent =tyle.textCo       ss';
+ yle'settings-stid =  style.      )) {
+ -styles'tingsntById('setnt.getEleme if (!docume);
+   ent('style'.createElemocumentt style = d样式
+    cons// 添加设置面板特有    
+
+    }
+    
+        };tem)eIld(sourchiList.appendCapiSources    ;
+           `         label>
+    </           checked>
+ " ${id}-api-id="ta" daleource-toggswitch api-se-lass="toggleckbox" cype="ch t   <input               
+  /span>me}<an>${site.na     <sp             ">
+  abel"settings-lass=bel cl        <la    = `
+     innerHTMLm.eIte  sourc     ';
+     ings-itemettName = 'sItem.class   source   );
+      t('div'mennt.createEleumeItem = docsourcet       cons)) {
+      es(API_SITESject.entri of Obite], snst [id     for (co  esList) {
+ Sourcpi if (ast');
+   cesLi('apiSourentByIdment.getElemt = docurcesLisapiSou    const 填充API源列表
+   
+    // ;
+    }
+    }));
+     gsPanelettinChild(soveremdy..bodocument       {
+      ngsPanel)=== settie.target if (     > {
+   ) = (eclick',ener('Listentanel.addEv   settingsP击面板外部关闭
+ / 点
+    
+    /}  
+          });ngsPanel);
+d(settimoveChilt.body.remen        docu> {
+    k', () =icListener('claddEventcloseBtn. {
+        f (closeBtn)');
+    iSettingsBtntById('close.getElemen = documentst closeBtnon   c闭按钮事件
+   // 添加关 
+  l);
+   ttingsPaneChild(seend.body.app   document   
+ 
+ iv>
+    `;  </d      </div>
+       iv>
+          </d           </div>
+              >
+      态添加 --在JS中动!-- API源将         <            ">
+   stpiSourcesLi id="aces-list"pi-sour"a=<div class              </p>
+      >选择要使用的视频源0 mb-3"40t-gray-xt-sm tex"teclass=         <p           置</h3>
+ ">API 源设tle-tings-groupss="settila <h3 c        
+           >s-group"ss="setting cla      <div          
+            iv>
+    /d         <       </div>
+             l>
+           </labe          
+          witch">-sgle class="togterToggle"="adFil idbox"ckt type="che <inpu                          pan>
+ </san>广告过滤    <sp                        ">
+label="settings-<label class                       em">
+ ttings-itlass="se<div c                  >
+  </div                >
+    el </lab                  
+     " checked>itchswle-lass="toggyToggle" cutopla" id="acheckboxtype="t        <inpu                    集</span>
+ >自动播放下一span         <               ">
+    ngs-label="settibel class<la             
+           ">item"settings-div class=    <                </h3>
+le">播放设置tittings-group-="set   <h3 class              oup">tings-grsetanel-conteass="p     <div cl          </d"></6M6 6l12 12 18L18 "M6" d="2troke-width=ound" s"r 24 24Box="0 0or" viewColrenture="ctrok="none" s5" fill5 h- class="w-       <svg         ettingsB"closeSid=se-btn" "panel-clolass=   <button c        de-heanelpa.innerHdint('mereateEledocument.cPanel = st settings    con功能正在开发中', 'i面板wToast('设置    shoanel() {SettingsPion showilpendChpacity: 1;); oateY(0: translsformeUp y: 1; }opacit     to {        : 0; pacityrom { o    f       mes fadeIn { @keyfralow-yconteel-an        g-r(--bolor: vaund-cckgro  ba-btn:hovel-close   .pane     t: ctify-conten    jus        er-radius: 5 bordg: inadd       p     order: n        benransparund: tkgro        bac        se-bt  .panel-clo
 
 // 应用初始化
 document.addEventListener('DOMContentLoaded', function () {
@@ -653,6 +960,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const nextEpisodeBtn = document.getElementById('next-episode');
     if (nextEpisodeBtn) nextEpisodeBtn.addEventListener('click', playNextEpisode);
+    
+    // 初始化历史和设置按钮
+    const historyButton = document.getElementById('historyButton');
+    if (historyButton) {
+        historyButton.addEventListener('click', window.showHistoryPanel);
+    }
+    
+    const settingsButton = document.getElementById('settingsButton');
+    if (settingsButton) {
+        settingsButton.addEventListener('click', window.showSettingsPanel);
+    }
     
     console.log('主应用初始化完成');
 });
