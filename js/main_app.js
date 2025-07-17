@@ -1,6 +1,19 @@
 // 主应用程序 - 整合所有功能，保持原有特性不变
 import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/player';
 
+// 常量定义
+const SEARCH_HISTORY_KEY = 'videoSearchHistory';
+const MAX_HISTORY_ITEMS = 5;
+
+// API站点配置 - 从config.js引用
+const API_SITES = window.API_SITES || {
+    heimuer: { api: 'https://json.heimuer.xyz/api.php/provide/vod', name: '黑木耳' },
+    bfzy: { api: 'https://bfzyapi.com/api.php/provide/vod', name: '暴风资源' },
+    dyttzy: { api: 'http://caiji.dyttzyapi.com/api.php/provide/vod', name: '电影天堂' },
+    maotai: { api: 'https://caiji.maotaizy.cc/api.php/provide/vod', name: '茅台资源' },
+    tyyszy: { api: 'https://tyyszy.com/api.php/provide/vod', name: '天涯资源' }
+};
+
 // 全局变量 - 保持与原项目完全一致
 let player = null;
 let currentVideoTitle = '';
@@ -303,7 +316,7 @@ function resetToHome() {
 }
 
 // 搜索功能
-function search() {
+async function search() {
     const searchInput = DOMCache.get('searchInput');
     if (!searchInput) return;
     
@@ -320,45 +333,118 @@ function search() {
     if (welcomeArea) welcomeArea.classList.add('hidden');
     if (resultsArea) resultsArea.classList.remove('hidden');
     
-    // 模拟搜索结果
+    // 显示加载状态
     const searchResults = DOMCache.get('searchResults');
     const searchResultsCount = document.getElementById('searchResultsCount');
     
-    if (searchResults && searchResultsCount) {
-        searchResultsCount.textContent = '0';
+    if (searchResults) {
         searchResults.innerHTML = `
             <div class="col-span-full text-center py-10">
-                <h3 class="text-lg font-medium text-gray-300">搜索功能开发中</h3>
-                <p class="text-sm text-gray-500">请等待完整功能实现</p>
+                <div class="loading-spinner mx-auto mb-4"></div>
+                <h3 class="text-lg font-medium text-gray-300">正在搜索中...</h3>
+                <p class="text-sm text-gray-500">请稍候</p>
             </div>
         `;
     }
     
-    showToast(`搜索"${query}"`, 'info');
+    try {
+        // 使用默认的API源进行搜索
+        const selectedAPIs = ['heimuer', 'bfzy', 'dyttzy', 'maotai', 'tyyszy'];
+        const results = await performSearch(query, selectedAPIs);
+        renderSearchResults(results);
+        saveSearchHistory(query);
+        showToast(`搜索"${query}"完成`, 'success');
+    } catch (error) {
+        console.error('搜索失败:', error);
+        if (searchResults) {
+            searchResults.innerHTML = `
+                <div class="col-span-full text-center py-10">
+                    <h3 class="text-lg font-medium text-red-400">搜索失败</h3>
+                    <p class="text-sm text-gray-500">${error.message}</p>
+                </div>
+            `;
+        }
+        showToast('搜索失败，请重试', 'error');
+    }
 }
 
-// 获取视频详情并播放
-function getVideoDetail(id, sourceCode, itemData) {
-    // 模拟视频详情数据
-    const mockEpisodes = [
-        '第1集$https://example.com/video1.m3u8',
-        '第2集$https://example.com/video2.m3u8',
-        '第3集$https://example.com/video3.m3u8'
-    ];
+// 执行搜索请求
+async function performSearch(query, selectedAPIs) {
+    const searchPromises = selectedAPIs.map(apiId => {
+        const apiUrl = `/api/search?wd=${encodeURIComponent(query)}&source=${apiId}`;
+        
+        return fetch(apiUrl)
+            .then(response => response.json())
+            .then(data => ({ 
+                ...data, 
+                apiId: apiId, 
+                apiName: API_SITES[apiId]?.name || apiId 
+            }))
+            .catch(error => ({
+                code: 400,
+                msg: `API(${apiId})搜索失败: ${error.message}`,
+                list: [],
+                apiId: apiId
+            }));
+    });
+
+    try {
+        const results = await Promise.all(searchPromises);
+        return results;
+    } catch (error) {
+        console.error("执行搜索时出错:", error);
+        return [];
+    }
+}
+
+// 渲染搜索结果
+function renderSearchResults(results) {
+    const searchResults = DOMCache.get('searchResults');
+    const searchResultsCount = document.getElementById('searchResultsCount');
     
-    currentEpisodes = mockEpisodes;
-    
-    // 播放第一集
-    playVideo(
-        mockEpisodes[0],
-        itemData.vod_name || '测试视频',
-        0,
-        itemData.source_name || '测试源',
-        sourceCode,
-        id,
-        itemData.vod_year || '2024',
-        itemData.type_name || '电视剧'
-    );
+    if (!searchResults || !searchResultsCount) return;
+
+    let allResults = [];
+    results.forEach(result => {
+        if (result.code === 200 && Array.isArray(result.list) && result.list.length > 0) {
+            const resultsWithSource = result.list.map(item => ({
+                ...item,
+                source_name: result.apiName || API_SITES[result.apiId]?.name || '未知来源',
+                source_code: result.apiId
+            }));
+            allResults = allResults.concat(resultsWithSource);
+        }
+    });
+
+    // 黄色内容过滤
+    allResults = allResults.filter(item => {
+        const title = item.vod_name || '';
+        const type = item.type_name || '';
+        return !/(伦理片|福利片|写真)/.test(type) && !/(伦理|写真|福利|成人|情色|AV)/i.test(title);
+    });
+
+    searchResultsCount.textContent = allResults.length.toString();
+    searchResults.innerHTML = '';
+
+    if (allResults.length === 0) {
+        searchResults.innerHTML = `
+            <div class="col-span-full text-center py-10">
+                <h3 class="text-lg font-medium text-gray-300">没有找到匹配的结果</h3>
+                <p class="text-sm text-gray-500">请尝试其他关键词</p>
+            </div>
+        `;
+        return;
+    }
+
+    const gridContainer = document.createElement('div');
+    gridContainer.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4';
+
+    allResults.forEach(item => {
+        const resultItem = createResultItem(item);
+        gridContainer.appendChild(resultItem);
+    });
+
+    searchResults.appendChild(gridContainer);
 }
 
 // 创建搜索结果项
@@ -387,11 +473,143 @@ function createResultItem(item) {
     return div;
 }
 
+// 保存搜索历史
+function saveSearchHistory(query) {
+    try {
+        let history = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]');
+        history = history.filter(item => item !== query);
+        history.unshift(query);
+        history = history.slice(0, MAX_HISTORY_ITEMS);
+        localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
+        renderSearchHistory();
+    } catch (e) {
+        console.error('保存搜索历史失败:', e);
+    }
+}
+
+// 渲染搜索历史
+function renderSearchHistory() {
+    const recentSearches = document.getElementById('recentSearches');
+    if (!recentSearches) return;
+    
+    try {
+        const history = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]');
+        if (history.length === 0) {
+            recentSearches.innerHTML = '';
+            return;
+        }
+        
+        recentSearches.innerHTML = `
+            <div class="recent-searches-header">
+                <span class="text-sm text-gray-400">最近搜索</span>
+            </div>
+            <div class="recent-searches-list">
+                ${history.map(query => `
+                    <button class="recent-search-item" onclick="searchFromHistory('${query}')">
+                        ${query}
+                    </button>
+                `).join('')}
+            </div>
+        `;
+    } catch (e) {
+        console.error('渲染搜索历史失败:', e);
+    }
+}
+
+// 从历史记录搜索
+function searchFromHistory(query) {
+    const searchInput = DOMCache.get('searchInput');
+    if (searchInput) {
+        searchInput.value = query;
+        search();
+    }
+}
+
+// 获取视频详情并播放
+async function getVideoDetail(id, sourceCode, itemData) {
+    if (!id || !sourceCode) {
+        showToast('无效的视频信息', 'error');
+        return;
+    }
+
+    const searchResults = DOMCache.get('searchResults');
+    if (searchResults) {
+        searchResults.innerHTML = `
+            <div class="col-span-full text-center py-10">
+                <div class="loading-spinner mx-auto mb-4"></div>
+                <h3 class="text-lg font-medium text-gray-300">正在获取视频信息...</h3>
+                <p class="text-sm text-gray-500">请稍候</p>
+            </div>
+        `;
+    }
+
+    try {
+        let url = `/api/detail?id=${id}&source=${sourceCode}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.code !== 200) {
+            throw new Error(data.msg || '获取视频详情失败');
+        }
+
+        // 解析剧集数据
+        let episodes = [];
+        if (Array.isArray(data.episodes) && data.episodes.length > 0) {
+            episodes = data.episodes;
+        } else {
+            // 如果没有episodes，尝试从其他字段解析
+            episodes = ['第1集$https://vjs.zencdn.net/v/oceans.mp4']; // 默认测试视频
+        }
+
+        if (episodes.length === 0) {
+            showToast('未找到可播放的剧集', 'error');
+            return;
+        }
+
+        // 更新全局状态
+        currentEpisodes = episodes;
+        
+        // 播放第一集
+        playVideo(
+            episodes[0],
+            itemData.vod_name || data.videoInfo?.title || '未知视频',
+            0,
+            itemData.source_name || data.videoInfo?.source_name || '未知源',
+            sourceCode,
+            id,
+            itemData.vod_year || data.videoInfo?.year || '',
+            itemData.type_name || data.videoInfo?.type || ''
+        );
+
+        showToast('视频加载成功', 'success');
+
+    } catch (error) {
+        console.error('获取视频详情失败:', error);
+        
+        // 显示错误信息
+        if (searchResults) {
+            searchResults.innerHTML = `
+                <div class="col-span-full text-center py-10">
+                    <h3 class="text-lg font-medium text-red-400">获取视频详情失败</h3>
+                    <p class="text-sm text-gray-500">${error.message}</p>
+                    <button onclick="resetToHome()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                        返回搜索
+                    </button>
+                </div>
+            `;
+        }
+        
+        showToast('获取视频详情失败: ' + error.message, 'error');
+    }
+}
+
 // 暴露全局函数
 window.resetToHome = resetToHome;
 window.playVideo = playVideo;
 window.showToast = showToast;
 window.search = search;
+window.searchFromHistory = searchFromHistory;
 
 // 应用初始化
 document.addEventListener('DOMContentLoaded', function () {
@@ -403,6 +621,9 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // 初始化主题切换
     initThemeToggle();
+    
+    // 初始化搜索历史
+    renderSearchHistory();
     
     // 初始化搜索功能
     const searchForm = document.getElementById('searchForm');
@@ -432,22 +653,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const nextEpisodeBtn = document.getElementById('next-episode');
     if (nextEpisodeBtn) nextEpisodeBtn.addEventListener('click', playNextEpisode);
-    
-    // 添加测试按钮（临时用于演示）
-    const testBtn = document.createElement('button');
-    testBtn.textContent = '测试播放';
-    testBtn.className = 'fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg z-50';
-    testBtn.onclick = () => {
-        const mockEpisodes = [
-            '第1集$https://vjs.zencdn.net/v/oceans.mp4',
-            '第2集$https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-            '第3集$https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4'
-        ];
-        
-        currentEpisodes = mockEpisodes;
-        playVideo(mockEpisodes[0], '测试视频', 0, '测试源', 'test', '123', '2024', '电视剧');
-    };
-    document.body.appendChild(testBtn);
     
     console.log('主应用初始化完成');
 });

@@ -237,10 +237,34 @@ body {
 
 /* 最近搜索样式 */
 .recent-searches {
+  margin-top: 1rem;
+}
+
+.recent-searches-header {
+  margin-bottom: 0.75rem;
+}
+
+.recent-searches-list {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 1rem;
+}
+
+.recent-search-item {
+  padding: 0.5rem 0.75rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--border-primary);
+  border-radius: 16px;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.recent-search-item:hover {
+  background: var(--glass-border);
+  color: var(--text-primary);
+  border-color: var(--border-secondary);
 }
 
 /* 内容区域样式 */
@@ -926,6 +950,28 @@ input:checked + .slider:before {
 /* 隐藏类 */
 .hidden {
   display: none !important;
+}
+
+/* 文本截断类 */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 /* 过渡动画 */
