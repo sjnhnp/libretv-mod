@@ -1503,6 +1503,74 @@ function retryLastAction() {
     }
 }
 
+// === 移动端手势/双击快进快退/全屏 ===
+
+(function setupMobileGestureShortcuts(){
+    const playerDiv = document.getElementById('player');
+    if (!playerDiv) return;
+
+    let lastTap = 0;
+    let tapTimeout = null;
+    let lastTapXY = null;
+
+    function isMobile() {
+        return /iPhone|iPad|Android|Mobile/i.test(navigator.userAgent);
+    }
+    // 仅手机/平板生效
+    if (!isMobile()) return;
+
+    // 单/双击检测（不用dblclick因移动端兼容性）
+    playerDiv.addEventListener('touchend', (e) => {
+        const now = Date.now();
+        // 获取触点位置
+        const touch = e.changedTouches[0];
+        const { clientX, clientY } = touch;
+        if (!lastTap || now - lastTap > 400) {
+            // 第一次tap，准备等待，保存位置
+            lastTap = now;
+            lastTapXY = {x: clientX, y: clientY};
+            if (tapTimeout) clearTimeout(tapTimeout);
+            tapTimeout = setTimeout(() => { 
+                lastTap = 0;
+                lastTapXY = null;
+            }, 400);
+        } else if (lastTap && now - lastTap <= 400) {
+            // 是双击！
+            // 用第一次tap的位置判断区域
+            const rect = playerDiv.getBoundingClientRect();
+            const relativeX = (lastTapXY.x - rect.left)/rect.width;
+            // 左<0.33 右>0.66
+            if (relativeX < 0.33) {
+                // 左区快退
+                if (player && !isScreenLocked) {
+                    player.currentTime = Math.max(0, player.currentTime - 10);
+                    showToast('<< 快退10秒', 'info', 800);
+                }
+            } else if (relativeX > 0.66) {
+                // 右区快进
+                if (player && !isScreenLocked) {
+                    player.currentTime = Math.min(player.duration || 99999, player.currentTime + 10);
+                    showToast('快进10秒 >>', 'info', 800);
+                }
+            } else {
+                // 中区全屏切换
+                if (player) {
+                    if (player.state.fullscreen) {
+                        player.exitFullscreen();
+                        showToast('退出全屏', 'info', 800);
+                    } else {
+                        player.enterFullscreen();
+                        showToast('全屏', 'info', 800);
+                    }
+                }
+            }
+            lastTap = 0;
+            lastTapXY = null;
+            if (tapTimeout) clearTimeout(tapTimeout);
+        }
+    }, {passive:true});
+})();
+
 window.playNextEpisode = playNextEpisode;
 window.playPreviousEpisode = playPreviousEpisode;
 window.copyLinks = copyLinks;
