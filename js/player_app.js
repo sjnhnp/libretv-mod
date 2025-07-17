@@ -311,7 +311,7 @@ async function initPlayer(videoUrl, title) {
             preload: 'auto',
             layout: new VidstackPlayerLayout({
                 seekTime: 10,
-                clickToFullscreen: true
+                //clickToFullscreen: true
             }),
             // layout: new PlyrLayout(),
             // controls: true,
