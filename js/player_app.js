@@ -311,7 +311,6 @@ async function initPlayer(videoUrl, title) {
             preload: 'auto',
             layout: new VidstackPlayerLayout({
                 seekTime: 10,
-                controls: [ 'play-large', 'play', 'progress', 'current-time', 'mute+volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen', ],
                 //clickToFullscreen: true
             }),
             // layout: new PlyrLayout(),
@@ -334,7 +333,7 @@ async function initPlayer(videoUrl, title) {
         window.player = player;
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
-
+      
         // 应用保存的播放速率
         const savedSpeed = localStorage.getItem('playbackSpeed') || '1';
         if (player.playbackRate !== undefined) {
@@ -1385,9 +1384,9 @@ function setupPlaySettingsEvents() {
             }
         });
 
+
         speedSelect.setAttribute('data-initialized', 'true');
     }
-
     // 记住进度功能已在setupRememberEpisodeProgressToggle中处理
 }
 
