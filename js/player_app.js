@@ -1504,42 +1504,34 @@ function retryLastAction() {
 }
 
 // === 移动端手势/双击快进快退/全屏 ===
-
+// 贴在 player_app.js 末尾，不需要再setupAllUI手动调用，IIFE自动执行
 (function setupMobileGestureShortcuts(){
     const playerDiv = document.getElementById('player');
     if (!playerDiv) return;
 
     let lastTap = 0;
     let tapTimeout = null;
-    let lastTapXY = null;
 
     function isMobile() {
         return /iPhone|iPad|Android|Mobile/i.test(navigator.userAgent);
     }
-    // 仅手机/平板生效
     if (!isMobile()) return;
 
-    // 单/双击检测（不用dblclick因移动端兼容性）
     playerDiv.addEventListener('touchend', (e) => {
         const now = Date.now();
-        // 获取触点位置
         const touch = e.changedTouches[0];
-        const { clientX, clientY } = touch;
+        const { clientX } = touch;
+
         if (!lastTap || now - lastTap > 400) {
-            // 第一次tap，准备等待，保存位置
+            // 第一次 tap
             lastTap = now;
-            lastTapXY = {x: clientX, y: clientY};
             if (tapTimeout) clearTimeout(tapTimeout);
-            tapTimeout = setTimeout(() => { 
-                lastTap = 0;
-                lastTapXY = null;
-            }, 400);
-        } else if (lastTap && now - lastTap <= 400) {
-            // 是双击！
-            // 用第一次tap的位置判断区域
+            tapTimeout = setTimeout(() => { lastTap = 0; }, 400);
+        } else {
+            // 第二次 tap（双击）
             const rect = playerDiv.getBoundingClientRect();
-            const relativeX = (lastTapXY.x - rect.left)/rect.width;
-            // 左<0.33 右>0.66
+            const relativeX = (clientX - rect.left) / rect.width;
+
             if (relativeX < 0.33) {
                 // 左区快退
                 if (player && !isScreenLocked) {
@@ -1554,7 +1546,7 @@ function retryLastAction() {
                 }
             } else {
                 // 中区全屏切换
-                if (player) {
+                if (player && !isScreenLocked) {
                     if (player.state.fullscreen) {
                         player.exitFullscreen();
                         showToast('退出全屏', 'info', 800);
@@ -1565,10 +1557,12 @@ function retryLastAction() {
                 }
             }
             lastTap = 0;
-            lastTapXY = null;
             if (tapTimeout) clearTimeout(tapTimeout);
+            // 阻止冒泡至video的默认事件
+            e.preventDefault();
+            e.stopPropagation();
         }
-    }, {passive:true});
+    }, {passive:false});
 })();
 
 window.playNextEpisode = playNextEpisode;
