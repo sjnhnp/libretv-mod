@@ -309,6 +309,8 @@ async function initPlayer(videoUrl, title) {
             title: title,
             autoplay: true,
             preload: 'auto',
+            seekTime: 10,  
+            clickToFullscreen: true, 
             layout: new VidstackPlayerLayout(),
             // layout: new PlyrLayout(),
             // controls: true,
@@ -1502,68 +1504,6 @@ function retryLastAction() {
         }
     }
 }
-
-// === 移动端手势/双击快进快退/全屏 ===
-// 贴在 player_app.js 末尾，不需要再setupAllUI手动调用，IIFE自动执行
-(function setupMobileGestureShortcuts(){
-    const playerDiv = document.getElementById('player');
-    if (!playerDiv) return;
-
-    let lastTap = 0;
-    let tapTimeout = null;
-
-    function isMobile() {
-        return /iPhone|iPad|Android|Mobile/i.test(navigator.userAgent);
-    }
-    if (!isMobile()) return;
-
-    playerDiv.addEventListener('touchend', (e) => {
-        const now = Date.now();
-        const touch = e.changedTouches[0];
-        const { clientX } = touch;
-
-        if (!lastTap || now - lastTap > 400) {
-            // 第一次 tap
-            lastTap = now;
-            if (tapTimeout) clearTimeout(tapTimeout);
-            tapTimeout = setTimeout(() => { lastTap = 0; }, 400);
-        } else {
-            // 第二次 tap（双击）
-            const rect = playerDiv.getBoundingClientRect();
-            const relativeX = (clientX - rect.left) / rect.width;
-
-            if (relativeX < 0.33) {
-                // 左区快退
-                if (player && !isScreenLocked) {
-                    player.currentTime = Math.max(0, player.currentTime - 10);
-                    showToast('<< 快退10秒', 'info', 800);
-                }
-            } else if (relativeX > 0.66) {
-                // 右区快进
-                if (player && !isScreenLocked) {
-                    player.currentTime = Math.min(player.duration || 99999, player.currentTime + 10);
-                    showToast('快进10秒 >>', 'info', 800);
-                }
-            } else {
-                // 中区全屏切换
-                if (player && !isScreenLocked) {
-                    if (player.state.fullscreen) {
-                        player.exitFullscreen();
-                        showToast('退出全屏', 'info', 800);
-                    } else {
-                        player.enterFullscreen();
-                        showToast('全屏', 'info', 800);
-                    }
-                }
-            }
-            lastTap = 0;
-            if (tapTimeout) clearTimeout(tapTimeout);
-            // 阻止冒泡至video的默认事件
-            e.preventDefault();
-            e.stopPropagation();
-        }
-    }, {passive:false});
-})();
 
 window.playNextEpisode = playNextEpisode;
 window.playPreviousEpisode = playPreviousEpisode;
