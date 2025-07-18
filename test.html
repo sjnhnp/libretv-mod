@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API测试页面</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; margin: 10px; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; }
+    </style>
+</head>
+<body>
+    <h1>API功能测试</h1>
+    
+    <div class="test-section">
+        <h2>搜索测试</h2>
+        <input type="text" id="searchQuery" placeholder="输入搜索关键词" value="复仇者联盟">
+        <button onclick="testSearch()">测试搜索</button>
+        <div id="searchResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>详情测试</h2>
+        <input type="text" id="videoId" placeholder="视频ID" value="1">
+        <input type="text" id="sourceCode" placeholder="源代码" value="heimuer">
+        <button onclick="testDetail()">测试详情</button>
+        <div id="detailResult" class="result"></div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        async function testSearch() {
+            const query = document.getElementById('searchQuery').value;
+            const resultDiv = document.getElementById('searchResult');
+            
+            resultDiv.innerHTML = '搜索中...';
+            
+            try {
+                const response = await fetch(`/api/search?wd=${encodeURIComponent(query)}&source=heimuer`);
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <h3>搜索结果:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">错误: ${error.message}</p>`;
+            }
+        }
+        
+        async function testDetail() {
+            const id = document.getElementById('videoId').value;
+            const source = document.getElementById('sourceCode').value;
+            const resultDiv = document.getElementById('detailResult');
+            
+            resultDiv.innerHTML = '获取详情中...';
+            
+            try {
+                const response = await fetch(`/api/detail?id=${id}&source=${source}`);
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <h3>详情结果:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">错误: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试 - X 影视搜索播放平台</title>
+    
+    <!-- 样式表 -->
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/player_styles.css">
+    <link rel="stylesheet" href="css/main_layout.css">
+    <link rel="stylesheet" href="css/panel_styles.css">
+    <link rel="stylesheet" href="https://cdn.vidstack.io/player/theme.css" />
+    <link rel="stylesheet" href="https://cdn.vidstack.io/player/video.css" />
+    
+    <!-- 脚本 -->
+    <script>window.__ENV__ = window.__ENV__ || {}; window.__ENV__.PASSWORD = "";</script>
+    <script src="libs/tailwindcss.min.js"></script>
+    <script src="libs/sha256.min.js" defer></script>
+</head>
+<body class="page-bg text-white font-sans min-h-screen" data-theme="dark">
+    <!-- 主容器 -->
+    <div class="main-container">
+        <!-- 顶部导航栏 -->
+        <header class="top-navbar">
+            <nav class="navbar-left">
+                <button id="historyButton" class="nav-btn" aria-label="观看历史" type="button">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="nav-text">历史</span>
+                </button>
+            </nav>
+            
+            <div class="navbar-center">
+                <a href="#" onclick="resetToHome(); return false;" class="logo-container" aria-label="返回首页">
+                    <div class="logo-icon">
+                        <svg class="w-8 h-8 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                    </div>
+                    <h1 class="logo-text">X</h1>
+                </a>
+            </div>
+            
+            <nav class="navbar-right">
+                <button id="themeToggle" class="nav-btn" aria-label="切换主题" type="button">
+                    <svg class="theme-icon-dark w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                    </svg>
+                    <svg class="theme-icon-light w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                </button>
+                <button id="settingsButton" class="nav-btn" aria-label="打开设置" type="button">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span class="nav-text">设置</span>
+                </button>
+            </nav>
+        </header>     
+   
+        <!-- 主内容区域 -->
+        <main class="main-content">
+            <!-- 左栏：搜索和列表 -->
+            <aside class="left-panel" id="leftPanel">
+                <!-- 搜索区域 -->
+                <section class="search-section">
+                    <form id="searchForm" class="search-form">
+                        <div class="search-input-container">
+                            <button id="homeButton" type="button" onclick="resetToHome()" class="search-home-btn" aria-label="返回首页">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                                    </path>
+                                </svg>
+                            </button>
+                            <input type="text" id="searchInput" class="search-input"
+                                placeholder="搜索你想看的影视内容..." autocomplete="off" aria-label="视频搜索框">
+                            <button type="submit" class="search-submit-btn" aria-label="搜索按钮">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+                    <div id="recentSearches" class="recent-searches" aria-label="最近搜索记录"></div>
+                </section>
+                
+                <!-- 搜索结果区 -->
+                <section id="resultsArea" class="results-section hidden">
+                    <div class="results-header">
+                        <div class="results-count">
+                            <span id="searchResultsCount">0</span> 个结果
+                        </div>
+                    </div>
+                    <div id="searchResults" class="search-results"></div>
+                </section>
+                
+                <!-- 欢迎页面 -->
+                <section id="welcomeArea" class="welcome-section">
+                    <div class="welcome-content">
+                        <div class="welcome-icon">
+                            <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                </path>
+                            </svg>
+                        </div>
+                        <h2 class="welcome-title">欢迎使用 X</h2>
+                        <p class="welcome-subtitle">搜索你想看的影视内容</p>
+                        <p class="welcome-tip">测试版本 - API功能调试中</p>
+                        <button onclick="testSearch()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                            测试搜索功能
+                        </button>
+                    </div>
+                </section>
+            </aside>
+            
+            <!-- 右栏：播放器和控制 -->
+            <main class="right-panel" id="rightPanel">
+                <!-- 播放器区域 -->
+                <section class="player-section" id="playerSection">
+                    <div class="player-container">
+                        <!-- 播放器头部控制 -->
+                        <div class="player-header">
+                            <div class="player-title-info">
+                                <h3 id="currentVideoTitle" class="player-title">选择视频开始播放</h3>
+                                <span id="episode-info-span" class="episode-info hidden"></span>
+                            </div>
+                            <div class="player-header-controls">
+                                <button id="fullscreen-button" class="player-header-btn" aria-label="全屏">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 播放器主体 -->
+                        <div id="player-region" class="player-region">
+                            <div id="player" class="video-player"></div>
+                            
+                            <!-- 加载和错误覆盖层 -->
+                            <div id="loading" class="loading-container hidden">
+                                <div class="loading-spinner"></div>
+                                <div class="loading-text">加载中...</div>
+                            </div>
+                            <div id="error" class="error-container hidden">
+                                <div class="error-icon">⚠️</div>
+                                <div class="error-title">播放出错</div>
+                                <div class="error-message">请尝试其他线路或刷新页面</div>
+                                <button id="retry-button" class="error-retry-btn">重试</button>
+                            </div>
+                            
+                            <!-- 空状态 -->
+                            <div id="player-empty" class="player-empty-state">
+                                <div class="empty-icon">
+                                    <svg class="w-20 h-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                                        </path>
+                                    </svg>
+                                </div>
+                                <h3 class="empty-title">暂无播放内容</h3>
+                                <p class="empty-subtitle">从左侧搜索并选择视频开始播放</p>
+                                <button onclick="testPlayer()" class="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                                    测试播放器
+                                </button>
+                            </div>
+                        </div>        
+                
+                        <!-- 播放控制区 -->
+                        <div class="player-controls hidden" id="playerControls">
+                            <!-- 剧集导航 -->
+                            <div class="episode-navigation">
+                                <button id="prev-episode" class="episode-nav-btn" aria-label="上一集">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                                        <line x1="5" y1="19" x2="5" y2="5"></line>
+                                    </svg>
+                                    <span>上一集</span>
+                                </button>
+                                <button id="next-episode" class="episode-nav-btn" aria-label="下一集">
+                                    <span>下一集</span>
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                                        <line x1="19" y1="5" x2="19" y2="19"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- 剧集选择区域 -->
+                <section id="episodes-container" class="episodes-section hidden">
+                    <div class="episodes-header">
+                        <h2 class="episodes-title">选集</h2>
+                        <span id="episodes-count" class="episodes-count"></span>
+                    </div>
+                    <div id="episode-grid" class="episode-grid"></div>
+                </section>
+            </main>
+        </main>
+    </div>
+    
+    <!-- Toast 消息 -->
+    <div id="toast" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 text-white z-[2147483647] pointer-events-none">
+        <span id="toastMessage"></span>
+    </div>
+    
+    <!-- 测试脚本 -->
+    <script>
+        // 测试搜索功能
+        function testSearch() {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.value = '斗罗大陆';
+                if (window.search) {
+                    window.search();
+                } else {
+                    console.log('搜索功能未加载');
+                    if (window.showToast) {
+                        window.showToast('搜索功能未加载，请检查main_app.js', 'error');
+                    }
+                }
+            }
+        }
+        
+        // 测试播放器
+        function testPlayer() {
+            if (window.playVideo) {
+                window.playVideo(
+                    '测试视频$https://vjs.zencdn.net/v/oceans.mp4',
+                    '测试视频 - 海洋',
+                    0,
+                    '测试源',
+                    'test',
+                    'test123',
+                    '2024',
+                    '测试'
+                );
+            } else {
+                console.log('播放功能未加载');
+                if (window.showToast) {
+                    window.showToast('播放功能未加载，请检查main_app.js', 'error');
+                }
+            }
+        }
+    </script>
+    
+    <!-- 应用脚本 -->
+    <script src="js/config.js" defer></script>
+    <script src="js/api_source_manager.js" defer></script>
+    <script src="js/history_manager.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script type="module" src="js/main_app.js"></script>
+    <script src="js/fix.js" defer></script>
+</body>
+</html>
