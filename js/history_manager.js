@@ -2,7 +2,7 @@
 
 // 常量定义
 const HISTORY_STORAGE_KEY = 'viewingHistory';
-const MAX_HISTORY_ITEMS = 50; // 最多保存50条历史记录
+const MAX_WATCH_HISTORY_ITEMS = 50; // 最多保存50条历史记录
 
 /**
  * 添加观看历史
@@ -41,8 +41,8 @@ function addToViewingHistory(videoInfo) {
         history.unshift(historyItem);
         
         // 限制历史记录数量
-        if (history.length > MAX_HISTORY_ITEMS) {
-            history = history.slice(0, MAX_HISTORY_ITEMS);
+        if (history.length > MAX_WATCH_HISTORY_ITEMS) {
+            history = history.slice(0, MAX_WATCH_HISTORY_ITEMS);
         }
         
         // 保存回本地存储

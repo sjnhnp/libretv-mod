@@ -3,7 +3,7 @@ import { VidstackPlayer, VidstackPlayerLayout } from 'https://cdn.vidstack.io/pl
 
 // 常量定义
 const SEARCH_HISTORY_KEY = 'videoSearchHistory';
-const MAX_HISTORY_ITEMS = 5;
+const MAX_SEARCH_HISTORY_ITEMS = 5;
 
 // API站点配置 - 从config.js引用
 const API_SITES = window.API_SITES || {
@@ -136,8 +136,9 @@ function playVideo(episodeString, title, episodeIndex, sourceName = '', sourceCo
     if (episodesContainer) episodesContainer.classList.remove('hidden');
 
     initPlayer(playUrl, title);
-}// 
-初始化播放器
+}
+
+// 初始化播放器
 async function initPlayer(videoUrl, title) {
     const playerContainer = document.getElementById('player');
     if (!playerContainer) {
@@ -283,8 +284,9 @@ function updateButtonStates() {
     
     if (prevBtn) prevBtn.disabled = currentEpisodeIndex <= 0;
     if (nextBtn) nextBtn.disabled = currentEpisodeIndex >= currentEpisodes.length - 1;
-}// 重置到
-首页
+}
+
+// 重置到首页
 function resetToHome() {
     const resultsArea = document.getElementById('resultsArea');
     const doubanArea = document.getElementById('doubanArea');
@@ -371,19 +373,29 @@ async function search() {
 // 执行搜索请求
 async function performSearch(query, selectedAPIs) {
     const searchPromises = selectedAPIs.map(apiId => {
-        return fetch(`/api/search?wd=${encodeURIComponent(query)}&source=${apiId}`)
-            .then(response => response.json())
-            .then(data => ({ 
-                ...data, 
-                apiId: apiId, 
-                apiName: API_SITES[apiId]?.name || apiId 
-            }))
-            .catch(error => ({
-                code: 400,
-                msg: `API(${apiId})搜索失败: ${error.message}`,
-                list: [],
-                apiId: apiId
-            }));
+        console.log(`Searching API: ${apiId} for query: ${query}`);
+        return fetch(`/proxy/${encodeURIComponent(API_SITES[apiId]?.api)}?ac=videolist&wd=${encodeURIComponent(query)}`)
+            .then(response => {
+                console.log(`API ${apiId} response status:`, response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log(`API ${apiId} data:`, data);
+                return { 
+                    ...data, 
+                    apiId: apiId, 
+                    apiName: API_SITES[apiId]?.name || apiId 
+                };
+            })
+            .catch(error => {
+                console.error(`API ${apiId} search failed:`, error);
+                return {
+                    code: 400,
+                    msg: `API(${apiId})搜索失败: ${error.message}`,
+                    list: [],
+                    apiId: apiId
+                };
+            });
     });
 
     try {
@@ -393,16 +405,22 @@ async function performSearch(query, selectedAPIs) {
         console.error("执行搜索时出错:", error);
         return [];
     }
-}/
-/ 渲染搜索结果
+}
+
+// 渲染搜索结果
 function renderSearchResults(results) {
+    console.log('Rendering search results:', results);
     const searchResults = DOMCache.get('searchResults');
     const searchResultsCount = document.getElementById('searchResultsCount');
     
-    if (!searchResults || !searchResultsCount) return;
+    if (!searchResults || !searchResultsCount) {
+        console.error('Search results container not found');
+        return;
+    }
 
     let allResults = [];
     results.forEach(result => {
+        console.log(`Processing result from ${result.apiId}:`, result);
         if (result.code === 200 && Array.isArray(result.list) && result.list.length > 0) {
             const resultsWithSource = result.list.map(item => ({
                 ...item,
@@ -520,8 +538,9 @@ function searchFromHistory(query) {
         searchInput.value = query;
         search();
     }
-}// 获取视
-频详情并播放
+}
+
+// 获取视频详情并播放
 async function getVideoDetail(id, sourceCode, itemData) {
     if (!id || !sourceCode) {
         showToast('无效的视频信息', 'error');
