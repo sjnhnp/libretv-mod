@@ -49,6 +49,8 @@ async function fetchTextWithTimeout(targetUrl, options, timeout = 10000) {
 async function handleSpecialSourceDetail(id, sourceCode) {
     try {
         const detailPageUrl = `${API_SITES[sourceCode].detail}/index.php/vod/detail/id/${id}.html`;
+        console.log(`[特殊源详情] 正在获取 ${API_SITES[sourceCode].name} 的详情页面: ${detailPageUrl}`);
+        
         // 使用 fetchTextWithTimeout 获取 HTML 内容
         const htmlContent = await fetchTextWithTimeout(
             PROXY_URL + encodeURIComponent(detailPageUrl),
@@ -56,31 +58,79 @@ async function handleSpecialSourceDetail(id, sourceCode) {
         );
 
         let matches = [];
+        
+        // 针对不同源使用不同的匹配策略
         if (sourceCode === 'ffzy') {
+            // 飞飞资源的特殊格式
             matches = htmlContent.match(/\$(https?:\/\/[^"'\s]+?\/\d{8}\/\d+_[a-f0-9]+\/index\.m3u8)/g) || [];
         }
+        
+        // 如果特殊匹配失败，尝试增强版通用匹配
         if (matches.length === 0) {
-            matches = htmlContent.match(/\$(https?:\/\/[^"'\s]+?\.m3u8)/g) || [];
+            matches = htmlContent.match(M3U8_PATTERN_ENHANCED) || [];
         }
+        
+        // 如果还是没有，尝试原始匹配
+        if (matches.length === 0) {
+            matches = htmlContent.match(M3U8_PATTERN) || [];
+        }
+        
+        // 最后尝试更广泛的视频URL匹配
+        if (matches.length === 0) {
+            matches = htmlContent.match(VIDEO_URL_PATTERN) || [];
+        }
+        
+        // 清理和去重处理
         matches = Array.from(new Set(matches)).map(link => {
-            link = link.slice(1);
+            // 移除开头的$符号
+            link = link.startsWith('$') ? link.slice(1) : link;
+            // 移除可能的括号内容
             const idx = link.indexOf('(');
             return idx > -1 ? link.slice(0, idx) : link;
+        }).filter(link => {
+            // 确保是有效的HTTP链接
+            return link && (link.startsWith('http://') || link.startsWith('https://'));
         });
+
+        console.log(`[特殊源详情] ${API_SITES[sourceCode].name} 找到 ${matches.length} 个播放链接`);
+
+        if (matches.length === 0) {
+            // 如果仍然没有找到，尝试从播放列表中提取
+            const playlistMatches = htmlContent.match(/<ul[^>]*class=["'][^"']*playlist[^"']*["'][^>]*>([\s\S]*?)<\/ul>/gi);
+            if (playlistMatches) {
+                for (const playlist of playlistMatches) {
+                    const linkMatches = playlist.match(/href=["']([^"']+)["']/g);
+                    if (linkMatches) {
+                        const extractedLinks = linkMatches.map(match => {
+                            const url = match.match(/href=["']([^"']+)["']/)[1];
+                            return url.startsWith('http') ? url : null;
+                        }).filter(Boolean);
+                        matches.push(...extractedLinks);
+                    }
+                }
+            }
+        }
 
         if (matches.length === 0) {
             throw new Error(`未能从${API_SITES[sourceCode].name}源获取到有效的播放地址`);
         }
 
-        const title = (htmlContent.match(/<h1[^>]*>([^<]+)<\/h1>/) || [, ''])[1].trim();
-        const desc = (htmlContent.match(/<div[^>]*class=["']sketch["'][^>]*>([\s\S]*?)<\/div>/) || [, ''])[1]
+        // 提取标题和描述
+        const title = (htmlContent.match(/<h1[^>]*>([^<]+)<\/h1>/) || 
+                      htmlContent.match(/<title[^>]*>([^<]+)<\/title>/) || [, ''])[1].trim();
+        
+        const desc = (htmlContent.match(/<div[^>]*class=["']sketch["'][^>]*>([\s\S]*?)<\/div>/) || 
+                     htmlContent.match(/<div[^>]*class=["']content["'][^>]*>([\s\S]*?)<\/div>/) || 
+                     htmlContent.match(/<p[^>]*class=["']desc["'][^>]*>([\s\S]*?)<\/p>/) || [, ''])[1]
             .replace(/<[^>]+>/g, ' ').trim();
 
         return JSON.stringify({
-            code: 200, episodes: matches, detailUrl: detailPageUrl,
+            code: 200, 
+            episodes: matches, 
+            detailUrl: detailPageUrl,
             videoInfo: {
-                title,
-                desc,
+                title: title || '未知标题',
+                desc: desc || '暂无简介',
                 source_name: API_SITES[sourceCode].name,
                 source_code: sourceCode
             }
@@ -93,35 +143,86 @@ async function handleSpecialSourceDetail(id, sourceCode) {
 }
 
 // 处理自定义API特殊详情 (自定义源，需要HTML抓取)
-async function handleCustomApiSpecialDetail(id, customApiDetailBaseUrl) {
+async function handleCustomApiSpecialDetail(id, customApiDetailBaseUrl, customApiInfo = null) {
     try {
         const detailPageUrl = `${customApiDetailBaseUrl}/index.php/vod/detail/id/${id}.html`;
+        console.log(`[自定义源详情] 正在获取自定义API的详情页面: ${detailPageUrl}`);
+        
         // 使用 fetchTextWithTimeout 获取 HTML 内容
         const htmlContent = await fetchTextWithTimeout(
             PROXY_URL + encodeURIComponent(detailPageUrl),
-            { headers: { 'User-Agent': API_CONFIG.search.headers['User-Agent'], 'Accept': 'application/json' } } // Accept header for custom APIs can remain, as some might check it.
+            { headers: { 'User-Agent': API_CONFIG.search.headers['User-Agent'] } }
         );
 
-        const matches = (htmlContent && htmlContent.match(M3U8_PATTERN) || [])
-            .map(link => {
-                link = link.slice(1);
-                const idx = link.indexOf('(');
-                return idx > -1 ? link.slice(0, idx) : link;
-            });
+        let matches = [];
+        
+        // 使用增强版匹配策略
+        matches = htmlContent.match(M3U8_PATTERN_ENHANCED) || [];
+        
+        // 如果增强版匹配失败，尝试原始匹配
+        if (matches.length === 0) {
+            matches = htmlContent.match(M3U8_PATTERN) || [];
+        }
+        
+        // 尝试更广泛的视频URL匹配
+        if (matches.length === 0) {
+            matches = htmlContent.match(VIDEO_URL_PATTERN) || [];
+        }
+        
+        // 清理和去重处理
+        matches = Array.from(new Set(matches)).map(link => {
+            // 移除开头的$符号
+            link = link.startsWith('$') ? link.slice(1) : link;
+            // 移除可能的括号内容
+            const idx = link.indexOf('(');
+            return idx > -1 ? link.slice(0, idx) : link;
+        }).filter(link => {
+            // 确保是有效的HTTP链接
+            return link && (link.startsWith('http://') || link.startsWith('https://'));
+        });
+
+        console.log(`[自定义源详情] 自定义API找到 ${matches.length} 个播放链接`);
+
+        if (matches.length === 0) {
+            // 尝试从播放列表中提取
+            const playlistMatches = htmlContent.match(/<ul[^>]*class=["'][^"']*playlist[^"']*["'][^>]*>([\s\S]*?)<\/ul>/gi);
+            if (playlistMatches) {
+                for (const playlist of playlistMatches) {
+                    const linkMatches = playlist.match(/href=["']([^"']+)["']/g);
+                    if (linkMatches) {
+                        const extractedLinks = linkMatches.map(match => {
+                            const url = match.match(/href=["']([^"']+)["']/)[1];
+                            return url.startsWith('http') ? url : null;
+                        }).filter(Boolean);
+                        matches.push(...extractedLinks);
+                    }
+                }
+            }
+        }
 
         if (matches.length === 0) {
             throw new Error('未能从自定义API源获取到有效的播放地址');
         }
 
-        const title = (htmlContent.match(/<h1[^>]*>([^<]+)<\/h1>/) || [, ''])[1].trim();
-        const desc = (htmlContent.match(/<div[^>]*class=["']sketch["'][^>]*>([\s\S]*?)<\/div>/) || [, ''])[1]
+        // 提取标题和描述
+        const title = (htmlContent.match(/<h1[^>]*>([^<]+)<\/h1>/) || 
+                      htmlContent.match(/<title[^>]*>([^<]+)<\/title>/) || [, ''])[1].trim();
+        
+        const desc = (htmlContent.match(/<div[^>]*class=["']sketch["'][^>]*>([\s\S]*?)<\/div>/) || 
+                     htmlContent.match(/<div[^>]*class=["']content["'][^>]*>([\s\S]*?)<\/div>/) || 
+                     htmlContent.match(/<p[^>]*class=["']desc["'][^>]*>([\s\S]*?)<\/p>/) || [, ''])[1]
             .replace(/<[^>]+>/g, ' ').trim();
 
+        const sourceName = customApiInfo ? customApiInfo.name : '自定义源';
+
         return JSON.stringify({
-            code: 200, episodes: matches, detailUrl: detailPageUrl,
+            code: 200, 
+            episodes: matches, 
+            detailUrl: detailPageUrl,
             videoInfo: {
-                title, desc,
-                source_name: '自定义源',
+                title: title || '未知标题',
+                desc: desc || '暂无简介',
+                source_name: sourceName,
                 source_code: 'custom'
             }
         });
@@ -301,70 +402,98 @@ async function handleApiRequest(url) {
             try {
                 // 优先处理配置了 detail 页面的内置源 (需要HTML抓取)
                 if (!sourceCode.startsWith('custom_') && API_SITES[sourceCode] && API_SITES[sourceCode].detail) {
+                    console.log(`[Detail处理] 使用特殊源处理: ${sourceCode}`);
                     return await handleSpecialSourceDetail(id, sourceCode);
                 }
                 // 处理需要HTML抓取的自定义源
-                else if (sourceCode.startsWith('custom_') && url.searchParams.get('useDetail') === 'true') {
+                else if (sourceCode.startsWith('custom_')) {
                     const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
-                    const apiInfo = window.APISourceManager.getCustomApiInfo(customIndex); // APISourceManager should be globally available
+                    const apiInfo = window.APISourceManager?.getCustomApiInfo(customIndex);
+                    
                     if (apiInfo) {
-                        const detailScrapeUrl = apiInfo.detail || customApi; // customApi is base URL from query
-                        return await handleCustomApiSpecialDetail(id, detailScrapeUrl);
+                        // 如果自定义API有detail配置或者明确要求使用detail，则使用HTML抓取
+                        if (apiInfo.detail || url.searchParams.get('useDetail') === 'true') {
+                            console.log(`[Detail处理] 使用自定义源HTML抓取: ${apiInfo.name}`);
+                            const detailScrapeUrl = apiInfo.detail || customApi;
+                            return await handleCustomApiSpecialDetail(id, detailScrapeUrl, apiInfo);
+                        }
                     } else {
                         throw new Error(`自定义API信息未找到 (source: ${sourceCode})`);
                     }
                 }
-                // 标准API详情 (JSON)
-                else {
-                    const detailUrl = sourceCode.startsWith('custom_')
-                        ? `${customApi}${API_CONFIG.detail.path}${id}` // customApi is base URL from query
-                        : `${API_SITES[sourceCode].api}${API_CONFIG.detail.path}${id}`; // API_SITES[sourceCode].api is full path
-                    
-                    const result = await fetchWithTimeout( // Expects JSON
-                        PROXY_URL + encodeURIComponent(detailUrl),
-                        { headers: API_CONFIG.detail.headers }
-                    );
-                    if (!result || !Array.isArray(result.list) || !result.list.length)
-                        throw new Error('获取到的详情内容无效');
-                    
-                    const videoDetail = result.list[0];
-                    let episodes = [];
-
-                    if (videoDetail.vod_play_url) {
-                        const mainSource = videoDetail.vod_play_url.split('$$$')[0] || '';
-                        episodes = mainSource.split('#')
-                            .map(ep => {
-                                const [, link] = ep.split('$');
-                                return link && (link.startsWith('http://') || link.startsWith('https://')) ? link : '';
-                            })
-                            .filter(Boolean);
+                
+                // 标准API详情 (JSON) - 作为最后的回退选项
+                console.log(`[Detail处理] 使用标准JSON API: ${sourceCode}`);
+                const detailUrl = sourceCode.startsWith('custom_')
+                    ? `${customApi}${API_CONFIG.detail.path}${id}` // customApi is base URL from query
+                    : `${API_SITES[sourceCode].api}${API_CONFIG.detail.path}${id}`; // API_SITES[sourceCode].api is full path
+                
+                const result = await fetchWithTimeout( // Expects JSON
+                    PROXY_URL + encodeURIComponent(detailUrl),
+                    { headers: API_CONFIG.detail.headers }
+                );
+                
+                if (!result || !Array.isArray(result.list) || !result.list.length) {
+                    // 如果标准API失败，且该源有detail配置，尝试HTML抓取作为回退
+                    if (!sourceCode.startsWith('custom_') && API_SITES[sourceCode] && API_SITES[sourceCode].detail) {
+                        console.log(`[Detail处理] 标准API失败，回退到HTML抓取: ${sourceCode}`);
+                        return await handleSpecialSourceDetail(id, sourceCode);
                     }
-                    if (!episodes.length && videoDetail.vod_content) {
-                        const matches = videoDetail.vod_content.match(M3U8_PATTERN) || [];
-                        episodes = matches.map(link => link.replace(/^\$/, ''));
-                    }
-
-                    return JSON.stringify({
-                        code: 200,
-                        episodes,
-                        detailUrl, // Keep original detailUrl for reference
-                        videoInfo: {
-                            title: videoDetail.vod_name,
-                            cover: videoDetail.vod_pic,
-                            desc: videoDetail.vod_content,
-                            type: videoDetail.type_name,
-                            year: videoDetail.vod_year,
-                            area: videoDetail.vod_area,
-                            director: videoDetail.vod_director,
-                            actor: videoDetail.vod_actor,
-                            remarks: videoDetail.vod_remarks,
-                            source_name: sourceCode.startsWith('custom_')
-                                ? (window.APISourceManager?.getCustomApiInfo(parseInt(sourceCode.replace('custom_','')))?.name || '自定义源')
-                                : (API_SITES && API_SITES[sourceCode] ? API_SITES[sourceCode].name : '未知来源'),
-                            source_code: sourceCode
-                        }
-                    });
+                    throw new Error('获取到的详情内容无效');
                 }
+                
+                const videoDetail = result.list[0];
+                let episodes = [];
+
+                // 解析播放链接 - 增强版处理
+                if (videoDetail.vod_play_url) {
+                    const mainSource = videoDetail.vod_play_url.split('$$$')[0] || '';
+                    episodes = mainSource.split('#')
+                        .map(ep => {
+                            const parts = ep.split('$');
+                            if (parts.length >= 2) {
+                                const link = parts[parts.length - 1]; // 取最后一部分作为链接
+                                return link && (link.startsWith('http://') || link.startsWith('https://')) ? link : '';
+                            }
+                            return '';
+                        })
+                        .filter(Boolean);
+                }
+                
+                // 如果没有找到播放链接，尝试从内容中提取
+                if (!episodes.length && videoDetail.vod_content) {
+                    const matches = videoDetail.vod_content.match(M3U8_PATTERN_ENHANCED) || 
+                                   videoDetail.vod_content.match(M3U8_PATTERN) || 
+                                   videoDetail.vod_content.match(VIDEO_URL_PATTERN) || [];
+                    episodes = matches.map(link => link.replace(/^\$/, ''));
+                }
+
+                // 如果仍然没有播放链接，且该源有detail配置，尝试HTML抓取
+                if (!episodes.length && !sourceCode.startsWith('custom_') && API_SITES[sourceCode] && API_SITES[sourceCode].detail) {
+                    console.log(`[Detail处理] 标准API无播放链接，尝试HTML抓取: ${sourceCode}`);
+                    return await handleSpecialSourceDetail(id, sourceCode);
+                }
+
+                return JSON.stringify({
+                    code: 200,
+                    episodes,
+                    detailUrl, // Keep original detailUrl for reference
+                    videoInfo: {
+                        title: videoDetail.vod_name,
+                        cover: videoDetail.vod_pic,
+                        desc: videoDetail.vod_content,
+                        type: videoDetail.type_name,
+                        year: videoDetail.vod_year,
+                        area: videoDetail.vod_area,
+                        director: videoDetail.vod_director,
+                        actor: videoDetail.vod_actor,
+                        remarks: videoDetail.vod_remarks,
+                        source_name: sourceCode.startsWith('custom_')
+                            ? (window.APISourceManager?.getCustomApiInfo(parseInt(sourceCode.replace('custom_','')))?.name || '自定义源')
+                            : (API_SITES && API_SITES[sourceCode] ? API_SITES[sourceCode].name : '未知来源'),
+                        source_code: sourceCode
+                    }
+                });
             } catch (error) {
                  // Log the error with more context before re-throwing or returning
                 console.error(`Error in detail processing for source ${sourceCode}, id ${id}:`, error);

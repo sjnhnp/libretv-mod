@@ -29,20 +29,22 @@ const API_SITES = {
     mdzy: { api: 'https://www.mdzyapi.com/api.php/provide/vod', name: '魔都资源' },  
     maotai: { api: 'https://caiji.maotaizy.cc/api.php/provide/vod', name: '茅台资源' },
     yzzy: { api: 'https://api.yzzy-api.com/inc/apijson.php', name: '优质资源' }, 
-    mozhua: { api: 'https://mozhuazy.com/api.php/provide/vod', name: '魔爪资源' }, 
-    ruyi: { api: 'https://cj.rycjapi.com/api.php/provide/vod', name: '如意资源' }, 
-    wolong: { api: 'https://wolongzyw.com/api.php/provide/vod', name: '卧龙资源' }, 
-    dbzy: { api: 'https://caiji.dbzy5.com/api.php/provide/vod', name: '豆瓣资源' },  
-    hwba: { api: 'https://cjhwba.com/api.php/provide/vod', name: '华为吧资源' },   
-    jmzy: { api: 'https://api.jmzy.com/api.php/provide/vod', name: '金马资源' },
-    zy360: { api: 'https://360zy.com/api.php/provide/vod', name: '360资源' }, 
+    mozhua: { api: 'https://mozhuazy.com/api.php/provide/vod', name: '魔爪资源', detail: 'https://mozhuazy.com' }, 
+    ruyi: { api: 'https://cj.rycjapi.com/api.php/provide/vod', name: '如意资源', detail: 'https://cj.rycjapi.com' }, 
+    wolong: { api: 'https://wolongzyw.com/api.php/provide/vod', name: '卧龙资源', detail: 'https://wolongzyw.com' }, 
+    dbzy: { api: 'https://caiji.dbzy5.com/api.php/provide/vod', name: '豆瓣资源', detail: 'https://caiji.dbzy5.com' },  
+    hwba: { api: 'https://cjhwba.com/api.php/provide/vod', name: '华为吧资源', detail: 'https://cjhwba.com' },   
+    jmzy: { api: 'https://api.jmzy.com/api.php/provide/vod', name: '金马资源', detail: 'https://api.jmzy.com' },
+    zy360: { api: 'https://360zy.com/api.php/provide/vod', name: '360资源', detail: 'https://360zy.com' }, 
     jisu: { api: 'https://jszyapi.com/api.php/provide/vod', name: '极速资源', detail: 'https://jszyapi.com' }, 
-    huya: { api: 'https://www.huyaapi.com/api.php/provide/vod', name: '虎牙资源', detail: 'https://www.huyaapi.com', },  
-    zuid: { api: 'https://api.zuidapi.com/api.php/provide/vod', name: '最大资源' },  
-    baidu: { api: 'https://api.apibdzy.com/api.php/provide/vod', name: '百度云资源' }, 
-    wujin: { api: 'https://api.wujinapi.me/api.php/provide/vod', name: '无尽资源' }, 
-    wwzy: { api: 'https://wwzy.tv/api.php/provide/vod', name: '旺旺短剧' },
-    ikun: { api: 'https://ikunzyapi.com/api.php/provide/vod', name: 'iKun资源' } 
+    huya: { api: 'https://www.huyaapi.com/api.php/provide/vod', name: '虎牙资源', detail: 'https://www.huyaapi.com' },  
+    zuid: { api: 'https://api.zuidapi.com/api.php/provide/vod', name: '最大资源', detail: 'https://api.zuidapi.com' },  
+    baidu: { api: 'https://api.apibdzy.com/api.php/provide/vod', name: '百度云资源', detail: 'https://api.apibdzy.com' }, 
+    wujin: { api: 'https://api.wujinapi.me/api.php/provide/vod', name: '无尽资源', detail: 'https://api.wujinapi.me' }, 
+    wwzy: { api: 'https://wwzy.tv/api.php/provide/vod', name: '旺旺短剧', detail: 'https://wwzy.tv' },
+    ikun: { api: 'https://ikunzyapi.com/api.php/provide/vod', name: 'iKun资源', detail: 'https://ikunzyapi.com' },
+    // 添加一个特殊的飞飞资源用于测试
+    ffzy: { api: 'https://ffzyapi.com/api.php/provide/vod', name: '飞飞资源', detail: 'https://ffzyapi.com' }
 };
 
 window.API_SITES = API_SITES; 
@@ -78,8 +80,10 @@ const API_CONFIG = {
     }
 };
 
-// 正则表达式模式
+// 正则表达式模式 - 增强版，支持更多格式
 const M3U8_PATTERN = /\$https?:\/\/[^"'\s]+?\.m3u8/g;
+const M3U8_PATTERN_ENHANCED = /\$(https?:\/\/[^"'\s$#]+?(?:\.m3u8|\/index\.m3u8|\/\d+_[a-f0-9]+\/index\.m3u8))/gi;
+const VIDEO_URL_PATTERN = /\$(https?:\/\/[^"'\s$#]+?(?:\.m3u8|\.mp4|\.flv|\.avi|\.mkv|\.ts))/gi;
 
 // 自定义播放器URL
 const CUSTOM_PLAYER_URL = 'player.html'; 
