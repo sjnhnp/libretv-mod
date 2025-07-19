@@ -218,8 +218,9 @@ function showProgressRestoreModal(opts) {
 }
 
 // 根据广告过滤设置，异步处理视频URL。
+// 兼容纯媒体列表（只含 #EXTINF）和 Master playlist（含 #EXT-X-STREAM-INF）
 async function processVideoUrl(url) {
-    // 如果未启用广告过滤，直接返回原始 URL
+    // 如果未启用广告/URL 补全，直接返回原始 URL
     if (!adFilteringEnabled) {
         return url;
     }
@@ -231,79 +232,83 @@ async function processVideoUrl(url) {
         const m3u8Text = await resp.text();
 
         // 2. 广告过滤 & URL 补全
-        const adPatterns = [
-            /#EXT-X-DISCONTINUITY/i,
-            /MOMENT-START/i,
-            /\/\/.*\.(ts|jpg|png)\?ad=/i
-        ];
         const lines = m3u8Text.split('\n');
-        const baseUrl = url;
         const cleanLines = [];
 
         for (let line of lines) {
-            if (adPatterns.some(p => p.test(line))) {
-                continue;
-            }
+            // 过滤掉常见广告标签
+            if (/#EXT-X-DISCONTINUITY|MOMENT-START/i.test(line)) continue;
+            if (/\/\/.*\.(ts|jpg|png)\?ad=/i.test(line)) continue;
 
+            // 补全加密 key 相对 URI
             if (line.startsWith('#EXT-X-KEY')) {
                 const uriMatch = line.match(/URI="([^"]+)"/);
-                if (uriMatch && uriMatch[1]) {
-                    const relativeUri = uriMatch[1];
+                if (uriMatch) {
                     try {
-                        const absoluteUri = new URL(relativeUri, baseUrl).href;
-                        line = line.replace(relativeUri, absoluteUri);
-                    } catch (e) {
-                        console.warn('加密密钥 URL 补全失败，保留原行:', line, e);
-                    }
+                        const absolute = new URL(uriMatch[1], url).href;
+                        line = line.replace(uriMatch[1], absolute);
+                    } catch { /* ignore */ }
                 }
             }
-
+            // 补全 ts、m3u8 段 URI
             else if (line && !line.startsWith('#') && /\.(ts|m3u8)(\?|$)/i.test(line.trim())) {
                 try {
-                    line = new URL(line.trim(), baseUrl).href;
-                } catch (e) {
-                    console.warn('URL 补全失败，保留原行:', line, e);
-                }
+                    line = new URL(line.trim(), url).href;
+                } catch { /* ignore */ }
             }
+
             cleanLines.push(line);
         }
 
-        // --- 保证有 #EXTM3U 头，否则播放器会报 no EXTM3U delimiter ---
-        if (!cleanLines.some(l => l.trim().startsWith('#EXTM3U'))) {
+        // 3. 检测是否已经是 Master playlist
+        const isMaster = cleanLines.some(l => l.startsWith('#EXT-X-STREAM-INF'));
+
+        if (isMaster) {
+            // 真·Master，直接输出
+            const masterText = cleanLines.join('\n');
+            const masterBlob = new Blob([masterText], { type: 'application/vnd.apple.mpegurl' });
+            return URL.createObjectURL(masterBlob);
+        }
+
+        // 4. 纯媒体列表，补齐必要 TAG
+        // a) #EXTM3U
+        if (!cleanLines[0]?.startsWith('#EXTM3U')) {
             cleanLines.unshift('#EXTM3U');
         }
+        // b) 计算最大 EXTINF 时长，向上取整作为 TARGETDURATION
+        const infDurations = cleanLines
+            .filter(l => l.startsWith('#EXTINF'))
+            .map(l => parseFloat(l.split(':')[1]) || 0);
+        const maxDur = Math.ceil(infDurations.length ? Math.max(...infDurations) : 0);
+        // c) 在第二行开始插入 VERSION / TARGETDURATION / MEDIA-SEQUENCE
+        cleanLines.splice(1, 0,
+            '#EXT-X-VERSION:3',
+            `#EXT-X-TARGETDURATION:${maxDur}`,
+            '#EXT-X-MEDIA-SEQUENCE:0'
+        );
 
-        // 1) 合成「纯净媒体播放列表」文本
+        // 5. 生成 child playlist Blob URL
         const mediaText = cleanLines.join('\n');
+        const childBlob = new Blob([mediaText], { type: 'application/vnd.apple.mpegurl' });
+        const childUrl = URL.createObjectURL(childBlob);
 
-        // 2) 如果它本身就包含变体 STREAM-INF，就当作 master 直出，
-        //    否则把它当成 child media playlist 包一层 master。
-        if (/^#EXT-X-STREAM-INF/m.test(mediaText)) {
-            // 真·Master playlist
-            const masterBlob = new Blob([mediaText], { type: 'application/vnd.apple.mpegurl' });
-            return URL.createObjectURL(masterBlob);
-        } else {
-            // Child 媒体列表
-            const childBlob = new Blob([mediaText], { type: 'application/vnd.apple.mpegurl' });
-            const childUrl = URL.createObjectURL(childBlob);
-
-            // 构造一个只有一个 LEVEL 的简单 master
-            const masterLines = [
-                '#EXTM3U',
-                '#EXT-X-VERSION:3',
-                '#EXT-X-STREAM-INF:BANDWIDTH=800000',
-                childUrl
-            ];
-            const masterBlob = new Blob([masterLines.join('\n')], { type: 'application/vnd.apple.mpegurl' });
-            return URL.createObjectURL(masterBlob);
-        }
+        // 6. 包装成单 Level Master playlist
+        const masterLines = [
+            '#EXTM3U',
+            '#EXT-X-VERSION:3',
+            '#EXT-X-STREAM-INF:BANDWIDTH=800000',
+            childUrl
+        ];
+        const finalBlob = new Blob([masterLines.join('\n')], { type: 'application/vnd.apple.mpegurl' });
+        return URL.createObjectURL(finalBlob);
 
     } catch (err) {
-        console.error('广告过滤或 URL 补全失败：', err);
-        showToast('广告过滤失败，播放原始地址', 'warning');
+        console.error('processVideoUrl 处理失败:', err);
+        // 出错时退回原始 URL
         return url;
     }
 }
+
 
 // --- 播放器核心逻辑 ---
 
