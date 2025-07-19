@@ -22,7 +22,7 @@ window.SITE_CONFIG = SITE_CONFIG;
 
 // API站点配置
 const API_SITES = { 
-    heimuer: { api: 'https://json.heimuer.xyz/api.php/provide/vod', name: '黑木耳', detail: 'https://heimuer.tv' },  
+    heimuer: { api: 'https://json.heimuer.xyz/api.php/provide/vod', name: '黑木耳' },  
     bfzy: { api: 'https://bfzyapi.com/api.php/provide/vod', name: '暴风资源' },
     dyttzy: { api: 'http://caiji.dyttzyapi.com/api.php/provide/vod', name: '电影天堂', detail: 'http://caiji.dyttzyapi.com' },
     tyyszy: { api: 'https://tyyszy.com/api.php/provide/vod', name: '天涯资源' },  
