@@ -272,20 +272,24 @@ async function processVideoUrl(url) {
 
         // 4. 纯媒体列表，补齐必要 TAG
         // a) #EXTM3U
-        if (!cleanLines[0]?.startsWith('#EXTM3U')) {
-            cleanLines.unshift('#EXTM3U');
-        }
-        // b) 计算最大 EXTINF 时长，向上取整作为 TARGETDURATION
-        const infDurations = cleanLines
-            .filter(l => l.startsWith('#EXTINF'))
-            .map(l => parseFloat(l.split(':')[1]) || 0);
-        const maxDur = Math.ceil(infDurations.length ? Math.max(...infDurations) : 0);
-        // c) 在第二行开始插入 VERSION / TARGETDURATION / MEDIA-SEQUENCE
-        cleanLines.splice(1, 0,
+        if (!clean[0]?.startsWith('#EXTM3U')) clean.unshift('#EXTM3U');
+        // 先把已有的 TARGETDURATION 和 MEDIA-SEQUENCE 删掉，避免重复
+        clean = clean.filter(line =>
+            !line.startsWith('#EXT-X-TARGETDURATION') &&
+            !line.startsWith('#EXT-X-MEDIA-SEQUENCE')
+        );
+        // 计算最大 EXTINF 时长
+        const durations = clean
+            .filter(x => x.startsWith('#EXTINF'))
+            .map(x => parseFloat(x.split(':')[1]) || 0);
+        const maxDur = Math.ceil(durations.length ? Math.max(...durations) : 0);
+        // 在 VERSION 后面插入新的 TARGETDURATION / MEDIA-SEQUENCE
+        clean.splice(1, 0,
             '#EXT-X-VERSION:3',
             `#EXT-X-TARGETDURATION:${maxDur}`,
             '#EXT-X-MEDIA-SEQUENCE:0'
         );
+
 
         // 5. 生成 child playlist Blob URL
         const mediaText = cleanLines.join('\n');
