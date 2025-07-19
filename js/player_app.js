@@ -290,7 +290,6 @@ async function processVideoUrl(url) {
             '#EXT-X-MEDIA-SEQUENCE:0'
         );
 
-
         // 5. 生成 child playlist Blob URL
         const mediaText = cleanLines.join('\n');
         const childBlob = new Blob([mediaText], { type: 'application/vnd.apple.mpegurl' });
