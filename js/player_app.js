@@ -268,6 +268,11 @@ async function processVideoUrl(url) {
             cleanLines.push(line);
         }
 
+            // --- 保证有 #EXTM3U 头，否则播放器会报 no EXTM3U delimiter ---
+            if (!cleanLines.some(l => l.trim().startsWith('#EXTM3U'))) {  
+                cleanLines.unshift('#EXTM3U');
+          }
+
         const filteredM3u8 = cleanLines.join('\n');
 
         const blob = new Blob([filteredM3u8], { type: 'application/vnd.apple.mpegurl' });
@@ -832,7 +837,7 @@ function renderEpisodes() {
     if (countSpan) { countSpan.textContent = `共 ${currentEpisodes.length} 集`; }
 
     // 定义综艺类型关键词
-    const varietyShowTypes = ['综艺', '脱口秀', '真人秀'];
+    const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
     const isVarietyShow = varietyShowTypes.some(type => currentVideoTypeName && currentVideoTypeName.includes(type));
 
     // 根据类型切换容器的CSS类

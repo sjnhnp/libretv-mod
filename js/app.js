@@ -1241,13 +1241,11 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     const episodeButtonsGrid = modalContent.querySelector('[data-field="episode-buttons-grid"]');
     const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
     const isVarietyShow = varietyShowTypes.some(type => effectiveTypeName && effectiveTypeName.includes(type));
-
     if (episodeButtonsGrid) {
         if (isVarietyShow) {
-            // 综艺
+            // 综艺/纪录片一律用 grid 布局
             episodeButtonsGrid.className = 'variety-grid-layout';
         }
-
         // 渲染按钮
         episodeButtonsGrid.innerHTML = renderEpisodeButtons(episodes, effectiveTitle, sourceCode, sourceNameForDisplay, effectiveTypeName);
     }
@@ -1353,7 +1351,7 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, type
     const videoKey = AppState.get('currentVideoKey') || '';
     const displayEpisodes = currentReversedState ? [...episodes].reverse() : [...episodes];
 
-    const varietyShowTypes = ['综艺', '脱口秀', '真人秀'];
+    const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
     const isVarietyShow = varietyShowTypes.some(type => typeName && typeName.includes(type));
 
     return displayEpisodes.map((episodeString, displayIndex) => {
