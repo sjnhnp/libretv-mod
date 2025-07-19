@@ -268,15 +268,35 @@ async function processVideoUrl(url) {
             cleanLines.push(line);
         }
 
-            // --- 保证有 #EXTM3U 头，否则播放器会报 no EXTM3U delimiter ---
-            if (!cleanLines.some(l => l.trim().startsWith('#EXTM3U'))) {  
-                cleanLines.unshift('#EXTM3U');
-          }
+        // --- 保证有 #EXTM3U 头，否则播放器会报 no EXTM3U delimiter ---
+        if (!cleanLines.some(l => l.trim().startsWith('#EXTM3U'))) {
+            cleanLines.unshift('#EXTM3U');
+        }
 
-        const filteredM3u8 = cleanLines.join('\n');
+        // 1) 合成「纯净媒体播放列表」文本
+        const mediaText = cleanLines.join('\n');
 
-        const blob = new Blob([filteredM3u8], { type: 'application/vnd.apple.mpegurl' });
-        return URL.createObjectURL(blob);
+        // 2) 如果它本身就包含变体 STREAM-INF，就当作 master 直出，
+        //    否则把它当成 child media playlist 包一层 master。
+        if (/^#EXT-X-STREAM-INF/m.test(mediaText)) {
+            // 真·Master playlist
+            const masterBlob = new Blob([mediaText], { type: 'application/vnd.apple.mpegurl' });
+            return URL.createObjectURL(masterBlob);
+        } else {
+            // Child 媒体列表
+            const childBlob = new Blob([mediaText], { type: 'application/vnd.apple.mpegurl' });
+            const childUrl = URL.createObjectURL(childBlob);
+
+            // 构造一个只有一个 LEVEL 的简单 master
+            const masterLines = [
+                '#EXTM3U',
+                '#EXT-X-VERSION:3',
+                '#EXT-X-STREAM-INF:BANDWIDTH=800000',
+                childUrl
+            ];
+            const masterBlob = new Blob([masterLines.join('\n')], { type: 'application/vnd.apple.mpegurl' });
+            return URL.createObjectURL(masterBlob);
+        }
 
     } catch (err) {
         console.error('广告过滤或 URL 补全失败：', err);
@@ -338,7 +358,7 @@ async function initPlayer(videoUrl, title) {
         window.player = player;
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
-      
+
         // 应用保存的播放速率
         const savedSpeed = localStorage.getItem('playbackSpeed') || '1';
         if (player.playbackRate !== undefined) {
