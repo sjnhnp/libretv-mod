@@ -163,3 +163,11 @@ function getIntConfig(key, def, min = 0, max = 10) {
         return def; 
     }
 }
+
+// 判断剧集列表是否为有效的 http(s) 地址
+function isEpisodeListValid(list = []) {
+    if (!Array.isArray(list) || list.length === 0) return false;
+    return list.some(ep => typeof ep === 'string' && /^https?:\/\//i.test(ep));
+  }
+  window.isEpisodeListValid = isEpisodeListValid;
+  

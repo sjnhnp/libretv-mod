@@ -1,3 +1,27 @@
+/**
+ * 拉最新的 detail ，拿到真正可播地址
+ * @param {string} id
+ * @param {string} sourceCode  例：heimuer / custom_0
+ * @param {string} apiUrl      自定义源的 baseUrl，内置源可留空
+ * @returns {Promise<Array>}   成功返回 episodes 数组，失败返回 []
+ */
+async function fetchLatestEpisodes(id, sourceCode, apiUrl = '') {
+    try {
+        let url = `/api/detail?id=${encodeURIComponent(id)}&source=${sourceCode}`;
+        if ((sourceCode === 'custom' || sourceCode.startsWith('custom_')) && apiUrl) {
+            url += `&customApi=${encodeURIComponent(apiUrl)}&useDetail=true`;
+        }
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (data.code === 200 && Array.isArray(data.episodes)) {
+            return data.episodes;
+        }
+    } catch (e) {
+        console.warn('[fetchLatestEpisodes] 重新拉 detail 失败:', e);
+    }
+    return [];
+}
+
 // 主应用程序逻辑 使用AppState进行状态管理，DOMCache进行DOM元素缓存
 // Basic AppState Implementation
 const AppState = (function () {
@@ -1236,6 +1260,45 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
 
     const tempDiv = document.createElement('div');
     showModal(modalContent, `${effectiveTitle} (${sourceNameForDisplay})`);
+
+    /* ========== 1. 如果缓存剧集无效，则后台更新 ========== */
+    (async () => {
+        if (isEpisodeListValid(episodes)) return;        // 缓存本身就没问题
+        console.log('[EpisodesModal] 缓存剧集无效，后台重新拉 detail …');
+
+        const latest = await fetchLatestEpisodes(id, sourceCode, apiUrl);
+        if (isEpisodeListValid(latest)) {
+            console.log(`[EpisodesModal] 获取到 ${latest.length} 条真实剧集，已替换`);
+            // 更新状态与存储
+            episodes = latest;
+            AppState.set('currentEpisodes', latest);
+            localStorage.setItem('currentEpisodes', JSON.stringify(latest));
+
+            // 如果播放器已经存在并且当前是第一集，则同步切换到新地址
+            if (window.player && typeof window.player.src === 'string') {
+                const firstReal = latest[0].includes('$') ? latest[0].split('$').pop() : latest[0];
+                if (/^https?:\/\//i.test(firstReal)) {
+                    window.player.src = { src: firstReal, type: 'application/x-mpegurl' };
+                }
+            }
+
+            /* --- 重新渲染弹窗按钮 --- */
+            const btnGrid = document.querySelector(
+                '#modalContent [data-field="episode-buttons-grid"]'
+            );
+            if (btnGrid) {
+                btnGrid.innerHTML = renderEpisodeButtons(
+                    latest,
+                    effectiveTitle,
+                    sourceCode,
+                    sourceNameForDisplay,
+                    effectiveTypeName,
+                );
+            }
+        } else {
+            console.warn('[EpisodesModal] detail 重新拉取后仍未拿到可用剧集');
+        }
+    })();
 }
 
 function toggleEpisodeOrderUI(container) {
