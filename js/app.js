@@ -1189,7 +1189,10 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             sourceIndex = 0;
         }
         if (urlGroups[sourceIndex]) {
-            episodes = urlGroups[sourceIndex].split('#').filter(item => item && item.includes('$'));
+                      rawEpisodes = urlGroups[sourceIndex]
+                                     .split('#')
+                                     .filter(item => item && item.includes('$'));
+                       episodes = rawEpisodes.slice();      // 初始就是带标题的一份
         }
     }
 
@@ -1268,9 +1271,20 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
 
         const latest = await fetchLatestEpisodes(id, sourceCode, apiUrl);
         if (isEpisodeListValid(latest)) {
-            console.log(`[EpisodesModal] 获取到 ${latest.length} 条真实剧集，已替换`);
+                     // --- 把标题补回去 ---
+           const patched = latest.map((url, idx) => {
+                   if (url.includes('$')) return url;  // 已自带标题
+    
+                   // 尝试从旧数组里拿标题
+                   if (rawEpisodes[idx] && rawEpisodes[idx].includes('$')) {
+                       const name = rawEpisodes[idx].split('$')[0];
+                       return `${name}$${url}`;
+                   }
+                   // 最后退化为“第 N 集”
+                   return `第${idx + 1}集$${url}`;
+               });
             // 更新状态与存储
-            episodes = latest;
+            episodes = patched;  
             AppState.set('currentEpisodes', latest);
             localStorage.setItem('currentEpisodes', JSON.stringify(latest));
 
@@ -1288,7 +1302,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             );
             if (btnGrid) {
                 btnGrid.innerHTML = renderEpisodeButtons(
-                    latest,
+                    episodes,
                     effectiveTitle,
                     sourceCode,
                     sourceNameForDisplay,
