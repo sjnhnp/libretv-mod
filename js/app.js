@@ -270,7 +270,7 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     window.location.href = playerUrl.toString();
 }
 
-//从localStorage获取布尔配置
+// 从localStorage获取布尔配置
 function getBoolConfig(key, defaultValue) {
     const value = localStorage.getItem(key);
     if (value === null) return defaultValue;
@@ -1320,7 +1320,7 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, type
     return displayEpisodes.map((episodeString, displayIndex) => {
         const originalIndex = currentReversedState ? (episodes.length - 1 - displayIndex) : displayIndex;
 
-        // 新增：从AppState获取保存的原始剧集名称
+        // 从AppState获取保存的原始剧集名称
         const originalEpisodeNames = AppState.get('originalEpisodeNames') || [];
         // 优先使用原始名称（如果存在且对应索引有效）
         const originalName = originalEpisodeNames[originalIndex] || '';
