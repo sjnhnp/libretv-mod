@@ -1215,7 +1215,9 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     }
 
     // 处理自定义detail源的真实地址获取
-    const isCustomSpecialSource = sourceCode.startsWith('custom_') && apiUrl; // apiUrl为自定义源的detail地址
+    const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
+    const apiInfo = APISourceManager.getCustomApiInfo(customIndex); // 获取自定义源完整信息
+    const isCustomSpecialSource = sourceCode.startsWith('custom_') && apiInfo?.detail;
     if (isCustomSpecialSource) {
         // 延迟执行，确保弹窗已打开
         setTimeout(async () => {
@@ -1229,15 +1231,23 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
                 const detailResult = await handleCustomApiSpecialDetail(id, apiInfo.detail || apiUrl);
                 const detailData = JSON.parse(detailResult);
 
+                // 自定义源异步更新逻辑中，重新渲染按钮时：
                 if (detailData.code === 200 && Array.isArray(detailData.episodes)) {
-                    // 用真实地址更新按钮
                     episodes = detailData.episodes;
-                    AppState.set('currentEpisodes', episodes);
+                    AppState.set('currentEpisodes', episodes); // 更新到状态
                     localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
-                    // 重新渲染按钮
+
                     const episodeGrid = document.querySelector('#modalContent [data-field="episode-buttons-grid"]');
                     if (episodeGrid) {
-                        episodeGrid.innerHTML = renderEpisodeButtons(episodes, title, sourceCode, sourceNameForDisplay, effectiveTypeName);
+                        // 强制使用AppState中的最新数据渲染
+                        const latestEpisodes = AppState.get('currentEpisodes');
+                        episodeGrid.innerHTML = renderEpisodeButtons(
+                            latestEpisodes, // 关键：用最新数据
+                            title,
+                            sourceCode,
+                            sourceNameForDisplay,
+                            effectiveTypeName
+                        );
                     }
                 }
             } catch (e) {

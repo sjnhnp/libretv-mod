@@ -71,22 +71,37 @@ async function handleSpecialSourceDetail(id, sourceCode) {
 async function handleCustomApiSpecialDetail(id, customApiDetailBaseUrl) {
     try {
         const detailPageUrl = `${customApiDetailBaseUrl}/index.php/vod/detail/id/${id}.html`;
+        // 关键修复：添加PROXY_URL代理，与内置源保持一致
+        const fullUrl = PROXY_URL + encodeURIComponent(detailPageUrl);
+
         const htmlContent = await fetchWithTimeout(
-            PROXY_URL + encodeURIComponent(detailPageUrl),
+            fullUrl, // 使用代理后的URL
             { headers: { 'User-Agent': API_CONFIG.search.headers['User-Agent'] } },
             10000,
-            'text' // 明确指定返回text（与内置源一致）
+            'text' // 明确指定返回文本类型（避免默认解析为JSON）
         );
+
         // 复用内置源的M3U8提取逻辑（确保格式一致）
         let matches = htmlContent.match(/\$(https?:\/\/[^"'\s]+?\.m3u8)/g) || [];
         if (matches.length === 0) {
             matches = htmlContent.match(M3U8_PATTERN) || []; // 用全局M3U8正则兜底
         }
+        // 提取M3U8后添加验证
         matches = Array.from(new Set(matches)).map(link => {
-            link = link.slice(1); // 移除开头的$符号
+            link = link.slice(1); // 移除开头的$
             const idx = link.indexOf('(');
-            return idx > -1 ? link.slice(0, idx) : link; // 清除多余参数
+            const cleanLink = idx > -1 ? link.slice(0, idx) : link;
+            // 验证：必须以http开头且以.m3u8结尾
+            if (!cleanLink.startsWith('http') || !cleanLink.endsWith('.m3u8')) {
+                throw new Error(`提取到无效M3U8地址：${cleanLink}`);
+            }
+            return cleanLink;
         });
+
+        // 若提取不到有效链接，明确抛出错误（避免传递空数组）
+        if (matches.length === 0) {
+            throw new Error('未提取到有效M3U8地址（可能详情页结构不符）');
+        }
         if (matches.length === 0) {
             throw new Error('未能从自定义API源获取到有效的M3U8播放地址');
         }
