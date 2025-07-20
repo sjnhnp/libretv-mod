@@ -281,14 +281,12 @@ async function processVideoUrl(url) {
 }
 
 // --- 播放器核心逻辑 ---
-
 async function initPlayer(videoUrl, title) {
     const playerContainer = document.getElementById('player');
     if (!playerContainer) {
         showError("播放器容器 (#player) 未找到");
         return;
     }
-
     if (player) {
         // 清理旧的Blob URL
         if (player.currentSrc && player.currentSrc.startsWith('blob:')) {
@@ -297,52 +295,62 @@ async function initPlayer(videoUrl, title) {
         player.destroy();
         player = null;
     }
-
     // 在创建播放器前处理URL
     const processedUrl = await processVideoUrl(videoUrl);
-
-    try {
-        player = await VidstackPlayer.create({
-            target: playerContainer,
-            // 使用处理过的URL
-            src: { src: processedUrl, type: 'application/x-mpegurl' },
-            title: title,
-            autoplay: true,
-            preload: 'auto',
-            layout: new VidstackPlayerLayout({
-                seekTime: 10,
-                //clickToFullscreen: true
-            }),
-            // layout: new PlyrLayout(),
-            playsInline: true,
-            crossOrigin: true,
-            keyTarget: 'document',
-            keyShortcuts: {
-                togglePaused: 'k Space',
-                toggleMuted: 'm',
-                togglePictureInPicture: 'i',
-                // toggleFullscreen: 'f',
-                seekBackward: ['j', 'J', 'ArrowLeft'],
-                seekForward: ['l', 'L', 'ArrowRight'],
-                volumeUp: 'ArrowUp',
-                volumeDown: 'ArrowDown',
-                speedUp: '>',
-                slowDown: '<',
+    let retryCount = 0;
+    const maxRetries = 3;
+    const retryInterval = 3000;
+    const attemptInitPlayer = async () => {
+        try {
+            player = await VidstackPlayer.create({
+                target: playerContainer,
+                // 使用处理过的URL
+                src: { src: processedUrl, type: 'application/x-mpegurl' },
+                title: title,
+                autoplay: true,
+                preload: 'auto',
+                layout: new VidstackPlayerLayout({
+                    seekTime: 10,
+                    //clickToFullscreen: true
+                }),
+                // layout: new PlyrLayout(),
+                playsInline: true,
+                crossOrigin: true,
+                keyTarget: 'document',
+                keyShortcuts: {
+                    togglePaused: 'k Space',
+                    toggleMuted: 'm',
+                    togglePictureInPicture: 'i',
+                    // toggleFullscreen: 'f',
+                    seekBackward: ['j', 'J', 'ArrowLeft'],
+                    seekForward: ['l', 'L', 'ArrowRight'],
+                    volumeUp: 'ArrowUp',
+                    volumeDown: 'ArrowDown',
+                    speedUp: '>',
+                    slowDown: '<',
+                }
+            });
+            window.player = player;
+            addPlayerEventListeners();
+            handleSkipIntroOutro(player);
+            // 应用保存的播放速率
+            const savedSpeed = localStorage.getItem('playbackSpeed') || '1';
+            if (player.playbackRate !== undefined) {
+                player.playbackRate = parseFloat(savedSpeed);
             }
-        });
-        window.player = player;
-        addPlayerEventListeners();
-        handleSkipIntroOutro(player);
-
-        // 应用保存的播放速率
-        const savedSpeed = localStorage.getItem('playbackSpeed') || '1';
-        if (player.playbackRate !== undefined) {
-            player.playbackRate = parseFloat(savedSpeed);
+        } catch (error) {
+            if (retryCount < maxRetries) {
+                retryCount++;
+                setTimeout(() => {
+                    attemptInitPlayer();
+                }, retryInterval);
+            } else {
+                console.error("Vidstack Player 创建失败:", error);
+                showError("播放器初始化失败");
+            }
         }
-    } catch (error) {
-        console.error("Vidstack Player 创建失败:", error);
-        showError("播放器初始化失败");
-    }
+    };
+    await attemptInitPlayer();
 }
 
 function addPlayerEventListeners() {

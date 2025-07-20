@@ -59,28 +59,38 @@ function sanitizeText(text) {
     return text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function playVideo(episodeString, title, episodeIndex, sourceName = '', sourceCode = '', vodId = '', year = '', typeName = '', videoKey = '') {
+async function playVideo(episodeString, title, episodeIndex, sourceName = '', sourceCode = '', vodId = '', year = '', typeName = '', videoKey = '') {
     if (!episodeString) {
         showToast('无效的视频链接', 'error');
         return;
     }
-
     // 分割剧集字符串，提取真实的URL用于播放
     let playUrl = episodeString;
     if (episodeString.includes('$')) {
-        const parts = episodeString.split('$');
-        playUrl = parts[parts.length - 1];
+        playUrl = episodeString.split('$')[1];
     }
-
     if (!playUrl || !playUrl.startsWith('http')) {
         showToast('视频链接格式无效', 'error');
         console.error('解析出的播放链接无效:', playUrl);
         return;
     }
-
+    // 检查是否需要等待获取真实地址
+    const isSpecialSource = !sourceCode.startsWith('custom_') && API_SITES[sourceCode] && API_SITES[sourceCode].detail;
+    if (isSpecialSource) {
+        const detailUrl = `/api/detail?id=${vodId}&source=${sourceCode}`;
+        try {
+            const response = await fetch(detailUrl);
+            const data = await response.json();
+            if (data.code === 200 && Array.isArray(data.episodes)) {
+                // 使用真实地址更新播放链接
+                playUrl = data.episodes[episodeIndex];
+            }
+        } catch (e) {
+            console.log('后台获取真实地址失败（播放前）', e);
+        }
+    }
     AppState.set('currentEpisodeIndex', episodeIndex);
     AppState.set('currentVideoTitle', title);
-
     if (typeof addToViewingHistory === 'function') {
         const videoInfoForHistory = {
             url: playUrl,
@@ -94,7 +104,6 @@ function playVideo(episodeString, title, episodeIndex, sourceName = '', sourceCo
         };
         addToViewingHistory(videoInfoForHistory);
     }
-
     const playerUrl = new URL('player.html', window.location.origin);
     playerUrl.searchParams.set('url', playUrl);
     playerUrl.searchParams.set('title', title);
@@ -105,12 +114,10 @@ function playVideo(episodeString, title, episodeIndex, sourceName = '', sourceCo
     if (year) playerUrl.searchParams.set('year', year);
     if (typeName) playerUrl.searchParams.set('typeName', typeName);
     if (videoKey) playerUrl.searchParams.set('videoKey', videoKey);
-
     const universalId = generateUniversalId(title, year, episodeIndex);
     playerUrl.searchParams.set('universalId', universalId);
     const adOn = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, PLAYER_CONFIG.adFilteringEnabled);
     playerUrl.searchParams.set('af', adOn ? '1' : '0');
-
     window.location.href = playerUrl.toString();
 }
 
@@ -1294,19 +1301,15 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, type
     // 优先使用状态中已更新的真实地址（特殊源），否则用原有参数（普通源）
     const realEpisodes = AppState.get('currentEpisodes') || episodes;
     const displayEpisodes = currentReversedState ? [...realEpisodes].reverse() : [...realEpisodes];
-
     const varietyShowTypes = ['综艺', '脱口秀', '真人秀'];
     const isVarietyShow = varietyShowTypes.some(type => typeName && typeName.includes(type));
-
     return displayEpisodes.map((episodeString, displayIndex) => {
         const originalIndex = currentReversedState ? (episodes.length - 1 - displayIndex) : displayIndex;
         const parts = (episodeString || '').split('$');
         const episodeName = parts.length > 1 ? parts[0].trim() : '';
-
         let buttonText = '';
         let buttonTitle = '';
         let buttonClasses = '';
-
         if (isVarietyShow) {
             // 综艺节目
             buttonText = episodeName || `第${originalIndex + 1}集`;
@@ -1322,21 +1325,17 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, type
                 // 否则，使用默认的 "第 X 集" 格式
                 buttonText = `第 ${originalIndex + 1} 集`;
             }
-
-            buttonTitle = buttonText; // 此行保持不变
+            buttonTitle = buttonText;
             // CSS 类名保持老代码的样式
             buttonClasses = 'episode-btn px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate';
         }
-
         const safeVideoTitle = encodeURIComponent(videoTitle);
         const safeSourceName = encodeURIComponent(sourceName);
-
         // 从剧集字符串中提取真实的播放URL
         let playUrl = episodeString;
         if (episodeString.includes('$')) {
             playUrl = episodeString.split('$').pop();
         }
-
         return `
             <button 
                 onclick="playVideo('${playUrl}', decodeURIComponent('${safeVideoTitle}'), ${originalIndex}, decodeURIComponent('${safeSourceName}'), '${sourceCode}', '${vodId}', '${year}', '${typeName}', '${videoKey}')" 
