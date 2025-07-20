@@ -26,10 +26,11 @@ async function fetchWithTimeout(targetUrl, options, timeout = 10000, responseTyp
 async function handleSpecialSourceDetail(id, sourceCode) {
     try {
         const detailPageUrl = `${API_SITES[sourceCode].detail}/index.php/vod/detail/id/${id}.html`;
-        // 使用 fetchWithTimeout 获取 HTML 内容
         const htmlContent = await fetchWithTimeout(
             PROXY_URL + encodeURIComponent(detailPageUrl),
-            { headers: { 'User-Agent': API_CONFIG.search.headers['User-Agent'] } }
+            { headers: { 'User-Agent': API_CONFIG.search.headers['User-Agent'] } },
+            10000,
+            'text'
         );
 
         let matches = [];
