@@ -1214,6 +1214,38 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         }, 500); // 延迟执行，确保弹窗已打开
     }
 
+    // 处理自定义detail源的真实地址获取
+    const isCustomSpecialSource = sourceCode.startsWith('custom_') && apiUrl; // apiUrl为自定义源的detail地址
+    if (isCustomSpecialSource) {
+        // 延迟执行，确保弹窗已打开
+        setTimeout(async () => {
+            try {
+                // 调用自定义源的详情处理函数
+                const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
+                const apiInfo = APISourceManager.getCustomApiInfo(customIndex);
+                if (!apiInfo) throw new Error('自定义源信息不存在');
+
+                // 调用handleCustomApiSpecialDetail获取真实地址
+                const detailResult = await handleCustomApiSpecialDetail(id, apiInfo.detail || apiUrl);
+                const detailData = JSON.parse(detailResult);
+
+                if (detailData.code === 200 && Array.isArray(detailData.episodes)) {
+                    // 用真实地址更新按钮
+                    episodes = detailData.episodes;
+                    AppState.set('currentEpisodes', episodes);
+                    localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
+                    // 重新渲染按钮
+                    const episodeGrid = document.querySelector('#modalContent [data-field="episode-buttons-grid"]');
+                    if (episodeGrid) {
+                        episodeGrid.innerHTML = renderEpisodeButtons(episodes, title, sourceCode, sourceNameForDisplay, effectiveTypeName);
+                    }
+                }
+            } catch (e) {
+                console.log('自定义源后台获取真实地址失败（不影响弹窗显示）', e);
+            }
+        }, 500); // 与内置源保持相同延迟，确保弹窗已渲染
+    }
+
     // 4. 渲染弹窗（原代码逻辑）
     hideLoading(); // 移除加载提示，立即显示弹窗
     const effectiveTitle = videoData.vod_name || title;
