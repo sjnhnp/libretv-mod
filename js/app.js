@@ -1142,59 +1142,58 @@ window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 
 // 显示视频剧集模态框
 async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackData) {
-    showLoading('处理中...');
+    // 1. 立即打开弹窗（原代码核心逻辑）
     const videoDataMap = AppState.get('videoDataMap');
     const videoData = videoDataMap ? videoDataMap.get(id.toString()) : null;
     if (!videoData) {
-        hideLoading();
+        hideLoading(); // 立即关闭加载
         showToast('缓存中找不到视频数据，请刷新后重试', 'error');
-        console.error(`无法从 AppState 缓存中找到 vod_id 为 ${id} 的视频数据。`);
         return;
     }
 
+    // 2. 直接渲染弹窗（不等待真实地址，先用缓存）
     let episodes = [];
-    // 先按原有逻辑从缓存解析集数
     if (videoData.vod_play_url) {
+        // 用缓存数据先渲染弹窗（原代码逻辑）
         const playFroms = (videoData.vod_play_from || '').split('$$$');
         const urlGroups = videoData.vod_play_url.split('$$$');
         const selectedApi = APISourceManager.getSelectedApi(sourceCode);
         const sourceName = selectedApi ? selectedApi.name : '';
         let sourceIndex = playFroms.indexOf(sourceName);
-        if (sourceIndex === -1) {
-            sourceIndex = 0;
-        }
+        if (sourceIndex === -1) sourceIndex = 0;
         if (urlGroups[sourceIndex]) {
             episodes = urlGroups[sourceIndex].split('#').filter(item => item && item.includes('$'));
         }
     }
 
-    // 针对特殊源（有detail配置的源），后台获取真实地址
+    // 3. 后台异步获取真实地址（不阻塞弹窗显示）
     const isSpecialSource = !sourceCode.startsWith('custom_') && API_SITES[sourceCode] && API_SITES[sourceCode].detail;
     if (isSpecialSource) {
-        try {
-            // 调用detail接口获取真实地址（复用现有接口，不新增逻辑）
-            const detailResp = await fetch(`/api/detail?id=${id}&source=${sourceCode}`);
-            const detailData = await detailResp.json();
-            // 仅当获取到有效真实地址时，才更新集数（避免破坏原有缓存）
-            if (detailData.code === 200 && Array.isArray(detailData.episodes) && detailData.episodes.length > 0) {
-                episodes = detailData.episodes; // 替换为真实地址
-                AppState.set('currentEpisodes', episodes); // 更新到状态，确保按钮使用
-                localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
+        // 真实地址获取放在弹窗打开后执行（原代码逻辑）
+        setTimeout(async () => {
+            try {
+                const detailUrl = `/api/detail?id=${id}&source=${sourceCode}`;
+                const response = await fetch(detailUrl);
+                const detailData = await response.json();
+                if (detailData.code === 200 && Array.isArray(detailData.episodes)) {
+                    // 用真实地址更新按钮（不刷新弹窗，仅替换链接）
+                    episodes = detailData.episodes;
+                    AppState.set('currentEpisodes', episodes);
+                    localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
+                    // 重新渲染按钮（不关闭弹窗）
+                    const episodeGrid = document.querySelector('#modalContent [data-field="episode-buttons-grid"]');
+                    if (episodeGrid) {
+                        episodeGrid.innerHTML = renderEpisodeButtons(episodes, title, sourceCode, sourceNameForDisplay, effectiveTypeName);
+                    }
+                }
+            } catch (e) {
+                console.log('后台获取真实地址失败（不影响弹窗显示）', e);
             }
-        } catch (e) {
-            // 失败时不影响现有功能，继续使用缓存集数
-            console.log('特殊源真实地址获取失败，使用缓存地址', e);
-        }
+        }, 500); // 延迟执行，确保弹窗已打开
     }
 
-    if (episodes.length === 0) {
-        hideLoading();
-        showToast('解析剧集列表失败', 'error');
-        console.error('解析后的 episodes 数组为空。原始 videoData:', videoData);
-        return;
-    }
-
-    hideLoading();
+    // 4. 渲染弹窗（原代码逻辑）
+    hideLoading(); // 移除加载提示，立即显示弹窗
     const effectiveTitle = videoData.vod_name || title;
     const effectiveTypeName = videoData.type_name || fallbackData.typeName;
     const sourceNameForDisplay = videoData.source_name || APISourceManager.getSelectedApi(sourceCode)?.name || '未知源';
