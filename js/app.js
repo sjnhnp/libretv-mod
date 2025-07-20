@@ -1294,8 +1294,17 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, type
             buttonClasses = 'episode-btn';
         } else {
             // 非综艺节目
-            buttonText = `第 ${originalIndex + 1} 集`;
-            buttonTitle = buttonText;
+            // 检查剧集名称是否存在，并且不是一个数字
+            if (episodeName && isNaN(parseInt(episodeName, 10))) {
+                // 如果是 "HD", "蓝光版", "番外" 等非数字文本，直接使用
+                buttonText = episodeName;
+            } else {
+                // 否则，使用默认的 "第 X 集" 格式
+                buttonText = `第 ${originalIndex + 1} 集`;
+            }
+
+            buttonTitle = buttonText; // 此行保持不变
+            // CSS 类名保持老代码的样式
             buttonClasses = 'episode-btn px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate';
         }
 
