@@ -351,6 +351,7 @@ function initializeDOMCache() {
     DOMCache.set('addCustomApiForm', document.getElementById('addCustomApiForm'));
     DOMCache.set('customApiName', document.getElementById('customApiName'));
     DOMCache.set('customApiUrl', document.getElementById('customApiUrl'));
+    DOMCache.set('customApiDetail', document.getElementById('customApiDetail'));
     DOMCache.set('customApiIsAdult', document.getElementById('customApiIsAdult'));
 
     // 缓存过滤器相关元素
