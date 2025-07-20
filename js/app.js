@@ -1153,6 +1153,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     }
 
     let episodes = [];
+    // 先按原有逻辑从缓存解析集数
     if (videoData.vod_play_url) {
         const playFroms = (videoData.vod_play_from || '').split('$$$');
         const urlGroups = videoData.vod_play_url.split('$$$');
@@ -1160,11 +1161,29 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         const sourceName = selectedApi ? selectedApi.name : '';
         let sourceIndex = playFroms.indexOf(sourceName);
         if (sourceIndex === -1) {
-            console.warn(`源名称 "${sourceName}" 未在播放列表源 [${playFroms.join(', ')}] 中找到，将默认使用第一个源。`);
             sourceIndex = 0;
         }
         if (urlGroups[sourceIndex]) {
             episodes = urlGroups[sourceIndex].split('#').filter(item => item && item.includes('$'));
+        }
+    }
+
+    // 针对特殊源（有detail配置的源），后台获取真实地址
+    const isSpecialSource = !sourceCode.startsWith('custom_') && API_SITES[sourceCode] && API_SITES[sourceCode].detail;
+    if (isSpecialSource) {
+        try {
+            // 调用detail接口获取真实地址（复用现有接口，不新增逻辑）
+            const detailResp = await fetch(`/api/detail?id=${id}&source=${sourceCode}`);
+            const detailData = await detailResp.json();
+            // 仅当获取到有效真实地址时，才更新集数（避免破坏原有缓存）
+            if (detailData.code === 200 && Array.isArray(detailData.episodes) && detailData.episodes.length > 0) {
+                episodes = detailData.episodes; // 替换为真实地址
+                AppState.set('currentEpisodes', episodes); // 更新到状态，确保按钮使用
+                localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
+            }
+        } catch (e) {
+            // 失败时不影响现有功能，继续使用缓存集数
+            console.log('特殊源真实地址获取失败，使用缓存地址', e);
         }
     }
 
@@ -1273,7 +1292,9 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, type
     const vodId = AppState.get('currentVideoId') || '';
     const year = AppState.get('currentVideoYear') || '';
     const videoKey = AppState.get('currentVideoKey') || '';
-    const displayEpisodes = currentReversedState ? [...episodes].reverse() : [...episodes];
+    // 优先使用状态中已更新的真实地址（特殊源），否则用原有参数（普通源）
+    const realEpisodes = AppState.get('currentEpisodes') || episodes;
+    const displayEpisodes = currentReversedState ? [...realEpisodes].reverse() : [...realEpisodes];
 
     const varietyShowTypes = ['综艺', '脱口秀', '真人秀'];
     const isVarietyShow = varietyShowTypes.some(type => typeName && typeName.includes(type));

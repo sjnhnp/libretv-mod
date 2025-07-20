@@ -333,7 +333,7 @@ async function initPlayer(videoUrl, title) {
         window.player = player;
         addPlayerEventListeners();
         handleSkipIntroOutro(player);
-      
+
         // 应用保存的播放速率
         const savedSpeed = localStorage.getItem('playbackSpeed') || '1';
         if (player.playbackRate !== undefined) {
@@ -453,6 +453,10 @@ async function doEpisodeSwitch(index, episodeString) {
     let playUrl = episodeString;
     if (episodeString && episodeString.includes('$')) {
         playUrl = episodeString.split('$')[1];
+    }
+    // 特殊源链接补充协议校验（避免相对路径问题）
+    if (playUrl && !playUrl.startsWith('http') && playUrl.startsWith('//')) {
+        playUrl = 'https:' + playUrl; // 补全https协议
     }
 
     // 增加一个检查，确保一个有效的URL
