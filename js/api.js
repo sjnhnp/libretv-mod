@@ -2,55 +2,32 @@
 // API请求与聚合处理优化版
 // ================================
 
-// 通用fetch，支持超时并返回JSON
-async function fetchWithTimeout(targetUrl, options, timeout = 10000) {
+async function fetchWithTimeout(targetUrl, options, timeout = 10000, responseType = 'json') {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
     try {
-        const response = await fetch(targetUrl, {
-            ...options,
-            signal: controller.signal
-        });
+        const response = await fetch(targetUrl, { ...options, signal: controller.signal });
         clearTimeout(timer);
         if (!response.ok) throw new Error(`请求失败: ${response.status} ${response.statusText} for ${targetUrl}`);
-        return await response.json(); // 期望JSON响应
+        // 根据类型返回结果
+        return responseType === 'text' ? await response.text() : await response.json();
     } catch (error) {
         clearTimeout(timer);
+        // 统一错误信息前缀（区分类型）
+        const typeText = responseType === 'text' ? 'text' : 'JSON';
         if (error instanceof Error && !(error.message.includes(targetUrl))) {
-            error.message = `Error fetching JSON from ${targetUrl}: ${error.message}`;
+            error.message = `Error fetching ${typeText} from ${targetUrl}: ${error.message}`;
         }
         throw error;
     }
 }
-
-// 新增：通用fetch，支持超时并返回TEXT (用于HTML抓取)
-async function fetchTextWithTimeout(targetUrl, options, timeout = 10000) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
-    try {
-        const response = await fetch(targetUrl, {
-            ...options,
-            signal: controller.signal
-        });
-        clearTimeout(timer);
-        if (!response.ok) throw new Error(`请求失败: ${response.status} ${response.statusText} for ${targetUrl}`);
-        return await response.text(); // 期望TEXT响应
-    } catch (error) {
-        clearTimeout(timer);
-        if (error instanceof Error && !(error.message.includes(targetUrl))) {
-            error.message = `Error fetching text from ${targetUrl}: ${error.message}`;
-        }
-        throw error;
-    }
-}
-
 
 // 处理特殊片源详情 (内置源，需要HTML抓取)
 async function handleSpecialSourceDetail(id, sourceCode) {
     try {
         const detailPageUrl = `${API_SITES[sourceCode].detail}/index.php/vod/detail/id/${id}.html`;
-        // 使用 fetchTextWithTimeout 获取 HTML 内容
-        const htmlContent = await fetchTextWithTimeout(
+        // 使用 fetchWithTimeout 获取 HTML 内容
+        const htmlContent = await fetchWithTimeout(
             PROXY_URL + encodeURIComponent(detailPageUrl),
             { headers: { 'User-Agent': API_CONFIG.search.headers['User-Agent'] } }
         );
@@ -96,8 +73,8 @@ async function handleSpecialSourceDetail(id, sourceCode) {
 async function handleCustomApiSpecialDetail(id, customApiDetailBaseUrl) {
     try {
         const detailPageUrl = `${customApiDetailBaseUrl}/index.php/vod/detail/id/${id}.html`;
-        // 使用 fetchTextWithTimeout 获取 HTML 内容
-        const htmlContent = await fetchTextWithTimeout(
+        // 使用 fetchWithTimeout 获取 HTML 内容
+        const htmlContent = await fetchWithTimeout(
             PROXY_URL + encodeURIComponent(detailPageUrl),
             { headers: { 'User-Agent': API_CONFIG.search.headers['User-Agent'], 'Accept': 'application/json' } } // Accept header for custom APIs can remain, as some might check it.
         );
@@ -258,7 +235,7 @@ async function handleApiRequest(url) {
                  // Log the error with more context before re-throwing or returning
                 console.error(`Error in detail processing for source ${sourceCode}, id ${id}:`, error);
                 const errorMsg = error.name === 'AbortError' ? '详情请求超时'
-                    : error.name === 'SyntaxError' ? '详情数据格式无效' // Should be less common now with fetchTextWithTimeout
+                    : error.name === 'SyntaxError' ? '详情数据格式无效' // Should be less common now with fetchWithTimeout
                     : error.message;
                 return JSON.stringify({
                     code: 400,
