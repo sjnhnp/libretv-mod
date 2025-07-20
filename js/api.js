@@ -182,17 +182,17 @@ async function handleApiRequest(url) {
                 if (!sourceCode.startsWith('custom_') && API_SITES[sourceCode] && API_SITES[sourceCode].detail) {
                     return await handleSpecialSourceDetail(id, sourceCode);
                 }
-                // 处理需要HTML抓取的自定义源
-                else if (sourceCode.startsWith('custom_') && url.searchParams.get('useDetail') === 'true') {
+
+                // 处理需要HTML抓取的自定义源（有 detail 字段就走特殊抓取）
+                else if (sourceCode.startsWith('custom_')) {
                     const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
-                    const apiInfo = window.APISourceManager.getCustomApiInfo(customIndex); // APISourceManager should be globally available
-                    if (apiInfo) {
-                        const detailScrapeUrl = apiInfo.detail || customApi; // customApi is base URL from query
-                        return await handleCustomApiSpecialDetail(id, detailScrapeUrl);
-                    } else {
-                        throw new Error(`自定义API信息未找到 (source: ${sourceCode})`);
+                    const apiInfo = window.APISourceManager.getCustomApiInfo(customIndex);
+                    if (apiInfo && apiInfo.detail) {
+                        // 直接用 detail 字段
+                        return await handleCustomApiSpecialDetail(id, apiInfo.detail);
                     }
                 }
+
                 // 标准API详情 (JSON)
                 else {
                     const detailUrl = sourceCode.startsWith('custom_')
