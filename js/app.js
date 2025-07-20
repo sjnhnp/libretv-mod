@@ -1160,6 +1160,8 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
 
     // 2. 直接渲染弹窗（不等待真实地址，先用缓存）
     let episodes = [];
+    // 保存原始剧集名称
+    const originalEpisodeNames = [];
     if (videoData.vod_play_url) {
         // 用缓存数据先渲染弹窗（原代码逻辑）
         const playFroms = (videoData.vod_play_from || '').split('$$$');
@@ -1170,8 +1172,15 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         if (sourceIndex === -1) sourceIndex = 0;
         if (urlGroups[sourceIndex]) {
             episodes = urlGroups[sourceIndex].split('#').filter(item => item && item.includes('$'));
+            // 提取原始剧集名称（如"01"、"20200101"、"hd"）
+            episodes.forEach(ep => {
+                const parts = ep.split('$');
+                originalEpisodeNames.push(parts[0].trim()); // 保存名称部分
+            });
         }
     }
+    // 将原始名称存入AppState，供后续使用
+    AppState.set('originalEpisodeNames', originalEpisodeNames);
 
     // 3. 后台异步获取真实地址（不阻塞弹窗显示）
     const isSpecialSource = !sourceCode.startsWith('custom_') && API_SITES[sourceCode] && API_SITES[sourceCode].detail;
@@ -1305,30 +1314,35 @@ function renderEpisodeButtons(episodes, videoTitle, sourceCode, sourceName, type
     const isVarietyShow = varietyShowTypes.some(type => typeName && typeName.includes(type));
     return displayEpisodes.map((episodeString, displayIndex) => {
         const originalIndex = currentReversedState ? (episodes.length - 1 - displayIndex) : displayIndex;
+
+        // 新增：从AppState获取保存的原始剧集名称
+        const originalEpisodeNames = AppState.get('originalEpisodeNames') || [];
+        // 优先使用原始名称（如果存在且对应索引有效）
+        const originalName = originalEpisodeNames[originalIndex] || '';
+
         const parts = (episodeString || '').split('$');
         const episodeName = parts.length > 1 ? parts[0].trim() : '';
         let buttonText = '';
         let buttonTitle = '';
         let buttonClasses = '';
         if (isVarietyShow) {
-            // 综艺节目
-            buttonText = episodeName || `第${originalIndex + 1}集`;
+            // 综艺节目：优先用原始名称
+            buttonText = originalName || episodeName || `第${originalIndex + 1}集`;
             buttonTitle = buttonText;
             buttonClasses = 'episode-btn';
         } else {
-            // 非综艺节目
-            // 检查剧集名称是否存在，并且不是一个数字
-            if (episodeName && isNaN(parseInt(episodeName, 10))) {
-                // 如果是 "HD", "蓝光版", "番外" 等非数字文本，直接使用
+            // 非综艺节目：优先用原始名称
+            if (originalName && (originalName || isNaN(parseInt(originalName, 10)))) {
+                buttonText = originalName;
+            } else if (episodeName && isNaN(parseInt(episodeName, 10))) {
                 buttonText = episodeName;
             } else {
-                // 否则，使用默认的 "第 X 集" 格式
                 buttonText = `第 ${originalIndex + 1} 集`;
             }
             buttonTitle = buttonText;
-            // CSS 类名保持老代码的样式
             buttonClasses = 'episode-btn px-2 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs sm:text-sm transition-colors truncate';
         }
+
         const safeVideoTitle = encodeURIComponent(videoTitle);
         const safeSourceName = encodeURIComponent(sourceName);
         // 从剧集字符串中提取真实的播放URL
