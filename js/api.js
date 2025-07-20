@@ -34,9 +34,6 @@ async function handleSpecialSourceDetail(id, sourceCode) {
         );
 
         let matches = [];
-        if (sourceCode === 'ffzy') {
-            matches = htmlContent.match(/\$(https?:\/\/[^"'\s]+?\/\d{8}\/\d+_[a-f0-9]+\/index\.m3u8)/g) || [];
-        }
         if (matches.length === 0) {
             matches = htmlContent.match(/\$(https?:\/\/[^"'\s]+?\.m3u8)/g) || [];
         }
