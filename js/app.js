@@ -104,6 +104,11 @@ async function playVideo(episodeString, title, episodeIndex, sourceName = '', so
         };
         addToViewingHistory(videoInfoForHistory);
     }
+
+    // 将原始剧集名称存入localStorage，供播放页使用
+    const originalEpisodeNames = AppState.get('originalEpisodeNames') || [];
+    localStorage.setItem('originalEpisodeNames', JSON.stringify(originalEpisodeNames));
+
     const playerUrl = new URL('player.html', window.location.origin);
     playerUrl.searchParams.set('url', playUrl);
     playerUrl.searchParams.set('title', title);

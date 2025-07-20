@@ -862,6 +862,9 @@ function renderEpisodes() {
         return;
     }
 
+    // 读取localStorage中保存的原始剧集名称
+    const originalEpisodeNames = JSON.parse(localStorage.getItem('originalEpisodeNames') || '[]');
+
     const orderedEpisodes = episodesReversed ? [...currentEpisodes].reverse() : [...currentEpisodes];
     orderedEpisodes.forEach((episodeData, index) => {
         const originalIndex = episodesReversed ? (currentEpisodes.length - 1 - index) : index;
@@ -873,11 +876,17 @@ function renderEpisodes() {
         const parts = (episodeData || '').split('$');
         const episodeName = parts.length > 1 ? parts[0].trim() : '';
 
+        // 优先使用原始剧集名称（综艺类核心逻辑）
+        // 从保存的原始名称中取对应索引的名称（如“20200101”）
+        const originalName = originalEpisodeNames[originalIndex] || '';
+
         // 根据是否为综艺决定按钮文本和标题
-        if (isVarietyShow && episodeName) {
-            btn.textContent = episodeName;
-            btn.title = episodeName;
+        if (isVarietyShow) {
+            // 综艺：优先用原始名称，其次用剧集数据中的名称，最后用索引
+            btn.textContent = originalName || episodeName || `第${originalIndex + 1}集`;
+            btn.title = btn.textContent;
         } else {
+            // 非综艺：保持原有逻辑（不影响其他类型）
             btn.textContent = originalIndex + 1;
             btn.title = `第 ${originalIndex + 1} 集`;
         }
