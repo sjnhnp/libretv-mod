@@ -1369,36 +1369,42 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     showModal(modalContent, `${effectiveTitle} (${sourceNameForDisplay})`);
 
     // --- 在弹窗显示后，异步检测清晰度 ---
-    // --- 弹窗显示后立即触发画质检测（优化版）---
+    // 在弹窗检测的第一步（读取缓存）后，“无效结果判断”
     setTimeout(async () => {
         const qualityTagElement = document.querySelector('#modal [data-field="quality-tag"]');
         if (!qualityTagElement) return;
         const qualityId = `${sourceCode}_${id}`;
 
-        // 1. 优先从缓存读取
+        // 第一步：检查缓存
         if (qualityCache.has(qualityId)) {
-            const qualityTag = qualityCache.get(qualityId);
-            qualityTagElement.textContent = qualityTag;
-            updateQualityTagStyle(qualityTagElement, qualityTag);
-            return;
+            const cachedQuality = qualityCache.get(qualityId);
+            // 判断缓存是否为有效结果
+            const isInvalid = ['未知', '解码失败', 'M3U8无效'].includes(cachedQuality);
+            if (!isInvalid) {
+                // 有效结果：直接复用
+                qualityTagElement.textContent = cachedQuality;
+                updateQualityTagStyle(qualityTagElement, cachedQuality);
+                return;
+            }
+            // 无效结果：继续检测（覆盖无效缓存）
+            qualityTagElement.textContent = '补充检测中...';
         }
 
-        // 2. 缓存未命中，强制触发检测（不依赖队列）
+        // 第二步：无缓存或缓存无效时，执行检测（原逻辑）
         const episodes = AppState.get('currentEpisodes') || [];
         if (episodes.length > 0) {
-            let firstEpisodeUrl = episodes[0];
-            if (firstEpisodeUrl.includes('$')) {
-                firstEpisodeUrl = firstEpisodeUrl.split('$')[1];
-            }
-            // 直接调用探测函数（不经过队列，确保弹窗内优先检测）
+            // ...（省略检测代码）
             const qualityTag = await getQualityViaVideoProbe(firstEpisodeUrl);
-            saveQualityCache(qualityId, qualityTag);
+            saveQualityCache(qualityId, qualityTag); // 覆盖无效缓存
             qualityTagElement.textContent = qualityTag;
             updateQualityTagStyle(qualityTagElement, qualityTag);
-        } else {
-            qualityTagElement.textContent = '无剧集';
+            // 同步更新卡片
+            const targetCard = document.querySelector(`.card-hover[data-quality-id="${qualityId}"]`);
+            if (targetCard) {
+                updateQualityBadgeUI(qualityId, qualityTag);
+            }
         }
-    }, 100); // 延迟100ms确保弹窗已渲染
+    }, 100);
 
     // 提取样式更新为独立函数（避免重复代码）
     function updateQualityTagStyle(element, quality) {
@@ -1568,9 +1574,15 @@ async function processQualityDetectionQueue() {
         console.error('检测执行失败:', e);
     }
 
-    // 保存结果并更新UI（立即显示，不再等待）
+    // 检测完成后，判断是否为无效结果
+    const isInvalid = ['未知', '解码失败', 'M3U8无效'].includes(quality);
     saveQualityCache(qualityId, quality);
     updateQualityBadgeUI(qualityId, quality);
+
+    // 如果是无效结果，在缓存中标记“需要弹窗补充检测”
+    if (isInvalid) {
+        qualityCache.set(`needPopupCheck_${qualityId}`, true); // 新增标记
+    }
 
     // 继续处理下一个任务（递归确保队列清空）
     processQualityDetectionQueue();

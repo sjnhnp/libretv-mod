@@ -336,6 +336,10 @@ async function testSiteAvailability(apiUrl) {
  * 优化版画质探测：基于代理服务解决跨域，兼容桌面端
  * 依赖项目内置代理（functions/proxy/[[path]].js）处理M3U8跨域问题
  */
+/**
+ * 优化版画质探测：基于代理服务解决跨域，兼容桌面端
+ * 依赖项目内置代理（functions/proxy/[[path]].js）处理M3U8跨域问题
+ */
 function getQualityViaVideoProbe(m3u8Url) {
     return new Promise(async (resolve) => {
         if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
@@ -358,11 +362,19 @@ function getQualityViaVideoProbe(m3u8Url) {
                 resolve('编码不支持'); // 直接返回，避免解码尝试
                 return;
             }
+
+            // 校验M3U8是否包含有效分片
+            const hasValidSegments = m3u8Content.includes('#EXTINF') &&
+                m3u8Content.split('#EXTINF').length > 1; // 至少有一个分片
+            if (!hasValidSegments) {
+                resolve('M3U8无效');
+                return;
+            }
+
         } catch (e) {
             console.warn('M3U8编码检测失败，继续探测:', e);
         }
 
-        // 以下为原视频探测逻辑（保持不变）
         const proxyM3u8Url = PROXY_URL + encodeURIComponent(m3u8Url);
         const video = document.createElement('video');
         video.style.display = 'none';
@@ -408,14 +420,6 @@ function getQualityViaVideoProbe(m3u8Url) {
         video.addEventListener('error', onError);
         video.src = proxyM3u8Url;
     });
-}
-
-// 校验M3U8是否包含有效分片
-const hasValidSegments = m3u8Content.includes('#EXTINF') &&
-    m3u8Content.split('#EXTINF').length > 1; // 至少有一个分片
-if (!hasValidSegments) {
-    resolve('M3U8无效');
-    return;
 }
 
 // 导出函数到全局
