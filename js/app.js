@@ -1598,17 +1598,32 @@ function updateQualityBadgeUI(qualityId, quality) {
     const badge = cardElement.querySelector('.quality-badge');
     if (badge) {
         badge.textContent = quality;
-        badge.classList.remove('detecting');
+        badge.classList.remove('detecting', 'cursor-pointer', 'hover:opacity-80'); // 重置样式
 
-        // 根据画质更新样式以匹配截图
+        // 核心：给“未知”状态添加点击事件和可点击样式
         if (quality === '未知') {
-            badge.className = 'quality-badge text-xs text-gray-400'; // "未知" 只显示灰色文字
-        } else if (quality === '1080P' || quality === '4K') {
-            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-purple-600 text-purple-100'; // 紫色背景
+            badge.className = 'quality-badge text-xs text-gray-400 cursor-pointer hover:opacity-80';
+            badge.title = '点击重新检测画质'; // 提示用户可点击
+            // 绑定点击事件（先移除旧事件避免重复绑定）
+            badge.onclick = null;
+            badge.onclick = () => manualRetryDetection(qualityId, cardElement.videoData);
+        }
+        // 其他状态保持不变（移除点击事件）
+        else if (quality === '1080P' || quality === '4K') {
+            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-purple-600 text-purple-100';
+            badge.onclick = null; // 非未知状态移除点击事件
         } else if (quality === '720P' || quality === '高清') {
-            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-blue-600 text-blue-100'; // 蓝色背景
+            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-blue-600 text-blue-100';
+            badge.onclick = null;
+        } else if (quality === '编码不支持' || quality === '解码失败' || quality === 'M3U8无效') {
+            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-orange-600 text-white';
+            badge.title = '点击重新检测';
+            badge.classList.add('cursor-pointer', 'hover:opacity-80');
+            badge.onclick = null;
+            badge.onclick = () => manualRetryDetection(qualityId, cardElement.videoData);
         } else {
-            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-green-600 text-green-100'; // 其他情况用绿色
+            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-green-600 text-green-100';
+            badge.onclick = null;
         }
     }
 }
@@ -1657,3 +1672,75 @@ function initializeQualityDetectionObserver() {
         }
     });
 }
+
+/**
+ * 用户手动触发重新检测画质
+ * @param {string} qualityId - 视频唯一标识
+ * @param {object} videoData - 视频元数据（包含链接等信息）
+ */
+async function manualRetryDetection(qualityId, videoData) {
+    // 1. 显示“检测中”状态
+    const badge = document.querySelector(`.quality-badge[data-quality-id="${qualityId}"]`);
+    if (badge) {
+        badge.textContent = '检测中...';
+        badge.className = 'quality-badge text-xs text-gray-500';
+        badge.title = '检测中，请稍候';
+        badge.onclick = null; // 检测中禁用点击
+    }
+
+    // 2. 获取有效的播放链接（复用之前的逻辑）
+    let episodeUrl = '';
+    try {
+        // 优先用最新的剧集链接
+        const episodes = AppState.get('currentEpisodes') || [];
+        if (episodes.length > 0) {
+            episodeUrl = episodes[0].includes('$') ? episodes[0].split('$')[1] : episodes[0];
+        }
+        // 其次用缓存的真实链接（比如自定义源）
+        else if (videoData.vod_id) {
+            const customCache = localStorage.getItem('customApiRealUrls_' + videoData.vod_id);
+            if (customCache) {
+                const realUrls = JSON.parse(customCache);
+                if (realUrls.length > 0) episodeUrl = realUrls[0];
+            }
+        }
+        // 最后用视频元数据中的原始链接
+        else if (videoData.vod_play_url) {
+            const firstSegment = videoData.vod_play_url.split('#')[0];
+            episodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
+        }
+
+        // 3. 执行重新检测
+        if (episodeUrl) {
+            const newQuality = await getQualityViaVideoProbe(episodeUrl);
+            // 更新缓存和UI
+            saveQualityCache(qualityId, newQuality);
+            updateQualityBadgeUI(qualityId, newQuality);
+
+            // 同步更新弹窗中的画质标签（如果弹窗已打开）
+            const modalQualityTag = document.querySelector(`#modal [data-field="quality-tag"]`);
+            if (modalQualityTag && document.querySelector('#modal').style.display !== 'none') {
+                modalQualityTag.textContent = newQuality;
+                // 同步弹窗标签样式
+                if (newQuality === '1080P' || newQuality === '4K') {
+                    modalQualityTag.style.backgroundColor = '#2563eb';
+                } else if (newQuality === '未知') {
+                    modalQualityTag.style.backgroundColor = '#4b5563';
+                } else {
+                    modalQualityTag.style.backgroundColor = '#16a34a';
+                }
+            }
+        } else {
+            // 无有效链接时提示
+            saveQualityCache(qualityId, '无有效链接');
+            updateQualityBadgeUI(qualityId, '无有效链接');
+        }
+    } catch (e) {
+        console.error('手动检测失败:', e);
+        saveQualityCache(qualityId, '检测失败');
+        updateQualityBadgeUI(qualityId, '检测失败');
+    }
+}
+
+// 导出到全局，确保点击事件能调用
+window.manualRetryDetection = manualRetryDetection;
