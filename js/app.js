@@ -545,6 +545,8 @@ function search(options = {}) {
 
 // 执行搜索请求
 async function performSearch(query, selectedAPIs) {
+    // 搜索前强制刷新自定义API数据
+    const customAPIs = AppState.get('customAPIs');
     const searchPromises = selectedAPIs.map(apiId => {
         let apiUrl = `/api/search?wd=${encodeURIComponent(query)}&source=${apiId}`;
         if (apiId.startsWith('custom_')) {

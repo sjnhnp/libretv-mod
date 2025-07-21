@@ -310,9 +310,9 @@ const APISourceManager = {
 
         // 添加到自定义API列表 - 增加isAdult属性
         const customAPIs = AppState.get('customAPIs');
-        const apiData = { name, url, isAdult };
+        const apiData = { name, url, isAdult, detail: detail || '' };
         if (detail) apiData.detail = detail;
-        
+
         const updatedCustomAPIs = [...customAPIs, { name, url, isAdult }];
         AppState.set('customAPIs', updatedCustomAPIs);
         localStorage.setItem('customAPIs', JSON.stringify(updatedCustomAPIs));
@@ -343,6 +343,10 @@ const APISourceManager = {
         if (form) form.classList.add('hidden');
 
         showToast('已添加自定义API: ' + name, 'success');
+        
+        // 添加成功后，强制重新渲染和同步
+        this.renderCustomAPIsList();
+        AppState.set('customAPIs', updatedCustomAPIs); // 显式同步到AppState
     },
 
     /**
