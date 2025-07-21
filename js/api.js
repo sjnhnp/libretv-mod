@@ -333,10 +333,8 @@ async function testSiteAvailability(apiUrl) {
 }
 
 /**
- * 通过创建一个临时的<video>元素来探测视频的真实清晰度。
- * 此方案依赖于项目已有的后端代理（functions/proxy/[[path]].js）来重写M3U8，从而解决CORS问题。
- * @param {string} m3u8Url - 视频的M3U8播放地址
- * @returns {Promise<string>} - 返回一个Promise，最终解析为清晰度标签（如 '1080P'）
+ * 优化版画质探测：基于代理服务解决跨域，兼容桌面端
+ * 依赖项目内置代理（functions/proxy/[[path]].js）处理M3U8跨域问题
  */
 function getQualityViaVideoProbe(m3u8Url) {
     return new Promise((resolve) => {
@@ -345,19 +343,27 @@ function getQualityViaVideoProbe(m3u8Url) {
             return;
         }
 
+        // 关键优化：强制通过项目代理请求，解决桌面端跨域（核心解决桌面端问题）
+        // 代理会自动处理M3U8重写和CORS，无需担心跨域限制
+        const proxyM3u8Url = PROXY_URL + encodeURIComponent(m3u8Url);
+
         const video = document.createElement('video');
-        video.style.display = 'none'; // 确保用户看不到
+        video.style.display = 'none'; // 隐藏视频元素
         document.body.appendChild(video); // 必须添加到DOM才能加载
 
+        // 优化1：延长超时时间到15秒（适配慢网络）
         const timeoutId = setTimeout(() => {
-            console.warn('[清晰度探测] 10秒超时。');
+            console.warn('[画质探测] 15秒超时');
             cleanupAndResolve('未知');
-        }, 10000);
+        }, 15000);
 
+        // 优化2：完善清理逻辑，避免内存泄漏
         const cleanupAndResolve = (quality) => {
             clearTimeout(timeoutId);
             video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            video.removeEventListener('loadeddata', onLoadedMetadata); // 增加loadeddata监听
             video.removeEventListener('error', onError);
+            video.removeEventListener('abort', onError);
             video.src = '';
             video.removeAttribute('src');
             if (document.body.contains(video)) {
@@ -366,9 +372,10 @@ function getQualityViaVideoProbe(m3u8Url) {
             resolve(quality);
         };
 
+        // 优化3：支持多种成功事件（loadedmetadata/loadeddata）
         const onLoadedMetadata = () => {
             const width = video.videoWidth;
-            console.log(`[清晰度探测] 成功！获取到宽度: ${width}`);
+            console.log(`[画质探测] 成功（桌面端兼容）！宽度: ${width}`);
             let qualityTag = '未知';
             if (width >= 3800) qualityTag = '4K';
             else if (width >= 1900) qualityTag = '1080P';
@@ -377,18 +384,41 @@ function getQualityViaVideoProbe(m3u8Url) {
             cleanupAndResolve(qualityTag);
         };
 
+        // 优化4：错误重试机制（最多1次重试）
+        let retryCount = 0;
         const onError = () => {
             const error = video.error;
-            console.error('[清晰度探测] 视频元素加载错误:', error);
-            cleanupAndResolve('未知');
+            console.warn(`[画质探测] 第${retryCount + 1}次失败:`, error);
+
+            // 仅重试1次（避免无效循环）
+            if (retryCount < 1) {
+                retryCount++;
+                setTimeout(() => {
+                    video.src = proxyM3u8Url; // 重新加载
+                }, 1000);
+                return;
+            }
+
+            // 重试失败后，通过URL关键词猜测（保底方案）
+            if (m3u8Url.includes('4k') || m3u8Url.includes('2160')) {
+                cleanupAndResolve('4K');
+            } else if (m3u8Url.includes('1080')) {
+                cleanupAndResolve('1080P');
+            } else if (m3u8Url.includes('720')) {
+                cleanupAndResolve('720P');
+            } else {
+                cleanupAndResolve('未知');
+            }
         };
 
+        // 绑定事件（支持多种成功场景）
         video.addEventListener('loadedmetadata', onLoadedMetadata);
+        video.addEventListener('loadeddata', onLoadedMetadata); // 兼容更多浏览器
         video.addEventListener('error', onError);
+        video.addEventListener('abort', onError);
 
-        // 直接使用原始 M3U8 链接。
-        // 项目的全局 fetch 拦截器会自动将其路由到 /proxy/ 后端进行处理。
-        video.src = m3u8Url;
+        // 加载代理后的M3U8（确保桌面端跨域被处理）
+        video.src = proxyM3u8Url;
     });
 }
 

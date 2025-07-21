@@ -1368,55 +1368,48 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     const tempDiv = document.createElement('div');
     showModal(modalContent, `${effectiveTitle} (${sourceNameForDisplay})`);
 
-    // --- 新增逻辑：在弹窗显示后，异步检测清晰度 ---
+    // --- 在弹窗显示后，异步检测清晰度 ---
+    // --- 弹窗显示后立即触发画质检测（优化版）---
     setTimeout(async () => {
         const qualityTagElement = document.querySelector('#modal [data-field="quality-tag"]');
         if (!qualityTagElement) return;
-
         const qualityId = `${sourceCode}_${id}`;
 
         // 1. 优先从缓存读取
         if (qualityCache.has(qualityId)) {
             const qualityTag = qualityCache.get(qualityId);
             qualityTagElement.textContent = qualityTag;
-            // ... (根据 qualityTag 更新样式) ...
-            if (qualityTag === '1080P' || qualityTag === '4K') {
-                qualityTagElement.style.backgroundColor = '#2563eb';
-            } else if (qualityTag === '未知') {
-                qualityTagElement.style.backgroundColor = '#4b5563';
-            } else {
-                qualityTagElement.style.backgroundColor = '#16a34a';
-            }
-            return; // 缓存命中，直接返回
+            updateQualityTagStyle(qualityTagElement, qualityTag);
+            return;
         }
 
-        // 2. 缓存未命中，开始探测
+        // 2. 缓存未命中，强制触发检测（不依赖队列）
         const episodes = AppState.get('currentEpisodes') || [];
         if (episodes.length > 0) {
             let firstEpisodeUrl = episodes[0];
             if (firstEpisodeUrl.includes('$')) {
                 firstEpisodeUrl = firstEpisodeUrl.split('$')[1];
             }
-
-            // 调用新的探测函数
+            // 直接调用探测函数（不经过队列，确保弹窗内优先检测）
             const qualityTag = await getQualityViaVideoProbe(firstEpisodeUrl);
-            // 3. 保存到缓存并更新UI
             saveQualityCache(qualityId, qualityTag);
             qualityTagElement.textContent = qualityTag;
-
-            // 根据画质更新角标颜色
-            if (qualityTag === '1080P' || qualityTag === '4K') {
-                qualityTagElement.style.backgroundColor = '#2563eb'; // 蓝色
-            } else if (qualityTag === '未知') {
-                qualityTagElement.style.backgroundColor = '#4b5563'; // 灰色
-            } else {
-                qualityTagElement.style.backgroundColor = '#16a34a'; // 绿色
-            }
-
+            updateQualityTagStyle(qualityTagElement, qualityTag);
         } else {
             qualityTagElement.textContent = '无剧集';
         }
-    }, 100);
+    }, 100); // 延迟100ms确保弹窗已渲染
+
+    // 提取样式更新为独立函数（避免重复代码）
+    function updateQualityTagStyle(element, quality) {
+        if (quality === '1080P' || quality === '4K') {
+            element.style.backgroundColor = '#2563eb'; // 蓝色
+        } else if (quality === '未知') {
+            element.style.backgroundColor = '#4b5563'; // 灰色
+        } else {
+            element.style.backgroundColor = '#16a34a'; // 绿色
+        }
+    }
 }
 
 function toggleEpisodeOrderUI(container) {
@@ -1533,43 +1526,54 @@ function copyLinks() {
 
 window.showVideoEpisodesModal = showVideoEpisodesModal;
 
-
-// --- Add these functions to the end of: js/app.js ---
-
 /**
  * 处理队列中的探测任务
  */
 async function processQualityDetectionQueue() {
-    if (activeDetections >= MAX_CONCURRENT_DETECTIONS || qualityDetectionQueue.length === 0) {
+    // 移除并发限制（小白用户无需复杂控制，确保每个任务都执行）
+    if (qualityDetectionQueue.length === 0) {
         return;
     }
 
-    activeDetections++;
-       const element = qualityDetectionQueue.shift();
-        // ✅ 修复：确保 videoData 存在
-        if (!element || !element.videoData) {
-            activeDetections--;
-            processQualityDetectionQueue();
-            return;
-        }
-    const item = element.videoData;
-    const qualityId = element.dataset.qualityId;
-
-    let quality = '未知';
-    if (item.episodes && item.episodes.length > 0) {
-        let episodeUrl = item.episodes[0];
-        if (episodeUrl.includes('$')) {
-            episodeUrl = episodeUrl.split('$')[1];
-        }
-        quality = await getQualityViaVideoProbe(episodeUrl);
+    // 取出队列第一个任务
+    const element = qualityDetectionQueue.shift();
+    // 跳过无效元素
+    if (!element || !element.videoData) {
+        processQualityDetectionQueue(); // 继续下一个
+        return;
     }
 
-       // ✅ 使用新的缓存保存函数
+    const item = element.videoData;
+    const qualityId = element.dataset.qualityId;
+    let quality = '未知';
+
+    try {
+        // 优先从缓存的剧集列表获取播放链接
+        let episodeUrl = '';
+        const episodes = AppState.get('currentEpisodes') || [];
+        if (episodes.length > 0) {
+            episodeUrl = episodes[0].includes('$') ? episodes[0].split('$')[1] : episodes[0];
+        }
+        // 如果没有剧集，从视频数据中提取
+        else if (item.vod_play_url) {
+            const firstSegment = item.vod_play_url.split('#')[0];
+            episodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
+        }
+
+        // 执行探测（使用优化后的代理方案）
+        if (episodeUrl) {
+            quality = await getQualityViaVideoProbe(episodeUrl);
+        }
+    } catch (e) {
+        console.error('检测执行失败:', e);
+    }
+
+    // 保存结果并更新UI（立即显示，不再等待）
     saveQualityCache(qualityId, quality);
     updateQualityBadgeUI(qualityId, quality);
 
-    activeDetections--;
-    processQualityDetectionQueue(); // 处理下一个
+    // 继续处理下一个任务（递归确保队列清空）
+    processQualityDetectionQueue();
 }
 
 /**
@@ -1601,34 +1605,42 @@ function updateQualityBadgeUI(qualityId, quality) {
  * 初始化 IntersectionObserver 以触发画质探测
  */
 function initializeQualityDetectionObserver() {
+    // 清除旧观察者，避免重复监听
     if (qualityDetectionObserver) {
         qualityDetectionObserver.disconnect();
     }
 
+    // 关键优化：扩大检测范围，元素进入视口立即触发
     qualityDetectionObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 const element = entry.target;
                 const qualityId = element.dataset.qualityId;
 
-                // 如果已经探测过或在队列中，则跳过
-                if (!qualityCache.has(qualityId) && !qualityDetectionQueue.includes(element)) {
+                // 确保元素有视频数据且未检测过
+                if (element.videoData && !qualityCache.has(qualityId)) {
+                    // 直接加入队列并立即执行（不等待队列堆积）
                     qualityDetectionQueue.push(element);
                     processQualityDetectionQueue();
                 }
-
-                qualityDetectionObserver.unobserve(element); // 探测一次后停止观察
+                // 检测一次后停止观察（避免重复检测）
+                qualityDetectionObserver.unobserve(element);
             }
         });
-    }, { rootMargin: "200px" }); // 预加载视口下方200px内的内容
+    }, {
+        rootMargin: "0px 0px 800px 0px", // 提前检测视口下方800px的元素（扩大范围）
+        threshold: 0.01 // 元素1%进入视口就触发（降低触发门槛）
+    });
 
+    // 强制对所有结果卡片执行检测（避免漏检）
     const cards = document.querySelectorAll('.card-hover[data-quality-id]');
     cards.forEach(card => {
         const qualityId = card.dataset.qualityId;
-        // 如果缓存中已有结果，直接更新UI
+        // 缓存有结果：直接更新UI
         if (qualityCache.has(qualityId)) {
             updateQualityBadgeUI(qualityId, qualityCache.get(qualityId));
         } else {
+            // 立即观察，确保触发检测
             qualityDetectionObserver.observe(card);
         }
     });
