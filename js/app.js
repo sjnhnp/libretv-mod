@@ -1598,32 +1598,38 @@ function updateQualityBadgeUI(qualityId, quality) {
     const badge = cardElement.querySelector('.quality-badge');
     if (badge) {
         badge.textContent = quality;
-        badge.classList.remove('detecting', 'cursor-pointer', 'hover:opacity-80'); // 重置样式
+        badge.classList.remove('detecting', 'cursor-pointer', 'hover:opacity-80');
 
-        // 核心：给“未知”状态添加点击事件和可点击样式
         if (quality === '未知') {
             badge.className = 'quality-badge text-xs text-gray-400 cursor-pointer hover:opacity-80';
-            badge.title = '点击重新检测画质'; // 提示用户可点击
-            // 绑定点击事件（先移除旧事件避免重复绑定）
-            badge.onclick = null;
-            badge.onclick = () => manualRetryDetection(qualityId, cardElement.videoData);
+            badge.title = '点击重新检测画质';
+            // 关键：绑定点击事件并阻止冒泡
+            badge.onclick = null; // 先移除旧事件
+            badge.onclick = (event) => {
+                event.stopPropagation(); // 阻止事件传递给卡片
+                manualRetryDetection(qualityId, cardElement.videoData);
+            };
         }
-        // 其他状态保持不变（移除点击事件）
-        else if (quality === '1080P' || quality === '4K') {
-            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-purple-600 text-purple-100';
-            badge.onclick = null; // 非未知状态移除点击事件
-        } else if (quality === '720P' || quality === '高清') {
-            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-blue-600 text-blue-100';
-            badge.onclick = null;
-        } else if (quality === '编码不支持' || quality === '解码失败' || quality === 'M3U8无效') {
-            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-orange-600 text-white';
+              // 其他状态保持不变（移除点击事件）
+              else if (quality === '1080P' || quality === '4K') {
+                badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-purple-600 text-purple-100';
+                badge.onclick = null; // 非未知状态移除点击事件
+            } else if (quality === '720P' || quality === '高清') {
+                badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-blue-600 text-blue-100';
+                badge.onclick = null;
+            } else if (quality === '编码不支持' || quality === '解码失败' || quality === 'M3U8无效') {
+            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-orange-600 text-white cursor-pointer hover:opacity-80';
             badge.title = '点击重新检测';
-            badge.classList.add('cursor-pointer', 'hover:opacity-80');
             badge.onclick = null;
-            badge.onclick = () => manualRetryDetection(qualityId, cardElement.videoData);
-        } else {
-            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-green-600 text-green-100';
+            badge.onclick = (event) => {
+                event.stopPropagation(); // 阻止冒泡
+                manualRetryDetection(qualityId, cardElement.videoData);
+            };
+        }
+        // 其他状态移除点击事件
+        else {
             badge.onclick = null;
+            badge.style.cursor = 'default';
         }
     }
 }
