@@ -548,6 +548,7 @@ async function performSearch(query, selectedAPIs) {
     // 强制从localStorage刷新custom API数据
     const customAPIsFromStorage = JSON.parse(localStorage.getItem('customAPIs') || '[]');
     AppState.set('customAPIs', customAPIsFromStorage);
+    
     const searchPromises = selectedAPIs.map(apiId => {
         let apiUrl = `/api/search?wd=${encodeURIComponent(query)}&source=${apiId}`;
         if (apiId.startsWith('custom_')) {
@@ -1219,16 +1220,15 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
 
     // 处理自定义detail源的真实地址获取
     const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
-    const apiInfo = APISourceManager.getCustomApiInfo(customIndex); // 获取自定义源完整信息
+    const apiInfo = APISourceManager.getCustomApiInfo(customIndex); 
     const isCustomSpecialSource = sourceCode.startsWith('custom_') && apiInfo?.detail;
     if (isCustomSpecialSource) {
-        // 延迟执行，确保弹窗已打开
-        // 自定义源弹窗中的异步地址获取（原延迟500ms的逻辑）
+        // 自定义源弹窗中的异步地址获取
         setTimeout(async () => {
             try {
                 const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
                 const apiInfo = APISourceManager.getCustomApiInfo(customIndex);
-                if (!apiInfo) throw new Error('自定义源信息不存在'); // 保留此校验
+                if (!apiInfo) throw new Error('自定义源信息不存在'); 
 
                 // 获取真实地址
                 const detailResult = await handleCustomApiSpecialDetail(id, apiInfo.detail);

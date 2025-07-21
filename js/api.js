@@ -68,7 +68,6 @@ async function handleSpecialSourceDetail(id, sourceCode) {
 }
 
 // 处理自定义API特殊详情 (自定义源，需要HTML抓取)
-// 修改 handleCustomApiSpecialDetail 函数，优化地址提取稳定性
 async function handleCustomApiSpecialDetail(id, customApiDetailBaseUrl) {
     try {
         const detailPageUrl = `${customApiDetailBaseUrl}/index.php/vod/detail/id/${id}.html`;
@@ -83,13 +82,13 @@ async function handleCustomApiSpecialDetail(id, customApiDetailBaseUrl) {
 
         // 优化1：增加多种播放地址正则匹配（兼容不同格式）
         let matches = [];
-        // 匹配带$前缀的地址（如$https://xxx.m3u8）
+        // 匹配带$前缀的地址
         matches = htmlContent.match(/\$(https?:\/\/[^"'\s]+?\.m3u8)/g) || [];
-        // 匹配不带$前缀的地址（如https://xxx.m3u8）
+        // 匹配不带$前缀的地址
         if (matches.length === 0) {
             matches = htmlContent.match(/(https?:\/\/[^"'\s]+?\.m3u8)/g) || [];
         }
-        // 匹配带参数的地址（如https://xxx.m3u8?token=xxx）
+        // 匹配带参数的地址
         if (matches.length === 0) {
             matches = htmlContent.match(/(https?:\/\/[^"'\s]+?\.m3u8\?[^"'\s]+)/g) || [];
         }
@@ -197,10 +196,10 @@ async function handleApiRequest(url) {
                 // 标准API详情 (JSON)
                 else {
                     const detailUrl = sourceCode.startsWith('custom_')
-                        ? `${customApi}${API_CONFIG.detail.path}${id}` // customApi is base URL from query
-                        : `${API_SITES[sourceCode].api}${API_CONFIG.detail.path}${id}`; // API_SITES[sourceCode].api is full path
+                        ? `${customApi}${API_CONFIG.detail.path}${id}` 
+                        : `${API_SITES[sourceCode].api}${API_CONFIG.detail.path}${id}`; 
 
-                    const result = await fetchWithTimeout( // Expects JSON
+                    const result = await fetchWithTimeout( 
                         PROXY_URL + encodeURIComponent(detailUrl),
                         { headers: API_CONFIG.detail.headers }
                     );
@@ -227,7 +226,7 @@ async function handleApiRequest(url) {
                     return JSON.stringify({
                         code: 200,
                         episodes,
-                        detailUrl, // Keep original detailUrl for reference
+                        detailUrl, 
                         videoInfo: {
                             title: videoDetail.vod_name,
                             cover: videoDetail.vod_pic,
@@ -246,20 +245,19 @@ async function handleApiRequest(url) {
                     });
                 }
             } catch (error) {
-                // Log the error with more context before re-throwing or returning
                 console.error(`Error in detail processing for source ${sourceCode}, id ${id}:`, error);
                 const errorMsg = error.name === 'AbortError' ? '详情请求超时'
-                    : error.name === 'SyntaxError' ? '详情数据格式无效' // Should be less common now with fetchWithTimeout
+                    : error.name === 'SyntaxError' ? '详情数据格式无效' 
                         : error.message;
                 return JSON.stringify({
                     code: 400,
-                    msg: `获取详情失败: ${errorMsg}`, // Pass the specific error message
+                    msg: `获取详情失败: ${errorMsg}`, 
                     episodes: []
                 });
             }
         }
         throw new Error('未知的API路径');
-    } catch (error) { // Catches errors from the main try block (e.g., "未知的API路径")
+    } catch (error) { 
         console.error('API处理错误 (outer):', error);
         return JSON.stringify({
             code: 400,
@@ -303,7 +301,7 @@ window.fetch = async function (input, init) {
                     'Access-Control-Allow-Origin': '*',
                 }
             });
-        } catch (err) { // This catch is for unexpected errors within handleApiRequest itself if it doesn't return a stringified JSON
+        } catch (err) { 
             console.error("Error during API request handling in fetch override:", err);
             return new Response(JSON.stringify({
                 code: 500,
