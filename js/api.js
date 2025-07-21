@@ -332,83 +332,65 @@ async function testSiteAvailability(apiUrl) {
     }
 }
 
-// --- In: js/api.js ---
-
-// ... (文件顶部的其他函数保持不变) ...
-
 /**
- * [最终方案] 使用 hls.js 探测视频真实清晰度
- * @param {string} m3u8Url - 视频的 M3U8 播放地址
- * @returns {Promise<string>} - 返回清晰度标签 (e.g., '1080P')
+ * 通过创建一个临时的<video>元素来探测视频的真实清晰度。
+ * 此方案依赖于项目已有的后端代理（functions/proxy/[[path]].js）来重写M3U8，从而解决CORS问题。
+ * @param {string} m3u8Url - 视频的M3U8播放地址
+ * @returns {Promise<string>} - 返回一个Promise，最终解析为清晰度标签（如 '1080P'）
  */
 function getQualityViaVideoProbe(m3u8Url) {
     return new Promise((resolve) => {
-        // 检查 Hls.js 是否已加载并被浏览器支持
-        if (typeof Hls === 'undefined' || !Hls.isSupported()) {
-            console.warn('[清晰度探测] Hls.js 不可用或不被支持。');
-            resolve('未知');
-            return;
-        }
         if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
             resolve('未知');
             return;
         }
 
-        const hls = new Hls({
-            // 我们只探测，不需要下载内容，配置最小化
-            maxBufferLength: 30,
-            maxMaxBufferLength: 1,
-            maxBufferSize: 1,
-        });
+        const video = document.createElement('video');
+        video.style.display = 'none'; // 确保用户看不到
+        document.body.appendChild(video); // 必须添加到DOM才能加载
 
-        // 通过我们的代理加载 M3U8 文件
-        const proxiedUrl = PROXY_URL + encodeURIComponent(m3u8Url);
-        hls.loadSource(proxiedUrl);
-
-        let timeoutId = setTimeout(() => {
-            console.warn(`[清晰度探测] 10秒超时: ${m3u8Url}`);
+        const timeoutId = setTimeout(() => {
+            console.warn('[清晰度探测] 10秒超时。');
             cleanupAndResolve('未知');
-        }, 10000); // 10秒超时
+        }, 10000);
 
         const cleanupAndResolve = (quality) => {
             clearTimeout(timeoutId);
-            hls.destroy(); // 销毁实例，释放资源
+            video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            video.removeEventListener('error', onError);
+            video.src = '';
+            video.removeAttribute('src');
+            if (document.body.contains(video)) {
+                document.body.removeChild(video);
+            }
             resolve(quality);
         };
 
-        // 关键：监听 MANIFEST_PARSED 事件，当 Hls.js 成功解析清单后触发
-        hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-            if (data.levels && data.levels.length > 0) {
-                // 从所有清晰度级别中，找到分辨率最高的一个
-                const highestLevel = data.levels.reduce((max, current) =>
-                    (current.height > max.height) ? current : max, data.levels[0]
-                );
+        const onLoadedMetadata = () => {
+            const width = video.videoWidth;
+            console.log(`[清晰度探测] 成功！获取到宽度: ${width}`);
+            let qualityTag = '未知';
+            if (width >= 3800) qualityTag = '4K';
+            else if (width >= 1900) qualityTag = '1080P';
+            else if (width >= 1200) qualityTag = '720P';
+            else if (width > 0) qualityTag = '高清';
+            cleanupAndResolve(qualityTag);
+        };
 
-                const height = highestLevel.height;
-                console.log(`[清晰度探测] 成功！获取到高度: ${height} from ${m3u8Url}`);
+        const onError = () => {
+            const error = video.error;
+            console.error('[清晰度探测] 视频元素加载错误:', error);
+            cleanupAndResolve('未知');
+        };
 
-                // 根据高度映射为画质标签
-                let qualityTag = '未知';
-                if (height >= 2100) qualityTag = '4K';
-                else if (height >= 1080) qualityTag = '1080P';
-                else if (height >= 720) qualityTag = '720P';
-                else if (height > 0) qualityTag = '高清';
+        video.addEventListener('loadedmetadata', onLoadedMetadata);
+        video.addEventListener('error', onError);
 
-                cleanupAndResolve(qualityTag);
-            } else {
-                cleanupAndResolve('未知');
-            }
-        });
-
-        // 监听致命错误
-        hls.on(Hls.Events.ERROR, (event, data) => {
-            if (data.fatal) {
-                console.error(`[清晰度探测] HLS.js 致命错误:`, data);
-                cleanupAndResolve('未知');
-            }
-        });
+        // 直接使用原始 M3U8 链接。
+        // 项目的全局 fetch 拦截器会自动将其路由到 /proxy/ 后端进行处理。
+        video.src = m3u8Url;
     });
 }
 
-// 确保函数已导出到全局
+// 导出函数到全局
 window.getQualityViaVideoProbe = getQualityViaVideoProbe;

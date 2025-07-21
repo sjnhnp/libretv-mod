@@ -1124,16 +1124,13 @@ function createResultItemUsingTemplate(item) {
     }
 
     // ✅ 新增：为画质标签创建初始的“检测中”状态
-    const qualityContainer = clone.querySelector('.result-quality-container');
-    if (qualityContainer) {
+    const sourceContainer = clone.querySelector('.result-source');
+    if (sourceContainer) {
         const qualityBadge = document.createElement('span');
-        qualityBadge.className = 'quality-badge detecting text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-gray-500 text-gray-300';
+        qualityBadge.className = 'quality-badge detecting text-xs text-gray-500'; // 初始为灰色文字
         qualityBadge.textContent = '检测中...';
-        qualityContainer.appendChild(qualityBadge);
+        sourceContainer.appendChild(qualityBadge);
     }
-
-    // 关键：将原始的 item 数据附加到元素上，供后续探测使用
-    cardElement.videoData = item;
 
     // --- 存储所有可用的元数据 ---
     cardElement.dataset.id = item.vod_id || '';
@@ -1368,23 +1365,24 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
                 firstEpisodeUrl = firstEpisodeUrl.split('$')[1];
             }
 
-            // Call the new probe function
+            // 调用新的探测函数
             const qualityTag = await getQualityViaVideoProbe(firstEpisodeUrl);
 
             qualityTagElement.textContent = qualityTag;
 
-            // Update badge color based on quality
+            // 根据画质更新角标颜色
             if (qualityTag === '1080P' || qualityTag === '4K') {
-                qualityTagElement.style.backgroundColor = '#2563eb'; // Blue
+                qualityTagElement.style.backgroundColor = '#2563eb'; // 蓝色
             } else if (qualityTag === '未知') {
-                qualityTagElement.style.backgroundColor = '#4b5563'; // Gray
+                qualityTagElement.style.backgroundColor = '#4b5563'; // 灰色
             } else {
-                qualityTagElement.style.backgroundColor = '#16a34a'; // Green
+                qualityTagElement.style.backgroundColor = '#16a34a'; // 绿色
             }
+
         } else {
             qualityTagElement.textContent = '无剧集';
         }
-    }, 100); // Delay slightly to ensure the modal is fully rendered
+    }, 100);
 }
 
 function toggleEpisodeOrderUI(container) {
@@ -1525,13 +1523,18 @@ async function processQualityDetectionQueue() {
         }
         quality = await getQualityViaVideoProbe(episodeUrl);
     }
-    
+
     qualityCache.set(qualityId, quality); // 缓存结果
     updateQualityBadgeUI(qualityId, quality);
 
     activeDetections--;
     processQualityDetectionQueue(); // 处理下一个
 }
+
+/**
+ * 更新卡片UI上的画质标签
+ */
+// --- Replace this function in: js/app.js ---
 
 /**
  * 更新卡片UI上的画质标签
@@ -1544,13 +1547,16 @@ function updateQualityBadgeUI(qualityId, quality) {
     if (badge) {
         badge.textContent = quality;
         badge.classList.remove('detecting');
-        // 根据画质更新样式
-        if (quality === '1080P' || quality === '4K') {
-            badge.className = 'quality-badge text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-blue-500 text-blue-300';
+
+        // 根据画质更新样式以匹配截图
+        if (quality === '未知') {
+            badge.className = 'quality-badge text-xs text-gray-400'; // "未知" 只显示灰色文字
+        } else if (quality === '1080P' || quality === '4K') {
+            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-purple-600 text-purple-100'; // 紫色背景
         } else if (quality === '720P' || quality === '高清') {
-            badge.className = 'quality-badge text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-green-500 text-green-300';
+            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-blue-600 text-blue-100'; // 蓝色背景
         } else {
-            badge.className = 'quality-badge text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-gray-500 text-gray-400';
+            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-green-600 text-green-100'; // 其他情况用绿色
         }
     }
 }
@@ -1568,13 +1574,13 @@ function initializeQualityDetectionObserver() {
             if (entry.isIntersecting) {
                 const element = entry.target;
                 const qualityId = element.dataset.qualityId;
-                
+
                 // 如果已经探测过或在队列中，则跳过
                 if (!qualityCache.has(qualityId) && !qualityDetectionQueue.includes(element)) {
                     qualityDetectionQueue.push(element);
                     processQualityDetectionQueue();
                 }
-                
+
                 qualityDetectionObserver.unobserve(element); // 探测一次后停止观察
             }
         });
