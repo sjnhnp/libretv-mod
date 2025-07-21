@@ -1263,10 +1263,8 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     const effectiveTitle = videoData.vod_name || title;
     const effectiveTypeName = videoData.type_name || fallbackData.typeName;
     // 优先根据当前点击的 sourceCode 反查名称，避免被其它源覆盖
-    const sourceNameForDisplay =
-        APISourceManager.getSelectedApi(sourceCode)?.name ||
-        videoData.source_name ||
-        '未知源';
+    const sourceNameForDisplay = videoData.source_name || APISourceManager.getSelectedApi(sourceCode)?.name || '未知源';
+
     AppState.set('currentEpisodes', episodes);
     AppState.set('currentVideoTitle', effectiveTitle);
     AppState.set('currentSourceName', sourceNameForDisplay);
