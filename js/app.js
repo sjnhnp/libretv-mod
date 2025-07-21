@@ -1330,6 +1330,31 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
 
     const tempDiv = document.createElement('div');
     showModal(modalContent, `${effectiveTitle} (${sourceNameForDisplay})`);
+
+    // --- 新增逻辑：在弹窗显示后，异步检测清晰度 ---
+    // 使用 setTimeout 确保DOM元素已经渲染
+    setTimeout(async () => {
+        const qualityTagElement = document.querySelector('#modal [data-field="quality-tag"]');
+        if (!qualityTagElement) return;
+
+        // 获取第一集的播放链接
+        const episodes = AppState.get('currentEpisodes') || [];
+        if (episodes.length > 0) {
+            let firstEpisodeUrl = episodes[0];
+            if (firstEpisodeUrl.includes('$')) {
+                firstEpisodeUrl = firstEpisodeUrl.split('$')[1];
+            }
+
+            const width = await getWidthFromM3u8(firstEpisodeUrl);
+            const qualityTag = mapWidthToQualityTag(width);
+
+            qualityTagElement.textContent = qualityTag;
+            // 可以根据清晰度再改一下背景颜色
+            qualityTagElement.style.backgroundColor = (width && width >= 1900) ? '#2563eb' : '#4b5563';
+        } else {
+            qualityTagElement.textContent = '无剧集';
+        }
+    }, 100); // 延迟100ms执行，确保弹窗已弹出
 }
 
 function toggleEpisodeOrderUI(container) {

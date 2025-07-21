@@ -331,3 +331,47 @@ async function testSiteAvailability(apiUrl) {
         return false;
     }
 }
+
+/**
+ * 从M3U8链接中异步获取视频宽度
+ * @param {string} m3u8Url 视频的M3U8播放地址
+ * @returns {Promise<number|null>} 返回视频宽度，失败则返回null
+ */
+async function getWidthFromM3u8(m3u8Url) {
+    if (!m3u8Url || !m3u8Url.includes('.m3u8')) return null;
+
+    try {
+        // 注意：M3U8链接可能存在跨域问题，需要通过我们的代理
+        // 假设 PROXY_URL 是在 config.js 中定义的 '/proxy/'
+        const response = await fetch(PROXY_URL + encodeURIComponent(m3u8Url));
+        if (!response.ok) return null;
+
+        const m3u8Content = await response.text();
+
+        // 使用正则表达式匹配 RESOLUTION=宽x高
+        const resolutionMatch = m3u8Content.match(/RESOLUTION=(\d+)x(\d+)/);
+        
+        if (resolutionMatch && resolutionMatch[1]) {
+            return parseInt(resolutionMatch[1], 10); // 返回宽度
+        }
+
+        return null; // M3U8中未找到分辨率信息
+    } catch (error) {
+        console.error("M3U8解析失败:", error);
+        return null;
+    }
+}
+
+/**
+ * 将视频宽度映射为清晰度标签
+ * @param {number} width 视频宽度
+ * @returns {string} 清晰度标签
+ */
+function mapWidthToQualityTag(width) {
+    if (!width) return '未知';
+    if (width >= 3800) return '4K';
+    if (width >= 1900) return '1080P';
+    if (width >= 1200) return '720P';
+    if (width >= 700) return '高清';
+    return '标清';
+}
