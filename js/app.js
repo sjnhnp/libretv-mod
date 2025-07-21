@@ -1,3 +1,12 @@
+// --- Add this to the top of: js/app.js ---
+
+// 用于管理画质探测的全局变量
+let qualityDetectionObserver;
+const qualityDetectionQueue = [];
+let activeDetections = 0;
+const MAX_CONCURRENT_DETECTIONS = 4; // 并发探测数量
+const qualityCache = new Map(); // 用于缓存探测结果
+
 // 主应用程序逻辑 使用AppState进行状态管理，DOMCache进行DOM元素缓存
 // Basic AppState Implementation
 const AppState = (function () {
@@ -747,6 +756,7 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
     } catch (e) {
         console.error('缓存搜索结果失败:', e);
     }
+    initializeQualityDetectionObserver();
 }
 
 function restoreSearchFromCache() {
@@ -832,6 +842,7 @@ function renderSearchResultsFromCache(cachedResults) {
         searchArea.classList.remove('hidden');
     }
     getElement('doubanArea')?.classList.add('hidden');
+    initializeQualityDetectionObserver();
 }
 
 // 获取视频详情
@@ -1058,7 +1069,7 @@ function createResultItemUsingTemplate(item) {
         console.error("卡片元素 (.card-hover) 在模板克隆中未找到，项目:", item);
         return document.createDocumentFragment();
     }
-
+    cardElement.dataset.qualityId = `${item.source_code}_${item.vod_id}`; // 设置唯一ID
     const imgElement = clone.querySelector('.result-img');
     if (imgElement) {
         imgElement.src = item.vod_pic && item.vod_pic.startsWith('http') ?
@@ -1111,6 +1122,18 @@ function createResultItemUsingTemplate(item) {
             sourceNameElement.className = 'result-source-name hidden';
         }
     }
+
+    // ✅ 新增：为画质标签创建初始的“检测中”状态
+    const qualityContainer = clone.querySelector('.result-quality-container');
+    if (qualityContainer) {
+        const qualityBadge = document.createElement('span');
+        qualityBadge.className = 'quality-badge detecting text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-gray-500 text-gray-300';
+        qualityBadge.textContent = '检测中...';
+        qualityContainer.appendChild(qualityBadge);
+    }
+
+    // 关键：将原始的 item 数据附加到元素上，供后续探测使用
+    cardElement.videoData = item;
 
     // --- 存储所有可用的元数据 ---
     cardElement.dataset.id = item.vod_id || '';
@@ -1344,12 +1367,12 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             if (firstEpisodeUrl.includes('$')) {
                 firstEpisodeUrl = firstEpisodeUrl.split('$')[1];
             }
-            
+
             // Call the new probe function
             const qualityTag = await getQualityViaVideoProbe(firstEpisodeUrl);
 
             qualityTagElement.textContent = qualityTag;
-            
+
             // Update badge color based on quality
             if (qualityTag === '1080P' || qualityTag === '4K') {
                 qualityTagElement.style.backgroundColor = '#2563eb'; // Blue
@@ -1359,7 +1382,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
                 qualityTagElement.style.backgroundColor = '#16a34a'; // Green
             }
         } else {
-             qualityTagElement.textContent = '无剧集';
+            qualityTagElement.textContent = '无剧集';
         }
     }, 100); // Delay slightly to ensure the modal is fully rendered
 }
@@ -1477,3 +1500,94 @@ function copyLinks() {
 }
 
 window.showVideoEpisodesModal = showVideoEpisodesModal;
+
+
+// --- Add these functions to the end of: js/app.js ---
+
+/**
+ * 处理队列中的探测任务
+ */
+async function processQualityDetectionQueue() {
+    if (activeDetections >= MAX_CONCURRENT_DETECTIONS || qualityDetectionQueue.length === 0) {
+        return;
+    }
+
+    activeDetections++;
+    const element = qualityDetectionQueue.shift();
+    const item = element.videoData;
+    const qualityId = element.dataset.qualityId;
+
+    let quality = '未知';
+    if (item.episodes && item.episodes.length > 0) {
+        let episodeUrl = item.episodes[0];
+        if (episodeUrl.includes('$')) {
+            episodeUrl = episodeUrl.split('$')[1];
+        }
+        quality = await getQualityViaVideoProbe(episodeUrl);
+    }
+    
+    qualityCache.set(qualityId, quality); // 缓存结果
+    updateQualityBadgeUI(qualityId, quality);
+
+    activeDetections--;
+    processQualityDetectionQueue(); // 处理下一个
+}
+
+/**
+ * 更新卡片UI上的画质标签
+ */
+function updateQualityBadgeUI(qualityId, quality) {
+    const cardElement = document.querySelector(`[data-quality-id="${qualityId}"]`);
+    if (!cardElement) return;
+
+    const badge = cardElement.querySelector('.quality-badge');
+    if (badge) {
+        badge.textContent = quality;
+        badge.classList.remove('detecting');
+        // 根据画质更新样式
+        if (quality === '1080P' || quality === '4K') {
+            badge.className = 'quality-badge text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-blue-500 text-blue-300';
+        } else if (quality === '720P' || quality === '高清') {
+            badge.className = 'quality-badge text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-green-500 text-green-300';
+        } else {
+            badge.className = 'quality-badge text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-gray-500 text-gray-400';
+        }
+    }
+}
+
+/**
+ * 初始化 IntersectionObserver 以触发画质探测
+ */
+function initializeQualityDetectionObserver() {
+    if (qualityDetectionObserver) {
+        qualityDetectionObserver.disconnect();
+    }
+
+    qualityDetectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const element = entry.target;
+                const qualityId = element.dataset.qualityId;
+                
+                // 如果已经探测过或在队列中，则跳过
+                if (!qualityCache.has(qualityId) && !qualityDetectionQueue.includes(element)) {
+                    qualityDetectionQueue.push(element);
+                    processQualityDetectionQueue();
+                }
+                
+                qualityDetectionObserver.unobserve(element); // 探测一次后停止观察
+            }
+        });
+    }, { rootMargin: "200px" }); // 预加载视口下方200px内的内容
+
+    const cards = document.querySelectorAll('.card-hover[data-quality-id]');
+    cards.forEach(card => {
+        const qualityId = card.dataset.qualityId;
+        // 如果缓存中已有结果，直接更新UI
+        if (qualityCache.has(qualityId)) {
+            updateQualityBadgeUI(qualityId, qualityCache.get(qualityId));
+        } else {
+            qualityDetectionObserver.observe(card);
+        }
+    });
+}
