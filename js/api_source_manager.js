@@ -199,7 +199,7 @@ const APISourceManager = {
 
         // 验证detail URL格式（如果提供）
         if (detail && !/^https?:\/\/.+/.test(detail)) {
-            showToast('详情页链接格式不正确，需以http://或https://开头', 'warning');
+            showToast('detail链接格式不正确，需以http://或https://开头', 'warning');
             return;
         }
 
@@ -300,7 +300,7 @@ const APISourceManager = {
 
         // 验证detail URL格式（如果提供）
         if (detail && !/^https?:\/\/.+/.test(detail)) {
-            showToast('详情页链接格式不正确，需以http://或https://开头', 'warning');
+            showToast('detail链接格式不正确，需以http://或https://开头', 'warning');
             return;
         }
 
