@@ -332,15 +332,13 @@ async function testSiteAvailability(apiUrl) {
     }
 }
 
-// --- In: js/api.js ---
-// 请删除或注释掉旧的 getWidthFromM3u8 和 mapWidthToQualityTag 函数
-// 然后用下面这个函数替换它们
-
 /**
  * 通过创建一个临时的<video>元素来探测视频的真实清晰度
  * @param {string} m3u8Url - 视频的M3U8播放地址
  * @returns {Promise<string>} - 返回一个Promise，最终解析为清晰度标签（如 '1080P'）
  */
+// --- In: js/api.js ---
+
 function getQualityViaVideoProbe(m3u8Url) {
     return new Promise((resolve) => {
         if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
@@ -349,25 +347,22 @@ function getQualityViaVideoProbe(m3u8Url) {
         }
 
         const video = document.createElement('video');
-        video.crossOrigin = 'anonymous'; // 允许跨域
+        video.crossOrigin = 'anonymous'; 
 
-        // --- 设置超时定时器 ---
         const timeoutId = setTimeout(() => {
-            console.warn('[清晰度探测] 5秒超时，探测失败。');
+            console.warn('[清晰度探测] 10秒超时，探测失败。这通常意味着视频加载非常慢或卡住。');
             cleanup();
             resolve('未知');
-        }, 5000); // 5秒后如果还没结果，就放弃
+        }, 10000); // ✅ 将超时时间延长到10秒，给慢速资源更多机会
 
-        // --- 定义清理函数 ---
         const cleanup = () => {
             clearTimeout(timeoutId);
             video.removeEventListener('loadedmetadata', onLoadedMetadata);
             video.removeEventListener('error', onError);
-            video.src = ''; // 停止加载
-            video.remove(); // 从DOM中移除
+            video.src = ''; 
+            video.remove(); 
         };
 
-        // --- 定义成功的回调 ---
         const onLoadedMetadata = () => {
             const width = video.videoWidth;
             console.log(`[清晰度探测] 成功！获取到宽度: ${width}`);
@@ -381,9 +376,32 @@ function getQualityViaVideoProbe(m3u8Url) {
             resolve(qualityTag);
         };
 
-        // --- 定义失败的回调 ---
+        // ✅ --- 关键修改：升级 onError 回调函数 ---
         const onError = () => {
-            console.error('[清晰度探测] 视频元素加载错误。');
+            // 获取详细的媒体错误对象
+            const error = video.error;
+            let errorMessage = '未知错误';
+            
+            if (error) {
+                switch (error.code) {
+                    case error.MEDIA_ERR_ABORTED:
+                        errorMessage = '用户中止了视频加载。';
+                        break;
+                    case error.MEDIA_ERR_NETWORK:
+                        errorMessage = '网络错误导致视频加载失败。';
+                        break;
+                    case error.MEDIA_ERR_DECODE:
+                        errorMessage = '视频解码时发生错误，文件可能已损坏或格式不支持。';
+                        break;
+                    case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                        errorMessage = '视频源格式不支持。这可能是因为M3U8内容无效或浏览器缺少解码器。';
+                        break;
+                    default:
+                        errorMessage = `发生未知媒体错误，代码: ${error.code}`;
+                }
+            }
+            // 打印出详细的错误信息和错误对象本身
+            console.error(`[清晰度探测] 视频元素加载错误: ${errorMessage}`, error);
             cleanup();
             resolve('未知');
         };
@@ -391,7 +409,7 @@ function getQualityViaVideoProbe(m3u8Url) {
         video.addEventListener('loadedmetadata', onLoadedMetadata);
         video.addEventListener('error', onError);
 
-        // 开始加载视频
+        console.log('[清晰度探测] 设置视频源并开始加载:', m3u8Url);
         video.src = m3u8Url;
     });
 }
