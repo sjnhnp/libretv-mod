@@ -339,75 +339,67 @@ async function testSiteAvailability(apiUrl) {
  */
 function getQualityViaVideoProbe(m3u8Url) {
     return new Promise((resolve) => {
+        if (typeof Hls === 'undefined' || !Hls.isSupported()) {
+            console.warn('[清晰度探测] Hls.js 不可用或不被支持。');
+            resolve('未知');
+            return;
+        }
         if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
             resolve('未知');
             return;
         }
 
-        // 关键：创建一个临时的、隐藏的video元素
-        const video = document.createElement('video');
-        video.style.display = 'none'; // 确保用户看不到
-        document.body.appendChild(video); // 必须添加到DOM才能加载
+        const hls = new Hls({
+            // 我们只探测，不需要下载内容
+            maxBufferLength: 30,
+            maxMaxBufferLength: 1, // 最小化缓冲
+            maxBufferSize: 1,
+        });
 
-        // --- 设置10秒超时定时器 ---
-        const timeoutId = setTimeout(() => {
-            console.warn('[清晰度探测] 10秒超时，探测失败。');
-            cleanup();
-            resolve('未知');
-        }, 10000);
-
-        // --- 定义清理函数，用于移除元素和监听器 ---
-        const cleanup = () => {
-            clearTimeout(timeoutId);
-            video.removeEventListener('loadedmetadata', onLoadedMetadata);
-            video.removeEventListener('error', onError);
-            video.src = ''; // 停止加载
-            video.removeAttribute('src');
-            document.body.removeChild(video);
-        };
-
-        // --- 定义成功的回调 ---
-        const onLoadedMetadata = () => {
-            const width = video.videoWidth;
-            console.log(`[清晰度探测] 成功！获取到宽度: ${width}`);
-            let qualityTag = '未知';
-            if (width >= 3800) qualityTag = '4K';
-            else if (width >= 1900) qualityTag = '1080P';
-            else if (width >= 1200) qualityTag = '720P';
-            else if (width > 0) qualityTag = '高清';
-
-            cleanup();
-            resolve(qualityTag);
-        };
-
-        // --- 定义失败的回调 ---
-        const onError = () => {
-            const error = video.error;
-            let errorMessage = '未知错误';
-            if (error) {
-                switch (error.code) {
-                    case error.MEDIA_ERR_ABORTED: errorMessage = '用户中止了视频加载。'; break;
-                    case error.MEDIA_ERR_NETWORK: errorMessage = '网络错误导致视频加载失败。'; break;
-                    case error.MEDIA_ERR_DECODE: errorMessage = '视频解码时发生错误。'; break;
-                    case error.MEDIA_ERR_SRC_NOT_SUPPORTED: errorMessage = '视频源格式不支持或跨域问题。'; break;
-                    default: errorMessage = `发生未知媒体错误，代码: ${error.code}`;
-                }
-            }
-            console.error(`[清晰度探测] 视频元素加载错误: ${errorMessage}`, error);
-            cleanup();
-            resolve('未知');
-        };
-
-        video.addEventListener('loadedmetadata', onLoadedMetadata);
-        video.addEventListener('error', onError);
-
-        // 关键：必须通过代理加载 M3U8 链接以避免CORS问题
         const proxiedUrl = PROXY_URL + encodeURIComponent(m3u8Url);
-        console.log('[清晰度探测] 设置视频源并开始加载:', proxiedUrl);
-        video.src = proxiedUrl;
+        hls.loadSource(proxiedUrl);
+        
+        let timeoutId = setTimeout(() => {
+            console.warn(`[清晰度探测] 10秒超时: ${m3u8Url}`);
+            cleanupAndResolve('未知');
+        }, 10000); // 10秒超时
+
+        const cleanupAndResolve = (quality) => {
+            clearTimeout(timeoutId);
+            hls.destroy();
+            resolve(quality);
+        };
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+            if (data.levels && data.levels.length > 0) {
+                // 寻找分辨率最高的级别
+                const highestLevel = data.levels.reduce((max, current) => 
+                    (current.height > max.height) ? current : max, data.levels[0]
+                );
+
+                const height = highestLevel.height;
+                console.log(`[清晰度探测] 成功！获取到高度: ${height} from ${m3u8Url}`);
+
+                let qualityTag = '未知';
+                if (height >= 2100) qualityTag = '4K';
+                else if (height >= 1080) qualityTag = '1080P';
+                else if (height >= 720) qualityTag = '720P';
+                else if (height > 0) qualityTag = '高清';
+                
+                cleanupAndResolve(qualityTag);
+            } else {
+                cleanupAndResolve('未知');
+            }
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal) {
+                console.error(`[清晰度探测] HLS.js 致命错误:`, data);
+                cleanupAndResolve('未知');
+            }
+        });
     });
 }
 
-
-// 导出新函数到全局
+// 确保函数已导出到全局
 window.getQualityViaVideoProbe = getQualityViaVideoProbe;
