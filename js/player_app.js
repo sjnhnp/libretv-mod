@@ -489,6 +489,9 @@ async function doEpisodeSwitch(index, episodeString) {
 }
 
 (async function initializePage() {
+    // 从localStorage加载最新的custom API配置
+    const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
+    AppState.set('customAPIs', customAPIs);
     document.addEventListener('DOMContentLoaded', async () => {
         const urlParams = new URLSearchParams(window.location.search);
 
