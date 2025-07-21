@@ -582,7 +582,8 @@ async function performSearch(query, selectedAPIs) {
                     if (item.vod_id) {
                         item.source_name = result.apiName;
                         item.source_code = result.apiId;
-                        videoDataMap.set(item.vod_id.toString(), item);
+                        const uniqueVideoKey = `${result.apiId}_${item.vod_id}`;
+                        videoDataMap.set(uniqueVideoKey, item);
                     }
                 });
             }
@@ -1161,7 +1162,8 @@ window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackData) {
     // 1. 立即打开弹窗（原代码核心逻辑）
     const videoDataMap = AppState.get('videoDataMap');
-    const videoData = videoDataMap ? videoDataMap.get(id.toString()) : null;
+    const uniqueVideoKey = `${sourceCode}_${id}`;
+    const videoData = videoDataMap ? videoDataMap.get(uniqueVideoKey) : null;
     if (!videoData) {
         hideLoading(); // 立即关闭加载
         showToast('缓存中找不到视频数据，请刷新后重试', 'error');
