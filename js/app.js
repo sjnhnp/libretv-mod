@@ -548,7 +548,7 @@ async function performSearch(query, selectedAPIs) {
     // 强制从localStorage刷新custom API数据
     const customAPIsFromStorage = JSON.parse(localStorage.getItem('customAPIs') || '[]');
     AppState.set('customAPIs', customAPIsFromStorage);
-    
+
     const searchPromises = selectedAPIs.map(apiId => {
         let apiUrl = `/api/search?wd=${encodeURIComponent(query)}&source=${apiId}`;
         if (apiId.startsWith('custom_')) {
@@ -1220,7 +1220,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
 
     // 处理自定义detail源的真实地址获取
     const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
-    const apiInfo = APISourceManager.getCustomApiInfo(customIndex); 
+    const apiInfo = APISourceManager.getCustomApiInfo(customIndex);
     const isCustomSpecialSource = sourceCode.startsWith('custom_') && apiInfo?.detail;
     if (isCustomSpecialSource) {
         // 自定义源弹窗中的异步地址获取
@@ -1228,7 +1228,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             try {
                 const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
                 const apiInfo = APISourceManager.getCustomApiInfo(customIndex);
-                if (!apiInfo) throw new Error('自定义源信息不存在'); 
+                if (!apiInfo) throw new Error('自定义源信息不存在');
 
                 // 获取真实地址
                 const detailResult = await handleCustomApiSpecialDetail(id, apiInfo.detail);
@@ -1262,8 +1262,11 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     hideLoading(); // 移除加载提示，立即显示弹窗
     const effectiveTitle = videoData.vod_name || title;
     const effectiveTypeName = videoData.type_name || fallbackData.typeName;
-    const sourceNameForDisplay = videoData.source_name || APISourceManager.getSelectedApi(sourceCode)?.name || '未知源';
-
+    // 优先根据当前点击的 sourceCode 反查名称，避免被其它源覆盖
+    const sourceNameForDisplay =
+        APISourceManager.getSelectedApi(sourceCode)?.name ||
+        videoData.source_name ||
+        '未知源';
     AppState.set('currentEpisodes', episodes);
     AppState.set('currentVideoTitle', effectiveTitle);
     AppState.set('currentSourceName', sourceNameForDisplay);
