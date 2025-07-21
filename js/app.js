@@ -322,9 +322,16 @@ function initializeAppState() {
     try {
         const cachedData = sessionStorage.getItem('videoDataCache');
         if (cachedData) {
-            // 将存储的数组转换回 Map 对象
-            const restoredMap = new Map(JSON.parse(cachedData));
-            AppState.set('videoDataMap', restoredMap);
+            const rawArr = JSON.parse(cachedData);
+            // 检查缓存格式：如果key不包含"_"，则判定为旧格式并丢弃，以防出错
+            if (rawArr.length > 0 && !rawArr[0][0].includes('_')) {
+                console.warn("检测到旧版视频缓存，已清除。");
+                AppState.set('videoDataMap', new Map());
+            } else {
+                const restoredMap = new Map(rawArr);
+                AppState.set('videoDataMap', restoredMap);
+            }
+
             console.log('已从 sessionStorage 恢复视频元数据缓存:', restoredMap);
         } else {
             // 如果缓存不存在，确保 videoDataMap 是一个空的 Map
@@ -1107,6 +1114,7 @@ function createResultItemUsingTemplate(item) {
     cardElement.dataset.id = item.vod_id || '';
     cardElement.dataset.name = item.vod_name || '';
     cardElement.dataset.sourceCode = item.source_code || '';
+    cardElement.dataset.unikey = `${item.source_code}_${item.vod_id || ''}`;
     if (item.api_url) {
         cardElement.dataset.apiUrl = item.api_url;
     }
