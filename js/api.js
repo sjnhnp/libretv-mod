@@ -336,10 +336,6 @@ async function testSiteAvailability(apiUrl) {
  * 优化版画质探测：基于代理服务解决跨域，兼容桌面端
  * 依赖项目内置代理（functions/proxy/[[path]].js）处理M3U8跨域问题
  */
-/**
- * 优化版画质探测：基于代理服务解决跨域，兼容桌面端
- * 依赖项目内置代理（functions/proxy/[[path]].js）处理M3U8跨域问题
- */
 function getQualityViaVideoProbe(m3u8Url) {
     return new Promise(async (resolve) => {
         if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
@@ -347,25 +343,30 @@ function getQualityViaVideoProbe(m3u8Url) {
             return;
         }
 
-        // 新增：先获取M3U8内容，检测编码格式
+        // 新增：判断是否为桌面设备（核心新增逻辑）
+        const isDesktop = /Windows|MacIntel|Linux/.test(navigator.userAgent);
+
+        // 1. 编码检测（保留原始逻辑，新增桌面提示）
         try {
             const proxyM3u8Url = PROXY_URL + encodeURIComponent(m3u8Url);
             const m3u8Response = await fetch(proxyM3u8Url);
             const m3u8Content = await m3u8Response.text();
 
-            // 检测是否为H.265（HEVC）、AV1等不支持的编码
+            // 检测不支持的编码（保留原始逻辑）
             const unsupportedCodes = ['HEVC', 'H.265', 'AV1'];
             const isUnsupported = unsupportedCodes.some(code =>
                 m3u8Content.includes(code)
             );
             if (isUnsupported) {
-                resolve('编码不支持'); // 直接返回，避免解码尝试
+                // 桌面版显示“桌面暂不支持”，移动端显示“编码不支持”（新增适配）
+                const tip = isDesktop ? '桌面暂不支持' : '编码不支持';
+                resolve(tip);
                 return;
             }
 
-            // 校验M3U8是否包含有效分片
+            // M3U8有效性校验（保留原始逻辑）
             const hasValidSegments = m3u8Content.includes('#EXTINF') &&
-                m3u8Content.split('#EXTINF').length > 1; // 至少有一个分片
+                m3u8Content.split('#EXTINF').length > 1;
             if (!hasValidSegments) {
                 resolve('M3U8无效');
                 return;
@@ -375,6 +376,7 @@ function getQualityViaVideoProbe(m3u8Url) {
             console.warn('M3U8编码检测失败，继续探测:', e);
         }
 
+        // 2. 视频解码检测（保留原始逻辑，新增桌面错误提示）
         const proxyM3u8Url = PROXY_URL + encodeURIComponent(m3u8Url);
         const video = document.createElement('video');
         video.style.display = 'none';
@@ -382,7 +384,9 @@ function getQualityViaVideoProbe(m3u8Url) {
 
         const timeoutId = setTimeout(() => {
             console.warn('[清晰度探测] 15秒超时');
-            cleanupAndResolve('未知');
+            // 桌面版超时提示更明确（新增适配）
+            const timeoutTip = isDesktop ? '桌面加载超时' : '未知';
+            cleanupAndResolve(timeoutTip);
         }, 15000);
 
         const cleanupAndResolve = (quality) => {
@@ -407,12 +411,9 @@ function getQualityViaVideoProbe(m3u8Url) {
         const onError = () => {
             const error = video.error;
             console.error('[画质探测] 解码失败:', error);
-            // 新增：根据错误码返回更具体的提示
-            if (error.code === 4) {
-                cleanupAndResolve('解码失败');
-            } else {
-                cleanupAndResolve('未知');
-            }
+            // 桌面版解码失败提示更明确（新增适配）
+            const errorTip = isDesktop ? '桌面暂不支持' : '解码失败';
+            cleanupAndResolve(errorTip);
         };
 
         video.addEventListener('loadedmetadata', onLoadedMetadata);
