@@ -332,66 +332,81 @@ async function testSiteAvailability(apiUrl) {
     }
 }
 
+// --- In: js/api.js ---
+
+// ... (文件顶部的其他函数保持不变) ...
+
 /**
- * 通过创建一个临时的<video>元素来探测视频的真实清晰度
- * @param {string} m3u8Url - 视频的M3U8播放地址
- * @returns {Promise<string>} - 返回一个Promise，最终解析为清晰度标签（如 '1080P'）
+ * [最终方案] 使用 hls.js 探测视频真实清晰度
+ * @param {string} m3u8Url - 视频的 M3U8 播放地址
+ * @returns {Promise<string>} - 返回清晰度标签 (e.g., '1080P')
  */
 function getQualityViaVideoProbe(m3u8Url) {
     return new Promise((resolve) => {
+        // 检查 Hls.js 是否已加载并被浏览器支持
+        if (typeof Hls === 'undefined' || !Hls.isSupported()) {
+            console.warn('[清晰度探测] Hls.js 不可用或不被支持。');
+            resolve('未知');
+            return;
+        }
         if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
             resolve('未知');
             return;
         }
 
-        const video = document.createElement('video');
-        video.style.display = 'none'; // Make it invisible
-        document.body.appendChild(video); // Must be in the DOM to load
+        const hls = new Hls({
+            // 我们只探测，不需要下载内容，配置最小化
+            maxBufferLength: 30,
+            maxMaxBufferLength: 1,
+            maxBufferSize: 1,
+        });
 
-        // --- Timeout handler ---
-        const timeoutId = setTimeout(() => {
-            console.warn('[Quality Probe] 10-second timeout reached.');
+        // 通过我们的代理加载 M3U8 文件
+        const proxiedUrl = PROXY_URL + encodeURIComponent(m3u8Url);
+        hls.loadSource(proxiedUrl);
+
+        let timeoutId = setTimeout(() => {
+            console.warn(`[清晰度探测] 10秒超时: ${m3u8Url}`);
             cleanupAndResolve('未知');
-        }, 10000);
+        }, 10000); // 10秒超时
 
-        // --- Cleanup function ---
         const cleanupAndResolve = (quality) => {
             clearTimeout(timeoutId);
-            video.removeEventListener('loadedmetadata', onLoadedMetadata);
-            video.removeEventListener('error', onError);
-            video.src = '';
-            video.removeAttribute('src');
-            if (document.body.contains(video)) {
-                document.body.removeChild(video);
-            }
+            hls.destroy(); // 销毁实例，释放资源
             resolve(quality);
         };
 
-        // --- Success handler ---
-        const onLoadedMetadata = () => {
-            const width = video.videoWidth;
-            console.log(`[Quality Probe] Success! Detected width: ${width}`);
-            let qualityTag = '未知';
-            if (width >= 3800) qualityTag = '4K';
-            else if (width >= 1900) qualityTag = '1080P';
-            else if (width >= 1200) qualityTag = '720P';
-            else if (width > 0) qualityTag = '高清';
-            cleanupAndResolve(qualityTag);
-        };
+        // 关键：监听 MANIFEST_PARSED 事件，当 Hls.js 成功解析清单后触发
+        hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+            if (data.levels && data.levels.length > 0) {
+                // 从所有清晰度级别中，找到分辨率最高的一个
+                const highestLevel = data.levels.reduce((max, current) =>
+                    (current.height > max.height) ? current : max, data.levels[0]
+                );
 
-        // --- Error handler ---
-        const onError = () => {
-            const error = video.error;
-            console.error('[Quality Probe] Video element error:', error);
-            cleanupAndResolve('未知');
-        };
+                const height = highestLevel.height;
+                console.log(`[清晰度探测] 成功！获取到高度: ${height} from ${m3u8Url}`);
 
-        video.addEventListener('loadedmetadata', onLoadedMetadata);
-        video.addEventListener('error', onError);
-        
-        // The global fetch interceptor in api.js will automatically
-        // proxy this URL through your backend.
-        video.src = m3u8Url;
+                // 根据高度映射为画质标签
+                let qualityTag = '未知';
+                if (height >= 2100) qualityTag = '4K';
+                else if (height >= 1080) qualityTag = '1080P';
+                else if (height >= 720) qualityTag = '720P';
+                else if (height > 0) qualityTag = '高清';
+
+                cleanupAndResolve(qualityTag);
+            } else {
+                cleanupAndResolve('未知');
+            }
+        });
+
+        // 监听致命错误
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal) {
+                console.error(`[清晰度探测] HLS.js 致命错误:`, data);
+                cleanupAndResolve('未知');
+            }
+        });
     });
 }
 
