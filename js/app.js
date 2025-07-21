@@ -1,11 +1,26 @@
-// --- Add this to the top of: js/app.js ---
-
 // 用于管理画质探测的全局变量
 let qualityDetectionObserver;
 const qualityDetectionQueue = [];
 let activeDetections = 0;
 const MAX_CONCURRENT_DETECTIONS = 4; // 并发探测数量
-const qualityCache = new Map(); // 用于缓存探测结果
+
+// ✅ 使用 sessionStorage 进行持久化缓存
+const QUALITY_CACHE_KEY = 'qualityCache';
+const qualityCache = new Map(JSON.parse(sessionStorage.getItem(QUALITY_CACHE_KEY) || '[]'));
+
+/**
+ * 将画质探测结果保存到内存和 sessionStorage
+ * @param {string} qualityId - 视频的唯一ID
+ * @param {string} quality - 探测到的画质
+ */
+function saveQualityCache(qualityId, quality) {
+    qualityCache.set(qualityId, quality);
+    try {
+        sessionStorage.setItem(QUALITY_CACHE_KEY, JSON.stringify(Array.from(qualityCache.entries())));
+    } catch (e) {
+        console.warn("无法保存画质缓存，可能存储已满:", e);
+    }
+}
 
 // 主应用程序逻辑 使用AppState进行状态管理，DOMCache进行DOM元素缓存
 // Basic AppState Implementation
@@ -312,7 +327,6 @@ document.addEventListener('DOMContentLoaded', function () {
  * 初始化应用状态
  * 从localStorage加载初始状态并设置到AppState，如果localStorage为空则写入默认值
  */
-// --- In: js/app.js ---
 
 function initializeAppState() {
     const selectedAPIsRaw = localStorage.getItem('selectedAPIs');
@@ -338,8 +352,7 @@ function initializeAppState() {
             const rawArr = JSON.parse(cachedData);
             // 检查缓存格式：如果key不包含"_"，则判定为旧格式并丢弃
             if (rawArr.length > 0 && !String(rawArr[0][0]).includes('_')) {
-                console.warn("检测到旧版视频缓存，已清除。新的缓存将在下次搜索后生成。");
-                // 保持 restoredMap 为空 Map 即可
+                console.warn("检测到旧版视频缓存，已清除。");
             } else {
                 restoredMap = new Map(rawArr); // ✅ 给已声明的变量赋值
             }
@@ -1070,6 +1083,7 @@ function createResultItemUsingTemplate(item) {
         return document.createDocumentFragment();
     }
     cardElement.dataset.qualityId = `${item.source_code}_${item.vod_id}`; // 设置唯一ID
+    cardElement.videoData = item;
     const imgElement = clone.querySelector('.result-img');
     if (imgElement) {
         imgElement.src = item.vod_pic && item.vod_pic.startsWith('http') ?
@@ -1117,7 +1131,8 @@ function createResultItemUsingTemplate(item) {
     if (sourceNameElement) {
         if (item.source_name) {
             sourceNameElement.textContent = item.source_name;
-            sourceNameElement.className = 'result-source-name bg-[#222222] text-xs text-gray-200 px-2 py-1 rounded-md';
+            sourceNameElement.className = 'result-source-name text-xs text-gray-400';
+
         } else {
             sourceNameElement.className = 'result-source-name hidden';
         }
@@ -1129,6 +1144,7 @@ function createResultItemUsingTemplate(item) {
         const qualityBadge = document.createElement('span');
         qualityBadge.className = 'quality-badge detecting text-xs text-gray-500'; // 初始为灰色文字
         qualityBadge.textContent = '检测中...';
+        qualityBadge.setAttribute('data-quality-id', `${item.source_code}_${item.vod_id}`);
         sourceContainer.appendChild(qualityBadge);
     }
 
@@ -1136,7 +1152,6 @@ function createResultItemUsingTemplate(item) {
     cardElement.dataset.id = item.vod_id || '';
     cardElement.dataset.name = item.vod_name || '';
     cardElement.dataset.sourceCode = item.source_code || '';
-    cardElement.dataset.unikey = `${item.source_code}_${item.vod_id || ''}`;
     if (item.api_url) {
         cardElement.dataset.apiUrl = item.api_url;
     }
@@ -1358,6 +1373,24 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         const qualityTagElement = document.querySelector('#modal [data-field="quality-tag"]');
         if (!qualityTagElement) return;
 
+        const qualityId = `${sourceCode}_${id}`;
+
+        // 1. 优先从缓存读取
+        if (qualityCache.has(qualityId)) {
+            const qualityTag = qualityCache.get(qualityId);
+            qualityTagElement.textContent = qualityTag;
+            // ... (根据 qualityTag 更新样式) ...
+            if (qualityTag === '1080P' || qualityTag === '4K') {
+                qualityTagElement.style.backgroundColor = '#2563eb';
+            } else if (qualityTag === '未知') {
+                qualityTagElement.style.backgroundColor = '#4b5563';
+            } else {
+                qualityTagElement.style.backgroundColor = '#16a34a';
+            }
+            return; // 缓存命中，直接返回
+        }
+
+        // 2. 缓存未命中，开始探测
         const episodes = AppState.get('currentEpisodes') || [];
         if (episodes.length > 0) {
             let firstEpisodeUrl = episodes[0];
@@ -1367,7 +1400,8 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
 
             // 调用新的探测函数
             const qualityTag = await getQualityViaVideoProbe(firstEpisodeUrl);
-
+            // 3. 保存到缓存并更新UI
+            saveQualityCache(qualityId, qualityTag);
             qualityTagElement.textContent = qualityTag;
 
             // 根据画质更新角标颜色
@@ -1511,7 +1545,13 @@ async function processQualityDetectionQueue() {
     }
 
     activeDetections++;
-    const element = qualityDetectionQueue.shift();
+       const element = qualityDetectionQueue.shift();
+        // ✅ 修复：确保 videoData 存在
+        if (!element || !element.videoData) {
+            activeDetections--;
+            processQualityDetectionQueue();
+            return;
+        }
     const item = element.videoData;
     const qualityId = element.dataset.qualityId;
 
@@ -1524,17 +1564,13 @@ async function processQualityDetectionQueue() {
         quality = await getQualityViaVideoProbe(episodeUrl);
     }
 
-    qualityCache.set(qualityId, quality); // 缓存结果
+       // ✅ 使用新的缓存保存函数
+    saveQualityCache(qualityId, quality);
     updateQualityBadgeUI(qualityId, quality);
 
     activeDetections--;
     processQualityDetectionQueue(); // 处理下一个
 }
-
-/**
- * 更新卡片UI上的画质标签
- */
-// --- Replace this function in: js/app.js ---
 
 /**
  * 更新卡片UI上的画质标签
