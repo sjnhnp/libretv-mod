@@ -196,10 +196,10 @@ async function handleApiRequest(url) {
                 // 标准API详情 (JSON)
                 else {
                     const detailUrl = sourceCode.startsWith('custom_')
-                        ? `${customApi}${API_CONFIG.detail.path}${id}` 
-                        : `${API_SITES[sourceCode].api}${API_CONFIG.detail.path}${id}`; 
+                        ? `${customApi}${API_CONFIG.detail.path}${id}`
+                        : `${API_SITES[sourceCode].api}${API_CONFIG.detail.path}${id}`;
 
-                    const result = await fetchWithTimeout( 
+                    const result = await fetchWithTimeout(
                         PROXY_URL + encodeURIComponent(detailUrl),
                         { headers: API_CONFIG.detail.headers }
                     );
@@ -226,7 +226,7 @@ async function handleApiRequest(url) {
                     return JSON.stringify({
                         code: 200,
                         episodes,
-                        detailUrl, 
+                        detailUrl,
                         videoInfo: {
                             title: videoDetail.vod_name,
                             cover: videoDetail.vod_pic,
@@ -247,17 +247,17 @@ async function handleApiRequest(url) {
             } catch (error) {
                 console.error(`Error in detail processing for source ${sourceCode}, id ${id}:`, error);
                 const errorMsg = error.name === 'AbortError' ? '详情请求超时'
-                    : error.name === 'SyntaxError' ? '详情数据格式无效' 
+                    : error.name === 'SyntaxError' ? '详情数据格式无效'
                         : error.message;
                 return JSON.stringify({
                     code: 400,
-                    msg: `获取详情失败: ${errorMsg}`, 
+                    msg: `获取详情失败: ${errorMsg}`,
                     episodes: []
                 });
             }
         }
         throw new Error('未知的API路径');
-    } catch (error) { 
+    } catch (error) {
         console.error('API处理错误 (outer):', error);
         return JSON.stringify({
             code: 400,
@@ -301,7 +301,7 @@ window.fetch = async function (input, init) {
                     'Access-Control-Allow-Origin': '*',
                 }
             });
-        } catch (err) { 
+        } catch (err) {
             console.error("Error during API request handling in fetch override:", err);
             return new Response(JSON.stringify({
                 code: 500,
@@ -337,27 +337,42 @@ async function testSiteAvailability(apiUrl) {
  * @param {string} m3u8Url 视频的M3U8播放地址
  * @returns {Promise<number|null>} 返回视频宽度，失败则返回null
  */
+// --- In: js/api.js ---
+
 async function getWidthFromM3u8(m3u8Url) {
-    if (!m3u8Url || !m3u8Url.includes('.m3u8')) return null;
+    if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
+        console.error('[清晰度检测] 失败：无效的M3U8链接', m3u8Url);
+        return null;
+    }
+
+    // ✅ 日志1：检查最终请求的链接是否正确（非常重要！）
+    const finalUrl = PROXY_URL + encodeURIComponent(m3u8Url);
+    console.log('[清晰度检测] 准备通过代理请求:', finalUrl);
 
     try {
-        // 注意：M3U8链接可能存在跨域问题，需要通过我们的代理
-        // 假设 PROXY_URL 是在 config.js 中定义的 '/proxy/'
-        const response = await fetch(PROXY_URL + encodeURIComponent(m3u8Url));
-        if (!response.ok) return null;
+        const response = await fetch(finalUrl);
+        if (!response.ok) {
+            console.error('[清晰度检测] 失败：服务器响应错误', response.status, response.statusText);
+            return null;
+        }
 
         const m3u8Content = await response.text();
 
-        // 使用正则表达式匹配 RESOLUTION=宽x高
+        // ✅ 日志2：检查获取到的内容是什么
+        console.log('[清晰度检测] 获取到的M3U8内容:', m3u8Content.substring(0, 200) + '...'); // 只打印前200个字符
+
         const resolutionMatch = m3u8Content.match(/RESOLUTION=(\d+)x(\d+)/);
-        
+
         if (resolutionMatch && resolutionMatch[1]) {
-            return parseInt(resolutionMatch[1], 10); // 返回宽度
+            const width = parseInt(resolutionMatch[1], 10);
+            console.log('[清晰度检测] 成功！匹配到宽度:', width);
+            return width;
         }
 
-        return null; // M3U8中未找到分辨率信息
+        console.warn('[清晰度检测] 未在M3U8内容中找到 RESOLUTION 标签。');
+        return null;
     } catch (error) {
-        console.error("M3U8解析失败:", error);
+        console.error("[清晰度检测] 失败：Fetch请求异常", error);
         return null;
     }
 }

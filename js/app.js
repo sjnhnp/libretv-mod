@@ -303,6 +303,8 @@ document.addEventListener('DOMContentLoaded', function () {
  * 初始化应用状态
  * 从localStorage加载初始状态并设置到AppState，如果localStorage为空则写入默认值
  */
+// --- In: js/app.js ---
+
 function initializeAppState() {
     const selectedAPIsRaw = localStorage.getItem('selectedAPIs');
 
@@ -321,22 +323,22 @@ function initializeAppState() {
 
     try {
         const cachedData = sessionStorage.getItem('videoDataCache');
+        let restoredMap = new Map(); // ✅ 在开头声明变量
+
         if (cachedData) {
             const rawArr = JSON.parse(cachedData);
-            // 检查缓存格式：如果key不包含"_"，则判定为旧格式并丢弃，以防出错
-            if (rawArr.length > 0 && !rawArr[0][0].includes('_')) {
-                console.warn("检测到旧版视频缓存，已清除。");
-                AppState.set('videoDataMap', new Map());
+            // 检查缓存格式：如果key不包含"_"，则判定为旧格式并丢弃
+            if (rawArr.length > 0 && !String(rawArr[0][0]).includes('_')) {
+                console.warn("检测到旧版视频缓存，已清除。新的缓存将在下次搜索后生成。");
+                // 保持 restoredMap 为空 Map 即可
             } else {
-                const restoredMap = new Map(rawArr);
-                AppState.set('videoDataMap', restoredMap);
+                restoredMap = new Map(rawArr); // ✅ 给已声明的变量赋值
             }
-
             console.log('已从 sessionStorage 恢复视频元数据缓存:', restoredMap);
-        } else {
-            // 如果缓存不存在，确保 videoDataMap 是一个空的 Map
-            AppState.set('videoDataMap', new Map());
         }
+
+        AppState.set('videoDataMap', restoredMap); // ✅ 确保此行能访问到 restoredMap
+
     } catch (e) {
         console.error('从 sessionStorage 恢复视频元数据缓存失败:', e);
         AppState.set('videoDataMap', new Map());
