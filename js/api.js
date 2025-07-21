@@ -337,45 +337,53 @@ async function testSiteAvailability(apiUrl) {
  * 依赖项目内置代理（functions/proxy/[[path]].js）处理M3U8跨域问题
  */
 function getQualityViaVideoProbe(m3u8Url) {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
         if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
             resolve('未知');
             return;
         }
 
-        // 关键优化：强制通过项目代理请求，解决桌面端跨域（核心解决桌面端问题）
-        // 代理会自动处理M3U8重写和CORS，无需担心跨域限制
+        // 新增：先获取M3U8内容，检测编码格式
+        try {
+            const proxyM3u8Url = PROXY_URL + encodeURIComponent(m3u8Url);
+            const m3u8Response = await fetch(proxyM3u8Url);
+            const m3u8Content = await m3u8Response.text();
+
+            // 检测是否为H.265（HEVC）、AV1等不支持的编码
+            const unsupportedCodes = ['HEVC', 'H.265', 'AV1'];
+            const isUnsupported = unsupportedCodes.some(code =>
+                m3u8Content.includes(code)
+            );
+            if (isUnsupported) {
+                resolve('编码不支持'); // 直接返回，避免解码尝试
+                return;
+            }
+        } catch (e) {
+            console.warn('M3U8编码检测失败，继续探测:', e);
+        }
+
+        // 以下为原视频探测逻辑（保持不变）
         const proxyM3u8Url = PROXY_URL + encodeURIComponent(m3u8Url);
-
         const video = document.createElement('video');
-        video.style.display = 'none'; // 隐藏视频元素
-        document.body.appendChild(video); // 必须添加到DOM才能加载
+        video.style.display = 'none';
+        document.body.appendChild(video);
 
-        // 优化1：延长超时时间到15秒（适配慢网络）
         const timeoutId = setTimeout(() => {
-            console.warn('[画质探测] 15秒超时');
+            console.warn('[清晰度探测] 15秒超时');
             cleanupAndResolve('未知');
         }, 15000);
 
-        // 优化2：完善清理逻辑，避免内存泄漏
         const cleanupAndResolve = (quality) => {
             clearTimeout(timeoutId);
             video.removeEventListener('loadedmetadata', onLoadedMetadata);
-            video.removeEventListener('loadeddata', onLoadedMetadata); // 增加loadeddata监听
+            video.removeEventListener('loadeddata', onLoadedMetadata);
             video.removeEventListener('error', onError);
-            video.removeEventListener('abort', onError);
-            video.src = '';
-            video.removeAttribute('src');
-            if (document.body.contains(video)) {
-                document.body.removeChild(video);
-            }
+            video.remove();
             resolve(quality);
         };
 
-        // 优化3：支持多种成功事件（loadedmetadata/loadeddata）
         const onLoadedMetadata = () => {
             const width = video.videoWidth;
-            console.log(`[画质探测] 成功（桌面端兼容）！宽度: ${width}`);
             let qualityTag = '未知';
             if (width >= 3800) qualityTag = '4K';
             else if (width >= 1900) qualityTag = '1080P';
@@ -384,42 +392,30 @@ function getQualityViaVideoProbe(m3u8Url) {
             cleanupAndResolve(qualityTag);
         };
 
-        // 优化4：错误重试机制（最多1次重试）
-        let retryCount = 0;
         const onError = () => {
             const error = video.error;
-            console.warn(`[画质探测] 第${retryCount + 1}次失败:`, error);
-
-            // 仅重试1次（避免无效循环）
-            if (retryCount < 1) {
-                retryCount++;
-                setTimeout(() => {
-                    video.src = proxyM3u8Url; // 重新加载
-                }, 1000);
-                return;
-            }
-
-            // 重试失败后，通过URL关键词猜测（保底方案）
-            if (m3u8Url.includes('4k') || m3u8Url.includes('2160')) {
-                cleanupAndResolve('4K');
-            } else if (m3u8Url.includes('1080')) {
-                cleanupAndResolve('1080P');
-            } else if (m3u8Url.includes('720')) {
-                cleanupAndResolve('720P');
+            console.error('[画质探测] 解码失败:', error);
+            // 新增：根据错误码返回更具体的提示
+            if (error.code === 4) {
+                cleanupAndResolve('解码失败');
             } else {
                 cleanupAndResolve('未知');
             }
         };
 
-        // 绑定事件（支持多种成功场景）
         video.addEventListener('loadedmetadata', onLoadedMetadata);
-        video.addEventListener('loadeddata', onLoadedMetadata); // 兼容更多浏览器
+        video.addEventListener('loadeddata', onLoadedMetadata);
         video.addEventListener('error', onError);
-        video.addEventListener('abort', onError);
-
-        // 加载代理后的M3U8（确保桌面端跨域被处理）
         video.src = proxyM3u8Url;
     });
+}
+
+// 校验M3U8是否包含有效分片
+const hasValidSegments = m3u8Content.includes('#EXTINF') &&
+    m3u8Content.split('#EXTINF').length > 1; // 至少有一个分片
+if (!hasValidSegments) {
+    resolve('M3U8无效');
+    return;
 }
 
 // 导出函数到全局
