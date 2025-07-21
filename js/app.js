@@ -1369,40 +1369,54 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     showModal(modalContent, `${effectiveTitle} (${sourceNameForDisplay})`);
 
     // --- 在弹窗显示后，异步检测清晰度 ---
-    // 在弹窗检测的第一步（读取缓存）后，“无效结果判断”
     setTimeout(async () => {
         const qualityTagElement = document.querySelector('#modal [data-field="quality-tag"]');
         if (!qualityTagElement) return;
         const qualityId = `${sourceCode}_${id}`;
 
-        // 第一步：检查缓存
+        // 1. 优先读取缓存
         if (qualityCache.has(qualityId)) {
             const cachedQuality = qualityCache.get(qualityId);
-            // 判断缓存是否为有效结果
+            // 判断缓存是否为有效结果（恢复这段逻辑）
             const isInvalid = ['未知', '解码失败', 'M3U8无效'].includes(cachedQuality);
+
             if (!isInvalid) {
                 // 有效结果：直接复用
                 qualityTagElement.textContent = cachedQuality;
                 updateQualityTagStyle(qualityTagElement, cachedQuality);
+                initModalQualityTag(cachedQuality);
                 return;
+            } else {
+                // 无效结果：继续检测（覆盖无效缓存），显示“补充检测中”（恢复这段提示）
+                qualityTagElement.textContent = '补充检测中...';
+                qualityTagElement.style.backgroundColor = '#4b5563'; // 灰色提示
             }
-            // 无效结果：继续检测（覆盖无效缓存）
-            qualityTagElement.textContent = '补充检测中...';
         }
 
-        // 第二步：无缓存或缓存无效时，执行检测（原逻辑）
+        // 2. 无缓存或缓存无效时执行检测
         const episodes = AppState.get('currentEpisodes') || [];
         if (episodes.length > 0) {
-            // ...（省略检测代码）
+            // 定义第一集链接（修复之前的变量未定义问题）
+            let firstEpisodeUrl = episodes[0];
+            if (firstEpisodeUrl.includes('$')) {
+                firstEpisodeUrl = firstEpisodeUrl.split('$')[1];
+            }
+
+            // 执行检测
             const qualityTag = await getQualityViaVideoProbe(firstEpisodeUrl);
             saveQualityCache(qualityId, qualityTag); // 覆盖无效缓存
             qualityTagElement.textContent = qualityTag;
             updateQualityTagStyle(qualityTagElement, qualityTag);
+            initModalQualityTag(qualityTag);
+
             // 同步更新卡片
             const targetCard = document.querySelector(`.card-hover[data-quality-id="${qualityId}"]`);
             if (targetCard) {
                 updateQualityBadgeUI(qualityId, qualityTag);
             }
+        } else {
+            qualityTagElement.textContent = '无剧集';
+            initModalQualityTag('无剧集');
         }
     }, 100);
 
@@ -1610,14 +1624,14 @@ function updateQualityBadgeUI(qualityId, quality) {
                 manualRetryDetection(qualityId, cardElement.videoData);
             };
         }
-              // 其他状态保持不变（移除点击事件）
-              else if (quality === '1080P' || quality === '4K') {
-                badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-purple-600 text-purple-100';
-                badge.onclick = null; // 非未知状态移除点击事件
-            } else if (quality === '720P' || quality === '高清') {
-                badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-blue-600 text-blue-100';
-                badge.onclick = null;
-            } else if (quality === '编码不支持' || quality === '解码失败' || quality === 'M3U8无效') {
+        // 其他状态保持不变（移除点击事件）
+        else if (quality === '1080P' || quality === '4K') {
+            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-purple-600 text-purple-100';
+            badge.onclick = null; // 非未知状态移除点击事件
+        } else if (quality === '720P' || quality === '高清') {
+            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-blue-600 text-blue-100';
+            badge.onclick = null;
+        } else if (quality === '编码不支持' || quality === '解码失败' || quality === 'M3U8无效') {
             badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-orange-600 text-white cursor-pointer hover:opacity-80';
             badge.title = '点击重新检测';
             badge.onclick = null;
