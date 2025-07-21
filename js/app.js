@@ -1223,29 +1223,28 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     const isCustomSpecialSource = sourceCode.startsWith('custom_') && apiInfo?.detail;
     if (isCustomSpecialSource) {
         // 延迟执行，确保弹窗已打开
+        // 自定义源弹窗中的异步地址获取（原延迟500ms的逻辑）
         setTimeout(async () => {
             try {
-                // 调用自定义源的详情处理函数
                 const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
                 const apiInfo = APISourceManager.getCustomApiInfo(customIndex);
-                if (!apiInfo) throw new Error('自定义源信息不存在');
+                if (!apiInfo) throw new Error('自定义源信息不存在'); // 保留此校验
 
-                // 调用handleCustomApiSpecialDetail获取真实地址
-                const detailResult = await handleCustomApiSpecialDetail(id, apiInfo.detail || apiUrl);
+                // 获取真实地址
+                const detailResult = await handleCustomApiSpecialDetail(id, apiInfo.detail);
                 const detailData = JSON.parse(detailResult);
 
-                // 自定义源异步更新逻辑中，重新渲染按钮时：
                 if (detailData.code === 200 && Array.isArray(detailData.episodes)) {
-                    episodes = detailData.episodes;
-                    AppState.set('currentEpisodes', episodes); // 更新到状态
-                    localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
+                    // 关键：立即更新缓存（同步到localStorage和AppState）
+                    const realPlayUrls = detailData.episodes;
+                    AppState.set('currentEpisodes', realPlayUrls); // 更新全局状态
+                    localStorage.setItem('currentEpisodes', JSON.stringify(realPlayUrls)); // 持久化缓存
 
+                    // 同时更新弹窗中的播放地址（避免用户二次点击仍无效）
                     const episodeGrid = document.querySelector('#modalContent [data-field="episode-buttons-grid"]');
                     if (episodeGrid) {
-                        // 强制使用AppState中的最新数据渲染
-                        const latestEpisodes = AppState.get('currentEpisodes');
                         episodeGrid.innerHTML = renderEpisodeButtons(
-                            latestEpisodes, // 关键：用最新数据
+                            realPlayUrls, // 使用真实地址重新渲染弹窗按钮
                             title,
                             sourceCode,
                             sourceNameForDisplay,
@@ -1254,9 +1253,9 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
                     }
                 }
             } catch (e) {
-                console.log('自定义源后台获取真实地址失败（不影响弹窗显示）', e);
+                console.error('自定义API地址获取失败:', e);
             }
-        }, 500); // 与内置源保持相同延迟，确保弹窗已渲染
+        }, 500); // 保持延迟，但确保成功后立即更新缓存
     }
 
     // 4. 渲染弹窗（原代码逻辑）

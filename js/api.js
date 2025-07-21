@@ -68,56 +68,57 @@ async function handleSpecialSourceDetail(id, sourceCode) {
 }
 
 // 处理自定义API特殊详情 (自定义源，需要HTML抓取)
+// 修改 handleCustomApiSpecialDetail 函数，优化地址提取稳定性
 async function handleCustomApiSpecialDetail(id, customApiDetailBaseUrl) {
     try {
         const detailPageUrl = `${customApiDetailBaseUrl}/index.php/vod/detail/id/${id}.html`;
-        // 关键修复：添加PROXY_URL代理，与内置源保持一致
-        const fullUrl = PROXY_URL + encodeURIComponent(detailPageUrl);
-
+        const fullUrl = PROXY_URL + encodeURIComponent(detailPageUrl); // 使用代理避免跨域
+        // 增加超时控制（10秒），避免无限等待
         const htmlContent = await fetchWithTimeout(
-            fullUrl, // 使用代理后的URL
+            fullUrl,
             { headers: { 'User-Agent': API_CONFIG.search.headers['User-Agent'] } },
-            10000,
-            'text' // 明确指定返回文本类型（避免默认解析为JSON）
+            10000, // 超时时间10秒
+            'text'
         );
 
-        // 复用内置源的M3U8提取逻辑（确保格式一致）
-        let matches = htmlContent.match(/\$(https?:\/\/[^"'\s]+?\.m3u8)/g) || [];
+        // 优化1：增加多种播放地址正则匹配（兼容不同格式）
+        let matches = [];
+        // 匹配带$前缀的地址（如$https://xxx.m3u8）
+        matches = htmlContent.match(/\$(https?:\/\/[^"'\s]+?\.m3u8)/g) || [];
+        // 匹配不带$前缀的地址（如https://xxx.m3u8）
         if (matches.length === 0) {
-            matches = htmlContent.match(M3U8_PATTERN) || []; // 用全局M3U8正则兜底
+            matches = htmlContent.match(/(https?:\/\/[^"'\s]+?\.m3u8)/g) || [];
         }
-        // 提取M3U8后添加验证
-        matches = Array.from(new Set(matches)).map(link => {
-            link = link.slice(1); // 移除开头的$
-            const idx = link.indexOf('(');
-            const cleanLink = idx > -1 ? link.slice(0, idx) : link;
-            // 验证：必须以http开头且以.m3u8结尾
-            if (!cleanLink.startsWith('http') || !cleanLink.endsWith('.m3u8')) {
-                throw new Error(`提取到无效M3U8地址：${cleanLink}`);
-            }
-            return cleanLink;
-        });
+        // 匹配带参数的地址（如https://xxx.m3u8?token=xxx）
+        if (matches.length === 0) {
+            matches = htmlContent.match(/(https?:\/\/[^"'\s]+?\.m3u8\?[^"'\s]+)/g) || [];
+        }
 
-        // 若提取不到有效链接，明确抛出错误（避免传递空数组）
+        // 优化2：清洗地址（移除多余字符）
+        matches = Array.from(new Set(matches)).map(link => {
+            link = link.startsWith('$') ? link.slice(1) : link; // 移除可能的$前缀
+            link = link.split('?')[0] + '?' + link.split('?').slice(1).join('?'); // 保留参数
+            return link;
+        }).filter(link => link.startsWith('http') && link.includes('.m3u8')); // 过滤无效地址
+
         if (matches.length === 0) {
-            throw new Error('未提取到有效M3U8地址（可能详情页结构不符）');
+            throw new Error('未提取到真实播放地址（三次尝试后将自动修复）');
         }
-        if (matches.length === 0) {
-            throw new Error('未能从自定义API源获取到有效的M3U8播放地址');
-        }
-        // 与内置源返回格式完全对齐
-        const title = (htmlContent.match(/<h1[^>]*>([^<]+)<\/h1>/) || [, ''])[1].trim();
-        const desc = (htmlContent.match(/<div[^>]*class=["']sketch["'][^>]*>([\s\S]*?)<\/div>/) || [, ''])[1]
-            .replace(/<[^>]+>/g, ' ').trim();
+
+        // 优化3：立即保存真实地址到缓存（供下次使用）
+        localStorage.setItem('customApiRealUrls_' + id, JSON.stringify(matches));
+
         return JSON.stringify({
             code: 200,
-            episodes: matches, // 直接返回M3U8地址数组（关键）
+            episodes: matches,
             detailUrl: detailPageUrl,
-            videoInfo: { title, desc, source_name: '自定义源', source_code: 'custom' }
+            videoInfo: { title: '自定义源播放', source_name: '自定义API', source_code: 'custom' }
         });
     } catch (e) {
-        console.error('自定义API详情获取失败:', e);
-        throw new Error(`获取自定义API详情失败: ${e.message}`);
+        console.error('自定义API detail源解析失败（本次尝试）', e);
+        // 即使失败，也保存空地址到缓存（避免重复无效请求）
+        localStorage.setItem('customApiRealUrls_' + id, JSON.stringify([]));
+        throw e; // 抛出错误，触发重试逻辑
     }
 }
 
