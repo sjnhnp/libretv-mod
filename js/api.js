@@ -337,8 +337,6 @@ async function testSiteAvailability(apiUrl) {
  * @param {string} m3u8Url - 视频的M3U8播放地址
  * @returns {Promise<string>} - 返回一个Promise，最终解析为清晰度标签（如 '1080P'）
  */
-// --- In: js/api.js ---
-
 function getQualityViaVideoProbe(m3u8Url) {
     return new Promise((resolve) => {
         if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
@@ -346,23 +344,29 @@ function getQualityViaVideoProbe(m3u8Url) {
             return;
         }
 
+        // 关键：创建一个临时的、隐藏的video元素
         const video = document.createElement('video');
-        video.crossOrigin = 'anonymous'; 
+        video.style.display = 'none'; // 确保用户看不到
+        document.body.appendChild(video); // 必须添加到DOM才能加载
 
+        // --- 设置10秒超时定时器 ---
         const timeoutId = setTimeout(() => {
-            console.warn('[清晰度探测] 10秒超时，探测失败。这通常意味着视频加载非常慢或卡住。');
+            console.warn('[清晰度探测] 10秒超时，探测失败。');
             cleanup();
             resolve('未知');
-        }, 10000); // ✅ 将超时时间延长到10秒，给慢速资源更多机会
+        }, 10000);
 
+        // --- 定义清理函数，用于移除元素和监听器 ---
         const cleanup = () => {
             clearTimeout(timeoutId);
             video.removeEventListener('loadedmetadata', onLoadedMetadata);
             video.removeEventListener('error', onError);
-            video.src = ''; 
-            video.remove(); 
+            video.src = ''; // 停止加载
+            video.removeAttribute('src');
+            document.body.removeChild(video);
         };
 
+        // --- 定义成功的回调 ---
         const onLoadedMetadata = () => {
             const width = video.videoWidth;
             console.log(`[清晰度探测] 成功！获取到宽度: ${width}`);
@@ -376,31 +380,19 @@ function getQualityViaVideoProbe(m3u8Url) {
             resolve(qualityTag);
         };
 
-        // ✅ --- 关键修改：升级 onError 回调函数 ---
+        // --- 定义失败的回调 ---
         const onError = () => {
-            // 获取详细的媒体错误对象
             const error = video.error;
             let errorMessage = '未知错误';
-            
             if (error) {
                 switch (error.code) {
-                    case error.MEDIA_ERR_ABORTED:
-                        errorMessage = '用户中止了视频加载。';
-                        break;
-                    case error.MEDIA_ERR_NETWORK:
-                        errorMessage = '网络错误导致视频加载失败。';
-                        break;
-                    case error.MEDIA_ERR_DECODE:
-                        errorMessage = '视频解码时发生错误，文件可能已损坏或格式不支持。';
-                        break;
-                    case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
-                        errorMessage = '视频源格式不支持。这可能是因为M3U8内容无效或浏览器缺少解码器。';
-                        break;
-                    default:
-                        errorMessage = `发生未知媒体错误，代码: ${error.code}`;
+                    case error.MEDIA_ERR_ABORTED: errorMessage = '用户中止了视频加载。'; break;
+                    case error.MEDIA_ERR_NETWORK: errorMessage = '网络错误导致视频加载失败。'; break;
+                    case error.MEDIA_ERR_DECODE: errorMessage = '视频解码时发生错误。'; break;
+                    case error.MEDIA_ERR_SRC_NOT_SUPPORTED: errorMessage = '视频源格式不支持或跨域问题。'; break;
+                    default: errorMessage = `发生未知媒体错误，代码: ${error.code}`;
                 }
             }
-            // 打印出详细的错误信息和错误对象本身
             console.error(`[清晰度探测] 视频元素加载错误: ${errorMessage}`, error);
             cleanup();
             resolve('未知');
@@ -409,11 +401,13 @@ function getQualityViaVideoProbe(m3u8Url) {
         video.addEventListener('loadedmetadata', onLoadedMetadata);
         video.addEventListener('error', onError);
 
-        console.log('[清晰度探测] 设置视频源并开始加载:', m3u8Url);
-        video.src = m3u8Url;
+        // 关键：必须通过代理加载 M3U8 链接以避免CORS问题
+        const proxiedUrl = PROXY_URL + encodeURIComponent(m3u8Url);
+        console.log('[清晰度探测] 设置视频源并开始加载:', proxiedUrl);
+        video.src = proxiedUrl;
     });
 }
 
 
-// ✅ 别忘了“导出”这个新函数
+// 导出新函数到全局
 window.getQualityViaVideoProbe = getQualityViaVideoProbe;

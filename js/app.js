@@ -1334,7 +1334,6 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     showModal(modalContent, `${effectiveTitle} (${sourceNameForDisplay})`);
 
     // --- 新增逻辑：在弹窗显示后，异步检测清晰度 ---
-    // 使用 setTimeout 确保DOM元素已经渲染
     setTimeout(async () => {
         const qualityTagElement = document.querySelector('#modal [data-field="quality-tag"]');
         if (!qualityTagElement) return;
@@ -1345,20 +1344,25 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             if (firstEpisodeUrl.includes('$')) {
                 firstEpisodeUrl = firstEpisodeUrl.split('$')[1];
             }
-            
-            // ✅ 调用新的探测函数
+
+            // 调用新的探测函数
             const qualityTag = await getQualityViaVideoProbe(firstEpisodeUrl);
 
             qualityTagElement.textContent = qualityTag;
+
+            // 根据清晰度更新背景颜色
             if (qualityTag === '1080P' || qualityTag === '4K') {
                 qualityTagElement.style.backgroundColor = '#2563eb'; // 蓝色
             } else if (qualityTag === '未知') {
                 qualityTagElement.style.backgroundColor = '#4b5563'; // 灰色
+            } else {
+                qualityTagElement.style.backgroundColor = '#16a34a'; // 绿色
             }
+
         } else {
-             qualityTagElement.textContent = '无剧集';
+            qualityTagElement.textContent = '无剧集';
         }
-    }, 100);
+    }, 100); // 延迟100ms执行，确保弹窗已弹出
 }
 
 function toggleEpisodeOrderUI(container) {
