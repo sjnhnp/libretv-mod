@@ -1339,24 +1339,26 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         const qualityTagElement = document.querySelector('#modal [data-field="quality-tag"]');
         if (!qualityTagElement) return;
 
-        // 获取第一集的播放链接
         const episodes = AppState.get('currentEpisodes') || [];
         if (episodes.length > 0) {
             let firstEpisodeUrl = episodes[0];
             if (firstEpisodeUrl.includes('$')) {
                 firstEpisodeUrl = firstEpisodeUrl.split('$')[1];
             }
-
-            const width = await getWidthFromM3u8(firstEpisodeUrl);
-            const qualityTag = mapWidthToQualityTag(width);
+            
+            // ✅ 调用新的探测函数
+            const qualityTag = await getQualityViaVideoProbe(firstEpisodeUrl);
 
             qualityTagElement.textContent = qualityTag;
-            // 可以根据清晰度再改一下背景颜色
-            qualityTagElement.style.backgroundColor = (width && width >= 1900) ? '#2563eb' : '#4b5563';
+            if (qualityTag === '1080P' || qualityTag === '4K') {
+                qualityTagElement.style.backgroundColor = '#2563eb'; // 蓝色
+            } else if (qualityTag === '未知') {
+                qualityTagElement.style.backgroundColor = '#4b5563'; // 灰色
+            }
         } else {
-            qualityTagElement.textContent = '无剧集';
+             qualityTagElement.textContent = '无剧集';
         }
-    }, 100); // 延迟100ms执行，确保弹窗已弹出
+    }, 100);
 }
 
 function toggleEpisodeOrderUI(container) {

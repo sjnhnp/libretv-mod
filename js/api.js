@@ -332,61 +332,70 @@ async function testSiteAvailability(apiUrl) {
     }
 }
 
-/**
- * 从M3U8链接中异步获取视频宽度
- * @param {string} m3u8Url 视频的M3U8播放地址
- * @returns {Promise<number|null>} 返回视频宽度，失败则返回null
- */
 // --- In: js/api.js ---
-
-async function getWidthFromM3u8(m3u8Url) {
-    if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
-        console.error('[清晰度检测] 失败：无效的M3U8链接', m3u8Url);
-        return null;
-    }
-
-    // ✅ 日志1：检查最终请求的链接是否正确（非常重要！）
-    const finalUrl = PROXY_URL + encodeURIComponent(m3u8Url);
-    console.log('[清晰度检测] 准备通过代理请求:', finalUrl);
-
-    try {
-        const response = await fetch(finalUrl);
-        if (!response.ok) {
-            console.error('[清晰度检测] 失败：服务器响应错误', response.status, response.statusText);
-            return null;
-        }
-
-        const m3u8Content = await response.text();
-
-        // ✅ 日志2：检查获取到的内容是什么
-        console.log('[清晰度检测] 获取到的M3U8内容:', m3u8Content.substring(0, 200) + '...'); // 只打印前200个字符
-
-        const resolutionMatch = m3u8Content.match(/RESOLUTION=(\d+)x(\d+)/);
-
-        if (resolutionMatch && resolutionMatch[1]) {
-            const width = parseInt(resolutionMatch[1], 10);
-            console.log('[清晰度检测] 成功！匹配到宽度:', width);
-            return width;
-        }
-
-        console.warn('[清晰度检测] 未在M3U8内容中找到 RESOLUTION 标签。');
-        return null;
-    } catch (error) {
-        console.error("[清晰度检测] 失败：Fetch请求异常", error);
-        return null;
-    }
-}
+// 请删除或注释掉旧的 getWidthFromM3u8 和 mapWidthToQualityTag 函数
+// 然后用下面这个函数替换它们
 
 /**
- * 将视频宽度映射为清晰度标签
- * @param {number} width 视频宽度
- * @returns {string} 清晰度标签
+ * 通过创建一个临时的<video>元素来探测视频的真实清晰度
+ * @param {string} m3u8Url - 视频的M3U8播放地址
+ * @returns {Promise<string>} - 返回一个Promise，最终解析为清晰度标签（如 '1080P'）
  */
-function mapWidthToQualityTag(width) {
-    if (!width) return '未知';
-    if (width >= 3800) return '4K';
-    if (width >= 1900) return '1080P';
-    if (width >= 1200) return '720P';
-    if (width >= 700) return '高清';
-    return '标清';
+function getQualityViaVideoProbe(m3u8Url) {
+    return new Promise((resolve) => {
+        if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
+            resolve('未知');
+            return;
+        }
+
+        const video = document.createElement('video');
+        video.crossOrigin = 'anonymous'; // 允许跨域
+
+        // --- 设置超时定时器 ---
+        const timeoutId = setTimeout(() => {
+            console.warn('[清晰度探测] 5秒超时，探测失败。');
+            cleanup();
+            resolve('未知');
+        }, 5000); // 5秒后如果还没结果，就放弃
+
+        // --- 定义清理函数 ---
+        const cleanup = () => {
+            clearTimeout(timeoutId);
+            video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            video.removeEventListener('error', onError);
+            video.src = ''; // 停止加载
+            video.remove(); // 从DOM中移除
+        };
+
+        // --- 定义成功的回调 ---
+        const onLoadedMetadata = () => {
+            const width = video.videoWidth;
+            console.log(`[清晰度探测] 成功！获取到宽度: ${width}`);
+            let qualityTag = '未知';
+            if (width >= 3800) qualityTag = '4K';
+            else if (width >= 1900) qualityTag = '1080P';
+            else if (width >= 1200) qualityTag = '720P';
+            else if (width > 0) qualityTag = '高清';
+
+            cleanup();
+            resolve(qualityTag);
+        };
+
+        // --- 定义失败的回调 ---
+        const onError = () => {
+            console.error('[清晰度探测] 视频元素加载错误。');
+            cleanup();
+            resolve('未知');
+        };
+
+        video.addEventListener('loadedmetadata', onLoadedMetadata);
+        video.addEventListener('error', onError);
+
+        // 开始加载视频
+        video.src = m3u8Url;
+    });
 }
+
+
+// ✅ 别忘了“导出”这个新函数
+window.getQualityViaVideoProbe = getQualityViaVideoProbe;
