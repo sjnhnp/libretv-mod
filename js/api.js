@@ -358,7 +358,7 @@ function getQualityViaVideoProbe(m3u8Url) {
 
         const proxiedUrl = PROXY_URL + encodeURIComponent(m3u8Url);
         hls.loadSource(proxiedUrl);
-        
+
         let timeoutId = setTimeout(() => {
             console.warn(`[清晰度探测] 10秒超时: ${m3u8Url}`);
             cleanupAndResolve('未知');
@@ -369,11 +369,11 @@ function getQualityViaVideoProbe(m3u8Url) {
             hls.destroy();
             resolve(quality);
         };
-        
+
         hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
             if (data.levels && data.levels.length > 0) {
                 // 寻找分辨率最高的级别
-                const highestLevel = data.levels.reduce((max, current) => 
+                const highestLevel = data.levels.reduce((max, current) =>
                     (current.height > max.height) ? current : max, data.levels[0]
                 );
 
@@ -385,7 +385,7 @@ function getQualityViaVideoProbe(m3u8Url) {
                 else if (height >= 1080) qualityTag = '1080P';
                 else if (height >= 720) qualityTag = '720P';
                 else if (height > 0) qualityTag = '高清';
-                
+
                 cleanupAndResolve(qualityTag);
             } else {
                 cleanupAndResolve('未知');
