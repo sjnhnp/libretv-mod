@@ -310,9 +310,8 @@ const APISourceManager = {
 
         // 添加到自定义API列表 - 增加isAdult属性
         const customAPIs = AppState.get('customAPIs');
-        const apiData = { name, url, isAdult, detail: detail || '' };
-
-        const updatedCustomAPIs = [...customAPIs, { name, url, isAdult }];
+        const apiData = { name, url, isAdult, detail: detail || '' }; // 确保detail字段存在，即使为空
+        const updatedCustomAPIs = [...customAPIs, apiData]; // 使用完整的apiData对象
         AppState.set('customAPIs', updatedCustomAPIs);
         localStorage.setItem('customAPIs', JSON.stringify(updatedCustomAPIs));
 
