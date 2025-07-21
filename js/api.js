@@ -339,65 +339,59 @@ async function testSiteAvailability(apiUrl) {
  */
 function getQualityViaVideoProbe(m3u8Url) {
     return new Promise((resolve) => {
-        if (typeof Hls === 'undefined' || !Hls.isSupported()) {
-            console.warn('[清晰度探测] Hls.js 不可用或不被支持。');
-            resolve('未知');
-            return;
-        }
         if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
             resolve('未知');
             return;
         }
 
-        const hls = new Hls({
-            // 我们只探测，不需要下载内容
-            maxBufferLength: 30,
-            maxMaxBufferLength: 1, // 最小化缓冲
-            maxBufferSize: 1,
-        });
+        const video = document.createElement('video');
+        video.style.display = 'none'; // Make it invisible
+        document.body.appendChild(video); // Must be in the DOM to load
 
-        const proxiedUrl = PROXY_URL + encodeURIComponent(m3u8Url);
-        hls.loadSource(proxiedUrl);
-
-        let timeoutId = setTimeout(() => {
-            console.warn(`[清晰度探测] 10秒超时: ${m3u8Url}`);
+        // --- Timeout handler ---
+        const timeoutId = setTimeout(() => {
+            console.warn('[Quality Probe] 10-second timeout reached.');
             cleanupAndResolve('未知');
-        }, 10000); // 10秒超时
+        }, 10000);
 
+        // --- Cleanup function ---
         const cleanupAndResolve = (quality) => {
             clearTimeout(timeoutId);
-            hls.destroy();
+            video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            video.removeEventListener('error', onError);
+            video.src = '';
+            video.removeAttribute('src');
+            if (document.body.contains(video)) {
+                document.body.removeChild(video);
+            }
             resolve(quality);
         };
 
-        hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-            if (data.levels && data.levels.length > 0) {
-                // 寻找分辨率最高的级别
-                const highestLevel = data.levels.reduce((max, current) =>
-                    (current.height > max.height) ? current : max, data.levels[0]
-                );
+        // --- Success handler ---
+        const onLoadedMetadata = () => {
+            const width = video.videoWidth;
+            console.log(`[Quality Probe] Success! Detected width: ${width}`);
+            let qualityTag = '未知';
+            if (width >= 3800) qualityTag = '4K';
+            else if (width >= 1900) qualityTag = '1080P';
+            else if (width >= 1200) qualityTag = '720P';
+            else if (width > 0) qualityTag = '高清';
+            cleanupAndResolve(qualityTag);
+        };
 
-                const height = highestLevel.height;
-                console.log(`[清晰度探测] 成功！获取到高度: ${height} from ${m3u8Url}`);
+        // --- Error handler ---
+        const onError = () => {
+            const error = video.error;
+            console.error('[Quality Probe] Video element error:', error);
+            cleanupAndResolve('未知');
+        };
 
-                let qualityTag = '未知';
-                if (height >= 2100) qualityTag = '4K';
-                else if (height >= 1080) qualityTag = '1080P';
-                else if (height >= 720) qualityTag = '720P';
-                else if (height > 0) qualityTag = '高清';
-
-                cleanupAndResolve(qualityTag);
-            } else {
-                cleanupAndResolve('未知');
-            }
-        });
-
-        hls.on(Hls.Events.ERROR, (event, data) => {
-            if (data.fatal) {
-                console.error(`[清晰度探测] HLS.js 致命错误:`, data);
-                cleanupAndResolve('未知');
-            }
-        });
+        video.addEventListener('loadedmetadata', onLoadedMetadata);
+        video.addEventListener('error', onError);
+        
+        // The global fetch interceptor in api.js will automatically
+        // proxy this URL through your backend.
+        video.src = m3u8Url;
     });
 }
 

@@ -1344,25 +1344,24 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             if (firstEpisodeUrl.includes('$')) {
                 firstEpisodeUrl = firstEpisodeUrl.split('$')[1];
             }
-
-            // 调用新的探测函数
+            
+            // Call the new probe function
             const qualityTag = await getQualityViaVideoProbe(firstEpisodeUrl);
 
             qualityTagElement.textContent = qualityTag;
-
-            // 根据清晰度更新背景颜色
+            
+            // Update badge color based on quality
             if (qualityTag === '1080P' || qualityTag === '4K') {
-                qualityTagElement.style.backgroundColor = '#2563eb'; // 蓝色
+                qualityTagElement.style.backgroundColor = '#2563eb'; // Blue
             } else if (qualityTag === '未知') {
-                qualityTagElement.style.backgroundColor = '#4b5563'; // 灰色
+                qualityTagElement.style.backgroundColor = '#4b5563'; // Gray
             } else {
-                qualityTagElement.style.backgroundColor = '#16a34a'; // 绿色
+                qualityTagElement.style.backgroundColor = '#16a34a'; // Green
             }
-
         } else {
-            qualityTagElement.textContent = '无剧集';
+             qualityTagElement.textContent = '无剧集';
         }
-    }, 100); // 延迟100ms执行，确保弹窗已弹出
+    }, 100); // Delay slightly to ensure the modal is fully rendered
 }
 
 function toggleEpisodeOrderUI(container) {
