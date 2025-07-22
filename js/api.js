@@ -359,11 +359,39 @@ function resolveUrl(baseUrl, relativeUrl) {
  * @param {string} m3u8Url - M3U8文件的URL
  * @returns {Promise<{quality: string, loadSpeed: string, pingTime: number}>}
  */
+/**
+ * [最终修正版 V2] 预检测视频源，获取画质、加载速度和延迟。
+ * 核心逻辑：
+ * 1. 优先从M3U8的URL/文件名中通过关键词（如1080p, 4k）推断画质，这是最快且针对当前视频源最有效的方式。
+ * 2. 如果文件名中没有线索，再尝试解析M3U8文件内容，检查BANDWIDTH和RESOLUTION。
+ * 3. 增加了对HEVC/H.265编码的检测，防止在不支持的设备上播放。
+ *
+ * @param {string} m3u8Url - M3U8文件的URL
+ * @returns {Promise<{quality: string, loadSpeed: string, pingTime: number}>}
+ */
 async function precheckSource(m3u8Url) {
     if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
         return { quality: '无效链接', loadSpeed: 'N/A', pingTime: -1 };
     }
 
+    // --- 第一步：文件名启发式检测 (Heuristic Check) ---
+    // 这是最高效且针对很多源最准确的方法
+    const qualityKeywords = {
+        '4K': [/4k/i, /2160p/i],
+        '1080P': [/1080p/i, /fhd/i],
+        '720P': [/720p/i, /hd/i]
+    };
+
+    for (const quality in qualityKeywords) {
+        if (qualityKeywords[quality].some(regex => regex.test(m3u8Url))) {
+            // 如果从文件名中直接匹配到画质，可以快速返回一个初步结果，
+            // 稍后在后台获取更精确的速度和延迟信息。
+            // 为了简化，我们这里也执行完整的请求来获取速度。
+            break; // 找到最高画质后即可跳出循环
+        }
+    }
+
+    // --- 第二步：网络请求与内容分析 (如果文件名没有线索) ---
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000); // 8秒超时
 
@@ -387,45 +415,39 @@ async function precheckSource(m3u8Url) {
         const speedKbps = sizeInKB > 0 ? (sizeInKB / (duration / 1000)) : 0;
         const loadSpeed = speedKbps > 1024 ? `${(speedKbps / 1024).toFixed(1)} MB/s` : `${Math.round(speedKbps)} KB/s`;
 
-        const lines = m3u8Content.split('\n');
-        let quality = '高清'; // 默认值设为“高清”，比“标清”更符合一般情况
-        let maxBandwidth = 0;
-        let maxWidth = 0;
-
-        // 遍历所有 #EXT-X-STREAM-INF 标签，寻找最高码率和最高分辨率
-        for (const line of lines) {
-            if (line.startsWith('#EXT-X-STREAM-INF')) {
-                const bandwidthMatch = line.match(/BANDWIDTH=(\d+)/);
-                if (bandwidthMatch) {
-                    const bandwidth = parseInt(bandwidthMatch[1], 10);
-                    if (bandwidth > maxBandwidth) {
-                        maxBandwidth = bandwidth;
-                    }
-                }
-
-                const resolutionMatch = line.match(/RESOLUTION=(\d+)x(\d+)/);
-                if (resolutionMatch) {
-                    const width = parseInt(resolutionMatch[1], 10);
-                    if (width > maxWidth) {
-                        maxWidth = width;
-                    }
-                }
+        // 优先从文件名推断
+        for (const quality in qualityKeywords) {
+            if (qualityKeywords[quality].some(regex => regex.test(m3u8Url))) {
+                return { quality, loadSpeed, pingTime: Math.round(firstByteTime) };
             }
         }
 
-        // 优先使用分辨率判断
+        // 如果文件名没有线索，再从内容分析
+        const lines = m3u8Content.split('\n');
+        let quality = '高清'; // 默认值
+        let maxBandwidth = 0;
+        let maxWidth = 0;
+
+        for (const line of lines) {
+            if (line.startsWith('#EXT-X-STREAM-INF')) {
+                const bandwidthMatch = line.match(/BANDWIDTH=(\d+)/);
+                if (bandwidthMatch) maxBandwidth = Math.max(maxBandwidth, parseInt(bandwidthMatch[1], 10));
+
+                const resolutionMatch = line.match(/RESOLUTION=(\d+)x(\d+)/);
+                if (resolutionMatch) maxWidth = Math.max(maxWidth, parseInt(resolutionMatch[1], 10));
+            }
+        }
+
         if (maxWidth > 0) {
             if (maxWidth >= 3800) quality = '4K';
             else if (maxWidth >= 1900) quality = '1080P';
             else if (maxWidth >= 1200) quality = '720P';
-        } 
-        // 如果没有分辨率信息，则根据码率(BANDWIDTH)进行推断
-        else if (maxBandwidth > 0) {
-            if (maxBandwidth > 8000000) quality = '1080P';       // > 8 Mbps
-            else if (maxBandwidth > 4000000) quality = '720P';  // > 4 Mbps
+        } else if (maxBandwidth > 0) {
+            if (maxBandwidth > 8000000) quality = '1080P';
+            else if (maxBandwidth > 4000000) quality = '720P';
         }
 
-        // 检查是否包含不支持的视频编码格式
+        // 检查不支持的编码
         const unsupportedCodes = ['HEVC', 'H.265', 'AV1'];
         if (unsupportedCodes.some(code => m3u8Content.toUpperCase().includes(code))) {
             quality = '编码不支持';
@@ -435,6 +457,12 @@ async function precheckSource(m3u8Url) {
 
     } catch (error) {
         console.warn(`[Precheck] 预检测失败 for ${m3u8Url}:`, error.message);
+        // 如果网络请求失败，最后再尝试一次仅靠文件名判断
+        for (const quality in qualityKeywords) {
+            if (qualityKeywords[quality].some(regex => regex.test(m3u8Url))) {
+                return { quality, loadSpeed: 'N/A', pingTime: -1 };
+            }
+        }
         return { quality: '检测失败', loadSpeed: 'N/A', pingTime: -1 };
     } finally {
         clearTimeout(timeoutId);
