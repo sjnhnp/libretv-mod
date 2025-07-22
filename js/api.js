@@ -332,21 +332,46 @@ async function testSiteAvailability(apiUrl) {
     }
 }
 
-// 源预检测函数
-// [最终强化版] 请用此完整代码替换 js/api.js 中现有的 precheckSource 函数
 
 /**
- * 预检测视频源，获取画质、加载速度和延迟
+ * 辅助函数：将相对URL解析为绝对URL
+ * @param {string} baseUrl - 基准URL
+ * @param {string} relativeUrl - 相对URL
+ * @returns {string} - 解析后的绝对URL
+ */
+function resolveUrl(baseUrl, relativeUrl) {
+    try {
+        // 如果已经是绝对URL，直接返回
+        if (/^https?:\/\//i.test(relativeUrl)) {
+            return relativeUrl;
+        }
+        // 使用URL构造函数进行解析
+        return new URL(relativeUrl, baseUrl).toString();
+    } catch (e) {
+        console.warn(`URL resolve failed for "${relativeUrl}" with base "${baseUrl}"`, e);
+        return relativeUrl; // 解析失败则返回原始相对路径
+    }
+}
+
+/**
+ * 预检测视频源，获取画质、加载速度和延迟（支持M3U8主列表递归解析）
  * @param {string} m3u8Url - M3U8文件的URL
+ * @param {number} [depth=0] - 当前递归深度，防止无限循环
  * @returns {Promise<{quality: string, loadSpeed: string, pingTime: number}>}
  */
-async function precheckSource(m3u8Url) {
+async function precheckSource(m3u8Url, depth = 0) {
+    const MAX_RECURSION_DEPTH = 3; // 设置最大递归深度
+    if (depth > MAX_RECURSION_DEPTH) {
+        console.warn(`[Precheck] Max recursion depth reached for ${m3u8Url}`);
+        return { quality: '检测超时', loadSpeed: 'N/A', pingTime: -1 };
+    }
+
     if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
         return { quality: '无效链接', loadSpeed: 'N/A', pingTime: -1 };
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8秒超时
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     const startTime = performance.now();
     let firstByteTime = -1;
@@ -365,41 +390,65 @@ async function precheckSource(m3u8Url) {
         const endTime = performance.now();
         
         const duration = endTime - startTime;
-        const sizeInKB = (m3u8Content.length / 1024);
-        const speedKbps = sizeInKB / (duration / 1000);
+        const sizeInKB = m3u8Content.length / 1024;
+        const speedKbps = sizeInKB > 0 ? sizeInKB / (duration / 1000) : 0;
         
         let loadSpeed = speedKbps > 1024 
             ? `${(speedKbps / 1024).toFixed(1)} MB/s` 
             : `${Math.round(speedKbps)} KB/s`;
 
-        // --- [核心优化] 增强的画质解析逻辑 ---
-        let quality = '高清'; // 默认值
         const lines = m3u8Content.split('\n');
+        
+        // --- [核心升级] 判断是否为主播放列表 ---
+        if (m3u8Content.includes('#EXT-X-STREAM-INF')) {
+            console.log(`[Precheck] Master playlist detected for ${m3u8Url}. Diving deeper...`);
+            let bestStream = { bandwidth: 0, url: '', resolution: '' };
+
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].startsWith('#EXT-X-STREAM-INF')) {
+                    const bandwidthMatch = lines[i].match(/BANDWIDTH=(\d+)/);
+                    const resolutionMatch = lines[i].match(/RESOLUTION=([\dx]+)/);
+                    const currentBandwidth = bandwidthMatch ? parseInt(bandwidthMatch[1], 10) : 0;
+
+                    if (currentBandwidth > bestStream.bandwidth) {
+                        // 寻找下一行的URL
+                        for (let j = i + 1; j < lines.length; j++) {
+                            if (lines[j] && !lines[j].startsWith('#')) {
+                                bestStream = {
+                                    bandwidth: currentBandwidth,
+                                    url: lines[j].trim(),
+                                    resolution: resolutionMatch ? resolutionMatch[1] : ''
+                                };
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (bestStream.url) {
+                const subPlaylistUrl = resolveUrl(m3u8Url, bestStream.url);
+                // 递归调用自身来检测子列表，并返回其结果
+                return precheckSource(subPlaylistUrl, depth + 1);
+            }
+        }
+
+        // --- 如果不是主列表，或者主列表解析失败，则执行之前的画质解析逻辑 ---
+        let quality = '高清';
         let bestWidth = 0;
 
         for (const line of lines) {
-            // 方法1: 查找最可靠的 RESOLUTION 标签
             const resolutionMatch = line.match(/RESOLUTION=(\d+)x(\d+)/);
             if (resolutionMatch) {
                 const width = parseInt(resolutionMatch[1], 10);
                 if (width > bestWidth) bestWidth = width;
-                continue; // 继续查找更高分辨率
-            }
-
-            // 方法2: 查找 #EXT-X-STREAM-INF 行中的常见清晰度字符串
-            if (line.startsWith('#EXT-X-STREAM-INF')) {
-                if (line.includes('2160p') || line.includes('4K')) bestWidth = Math.max(bestWidth, 3840);
-                else if (line.includes('1080p')) bestWidth = Math.max(bestWidth, 1920);
-                else if (line.includes('720p')) bestWidth = Math.max(bestWidth, 1280);
             }
         }
 
-        // 根据找到的最佳宽度来确定画质
         if (bestWidth >= 3800) quality = '4K';
         else if (bestWidth >= 1900) quality = '1080P';
         else if (bestWidth >= 1200) quality = '720P';
         
-        // 最终检查不支持的编码
         const unsupportedCodes = ['HEVC', 'H.265', 'AV1'];
         if (unsupportedCodes.some(code => m3u8Content.toUpperCase().includes(code))) {
             quality = '编码不支持';
