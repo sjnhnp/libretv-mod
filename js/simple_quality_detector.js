@@ -378,96 +378,137 @@ async function performVideoElementDetection(m3u8Url) {
 }
 
 /**
- * 综合画质检测函数
+ * 综合画质检测函数 - 重新设计优先级逻辑
  * @param {string} m3u8Url - m3u8播放地址
  * @returns {Promise<{quality: string, loadSpeed: string, pingTime: number}>}
  */
 async function comprehensiveQualityCheck(m3u8Url) {
-    // 第一步：如果是关键词识别，直接返回（最高优先级）
-    const keywordResult = await checkKeywordQuality(m3u8Url);
-    if (keywordResult) {
-        return {
-            quality: keywordResult,
-            loadSpeed: '极速',
-            pingTime: 0,
-            sortPriority: 10,
-            detectionMethod: 'keyword'
-        };
-    }
+    console.log('开始综合画质检测:', m3u8Url);
     
-    // 第二步：尝试解析m3u8文件内容获取RESOLUTION（最准确的方法）
-    try {
-        const m3u8Result = await tryParseM3u8Resolution(m3u8Url);
-        if (m3u8Result.quality !== '未知') {
-            return {
-                ...m3u8Result,
-                sortPriority: 15, // 仅次于关键词识别
-                detectionMethod: 'm3u8_resolution'
-            };
-        }
-    } catch (error) {
-        console.log('M3U8解析失败:', error.message);
-    }
+    // 并行执行所有检测方法
+    const detectionPromises = [];
     
-    // 第三步：进行简单检测（URL分析 + 网络测速）
-    const simpleResult = await simplePrecheckSource(m3u8Url);
+    // 1. M3U8 RESOLUTION解析（最准确）
+    detectionPromises.push(
+        tryParseM3u8Resolution(m3u8Url)
+            .then(result => ({ ...result, method: 'm3u8_resolution', priority: 1 }))
+            .catch(() => ({ quality: '未知', loadSpeed: 'N/A', pingTime: -1, method: 'm3u8_resolution', priority: 1 }))
+    );
     
-    // 如果有实际测速结果，优先级较高
-    if (simpleResult.loadSpeed && 
-        simpleResult.loadSpeed.match(/\d+(\.\d+)?\s*(KB\/s|MB\/s)$/)) {
-        return {
-            ...simpleResult,
-            sortPriority: 20,
-            detectionMethod: 'speed_test'
-        };
-    }
-    
-    // 第四步：尝试video元素检测获取更准确的画质
-    try {
-        const videoResult = await Promise.race([
-            videoElementDetection(m3u8Url),
+    // 2. Video元素检测（次准确）
+    detectionPromises.push(
+        Promise.race([
+            performVideoElementDetection(m3u8Url),
             new Promise((resolve) => setTimeout(() => resolve({
                 quality: '检测超时',
                 loadSpeed: 'N/A',
                 pingTime: -1
-            }), 2000))
-        ]);
-        
-        if (videoResult.quality !== '检测超时' && 
+            }), 3000))
+        ]).then(result => ({ ...result, method: 'video_element', priority: 2 }))
+        .catch(() => ({ quality: '播放失败', loadSpeed: 'N/A', pingTime: -1, method: 'video_element', priority: 2 }))
+    );
+    
+    // 3. 关键词识别（较准确）
+    const keywordResult = await checkKeywordQuality(m3u8Url);
+    if (keywordResult) {
+        detectionPromises.push(
+            Promise.resolve({
+                quality: keywordResult,
+                loadSpeed: '极速',
+                pingTime: 0,
+                method: 'keyword',
+                priority: 3
+            })
+        );
+    }
+    
+    // 4. 简单检测（备选）
+    detectionPromises.push(
+        simplePrecheckSource(m3u8Url)
+            .then(result => ({ ...result, method: 'simple_analysis', priority: 4 }))
+            .catch(() => ({ quality: '检测失败', loadSpeed: 'N/A', pingTime: -1, method: 'simple_analysis', priority: 4 }))
+    );
+    
+    // 等待所有检测完成
+    const results = await Promise.all(detectionPromises);
+    
+    console.log('所有检测结果:', results);
+    
+    // 按优先级选择最佳结果
+    let bestResult = null;
+    
+    // 优先级1: M3U8 RESOLUTION解析
+    const m3u8Result = results.find(r => r.method === 'm3u8_resolution');
+    if (m3u8Result && m3u8Result.quality !== '未知') {
+        console.log('采用M3U8 RESOLUTION解析结果:', m3u8Result.quality);
+        bestResult = m3u8Result;
+    }
+    
+    // 优先级2: Video元素检测
+    if (!bestResult) {
+        const videoResult = results.find(r => r.method === 'video_element');
+        if (videoResult && 
+            videoResult.quality !== '检测超时' && 
             videoResult.quality !== '播放失败' &&
             videoResult.quality !== '高清' &&
             videoResult.quality !== '未知') {
-            
-            return {
-                quality: videoResult.quality,
-                loadSpeed: simpleResult.loadSpeed || '连接正常',
-                pingTime: Math.min(simpleResult.pingTime, videoResult.pingTime),
-                sortPriority: 25,
-                detectionMethod: 'video_analysis'
-            };
+            console.log('采用Video元素检测结果:', videoResult.quality);
+            bestResult = videoResult;
         }
-    } catch (error) {
-        // Video检测失败，继续使用简单检测结果
     }
     
-    // 最后的处理：使用简单检测结果
-    let finalResult = { ...simpleResult };
-    let detectionMethod = 'analysis';
-    let sortPriority = 60;
-    
-    if (finalResult.quality === '高清') {
-        finalResult.quality = '1080p';
+    // 优先级3: 关键词识别
+    if (!bestResult) {
+        const keywordResult = results.find(r => r.method === 'keyword');
+        if (keywordResult) {
+            console.log('采用关键词识别结果:', keywordResult.quality);
+            bestResult = keywordResult;
+        }
     }
     
-    if (finalResult.loadSpeed === '连接正常') {
-        detectionMethod = 'connection_test';
-        sortPriority = 40;
-    } else if (finalResult.loadSpeed === '连接超时') {
-        detectionMethod = 'timeout';
-        sortPriority = 90;
+    // 优先级4: 简单检测
+    if (!bestResult) {
+        const simpleResult = results.find(r => r.method === 'simple_analysis');
+        if (simpleResult && simpleResult.quality !== '检测失败') {
+            console.log('采用简单检测结果:', simpleResult.quality);
+            bestResult = simpleResult;
+            
+            // 修正一些通用术语
+            if (bestResult.quality === '高清') {
+                bestResult.quality = '1080p';
+            }
+        }
     }
     
-    return { ...finalResult, sortPriority, detectionMethod };
+    // 如果所有方法都失败，返回默认结果
+    if (!bestResult) {
+        console.log('所有检测方法都失败，返回默认结果');
+        bestResult = {
+            quality: '1080p',
+            loadSpeed: '未知',
+            pingTime: -1,
+            method: 'fallback',
+            priority: 99
+        };
+    }
+    
+    // 合并加载速度信息（优先使用简单检测的网络测速结果）
+    const simpleResult = results.find(r => r.method === 'simple_analysis');
+    if (simpleResult && simpleResult.loadSpeed && 
+        simpleResult.loadSpeed.match(/\d+(\.\d+)?\s*(KB\/s|MB\/s)$/)) {
+        bestResult.loadSpeed = simpleResult.loadSpeed;
+        bestResult.pingTime = simpleResult.pingTime;
+    }
+    
+    console.log('最终选择的结果:', bestResult);
+    
+    return {
+        quality: bestResult.quality,
+        loadSpeed: bestResult.loadSpeed,
+        pingTime: bestResult.pingTime,
+        detectionMethod: bestResult.method,
+        sortPriority: bestResult.priority
+    };
 }
 
 // 单独的关键词检测函数
