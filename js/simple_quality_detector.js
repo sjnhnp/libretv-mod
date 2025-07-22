@@ -29,18 +29,59 @@ async function simplePrecheckSource(m3u8Url) {
         }
     }
 
-    // 第三步：尝试网络测试
+    // 第三步：进行实际的网络测速
     const startTime = performance.now();
     
     try {
-        // 尝试HEAD请求测试连通性
+        // 尝试实际下载一小部分内容来测速
         const response = await fetch(m3u8Url, {
-            method: 'HEAD',
-            mode: 'no-cors',
-            signal: AbortSignal.timeout(3000)
+            method: 'GET',
+            mode: 'cors',
+            signal: AbortSignal.timeout(5000)
         });
         
-        const pingTime = Math.round(performance.now() - startTime);
+        const firstByteTime = performance.now() - startTime;
+        let actualLoadSpeed = '未知';
+        
+        if (response.ok) {
+            const reader = response.body?.getReader();
+            if (reader) {
+                const downloadStart = performance.now();
+                let totalBytes = 0;
+                let chunks = 0;
+                
+                // 读取前几个数据块来测速（最多读取3个块或3秒）
+                while (chunks < 3) {
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('timeout')), 3000)
+                    );
+                    
+                    try {
+                        const result = await Promise.race([reader.read(), timeoutPromise]);
+                        if (result.done) break;
+                        
+                        totalBytes += result.value.length;
+                        chunks++;
+                        
+                        // 计算当前速度
+                        const elapsed = (performance.now() - downloadStart) / 1000;
+                        if (elapsed > 0.5) { // 至少测试0.5秒
+                            const speedKBps = (totalBytes / 1024) / elapsed;
+                            actualLoadSpeed = speedKBps >= 1024 
+                                ? `${(speedKBps / 1024).toFixed(1)} MB/s`
+                                : `${Math.round(speedKBps)} KB/s`;
+                            break;
+                        }
+                    } catch (timeoutError) {
+                        break;
+                    }
+                }
+                
+                reader.cancel();
+            }
+        }
+        
+        const pingTime = Math.round(firstByteTime);
         
         // 基于URL特征推断画质
         let quality = '高清';
@@ -120,17 +161,29 @@ async function simplePrecheckSource(m3u8Url) {
         
         return {
             quality,
-            loadSpeed: '网络测试',
+            loadSpeed: actualLoadSpeed,
             pingTime
         };
         
     } catch (error) {
-        // 网络测试失败，返回默认值
-        return {
-            quality: '1080p', // 默认假设为1080p而不是"高清"
-            loadSpeed: 'N/A',
-            pingTime: Math.round(performance.now() - startTime)
-        };
+        // 网络测试失败，尝试简单的ping测试
+        try {
+            const pingStart = performance.now();
+            await fetch(m3u8Url, { method: 'HEAD', mode: 'no-cors', signal: AbortSignal.timeout(2000) });
+            const pingTime = Math.round(performance.now() - pingStart);
+            
+            return {
+                quality: '1080p', // 默认假设为1080p
+                loadSpeed: '连接正常',
+                pingTime
+            };
+        } catch (pingError) {
+            return {
+                quality: '1080p',
+                loadSpeed: '连接超时',
+                pingTime: Math.round(performance.now() - startTime)
+            };
+        }
     }
 }
 
@@ -285,19 +338,30 @@ async function comprehensiveQualityCheck(m3u8Url) {
     // 先尝试简单检测
     const simpleResult = await simplePrecheckSource(m3u8Url);
     
-    // 如果简单检测得到了明确结果（通过关键词识别），直接返回
+    // 为不同检测方法分配可靠性权重和排序优先级
+    let finalResult = { ...simpleResult };
+    let detectionMethod = 'unknown';
+    let sortPriority = 50; // 默认优先级（数字越小优先级越高）
+    
+    // 如果是关键词识别，优先级最高，速度设为最快
     if (simpleResult.loadSpeed === '快速识别') {
-        return simpleResult;
+        detectionMethod = 'keyword';
+        sortPriority = 10; // 最高优先级
+        finalResult.loadSpeed = '极速'; // 用户友好的显示
+        return { ...finalResult, sortPriority, detectionMethod };
     }
     
-    // 如果简单检测通过数字分析得到了非默认结果，也直接返回
-    if (simpleResult.quality !== '高清' && 
-        simpleResult.quality !== '1080p' && 
-        simpleResult.quality !== '检测失败') {
-        return simpleResult;
+    // 如果有实际测速结果，保持原有速度信息
+    if (simpleResult.loadSpeed && 
+        simpleResult.loadSpeed !== 'N/A' && 
+        simpleResult.loadSpeed !== '连接超时' &&
+        simpleResult.loadSpeed !== '连接正常') {
+        detectionMethod = 'speed_test';
+        sortPriority = 20; // 高优先级
+        return { ...finalResult, sortPriority, detectionMethod };
     }
     
-    // 否则尝试video元素检测（但设置较短超时，避免影响用户体验）
+    // 尝试video元素检测获取更准确的画质
     try {
         const videoResult = await Promise.race([
             videoElementDetection(m3u8Url),
@@ -305,27 +369,46 @@ async function comprehensiveQualityCheck(m3u8Url) {
                 quality: '检测超时',
                 loadSpeed: 'N/A',
                 pingTime: -1
-            }), 2000)) // 2秒超时
+            }), 2000))
         ]);
         
         if (videoResult.quality !== '检测超时' && 
             videoResult.quality !== '播放失败' &&
             videoResult.quality !== '高清') {
-            return videoResult;
+            
+            // 如果video检测成功，结合简单检测的速度信息
+            detectionMethod = 'video_analysis';
+            sortPriority = 30;
+            
+            return {
+                quality: videoResult.quality,
+                loadSpeed: simpleResult.loadSpeed || '连接正常',
+                pingTime: Math.min(simpleResult.pingTime, videoResult.pingTime),
+                sortPriority,
+                detectionMethod
+            };
         }
     } catch (error) {
         // Video检测失败，继续使用简单检测结果
     }
     
-    // 返回简单检测的结果，但确保不返回"高清"这样的模糊描述
-    if (simpleResult.quality === '高清') {
-        return {
-            ...simpleResult,
-            quality: '1080p' // 默认假设为1080p
-        };
+    // 最后的处理：确保返回有意义的结果
+    if (finalResult.quality === '高清') {
+        finalResult.quality = '1080p';
     }
     
-    return simpleResult;
+    if (finalResult.loadSpeed === '连接正常') {
+        detectionMethod = 'connection_test';
+        sortPriority = 40;
+    } else if (finalResult.loadSpeed === '连接超时') {
+        detectionMethod = 'timeout';
+        sortPriority = 90; // 最低优先级
+    } else {
+        detectionMethod = 'analysis';
+        sortPriority = 60;
+    }
+    
+    return { ...finalResult, sortPriority, detectionMethod };
 }
 
 // 导出函数

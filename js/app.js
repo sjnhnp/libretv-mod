@@ -462,11 +462,38 @@ async function performSearch(query, selectedAPIs) {
         });
         const checkedResults = await Promise.all(precheckPromises);
         checkedResults.sort((a, b) => {
-            const speedA = parseFloat(a.loadSpeed) * (a.loadSpeed.includes('MB/s') ? 1024 : 1);
-            const speedB = parseFloat(b.loadSpeed) * (b.loadSpeed.includes('MB/s') ? 1024 : 1);
-            if (isNaN(speedA)) return 1;
-            if (isNaN(speedB)) return -1;
-            return speedB - speedA;
+            // 新的排序逻辑：优先级 + 速度
+            
+            // 1. 首先按检测方法的可靠性排序（sortPriority越小越优先）
+            const priorityA = a.sortPriority || 50;
+            const priorityB = b.sortPriority || 50;
+            
+            if (priorityA !== priorityB) {
+                return priorityA - priorityB;
+            }
+            
+            // 2. 相同优先级的情况下，按实际速度排序
+            const getSpeedValue = (loadSpeed) => {
+                if (!loadSpeed || loadSpeed === 'N/A') return 0;
+                if (loadSpeed === '极速') return 10000; // 关键词识别的最高分
+                if (loadSpeed === '连接正常') return 1000; // 连接正常的固定分数
+                if (loadSpeed === '连接超时') return 0; // 超时的最低分
+                
+                // 解析实际速度
+                const match = loadSpeed.match(/^([\d.]+)\s*(KB\/s|MB\/s)$/);
+                if (match) {
+                    const value = parseFloat(match[1]);
+                    const unit = match[2];
+                    return unit === 'MB/s' ? value * 1024 : value;
+                }
+                
+                return 100; // 其他情况的默认分数
+            };
+            
+            const speedA = getSpeedValue(a.loadSpeed);
+            const speedB = getSpeedValue(b.loadSpeed);
+            
+            return speedB - speedA; // 速度高的排在前面
         });
         const videoDataMap = AppState.get('videoDataMap') || new Map();
         checkedResults.forEach(item => {
