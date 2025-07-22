@@ -215,20 +215,48 @@ async function videoElementDetection(m3u8Url) {
  */
 async function tryParseM3u8Resolution(m3u8Url) {
     try {
-        const response = await fetch(m3u8Url, {
-            method: 'GET',
-            mode: 'cors',
-            signal: AbortSignal.timeout(3000)
-        });
+        // 尝试多种方式获取m3u8内容
+        let content = null;
         
-        if (response.ok) {
-            const content = await response.text();
+        // 方法1：直接请求（可能有CORS限制）
+        try {
+            const response = await fetch(m3u8Url, {
+                method: 'GET',
+                mode: 'cors',
+                signal: AbortSignal.timeout(3000)
+            });
             
+            if (response.ok) {
+                content = await response.text();
+            }
+        } catch (corsError) {
+            console.log('直接请求失败，尝试代理:', corsError.message);
+            
+            // 方法2：使用代理（如果可用）
+            if (typeof PROXY_URL !== 'undefined') {
+                try {
+                    const proxyUrl = PROXY_URL + encodeURIComponent(m3u8Url);
+                    const proxyResponse = await fetch(proxyUrl, {
+                        signal: AbortSignal.timeout(3000)
+                    });
+                    
+                    if (proxyResponse.ok) {
+                        content = await proxyResponse.text();
+                    }
+                } catch (proxyError) {
+                    console.log('代理请求也失败:', proxyError.message);
+                }
+            }
+        }
+        
+        if (content) {
             // 查找RESOLUTION信息
             const resolutionMatch = content.match(/RESOLUTION=(\d+)x(\d+)/);
             if (resolutionMatch) {
                 const width = parseInt(resolutionMatch[1]);
                 const height = parseInt(resolutionMatch[2]);
+                
+                console.log(`找到RESOLUTION: ${width}x${height}`);
                 
                 let quality = 'SD';
                 if (width >= 3840) quality = '4K';
@@ -240,12 +268,32 @@ async function tryParseM3u8Resolution(m3u8Url) {
                 return {
                     quality,
                     loadSpeed: `${width}x${height}`,
-                    pingTime: Math.round(performance.now() - Date.now())
+                    pingTime: 0
+                };
+            }
+            
+            // 查找BANDWIDTH信息（如果没有RESOLUTION）
+            const bandwidthMatch = content.match(/BANDWIDTH=(\d+)/);
+            if (bandwidthMatch) {
+                const bandwidth = parseInt(bandwidthMatch[1]);
+                console.log(`找到BANDWIDTH: ${bandwidth}`);
+                
+                let quality = 'SD';
+                if (bandwidth >= 15000000) quality = '4K';
+                else if (bandwidth >= 8000000) quality = '2K';
+                else if (bandwidth >= 3000000) quality = '1080p';
+                else if (bandwidth >= 1500000) quality = '720p';
+                else if (bandwidth >= 800000) quality = '480p';
+                
+                return {
+                    quality,
+                    loadSpeed: `${Math.round(bandwidth/1000)}kb/s`,
+                    pingTime: 0
                 };
             }
         }
     } catch (error) {
-        // 忽略错误，回退到video元素检测
+        console.warn('M3U8解析错误:', error.message);
     }
     
     return { quality: '未知', loadSpeed: 'N/A', pingTime: -1 };
@@ -335,33 +383,46 @@ async function performVideoElementDetection(m3u8Url) {
  * @returns {Promise<{quality: string, loadSpeed: string, pingTime: number}>}
  */
 async function comprehensiveQualityCheck(m3u8Url) {
-    // 先尝试简单检测
+    // 第一步：如果是关键词识别，直接返回（最高优先级）
+    const keywordResult = await checkKeywordQuality(m3u8Url);
+    if (keywordResult) {
+        return {
+            quality: keywordResult,
+            loadSpeed: '极速',
+            pingTime: 0,
+            sortPriority: 10,
+            detectionMethod: 'keyword'
+        };
+    }
+    
+    // 第二步：尝试解析m3u8文件内容获取RESOLUTION（最准确的方法）
+    try {
+        const m3u8Result = await tryParseM3u8Resolution(m3u8Url);
+        if (m3u8Result.quality !== '未知') {
+            return {
+                ...m3u8Result,
+                sortPriority: 15, // 仅次于关键词识别
+                detectionMethod: 'm3u8_resolution'
+            };
+        }
+    } catch (error) {
+        console.log('M3U8解析失败:', error.message);
+    }
+    
+    // 第三步：进行简单检测（URL分析 + 网络测速）
     const simpleResult = await simplePrecheckSource(m3u8Url);
     
-    // 为不同检测方法分配可靠性权重和排序优先级
-    let finalResult = { ...simpleResult };
-    let detectionMethod = 'unknown';
-    let sortPriority = 50; // 默认优先级（数字越小优先级越高）
-    
-    // 如果是关键词识别，优先级最高，速度设为最快
-    if (simpleResult.loadSpeed === '快速识别') {
-        detectionMethod = 'keyword';
-        sortPriority = 10; // 最高优先级
-        finalResult.loadSpeed = '极速'; // 用户友好的显示
-        return { ...finalResult, sortPriority, detectionMethod };
-    }
-    
-    // 如果有实际测速结果，保持原有速度信息
+    // 如果有实际测速结果，优先级较高
     if (simpleResult.loadSpeed && 
-        simpleResult.loadSpeed !== 'N/A' && 
-        simpleResult.loadSpeed !== '连接超时' &&
-        simpleResult.loadSpeed !== '连接正常') {
-        detectionMethod = 'speed_test';
-        sortPriority = 20; // 高优先级
-        return { ...finalResult, sortPriority, detectionMethod };
+        simpleResult.loadSpeed.match(/\d+(\.\d+)?\s*(KB\/s|MB\/s)$/)) {
+        return {
+            ...simpleResult,
+            sortPriority: 20,
+            detectionMethod: 'speed_test'
+        };
     }
     
-    // 尝试video元素检测获取更准确的画质
+    // 第四步：尝试video元素检测获取更准确的画质
     try {
         const videoResult = await Promise.race([
             videoElementDetection(m3u8Url),
@@ -374,25 +435,26 @@ async function comprehensiveQualityCheck(m3u8Url) {
         
         if (videoResult.quality !== '检测超时' && 
             videoResult.quality !== '播放失败' &&
-            videoResult.quality !== '高清') {
-            
-            // 如果video检测成功，结合简单检测的速度信息
-            detectionMethod = 'video_analysis';
-            sortPriority = 30;
+            videoResult.quality !== '高清' &&
+            videoResult.quality !== '未知') {
             
             return {
                 quality: videoResult.quality,
                 loadSpeed: simpleResult.loadSpeed || '连接正常',
                 pingTime: Math.min(simpleResult.pingTime, videoResult.pingTime),
-                sortPriority,
-                detectionMethod
+                sortPriority: 25,
+                detectionMethod: 'video_analysis'
             };
         }
     } catch (error) {
         // Video检测失败，继续使用简单检测结果
     }
     
-    // 最后的处理：确保返回有意义的结果
+    // 最后的处理：使用简单检测结果
+    let finalResult = { ...simpleResult };
+    let detectionMethod = 'analysis';
+    let sortPriority = 60;
+    
     if (finalResult.quality === '高清') {
         finalResult.quality = '1080p';
     }
@@ -402,13 +464,30 @@ async function comprehensiveQualityCheck(m3u8Url) {
         sortPriority = 40;
     } else if (finalResult.loadSpeed === '连接超时') {
         detectionMethod = 'timeout';
-        sortPriority = 90; // 最低优先级
-    } else {
-        detectionMethod = 'analysis';
-        sortPriority = 60;
+        sortPriority = 90;
     }
     
     return { ...finalResult, sortPriority, detectionMethod };
+}
+
+// 单独的关键词检测函数
+async function checkKeywordQuality(m3u8Url) {
+    const qualityKeywords = {
+        '4K': [/4k/i, /2160p/i, /3840x2160/i, /超高清/i, /uhd/i],
+        '2K': [/2k/i, /1440p/i, /2560x1440/i, /qhd/i],
+        '1080p': [/1080p/i, /fhd/i, /1920x1080/i, /全高清/i, /fullhd/i],
+        '720p': [/720p/i, /hd/i, /1280x720/i, /高清/i],
+        '480p': [/480p/i, /854x480/i, /sd/i],
+        'SD': [/240p/i, /360p/i, /标清/i, /low/i]
+    };
+    
+    for (const [quality, patterns] of Object.entries(qualityKeywords)) {
+        if (patterns.some(pattern => pattern.test(m3u8Url))) {
+            return quality;
+        }
+    }
+    
+    return null;
 }
 
 // 导出函数
