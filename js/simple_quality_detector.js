@@ -45,28 +45,68 @@ async function simplePrecheckSource(m3u8Url) {
         // 基于URL特征推断画质
         let quality = '高清';
         
-        // 检查URL中的数字特征
+        // 检查URL中的数字特征 - 改进版，更智能地识别分辨率数字
         const numbers = m3u8Url.match(/\d+/g) || [];
         
-        // 过滤出可能表示分辨率的数字（通常在480-4000范围内）
-        const resolutionNumbers = numbers.filter(n => {
-            const num = parseInt(n);
-            return num >= 480 && num <= 4000;
-        });
+        // 寻找真正的分辨率数字，优先查找常见分辨率模式
+        const commonResolutions = [3840, 2560, 1920, 1280, 854, 720, 480];
+        let foundResolution = null;
         
-        if (resolutionNumbers.length > 0) {
-            const maxNumber = Math.max(...resolutionNumbers.map(n => parseInt(n)));
-            
-            if (maxNumber >= 3840 || maxNumber >= 2160) quality = '4K';
-            else if (maxNumber >= 2560 || maxNumber >= 1440) quality = '2K';
-            else if (maxNumber >= 1920 || maxNumber >= 1080) quality = '1080p';
-            else if (maxNumber >= 1280 || maxNumber >= 720) quality = '720p';
-            else if (maxNumber >= 854 || maxNumber >= 480) quality = '480p';
+        // 方法1：查找确切的分辨率数字
+        for (const res of commonResolutions) {
+            if (numbers.some(n => parseInt(n) === res)) {
+                foundResolution = res;
+                break;
+            }
+        }
+        
+        // 方法2：查找接近的分辨率数字（允许小幅偏差）
+        if (!foundResolution) {
+            for (const res of commonResolutions) {
+                const closeNumbers = numbers.filter(n => {
+                    const num = parseInt(n);
+                    return Math.abs(num - res) <= 50; // 允许50的偏差
+                });
+                if (closeNumbers.length > 0) {
+                    foundResolution = res;
+                    break;
+                }
+            }
+        }
+        
+        // 方法3：查找路径中的分辨率指示（如 /1080p/, /720p/）
+        if (!foundResolution) {
+            const pathResolutionMatch = m3u8Url.match(/\/(\d{3,4})p?\//);
+            if (pathResolutionMatch) {
+                const pathRes = parseInt(pathResolutionMatch[1]);
+                if (pathRes >= 480 && pathRes <= 4000) {
+                    foundResolution = pathRes;
+                }
+            }
+        }
+        
+        // 根据找到的分辨率设置画质
+        if (foundResolution) {
+            if (foundResolution >= 3840) quality = '4K';
+            else if (foundResolution >= 2560) quality = '2K';
+            else if (foundResolution >= 1920) quality = '1080p';
+            else if (foundResolution >= 1280) quality = '720p';
+            else if (foundResolution >= 854) quality = '480p';
+            else quality = 'SD';
         } else {
-            // 如果没有找到明显的分辨率数字，尝试其他启发式方法
-            // 检查文件名长度和复杂度（高质量视频通常有更复杂的文件名）
+            // 如果没有找到明显的分辨率数字，使用启发式方法
             const filename = m3u8Url.split('/').pop().replace('.m3u8', '');
-            if (filename.length > 30) {
+            
+            // 检查文件名中的码率信息（如3309kb表示高码率）
+            const bitrateMatch = m3u8Url.match(/(\d+)kb/i);
+            if (bitrateMatch) {
+                const bitrate = parseInt(bitrateMatch[1]);
+                if (bitrate >= 5000) quality = '4K';
+                else if (bitrate >= 3000) quality = '1080p';
+                else if (bitrate >= 1500) quality = '720p';
+                else if (bitrate >= 800) quality = '480p';
+                else quality = 'SD';
+            } else if (filename.length > 30) {
                 quality = '1080p'; // 复杂文件名通常表示高质量
             } else if (filename.length > 20) {
                 quality = '720p';
@@ -101,6 +141,68 @@ async function simplePrecheckSource(m3u8Url) {
  */
 async function videoElementDetection(m3u8Url) {
     return new Promise((resolve) => {
+        // 首先尝试直接解析m3u8内容获取RESOLUTION信息
+        tryParseM3u8Resolution(m3u8Url).then(m3u8Result => {
+            if (m3u8Result.quality !== '未知') {
+                resolve(m3u8Result);
+                return;
+            }
+            
+            // 如果m3u8解析失败，回退到video元素检测
+            performVideoElementDetection(m3u8Url).then(resolve);
+        }).catch(() => {
+            // 如果m3u8解析出错，回退到video元素检测
+            performVideoElementDetection(m3u8Url).then(resolve);
+        });
+    });
+}
+
+/**
+ * 尝试解析m3u8文件中的RESOLUTION信息
+ */
+async function tryParseM3u8Resolution(m3u8Url) {
+    try {
+        const response = await fetch(m3u8Url, {
+            method: 'GET',
+            mode: 'cors',
+            signal: AbortSignal.timeout(3000)
+        });
+        
+        if (response.ok) {
+            const content = await response.text();
+            
+            // 查找RESOLUTION信息
+            const resolutionMatch = content.match(/RESOLUTION=(\d+)x(\d+)/);
+            if (resolutionMatch) {
+                const width = parseInt(resolutionMatch[1]);
+                const height = parseInt(resolutionMatch[2]);
+                
+                let quality = 'SD';
+                if (width >= 3840) quality = '4K';
+                else if (width >= 2560) quality = '2K';
+                else if (width >= 1920) quality = '1080p';
+                else if (width >= 1280) quality = '720p';
+                else if (width >= 854) quality = '480p';
+                
+                return {
+                    quality,
+                    loadSpeed: `${width}x${height}`,
+                    pingTime: Math.round(performance.now() - Date.now())
+                };
+            }
+        }
+    } catch (error) {
+        // 忽略错误，回退到video元素检测
+    }
+    
+    return { quality: '未知', loadSpeed: 'N/A', pingTime: -1 };
+}
+
+/**
+ * 使用video元素进行检测
+ */
+async function performVideoElementDetection(m3u8Url) {
+    return new Promise((resolve) => {
         const video = document.createElement('video');
         video.muted = true;
         video.preload = 'metadata';
@@ -134,7 +236,7 @@ async function videoElementDetection(m3u8Url) {
                 loadSpeed: 'N/A', 
                 pingTime: Math.round(performance.now() - startTime) 
             });
-        }, 5000);
+        }, 3000); // 缩短超时时间
         
         video.onloadedmetadata = () => {
             clearTimeout(timeout);
@@ -233,6 +335,8 @@ if (typeof window !== 'undefined') {
     window.simplePrecheckSource = simplePrecheckSource;
     window.videoElementDetection = videoElementDetection;
     window.comprehensiveQualityCheck = comprehensiveQualityCheck;
+    window.tryParseM3u8Resolution = tryParseM3u8Resolution;
+    window.performVideoElementDetection = performVideoElementDetection;
 }
 
 // Node.js环境支持
