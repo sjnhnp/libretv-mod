@@ -806,7 +806,6 @@ window.resetToHome = resetToHome;
 window.playVideo = playVideo;
 window.playPreviousEpisode = playPreviousEpisode;
 window.playNextEpisode = playNextEpisode;
-window.showDetails = showDetails;
 window.playFromHistory = playFromHistory;
 
 // [替换] 整个 createResultItemUsingTemplate 函数
