@@ -333,6 +333,13 @@ async function testSiteAvailability(apiUrl) {
 }
 
 // 源预检测函数
+// [最终强化版] 请用此完整代码替换 js/api.js 中现有的 precheckSource 函数
+
+/**
+ * 预检测视频源，获取画质、加载速度和延迟
+ * @param {string} m3u8Url - M3U8文件的URL
+ * @returns {Promise<{quality: string, loadSpeed: string, pingTime: number}>}
+ */
 async function precheckSource(m3u8Url) {
     if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
         return { quality: '无效链接', loadSpeed: 'N/A', pingTime: -1 };
@@ -348,7 +355,7 @@ async function precheckSource(m3u8Url) {
         const proxyM3u8Url = PROXY_URL + encodeURIComponent(m3u8Url);
         const response = await fetch(proxyM3u8Url, { signal: controller.signal });
         
-        firstByteTime = performance.now() - startTime; // 记录Ping时间
+        firstByteTime = performance.now() - startTime;
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -362,23 +369,40 @@ async function precheckSource(m3u8Url) {
         const speedKbps = sizeInKB / (duration / 1000);
         
         let loadSpeed = speedKbps > 1024 
-            ? `${(speedKbps / 1024).toFixed(2)} MB/s` 
-            : `${speedKbps.toFixed(2)} KB/s`;
+            ? `${(speedKbps / 1024).toFixed(1)} MB/s` 
+            : `${Math.round(speedKbps)} KB/s`;
 
-        // 解析画质
+        // --- [核心优化] 增强的画质解析逻辑 ---
         let quality = '高清'; // 默认值
-        const resolutionMatch = m3u8Content.match(/RESOLUTION=(\d+)x(\d+)/);
-        if (resolutionMatch) {
-            const width = parseInt(resolutionMatch[1], 10);
-            if (width >= 3800) quality = '4K';
-            else if (width >= 1900) quality = '1080P';
-            else if (width >= 1200) quality = '720P';
-        } else if (m3u8Content.includes('2160p')) {
-            quality = '4K';
-        } else if (m3u8Content.includes('1080p')) {
-            quality = '1080P';
-        } else if (m3u8Content.includes('720p')) {
-            quality = '720P';
+        const lines = m3u8Content.split('\n');
+        let bestWidth = 0;
+
+        for (const line of lines) {
+            // 方法1: 查找最可靠的 RESOLUTION 标签
+            const resolutionMatch = line.match(/RESOLUTION=(\d+)x(\d+)/);
+            if (resolutionMatch) {
+                const width = parseInt(resolutionMatch[1], 10);
+                if (width > bestWidth) bestWidth = width;
+                continue; // 继续查找更高分辨率
+            }
+
+            // 方法2: 查找 #EXT-X-STREAM-INF 行中的常见清晰度字符串
+            if (line.startsWith('#EXT-X-STREAM-INF')) {
+                if (line.includes('2160p') || line.includes('4K')) bestWidth = Math.max(bestWidth, 3840);
+                else if (line.includes('1080p')) bestWidth = Math.max(bestWidth, 1920);
+                else if (line.includes('720p')) bestWidth = Math.max(bestWidth, 1280);
+            }
+        }
+
+        // 根据找到的最佳宽度来确定画质
+        if (bestWidth >= 3800) quality = '4K';
+        else if (bestWidth >= 1900) quality = '1080P';
+        else if (bestWidth >= 1200) quality = '720P';
+        
+        // 最终检查不支持的编码
+        const unsupportedCodes = ['HEVC', 'H.265', 'AV1'];
+        if (unsupportedCodes.some(code => m3u8Content.toUpperCase().includes(code))) {
+            quality = '编码不支持';
         }
 
         return { quality, loadSpeed, pingTime: Math.round(firstByteTime) };
