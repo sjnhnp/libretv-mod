@@ -464,50 +464,55 @@ async function performSearch(query, selectedAPIs) {
                 });
             }
         });
-        showLoading(`正在检测 ${allResults.length} 个资源...`);
-        const precheckPromises = allResults.map(async (item) => {
+        // 🚀 无感画质检测：立即返回结果，后台检测
+        const resultsWithPrediction = allResults.map(item => {
             let firstEpisodeUrl = '';
             if (item.vod_play_url) {
                 const firstSegment = item.vod_play_url.split('#')[0];
                 firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
             }
-            const checkResult = await window.precheckSource(firstEpisodeUrl);
-            return { ...item, ...checkResult };
-        });
-        const checkedResults = await Promise.all(precheckPromises);
-        checkedResults.sort((a, b) => {
-            // 新的排序逻辑：优先级 + 速度
-
-            // 1. 首先按检测方法的可靠性排序（sortPriority越小越优先）
-            const priorityA = a.sortPriority || 50;
-            const priorityB = b.sortPriority || 50;
-
-            if (priorityA !== priorityB) {
-                return priorityA - priorityB;
+            
+            // Phase 1: 立即预测画质
+            let predictedQuality = '高清';
+            if (typeof window.predictQualityInstantly === 'function') {
+                const prediction = window.predictQualityInstantly(firstEpisodeUrl, item.source_name, item);
+                predictedQuality = prediction.quality;
             }
-
-            // 2. 相同优先级的情况下，按实际速度排序
-            const getSpeedValue = (loadSpeed) => {
-                if (!loadSpeed || loadSpeed === 'N/A') return 0;
-                if (loadSpeed === '极速') return 10000; // 关键词识别的最高分
-                if (loadSpeed === '连接正常') return 1000; // 连接正常的固定分数
-                if (loadSpeed === '连接超时') return 0; // 超时的最低分
-
-                // 解析实际速度
-                const match = loadSpeed.match(/^([\d.]+)\s*(KB\/s|MB\/s)$/);
-                if (match) {
-                    const value = parseFloat(match[1]);
-                    const unit = match[2];
-                    return unit === 'MB/s' ? value * 1024 : value;
-                }
-
-                return 100; // 其他情况的默认分数
+            
+            return {
+                ...item,
+                quality: predictedQuality,
+                loadSpeed: '预测结果',
+                pingTime: 0,
+                vod_play_url: firstEpisodeUrl // 保存处理后的URL用于后续检测
             };
-
-            const speedA = getSpeedValue(a.loadSpeed);
-            const speedB = getSpeedValue(b.loadSpeed);
-
-            return speedB - speedA; // 速度高的排在前面
+        });
+        
+        const checkedResults = resultsWithPrediction;
+        // 🎯 智能排序：基于预测质量和用户偏好
+        checkedResults.sort((a, b) => {
+            // Phase 3: 使用智能预测进行排序
+            if (typeof window.intelligentPredictor !== 'undefined') {
+                const predictionA = window.intelligentPredictor.predictQuality(a);
+                const predictionB = window.intelligentPredictor.predictQuality(b);
+                
+                // 按预测置信度排序
+                if (predictionA.confidence !== predictionB.confidence) {
+                    return predictionB.confidence - predictionA.confidence;
+                }
+            }
+            
+            // 按画质等级排序
+            const qualityOrder = { '4K': 5, '2K': 4, '1080p': 3, '720p': 2, '480p': 1, 'SD': 0, '高清': 2.5, '未知': -1 };
+            const qualityA = qualityOrder[a.quality] || 0;
+            const qualityB = qualityOrder[b.quality] || 0;
+            
+            if (qualityA !== qualityB) {
+                return qualityB - qualityA; // 画质高的排在前面
+            }
+            
+            // 按源名称排序（保持一定的稳定性）
+            return (a.source_name || '').localeCompare(b.source_name || '');
         });
         const videoDataMap = AppState.get('videoDataMap') || new Map();
         checkedResults.forEach(item => {
@@ -599,6 +604,29 @@ function renderSearchResults(allResults, doubanSearchedTitle = null) {
         searchArea.classList.remove('hidden');
     }
     getElement('doubanArea')?.classList.add('hidden');
+    
+    // 🔄 启动后台画质检测（无感知）
+    startBackgroundQualityDetection(allResults);
+}
+
+/**
+ * 启动后台画质检测
+ */
+function startBackgroundQualityDetection(results) {
+    if (!results || results.length === 0) return;
+    
+    console.log('🚀 启动后台画质检测，共', results.length, '个项目');
+    
+    // 延迟启动，让UI先渲染完成
+    setTimeout(() => {
+        results.forEach((item, index) => {
+            if (typeof window.progressiveDetector !== 'undefined') {
+                // 前5个高优先级，立即检测
+                const priority = index < 5 ? 'high' : 'normal';
+                window.progressiveDetector.addToQueue(item, priority);
+            }
+        });
+    }, 100);
 }
 
 function restoreSearchFromCache() {
