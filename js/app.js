@@ -1,21 +1,26 @@
-// ✅ 使用 sessionStorage 进行持久化缓存
-const QUALITY_CACHE_KEY = 'qualityCache';
-const qualityCache = new Map(JSON.parse(sessionStorage.getItem(QUALITY_CACHE_KEY) || '[]'));
+// ✅ 使用 sessionStorage 进行持久化缓存 (旧系统，待迁移)
+const LEGACY_QUALITY_CACHE_KEY = 'legacyQualityCache';
+const legacyQualityCache = new Map(JSON.parse(sessionStorage.getItem(LEGACY_QUALITY_CACHE_KEY) || '[]'));
 
 /**
  * 缓存10分钟，超时自动重新检测
  */
 function saveQualityCache(qualityId, quality) {
     // 记录画质和缓存时间（10分钟后过期）
-    qualityCache.set(qualityId, {
+    legacyQualityCache.set(qualityId, {
         quality: quality,
         cacheTime: Date.now() // 缓存时间戳
     });
     // 保存到本地缓存，避免刷新后丢失
     try {
-        sessionStorage.setItem(QUALITY_CACHE_KEY, JSON.stringify(Array.from(qualityCache.entries())));
+        sessionStorage.setItem(LEGACY_QUALITY_CACHE_KEY, JSON.stringify(Array.from(legacyQualityCache.entries())));
     } catch (e) {
         console.warn("缓存空间不足，已自动跳过");
+    }
+    
+    // 同时保存到新的缓存系统
+    if (typeof window.qualityCache !== 'undefined') {
+        window.qualityCache.set(qualityId, { quality, loadSpeed: 'N/A', pingTime: -1 });
     }
 }
 
@@ -23,14 +28,23 @@ function saveQualityCache(qualityId, quality) {
  * 读取缓存的画质结果，过期则返回null（需要重新检测）
  */
 function getCachedQuality(qualityId) {
-    const cachedData = qualityCache.get(qualityId);
+    // 优先使用新的缓存系统
+    if (typeof window.qualityCache !== 'undefined') {
+        const newCached = window.qualityCache.get(qualityId);
+        if (newCached) {
+            return newCached.quality;
+        }
+    }
+    
+    // 回退到旧的缓存系统
+    const cachedData = legacyQualityCache.get(qualityId);
     if (!cachedData) {
         return null; // 没有缓存，需要检测
     }
     // 缓存超过10分钟（600000毫秒）则过期
     const isExpired = Date.now() - cachedData.cacheTime > 600000;
     if (isExpired) {
-        qualityCache.delete(qualityId); // 删除过期缓存
+        legacyQualityCache.delete(qualityId); // 删除过期缓存
         return null; // 提示重新检测
     }
     return cachedData.quality; // 返回有效缓存
