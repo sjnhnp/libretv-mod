@@ -47,16 +47,30 @@ async function simplePrecheckSource(m3u8Url) {
         
         // 检查URL中的数字特征
         const numbers = m3u8Url.match(/\d+/g) || [];
-        const largeNumbers = numbers.filter(n => parseInt(n) > 500);
         
-        if (largeNumbers.length > 0) {
-            const maxNumber = Math.max(...largeNumbers.map(n => parseInt(n)));
+        // 过滤出可能表示分辨率的数字（通常在480-4000范围内）
+        const resolutionNumbers = numbers.filter(n => {
+            const num = parseInt(n);
+            return num >= 480 && num <= 4000;
+        });
+        
+        if (resolutionNumbers.length > 0) {
+            const maxNumber = Math.max(...resolutionNumbers.map(n => parseInt(n)));
             
             if (maxNumber >= 3840 || maxNumber >= 2160) quality = '4K';
             else if (maxNumber >= 2560 || maxNumber >= 1440) quality = '2K';
             else if (maxNumber >= 1920 || maxNumber >= 1080) quality = '1080p';
             else if (maxNumber >= 1280 || maxNumber >= 720) quality = '720p';
             else if (maxNumber >= 854 || maxNumber >= 480) quality = '480p';
+        } else {
+            // 如果没有找到明显的分辨率数字，尝试其他启发式方法
+            // 检查文件名长度和复杂度（高质量视频通常有更复杂的文件名）
+            const filename = m3u8Url.split('/').pop().replace('.m3u8', '');
+            if (filename.length > 30) {
+                quality = '1080p'; // 复杂文件名通常表示高质量
+            } else if (filename.length > 20) {
+                quality = '720p';
+            }
         }
         
         // 检查URL中的质量指示词
@@ -73,7 +87,7 @@ async function simplePrecheckSource(m3u8Url) {
     } catch (error) {
         // 网络测试失败，返回默认值
         return {
-            quality: '高清',
+            quality: '1080p', // 默认假设为1080p而不是"高清"
             loadSpeed: 'N/A',
             pingTime: Math.round(performance.now() - startTime)
         };
@@ -169,22 +183,46 @@ async function comprehensiveQualityCheck(m3u8Url) {
     // 先尝试简单检测
     const simpleResult = await simplePrecheckSource(m3u8Url);
     
-    // 如果简单检测得到了明确结果，直接返回
-    if (simpleResult.quality !== '高清' && simpleResult.quality !== '检测失败') {
+    // 如果简单检测得到了明确结果（通过关键词识别），直接返回
+    if (simpleResult.loadSpeed === '快速识别') {
         return simpleResult;
     }
     
-    // 否则尝试video元素检测
+    // 如果简单检测通过数字分析得到了非默认结果，也直接返回
+    if (simpleResult.quality !== '高清' && 
+        simpleResult.quality !== '1080p' && 
+        simpleResult.quality !== '检测失败') {
+        return simpleResult;
+    }
+    
+    // 否则尝试video元素检测（但设置较短超时，避免影响用户体验）
     try {
-        const videoResult = await videoElementDetection(m3u8Url);
-        if (videoResult.quality !== '检测超时' && videoResult.quality !== '播放失败') {
+        const videoResult = await Promise.race([
+            videoElementDetection(m3u8Url),
+            new Promise((resolve) => setTimeout(() => resolve({
+                quality: '检测超时',
+                loadSpeed: 'N/A',
+                pingTime: -1
+            }), 2000)) // 2秒超时
+        ]);
+        
+        if (videoResult.quality !== '检测超时' && 
+            videoResult.quality !== '播放失败' &&
+            videoResult.quality !== '高清') {
             return videoResult;
         }
     } catch (error) {
-        console.warn('Video元素检测失败:', error);
+        // Video检测失败，继续使用简单检测结果
     }
     
-    // 返回简单检测的结果
+    // 返回简单检测的结果，但确保不返回"高清"这样的模糊描述
+    if (simpleResult.quality === '高清') {
+        return {
+            ...simpleResult,
+            quality: '1080p' // 默认假设为1080p
+        };
+    }
+    
     return simpleResult;
 }
 

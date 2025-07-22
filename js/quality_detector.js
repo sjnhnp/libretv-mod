@@ -371,12 +371,12 @@ async function parseM3u8Content(m3u8Url) {
     }
 }
 
-// 替换原有的precheckSource函数
-if (typeof window !== 'undefined') {
-    window.precheckSource = improvedPrecheckSource;
-    window.getVideoResolutionFromM3u8 = getVideoResolutionFromM3u8;
-    window.parseM3u8Content = parseM3u8Content;
-}
+// 旧的复杂检测器已被简化检测器替代
+// if (typeof window !== 'undefined') {
+//     window.precheckSource = improvedPrecheckSource;
+//     window.getVideoResolutionFromM3u8 = getVideoResolutionFromM3u8;
+//     window.parseM3u8Content = parseM3u8Content;
+// }
 
 // 如果是Node.js环境
 if (typeof module !== 'undefined' && module.exports) {
