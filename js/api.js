@@ -344,8 +344,8 @@ function getQualityViaVideoProbe(m3u8Url) {
         }
 
         // 新增：判断是否为桌面设备（核心新增逻辑）
-        const isDesktop = /Windows|MacIntel|Linux/.test(navigator.userAgent);
-
+        const isDesktop = /Windows|MacIntel|Linux/.test(navigator.userAgent)
+            && !/Android|iPhone|iPad/.test(navigator.userAgent);
         // 1. 编码检测（保留原始逻辑，新增桌面提示）
         try {
             const proxyM3u8Url = PROXY_URL + encodeURIComponent(m3u8Url);
@@ -358,8 +358,7 @@ function getQualityViaVideoProbe(m3u8Url) {
                 m3u8Content.includes(code)
             );
             if (isUnsupported) {
-                // 桌面版显示“桌面暂不支持”，移动端显示“编码不支持”（新增适配）
-                const tip = isDesktop ? '桌面暂不支持' : '编码不支持';
+                const tip = isDesktop ? '桌面不行' : '编码不行';
                 resolve(tip);
                 return;
             }
@@ -412,7 +411,7 @@ function getQualityViaVideoProbe(m3u8Url) {
             const error = video.error;
             console.error('[画质探测] 解码失败:', error);
             // 桌面版解码失败提示更明确（新增适配）
-            const errorTip = isDesktop ? '桌面暂不支持' : '解码失败';
+            const errorTip = isDesktop ? '桌面不行' : '解码失败';
             cleanupAndResolve(errorTip);
         };
 

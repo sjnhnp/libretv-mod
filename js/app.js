@@ -2,7 +2,7 @@
 let qualityDetectionObserver;
 const qualityDetectionQueue = [];
 let activeDetections = 0;
-const MAX_CONCURRENT_DETECTIONS = 4; // 并发探测数量
+const MAX_CONCURRENT_DETECTIONS = 8; // 并发探测数量
 
 // ✅ 使用 sessionStorage 进行持久化缓存
 const QUALITY_CACHE_KEY = 'qualityCache';
@@ -1675,7 +1675,7 @@ function initializeQualityDetectionObserver() {
             }
         });
     }, {
-        rootMargin: "0px 0px 800px 0px", // 提前检测视口下方800px的元素（扩大范围）
+        rootMargin: "0px 0px 400px 0px", // 提前检测视口下方800px的元素（扩大范围）
         threshold: 0.01 // 元素1%进入视口就触发（降低触发门槛）
     });
 
