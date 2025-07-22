@@ -1034,22 +1034,22 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     // 渲染画质标签（在showVideoEpisodesModal函数里）
     const qualityTagElement = modalContent.querySelector('[data-field="quality-tag"]');
     if (qualityTagElement) {
-        // 第一步：优先用数据源直接给的画质（如果有的话）
-        let sourceQuality = videoData.vod_quality || videoData.quality || '未知';
-        // 第二步：如果数据源没给，用我们检测的结果
-        const detectedQuality = videoData.quality || '高清';
-        // 最终显示的画质（数据源有则用数据源，否则用检测结果）
-        const finalQuality = sourceQuality !== '未知' ? sourceQuality : detectedQuality;
+        // FIX: 修复了此处的逻辑，优先使用检测结果，并避免回退到“高清”
+        const sourceProvidedQuality = videoData.vod_quality; // API直接提供的质量
+        const detectedQuality = videoData.quality; // 我们检测的质量
 
-        // 显示画质文字
+        // 优先用API提供的，其次用我们检测的，最后是未知
+        const finalQuality = sourceProvidedQuality || detectedQuality || '未知';
+
         qualityTagElement.textContent = finalQuality;
 
         // 给不同画质加颜色（方便区分）
-        if (finalQuality === '4K') {
+        const qualityLower = finalQuality.toLowerCase();
+        if (qualityLower.includes('4k')) {
             qualityTagElement.style.backgroundColor = '#4f46e5'; // 紫色
-        } else if (finalQuality === '1080P') {
+        } else if (qualityLower.includes('1080')) {
             qualityTagElement.style.backgroundColor = '#7c3aed'; // 深紫色
-        } else if (finalQuality === '720P') {
+        } else if (qualityLower.includes('720')) {
             qualityTagElement.style.backgroundColor = '#2563eb'; // 蓝色
         } else if (finalQuality === '高清') {
             qualityTagElement.style.backgroundColor = '#10b981'; // 绿色
@@ -1201,20 +1201,23 @@ function updateQualityBadgeUI(qualityId, quality, badgeElement) {
     badge.style.cursor = 'default';
     badge.onclick = null;
 
-    // 根据画质设置不同的颜色
-    switch (quality) {
-        case '4K':
+    // FIX: 根据画质设置不同的颜色（使用小写并增加更多情况）
+    switch (String(quality).toLowerCase()) {
+        case '4k':
             badge.classList.add('bg-amber-500', 'text-white');
             break;
-        case '1080P':
+        case '2k':
+        case '1080p':
             badge.classList.add('bg-purple-600', 'text-purple-100');
             break;
-        case '720P':
+        case '720p':
             badge.classList.add('bg-blue-600', 'text-blue-100');
             break;
-        case '高清':
+        case '高清': // 保留以防万一，但新逻辑应避免此情况
+        case '480p':
             badge.classList.add('bg-green-600', 'text-green-100');
             break;
+        case 'sd':
         case '标清':
             badge.classList.add('bg-gray-500', 'text-gray-100');
             break;
@@ -1222,6 +1225,7 @@ function updateQualityBadgeUI(qualityId, quality, badgeElement) {
         case '检测失败':
         case '检测超时':
         case '编码不支持':
+        case '播放失败':
             badge.classList.add('bg-red-600', 'text-red-100');
             badge.title = '点击重新检测';
             badge.style.cursor = 'pointer';
