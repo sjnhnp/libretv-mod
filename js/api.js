@@ -386,7 +386,13 @@ async function precheckSource(m3u8Url) {
     try {
         // 用代理请求M3U8文件（避免跨域问题）
         const proxyM3u8Url = PROXY_URL + encodeURIComponent(m3u8Url);
-        const response = await fetch(proxyM3u8Url, { signal: controller.signal });
+        const response = await fetch(proxyM3u8Url, {
+            signal: controller.signal,
+            headers: {
+                'Referer': window.location.origin, // 补充 Referer，模拟同域请求
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0' // 模拟浏览器请求
+            }
+        });
         firstByteTime = performance.now() - startTime; // 记录响应时间
 
         if (!response.ok) {
