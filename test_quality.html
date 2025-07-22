@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>画质检测测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-item {
+            background: #2a2a2a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+        .result {
+            background: #333;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .error {
+            border-left-color: #f44336;
+            background: #3a2a2a;
+        }
+        .success {
+            border-left-color: #4CAF50;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>画质检测功能测试</h1>
+    
+    <div class="test-item">
+        <h3>自定义测试</h3>
+        <input type="text" id="customUrl" placeholder="输入m3u8链接进行测试">
+        <button onclick="testCustomUrl()">测试自定义链接</button>
+        <div id="customResult" class="result"></div>
+    </div>
+
+    <div class="test-item">
+        <h3>测试结果</h3>
+        <div id="testResults"></div>
+    </div>
+
+    <div class="test-item">
+        <h3>功能状态</h3>
+        <div id="functionStatus"></div>
+    </div>
+
+    <!-- 引入必要的脚本 -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="js/config.js"></script>
+    <script src="js/quality_detector.js"></script>
+
+    <script>
+        // 检查功能状态
+        function checkFunctionStatus() {
+            const statusDiv = document.getElementById('functionStatus');
+            let status = [];
+            
+            if (typeof window.precheckSource === 'function') {
+                status.push('✅ precheckSource 函数已加载');
+            } else {
+                status.push('❌ precheckSource 函数未找到');
+            }
+            
+            if (typeof window.getVideoResolutionFromM3u8 === 'function') {
+                status.push('✅ getVideoResolutionFromM3u8 函数已加载');
+            } else {
+                status.push('❌ getVideoResolutionFromM3u8 函数未找到');
+            }
+            
+            if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                status.push('✅ HLS.js 已加载且支持');
+            } else {
+                status.push('❌ HLS.js 不可用');
+            }
+            
+            statusDiv.innerHTML = status.join('<br>');
+        }
+
+        // 测试自定义URL
+        async function testCustomUrl() {
+            const url = document.getElementById('customUrl').value.trim();
+            const resultDiv = document.getElementById('customResult');
+            
+            if (!url) {
+                resultDiv.innerHTML = '请输入有效的m3u8链接';
+                return;
+            }
+            
+            resultDiv.innerHTML = '检测中...';
+            
+            try {
+                const result = await window.precheckSource(url);
+                resultDiv.innerHTML = `
+                    <strong>检测结果:</strong><br>
+                    画质: ${result.quality}<br>
+                    加载速度: ${result.loadSpeed}<br>
+                    延迟: ${result.pingTime}ms
+                `;
+                resultDiv.className = 'result success';
+            } catch (error) {
+                resultDiv.innerHTML = `检测失败: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+
+        // 页面加载完成后检查状态
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(checkFunctionStatus, 1000);
+        });
+    </script>
+</body>
+</html>

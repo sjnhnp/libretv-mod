@@ -472,5 +472,5 @@ async function precheckSource(m3u8Url) {
 }
 
 
-// 导出函数到全局
-window.precheckSource = precheckSource;
+// 导出函数到全局 - 已移至quality_detector.js
+// window.precheckSource = precheckSource;
