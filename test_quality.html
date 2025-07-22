@@ -79,7 +79,6 @@
     </div>
 
     <!-- 引入必要的脚本 -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="js/config.js"></script>
     <script src="js/simple_quality_detector.js"></script>
 
@@ -113,11 +112,7 @@
                 status.push('❌ comprehensiveQualityCheck 函数未找到');
             }
             
-            if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-                status.push('✅ HLS.js 已加载且支持');
-            } else {
-                status.push('❌ HLS.js 不可用');
-            }
+            // HLS.js 不再需要，已移除检查
             
             // 测试一个简单的URL检测
             status.push('<br><strong>快速测试:</strong>');
