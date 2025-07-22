@@ -1,9 +1,3 @@
-// 用于管理画质探测的全局变量
-let qualityDetectionObserver;
-const qualityDetectionQueue = [];
-let activeDetections = 0;
-const MAX_CONCURRENT_DETECTIONS = 8; // 并发探测数量
-
 // ✅ 使用 sessionStorage 进行持久化缓存
 const QUALITY_CACHE_KEY = 'qualityCache';
 const qualityCache = new Map(JSON.parse(sessionStorage.getItem(QUALITY_CACHE_KEY) || '[]'));
@@ -576,7 +570,6 @@ function search(options = {}) {
 
 // 执行搜索请求
 async function performSearch(query, selectedAPIs) {
-    // 强制从localStorage刷新custom API数据
     const customAPIsFromStorage = JSON.parse(localStorage.getItem('customAPIs') || '[]');
     AppState.set('customAPIs', customAPIsFromStorage);
 
@@ -588,74 +581,79 @@ async function performSearch(query, selectedAPIs) {
             if (customApi && customApi.url) {
                 apiUrl += `&customApi=${encodeURIComponent(customApi.url)}`;
             } else {
-                return Promise.resolve({ code: 400, msg: `自定义API ${apiId} 未找到或URL无效`, list: [], apiId });
+                return Promise.resolve({ code: 400, msg: `自定义API ${apiId} 无效`, list: [], apiId });
             }
         }
-
         return fetch(apiUrl)
             .then(response => response.json())
             .then(data => ({ ...data, apiId: apiId, apiName: APISourceManager.getSelectedApi(apiId)?.name || apiId }))
-            .catch(error => ({
-                code: 400,
-                msg: `API(${apiId})搜索失败: ${error.message}`,
-                list: [],
-                apiId: apiId
-            }));
+            .catch(error => ({ code: 400, msg: `API(${apiId})搜索失败: ${error.message}`, list: [], apiId }));
     }).filter(Boolean);
 
     try {
-        const results = await Promise.all(searchPromises);
-
-        const videoDataMap = AppState.get('videoDataMap') || new Map();
-        results.forEach(result => {
+        const initialResults = await Promise.all(searchPromises);
+        let allResults = [];
+        initialResults.forEach(result => {
             if (result.code === 200 && Array.isArray(result.list)) {
                 result.list.forEach(item => {
-                    if (item.vod_id) {
-                        item.source_name = result.apiName;
-                        item.source_code = result.apiId;
-                        const uniqueVideoKey = `${result.apiId}_${item.vod_id}`;
-                        videoDataMap.set(uniqueVideoKey, item);
-                    }
+                    allResults.push({
+                        ...item,
+                        source_name: result.apiName,
+                        source_code: result.apiId,
+                        api_url: result.apiId.startsWith('custom_') ? APISourceManager.getCustomApiInfo(parseInt(result.apiId.replace('custom_', '')))?.url : ''
+                    });
                 });
             }
         });
 
-        AppState.set('videoDataMap', videoDataMap);
-        try {
-            // Map 不能直接序列化，先转换为数组再存
-            sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
-            console.log('视频元数据已缓存至 AppState 和 sessionStorage');
-        } catch (e) {
-            console.error('缓存视频元数据到 sessionStorage 失败:', e);
-        }
+        // [新增] 预检测和排序逻辑
+        showLoading(`正在检测 ${allResults.length} 个资源...`);
+        const precheckPromises = allResults.map(async (item) => {
+            let firstEpisodeUrl = '';
+            if (item.vod_play_url) {
+                const firstSegment = item.vod_play_url.split('#')[0];
+                firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
+            }
+            const checkResult = await window.precheckSource(firstEpisodeUrl);
+            return { ...item, ...checkResult };
+        });
 
-        return results;
+        const checkedResults = await Promise.all(precheckPromises);
+
+        // [新增] 根据加载速度排序
+        checkedResults.sort((a, b) => {
+            const speedA = parseFloat(a.loadSpeed) * (a.loadSpeed.includes('MB/s') ? 1024 : 1);
+            const speedB = parseFloat(b.loadSpeed) * (b.loadSpeed.includes('MB/s') ? 1024 : 1);
+            if (isNaN(speedA)) return 1;
+            if (isNaN(speedB)) return -1;
+            return speedB - speedA; // 速度快的排前面
+        });
+
+        // 缓存视频元数据
+        const videoDataMap = AppState.get('videoDataMap') || new Map();
+        checkedResults.forEach(item => {
+            if (item.vod_id) {
+                const uniqueVideoKey = `${item.source_code}_${item.vod_id}`;
+                videoDataMap.set(uniqueVideoKey, item);
+            }
+        });
+        AppState.set('videoDataMap', videoDataMap);
+        sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
+
+        return checkedResults; // [修改] 返回已检测和排序的结果
+
     } catch (error) {
-        console.error("执行搜索或缓存时出错:", error);
-        return [];
+        console.error("执行搜索或预检测时出错:", error);
+        return []; // 返回空数组
     }
 }
 
-function renderSearchResults(results, doubanSearchedTitle = null) {
+function renderSearchResults(allResults, doubanSearchedTitle = null) {
     const searchResultsContainer = DOMCache.get('searchResults');
     const resultsArea = getElement('resultsArea');
     const searchResultsCountElement = getElement('searchResultsCount');
 
     if (!searchResultsContainer || !resultsArea || !searchResultsCountElement) return;
-
-    let allResults = [];
-    results.forEach(result => {
-        if (result.code === 200 && Array.isArray(result.list) && result.list.length > 0) {
-            const resultsWithSource = result.list.map(item => ({
-                ...item,
-                source_name: result.apiName || (typeof API_SITES !== 'undefined' && API_SITES[result.apiId]?.name) || '未知来源',
-                source_code: result.apiId,
-                api_url: result.apiId.startsWith('custom_') && typeof APISourceManager !== 'undefined' ?
-                    APISourceManager.getCustomApiInfo(parseInt(result.apiId.replace('custom_', '')))?.url : ''
-            }));
-            allResults = allResults.concat(resultsWithSource);
-        }
-    });
 
     const yellowFilterEnabled = getBoolConfig('yellowFilterEnabled', true);
     if (yellowFilterEnabled) {
@@ -666,110 +664,41 @@ function renderSearchResults(results, doubanSearchedTitle = null) {
         });
     }
 
-    // 处理并存储搜索结果到 sessionStorage
+    // 缓存结果到 sessionStorage
     try {
-        const videoSourceMap = {};
-        allResults.forEach(item => {
-            const key = `${item.vod_name}|${item.vod_year || ''}`;
-            if (!videoSourceMap[key]) {
-                videoSourceMap[key] = [];
-            }
-            // 将完整的 item 对象存入，以便播放页获取所有元数据
-            videoSourceMap[key].push(item);
-        });
-        sessionStorage.setItem('videoSourceMap', JSON.stringify(videoSourceMap));
+        const query = (DOMCache.get('searchInput')?.value || '').trim();
+        if (query && allResults.length > 0) {
+            sessionStorage.setItem('searchQuery', query);
+            sessionStorage.setItem('searchResults', JSON.stringify(allResults));
+            sessionStorage.setItem('searchSelectedAPIs', JSON.stringify(AppState.get('selectedAPIs')));
+        }
     } catch (e) {
-        console.error("存储搜索结果到 sessionStorage 失败:", e);
+        console.error("缓存搜索结果失败:", e);
     }
 
-    searchResultsContainer.innerHTML = ''; // 先清空旧内容
-
-    if (allResults.length === 0) {
-        resultsArea.classList.remove('hidden');
-        searchResultsCountElement.textContent = '0';
-
-        let messageTitle;
-        let messageSuggestion;
-
-        if (doubanSearchedTitle) {
-            messageTitle = `关于 <strong class="text-pink-400">《${sanitizeText(doubanSearchedTitle)}》</strong> 未找到结果`;
-            messageSuggestion = "请尝试使用其他关键词搜索，或检查您的数据源选择。";
-        } else {
-            messageTitle = '没有找到匹配的结果';
-            messageSuggestion = "请尝试其他关键词或更换数据源。";
-        }
-
-        searchResultsContainer.innerHTML = `
-            <div class="col-span-full text-center py-10 sm:py-16">
-                <svg class="mx-auto h-12 w-12 text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                          d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h3 class="mt-2 text-lg font-medium text-gray-300">${messageTitle}</h3>
-                <p class="mt-1 text-sm text-gray-500">${messageSuggestion}</p>
-            </div>
-        `;
-        // 确保 searchArea 布局正确
-        const searchArea = getElement('searchArea');
-        if (searchArea) {
-            searchArea.classList.add('flex-1');
-            searchArea.classList.remove('mb-8');
-        }
-        // 一定要把豆瓣区收起来
-        getElement('doubanArea')?.classList.add('hidden');
-        return;
-    }
-
-    // 如果有结果，正常渲染
+    searchResultsContainer.innerHTML = '';
     resultsArea.classList.remove('hidden');
     searchResultsCountElement.textContent = allResults.length.toString();
 
+    if (allResults.length === 0) {
+        let messageTitle = doubanSearchedTitle ? `关于 <strong class="text-pink-400">《${sanitizeText(doubanSearchedTitle)}》</strong> 未找到结果` : '没有找到匹配的结果';
+        let messageSuggestion = "请尝试其他关键词或更换数据源。";
+        searchResultsContainer.innerHTML = `...`;
+        return;
+    }
+
     const gridContainer = document.createElement('div');
     gridContainer.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4';
-
     const fragment = document.createDocumentFragment();
     allResults.forEach(item => {
-        try {
-            fragment.appendChild(createResultItemUsingTemplate(item));
-        } catch (error) {
-        }
+        fragment.appendChild(createResultItemUsingTemplate(item));
     });
     gridContainer.appendChild(fragment);
     searchResultsContainer.appendChild(gridContainer);
 
-    // 调整搜索区域布局
-    const searchArea = getElement('searchArea');
-    if (searchArea) {
-        searchArea.classList.remove('flex-1');
-        searchArea.classList.add('mb-8');
-        searchArea.classList.remove('hidden');
-    }
+    getElement('searchArea')?.classList.remove('flex-1', 'hidden');
+    getElement('searchArea')?.classList.add('mb-8');
     getElement('doubanArea')?.classList.add('hidden');
-
-    // 缓存搜索结果到 sessionStorage
-    try {
-        const searchInput = DOMCache.get('searchInput');
-        const query = searchInput ? searchInput.value.trim() : '';
-
-        if (query && allResults.length > 0) {
-            // 缓存搜索关键词
-            sessionStorage.setItem('searchQuery', query);
-
-            // 缓存搜索结果
-            sessionStorage.setItem('searchResults', JSON.stringify(allResults));
-
-            // 缓存当前的API选择状态
-            const selectedAPIs = AppState.get('selectedAPIs');
-            if (selectedAPIs) {
-                sessionStorage.setItem('searchSelectedAPIs', JSON.stringify(selectedAPIs));
-            }
-
-            console.log('[缓存] 搜索结果已保存到 sessionStorage');
-        }
-    } catch (e) {
-        console.error('缓存搜索结果失败:', e);
-    }
-    initializeQualityDetectionObserver();
 }
 
 function restoreSearchFromCache() {
@@ -855,7 +784,6 @@ function renderSearchResultsFromCache(cachedResults) {
         searchArea.classList.remove('hidden');
     }
     getElement('doubanArea')?.classList.add('hidden');
-    initializeQualityDetectionObserver();
 }
 
 // 获取视频详情
@@ -1069,31 +997,19 @@ window.playNextEpisode = playNextEpisode;
 window.showDetails = showDetails;
 window.playFromHistory = playFromHistory;
 
+// [替换] 整个 createResultItemUsingTemplate 函数
 function createResultItemUsingTemplate(item) {
     const template = document.getElementById('search-result-template');
-    if (!template) {
-        console.error("搜索结果模板未找到！");
-        return document.createDocumentFragment();
-    }
+    if (!template) return document.createDocumentFragment();
 
     const clone = template.content.cloneNode(true);
     const cardElement = clone.querySelector('.card-hover');
-    if (!cardElement) {
-        console.error("卡片元素 (.card-hover) 在模板克隆中未找到，项目:", item);
-        return document.createDocumentFragment();
-    }
-    cardElement.dataset.qualityId = `${item.source_code}_${item.vod_id}`; // 设置唯一ID
     cardElement.videoData = item;
+
     const imgElement = clone.querySelector('.result-img');
     if (imgElement) {
-        imgElement.src = item.vod_pic && item.vod_pic.startsWith('http') ?
-            item.vod_pic : 'https://via.placeholder.com/100x150/191919/555555?text=No+Image';
+        imgElement.src = item.vod_pic && item.vod_pic.startsWith('http') ? item.vod_pic : '...';
         imgElement.alt = item.vod_name || '未知标题';
-        imgElement.onerror = function () {
-            this.onerror = null;
-            this.src = 'https://via.placeholder.com/100x150/191919/555555?text=Error';
-            this.classList.add('object-contain');
-        };
     }
     const titleElement = clone.querySelector('.result-title');
     if (titleElement) {
@@ -1142,13 +1058,20 @@ function createResultItemUsingTemplate(item) {
     const sourceContainer = clone.querySelector('.result-source');
     if (sourceContainer) {
         const qualityBadge = document.createElement('span');
-        qualityBadge.className = 'quality-badge detecting text-xs text-gray-500'; // 初始为灰色文字
-        qualityBadge.textContent = '检测中...';
-        qualityBadge.setAttribute('data-quality-id', `${item.source_code}_${item.vod_id}`);
+        qualityBadge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded';
+        qualityBadge.textContent = item.quality || '未知'; // 使用 item.quality
+
+        // 根据画质设置不同颜色
+        if (item.quality === '1080P' || item.quality === '4K') {
+            qualityBadge.classList.add('bg-purple-600', 'text-purple-100');
+        } else if (item.quality === '720P' || item.quality === '高清') {
+            qualityBadge.classList.add('bg-blue-600', 'text-blue-100');
+        } else {
+            qualityBadge.classList.add('bg-gray-600', 'text-gray-200');
+        }
         sourceContainer.appendChild(qualityBadge);
     }
 
-    // --- 存储所有可用的元数据 ---
     cardElement.dataset.id = item.vod_id || '';
     cardElement.dataset.name = item.vod_name || '';
     cardElement.dataset.sourceCode = item.source_code || '';
@@ -1205,22 +1128,21 @@ window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 
 // 显示视频剧集模态框
 async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackData) {
-    // 1. 立即打开弹窗（原代码核心逻辑）
+    // 1. 从缓存获取完整的视频数据（现在包含了画质和速度）
     const videoDataMap = AppState.get('videoDataMap');
     const uniqueVideoKey = `${sourceCode}_${id}`;
     const videoData = videoDataMap ? videoDataMap.get(uniqueVideoKey) : null;
+
     if (!videoData) {
-        hideLoading(); // 立即关闭加载
+        hideLoading();
         showToast('缓存中找不到视频数据，请刷新后重试', 'error');
         return;
     }
 
-    // 2. 直接渲染弹窗（不等待真实地址，先用缓存）
+    // 2. 解析剧集列表（这部分逻辑保持不变）
     let episodes = [];
-    // 保存原始剧集名称
     const originalEpisodeNames = [];
     if (videoData.vod_play_url) {
-        // 用缓存数据先渲染弹窗（原代码逻辑）
         const playFroms = (videoData.vod_play_from || '').split('$$$');
         const urlGroups = videoData.vod_play_url.split('$$$');
         const selectedApi = APISourceManager.getSelectedApi(sourceCode);
@@ -1229,14 +1151,12 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         if (sourceIndex === -1) sourceIndex = 0;
         if (urlGroups[sourceIndex]) {
             episodes = urlGroups[sourceIndex].split('#').filter(item => item && item.includes('$'));
-            // 提取原始剧集名称（如"01"、"20200101"、"hd"）
             episodes.forEach(ep => {
                 const parts = ep.split('$');
-                originalEpisodeNames.push(parts[0].trim()); // 保存名称部分
+                originalEpisodeNames.push(parts[0].trim());
             });
         }
     }
-    // 将原始名称存入AppState，供后续使用
     AppState.set('originalEpisodeNames', originalEpisodeNames);
 
     // 3. 后台异步获取真实地址（不阻塞弹窗显示）
@@ -1309,7 +1229,6 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     hideLoading(); // 移除加载提示，立即显示弹窗
     const effectiveTitle = videoData.vod_name || title;
     const effectiveTypeName = videoData.type_name || fallbackData.typeName;
-    // 优先根据当前点击的 sourceCode 反查名称，避免被其它源覆盖
     const sourceNameForDisplay = videoData.source_name || APISourceManager.getSelectedApi(sourceCode)?.name || '未知源';
 
     AppState.set('currentEpisodes', episodes);
@@ -1342,17 +1261,35 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         if (el) el.textContent = value;
     }
 
+    // [修改] 更新弹窗中的画质和速度标签
+    const qualityTagElement = modalContent.querySelector('[data-field="quality-tag"]');
+    if (qualityTagElement) {
+        qualityTagElement.textContent = videoData.quality || '未知';
+        // 根据画质设置样式
+        if (videoData.quality === '1080P' || videoData.quality === '4K') {
+            qualityTagElement.style.backgroundColor = '#4f46e5'; // Indigo
+        } else if (videoData.quality === '720P' || videoData.quality === '高清') {
+            qualityTagElement.style.backgroundColor = '#2563eb'; // Blue
+        } else {
+            qualityTagElement.style.backgroundColor = '#4b5563'; // Gray
+        }
+    }
+
+    const speedTagElement = modalContent.querySelector('[data-field="speed-tag"]');
+    if (speedTagElement && videoData.loadSpeed && videoData.loadSpeed !== 'N/A') {
+        speedTagElement.textContent = videoData.loadSpeed;
+        speedTagElement.classList.remove('hidden');
+        speedTagElement.style.backgroundColor = '#16a34a'; // Green
+    }
+
     const episodeButtonsGrid = modalContent.querySelector('[data-field="episode-buttons-grid"]');
     const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];
     const isVarietyShow = varietyShowTypes.some(type => effectiveTypeName && effectiveTypeName.includes(type));
 
     if (episodeButtonsGrid) {
         if (isVarietyShow) {
-            // 综艺
             episodeButtonsGrid.className = 'variety-grid-layout';
         }
-
-        // 渲染按钮
         episodeButtonsGrid.innerHTML = renderEpisodeButtons(episodes, effectiveTitle, sourceCode, sourceNameForDisplay, effectiveTypeName);
     }
 
@@ -1365,71 +1302,8 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         orderIcon.style.transform = (AppState.get('episodesReversed') || false) ? 'rotate(180deg)' : 'rotate(0deg)';
     }
 
-    const tempDiv = document.createElement('div');
     showModal(modalContent, `${effectiveTitle} (${sourceNameForDisplay})`);
 
-    // --- 在弹窗显示后，异步检测清晰度 ---
-    setTimeout(async () => {
-        const qualityTagElement = document.querySelector('#modal [data-field="quality-tag"]');
-        if (!qualityTagElement) return;
-        const qualityId = `${sourceCode}_${id}`;
-
-        // 1. 优先读取缓存
-        if (qualityCache.has(qualityId)) {
-            const cachedQuality = qualityCache.get(qualityId);
-            // 判断缓存是否为有效结果（恢复这段逻辑）
-            const isInvalid = ['未知', '解码失败', 'M3U8无效'].includes(cachedQuality);
-
-            if (!isInvalid) {
-                // 有效结果：直接复用
-                qualityTagElement.textContent = cachedQuality;
-                updateQualityTagStyle(qualityTagElement, cachedQuality);
-                initModalQualityTag(cachedQuality);
-                return;
-            } else {
-                // 无效结果：继续检测（覆盖无效缓存），显示“补充检测中”（恢复这段提示）
-                qualityTagElement.textContent = '补充检测中...';
-                qualityTagElement.style.backgroundColor = '#4b5563'; // 灰色提示
-            }
-        }
-
-        // 2. 无缓存或缓存无效时执行检测
-        const episodes = AppState.get('currentEpisodes') || [];
-        if (episodes.length > 0) {
-            // 定义第一集链接（修复之前的变量未定义问题）
-            let firstEpisodeUrl = episodes[0];
-            if (firstEpisodeUrl.includes('$')) {
-                firstEpisodeUrl = firstEpisodeUrl.split('$')[1];
-            }
-
-            // 执行检测
-            const qualityTag = await getQualityViaVideoProbe(firstEpisodeUrl);
-            saveQualityCache(qualityId, qualityTag); // 覆盖无效缓存
-            qualityTagElement.textContent = qualityTag;
-            updateQualityTagStyle(qualityTagElement, qualityTag);
-            initModalQualityTag(qualityTag);
-
-            // 同步更新卡片
-            const targetCard = document.querySelector(`.card-hover[data-quality-id="${qualityId}"]`);
-            if (targetCard) {
-                updateQualityBadgeUI(qualityId, qualityTag);
-            }
-        } else {
-            qualityTagElement.textContent = '无剧集';
-            initModalQualityTag('无剧集');
-        }
-    }, 100);
-
-    // 提取样式更新为独立函数（避免重复代码）
-    function updateQualityTagStyle(element, quality) {
-        if (quality === '1080P' || quality === '4K') {
-            element.style.backgroundColor = '#2563eb'; // 蓝色
-        } else if (quality === '未知') {
-            element.style.backgroundColor = '#4b5563'; // 灰色
-        } else {
-            element.style.backgroundColor = '#16a34a'; // 绿色
-        }
-    }
 }
 
 function toggleEpisodeOrderUI(container) {
@@ -1547,150 +1421,39 @@ function copyLinks() {
 window.showVideoEpisodesModal = showVideoEpisodesModal;
 
 /**
- * 处理队列中的探测任务
- */
-async function processQualityDetectionQueue() {
-    // 移除并发限制（小白用户无需复杂控制，确保每个任务都执行）
-    if (qualityDetectionQueue.length === 0) {
-        return;
-    }
-
-    // 取出队列第一个任务
-    const element = qualityDetectionQueue.shift();
-    // 跳过无效元素
-    if (!element || !element.videoData) {
-        processQualityDetectionQueue(); // 继续下一个
-        return;
-    }
-
-    const item = element.videoData;
-    const qualityId = element.dataset.qualityId;
-    let quality = '未知';
-
-    try {
-        // 优先从缓存的剧集列表获取播放链接
-        let episodeUrl = '';
-        const episodes = AppState.get('currentEpisodes') || [];
-        if (episodes.length > 0) {
-            episodeUrl = episodes[0].includes('$') ? episodes[0].split('$')[1] : episodes[0];
-        }
-        // 如果没有剧集，从视频数据中提取
-        else if (item.vod_play_url) {
-            const firstSegment = item.vod_play_url.split('#')[0];
-            episodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
-        }
-
-        // 执行探测（使用优化后的代理方案）
-        if (episodeUrl) {
-            quality = await getQualityViaVideoProbe(episodeUrl);
-        }
-    } catch (e) {
-        console.error('检测执行失败:', e);
-    }
-
-    // 检测完成后，判断是否为无效结果
-    const isInvalid = ['未知', '解码失败', 'M3U8无效'].includes(quality);
-    saveQualityCache(qualityId, quality);
-    updateQualityBadgeUI(qualityId, quality);
-
-    // 如果是无效结果，在缓存中标记“需要弹窗补充检测”
-    if (isInvalid) {
-        qualityCache.set(`needPopupCheck_${qualityId}`, true); // 新增标记
-    }
-
-    // 继续处理下一个任务（递归确保队列清空）
-    processQualityDetectionQueue();
-}
-
-/**
- * 更新卡片UI上的画质标签
+ * 更新卡片UI上的画质标签，并为可重试的状态绑定点击事件
  */
 function updateQualityBadgeUI(qualityId, quality) {
     const cardElement = document.querySelector(`[data-quality-id="${qualityId}"]`);
     if (!cardElement) return;
 
     const badge = cardElement.querySelector('.quality-badge');
-    if (badge) {
-        badge.textContent = quality;
-        badge.classList.remove('detecting', 'cursor-pointer', 'hover:opacity-80');
+    if (!badge) return;
 
-        if (quality === '未知') {
-            badge.className = 'quality-badge text-xs text-gray-400 cursor-pointer hover:opacity-80';
-            badge.title = '点击重新检测画质';
-            // 关键：绑定点击事件并阻止冒泡
-            badge.onclick = null; // 先移除旧事件
-            badge.onclick = (event) => {
-                event.stopPropagation(); // 阻止事件传递给卡片
-                manualRetryDetection(qualityId, cardElement.videoData);
-            };
-        }
-        // 其他状态保持不变（移除点击事件）
-        else if (quality === '1080P' || quality === '4K') {
-            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-purple-600 text-purple-100';
-            badge.onclick = null; // 非未知状态移除点击事件
-        } else if (quality === '720P' || quality === '高清') {
-            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-blue-600 text-blue-100';
-            badge.onclick = null;
-        } else if (quality === '编码不支持' || quality === '解码失败' || quality === 'M3U8无效') {
-            badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-orange-600 text-white cursor-pointer hover:opacity-80';
-            badge.title = '点击重新检测';
-            badge.onclick = null;
-            badge.onclick = (event) => {
-                event.stopPropagation(); // 阻止冒泡
-                manualRetryDetection(qualityId, cardElement.videoData);
-            };
-        }
-        // 其他状态移除点击事件
-        else {
-            badge.onclick = null;
-            badge.style.cursor = 'default';
-        }
+    badge.textContent = quality;
+    // 重置所有样式和事件
+    badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded';
+    badge.title = '';
+    badge.style.cursor = 'default';
+    badge.onclick = null;
+
+    // 根据画质设置样式和行为
+    if (quality === '1080P' || quality === '4K') {
+        badge.classList.add('bg-purple-600', 'text-purple-100');
+    } else if (quality === '720P' || quality === '高清') {
+        badge.classList.add('bg-blue-600', 'text-blue-100');
+    } else if (['未知', '检测失败', '无效链接'].includes(quality)) {
+        badge.classList.add('bg-gray-600', 'text-gray-200', 'cursor-pointer', 'hover:opacity-80');
+        badge.title = '点击重新检测';
+        // [重要] 绑定手动重试的点击事件
+        badge.onclick = (event) => {
+            event.stopPropagation(); // 阻止事件冒泡，防止触发卡片点击
+            manualRetryDetection(qualityId, cardElement.videoData);
+        };
+    } else {
+        // 其他情况（如编码不支持等）
+        badge.classList.add('bg-orange-600', 'text-white');
     }
-}
-
-/**
- * 初始化 IntersectionObserver 以触发画质探测
- */
-function initializeQualityDetectionObserver() {
-    // 清除旧观察者，避免重复监听
-    if (qualityDetectionObserver) {
-        qualityDetectionObserver.disconnect();
-    }
-
-    // 关键优化：扩大检测范围，元素进入视口立即触发
-    qualityDetectionObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const element = entry.target;
-                const qualityId = element.dataset.qualityId;
-
-                // 确保元素有视频数据且未检测过
-                if (element.videoData && !qualityCache.has(qualityId)) {
-                    // 直接加入队列并立即执行（不等待队列堆积）
-                    qualityDetectionQueue.push(element);
-                    processQualityDetectionQueue();
-                }
-                // 检测一次后停止观察（避免重复检测）
-                qualityDetectionObserver.unobserve(element);
-            }
-        });
-    }, {
-        rootMargin: "0px 0px 400px 0px", // 提前检测视口下方800px的元素（扩大范围）
-        threshold: 0.01 // 元素1%进入视口就触发（降低触发门槛）
-    });
-
-    // 强制对所有结果卡片执行检测（避免漏检）
-    const cards = document.querySelectorAll('.card-hover[data-quality-id]');
-    cards.forEach(card => {
-        const qualityId = card.dataset.qualityId;
-        // 缓存有结果：直接更新UI
-        if (qualityCache.has(qualityId)) {
-            updateQualityBadgeUI(qualityId, qualityCache.get(qualityId));
-        } else {
-            // 立即观察，确保触发检测
-            qualityDetectionObserver.observe(card);
-        }
-    });
 }
 
 /**

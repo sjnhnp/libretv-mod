@@ -332,95 +332,64 @@ async function testSiteAvailability(apiUrl) {
     }
 }
 
-/**
- * 优化版画质探测：基于代理服务解决跨域，兼容桌面端
- * 依赖项目内置代理（functions/proxy/[[path]].js）处理M3U8跨域问题
- */
-function getQualityViaVideoProbe(m3u8Url) {
-    return new Promise(async (resolve) => {
-        if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
-            resolve('未知');
-            return;
-        }
+// 源预检测函数
+async function precheckSource(m3u8Url) {
+    if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
+        return { quality: '无效链接', loadSpeed: 'N/A', pingTime: -1 };
+    }
 
-        // 新增：判断是否为桌面设备（核心新增逻辑）
-        const isDesktop = /Windows|MacIntel|Linux/.test(navigator.userAgent)
-            && !/Android|iPhone|iPad/.test(navigator.userAgent);
-        // 1. 编码检测（保留原始逻辑，新增桌面提示）
-        try {
-            const proxyM3u8Url = PROXY_URL + encodeURIComponent(m3u8Url);
-            const m3u8Response = await fetch(proxyM3u8Url);
-            const m3u8Content = await m3u8Response.text();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8秒超时
 
-            // 检测不支持的编码（保留原始逻辑）
-            const unsupportedCodes = ['HEVC', 'H.265', 'AV1'];
-            const isUnsupported = unsupportedCodes.some(code =>
-                m3u8Content.includes(code)
-            );
-            if (isUnsupported) {
-                const tip = isDesktop ? '桌面不行' : '编码不行';
-                resolve(tip);
-                return;
-            }
+    const startTime = performance.now();
+    let firstByteTime = -1;
 
-            // M3U8有效性校验（保留原始逻辑）
-            const hasValidSegments = m3u8Content.includes('#EXTINF') &&
-                m3u8Content.split('#EXTINF').length > 1;
-            if (!hasValidSegments) {
-                resolve('M3U8无效');
-                return;
-            }
-
-        } catch (e) {
-            console.warn('M3U8编码检测失败，继续探测:', e);
-        }
-
-        // 2. 视频解码检测（保留原始逻辑，新增桌面错误提示）
+    try {
         const proxyM3u8Url = PROXY_URL + encodeURIComponent(m3u8Url);
-        const video = document.createElement('video');
-        video.style.display = 'none';
-        document.body.appendChild(video);
+        const response = await fetch(proxyM3u8Url, { signal: controller.signal });
+        
+        firstByteTime = performance.now() - startTime; // 记录Ping时间
 
-        const timeoutId = setTimeout(() => {
-            console.warn('[清晰度探测] 15秒超时');
-            // 桌面版超时提示更明确（新增适配）
-            const timeoutTip = isDesktop ? '桌面加载超时' : '未知';
-            cleanupAndResolve(timeoutTip);
-        }, 15000);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-        const cleanupAndResolve = (quality) => {
-            clearTimeout(timeoutId);
-            video.removeEventListener('loadedmetadata', onLoadedMetadata);
-            video.removeEventListener('loadeddata', onLoadedMetadata);
-            video.removeEventListener('error', onError);
-            video.remove();
-            resolve(quality);
-        };
+        const m3u8Content = await response.text();
+        const endTime = performance.now();
+        
+        const duration = endTime - startTime;
+        const sizeInKB = (m3u8Content.length / 1024);
+        const speedKbps = sizeInKB / (duration / 1000);
+        
+        let loadSpeed = speedKbps > 1024 
+            ? `${(speedKbps / 1024).toFixed(2)} MB/s` 
+            : `${speedKbps.toFixed(2)} KB/s`;
 
-        const onLoadedMetadata = () => {
-            const width = video.videoWidth;
-            let qualityTag = '未知';
-            if (width >= 3800) qualityTag = '4K';
-            else if (width >= 1900) qualityTag = '1080P';
-            else if (width >= 1200) qualityTag = '720P';
-            else if (width > 0) qualityTag = '高清';
-            cleanupAndResolve(qualityTag);
-        };
+        // 解析画质
+        let quality = '高清'; // 默认值
+        const resolutionMatch = m3u8Content.match(/RESOLUTION=(\d+)x(\d+)/);
+        if (resolutionMatch) {
+            const width = parseInt(resolutionMatch[1], 10);
+            if (width >= 3800) quality = '4K';
+            else if (width >= 1900) quality = '1080P';
+            else if (width >= 1200) quality = '720P';
+        } else if (m3u8Content.includes('2160p')) {
+            quality = '4K';
+        } else if (m3u8Content.includes('1080p')) {
+            quality = '1080P';
+        } else if (m3u8Content.includes('720p')) {
+            quality = '720P';
+        }
 
-        const onError = () => {
-            const error = video.error;
-            console.error('[画质探测] 解码失败:', error);
-            // 桌面版解码失败提示更明确（新增适配）
-            const errorTip = isDesktop ? '桌面不行' : '解码失败';
-            cleanupAndResolve(errorTip);
-        };
+        return { quality, loadSpeed, pingTime: Math.round(firstByteTime) };
 
-        video.addEventListener('loadedmetadata', onLoadedMetadata);
-        video.addEventListener('loadeddata', onLoadedMetadata);
-        video.addEventListener('error', onError);
-        video.src = proxyM3u8Url;
-    });
+    } catch (error) {
+        console.warn(`[Precheck] 预检测失败 for ${m3u8Url}:`, error.message);
+        return { quality: '检测失败', loadSpeed: 'N/A', pingTime: -1 };
+    } finally {
+        clearTimeout(timeoutId);
+    }
 }
 
 // 导出函数到全局
-window.getQualityViaVideoProbe = getQualityViaVideoProbe;
+window.precheckSource = precheckSource;
