@@ -332,145 +332,145 @@ async function testSiteAvailability(apiUrl) {
     }
 }
 
-// [最终强化版] 请用此完整代码替换 js/api.js 中现有的 precheckSource 函数
 
-/**
- * 辅助函数：将相对URL解析为绝对URL
- * @param {string} baseUrl - 基准URL
- * @param {string} relativeUrl - 相对URL
- * @returns {string} - 解析后的绝对URL
- */
 function resolveUrl(baseUrl, relativeUrl) {
-    try {
-        if (/^https?:\/\//i.test(relativeUrl)) {
+    // 空字符串直接返回
+    if (!relativeUrl) {
+        return '';
+    }
+
+    // —— 1. 协议相对 URL，如 //cdn.example.com/lib.js —— 
+    if (relativeUrl.startsWith('//')) {
+        try {
+            const { protocol } = new URL(baseUrl);
+            return protocol + relativeUrl;
+        } catch (e) {
+            console.warn(`Protocol-relative URL 解析失败:`, e);
             return relativeUrl;
         }
+    }
+
+    // —— 2. 绝对 URL：以 scheme: 开头（包括 http: data: blob: 等） —— 
+    if (/^[a-z][a-z0-9+.-]*:/i.test(relativeUrl)) {
+        return relativeUrl;
+    }
+
+    // —— 3. 其余情况交给 URL API 处理 —— 
+    try {
         return new URL(relativeUrl, baseUrl).toString();
     } catch (e) {
-        console.warn(`URL resolve failed for "${relativeUrl}" with base "${baseUrl}"`, e);
-        return relativeUrl;
+        console.warn(`URL 解析失败: base="${baseUrl}", relative="${relativeUrl}"`, e);
+        // —— 4. 回退到简单拼接 —— 
+        let base = baseUrl;
+        let rel = relativeUrl;
+
+        const baseEndsSlash = base.endsWith('/');
+        const relStartsSlash = rel.startsWith('/');
+        if (baseEndsSlash && relStartsSlash) {
+            // 去重斜杠
+            rel = rel.slice(1);
+        } else if (!baseEndsSlash && !relStartsSlash) {
+            // 缺少斜杠
+            base += '/';
+        }
+        return base + rel;
     }
 }
 
-/**
- *准确识别4K、1080P、720P等画质
- */
 async function precheckSource(m3u8Url) {
-    // 第一步：先判断链接是否有效
+    // —— 第一步：校验 URL —— 
     if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
         return { quality: '无效链接', loadSpeed: 'N/A', pingTime: -1 };
     }
 
-    // 第二步：通过文件名关键词识别画质（优先用这个，最快最准）
+    // —— 第二步：文件名关键词快速识别 —— 
     const qualityKeywords = {
-        '4K': [/4k/i, /2160p/i, /3840x2160/i, /超高清/i], // 4K相关标识
-        '1080P': [/1080p/i, /fhd/i, /1920x1080/i, /全高清/i], // 1080P相关标识
-        '720P': [/720p/i, /hd/i, /1280x720/i], // 720P相关标识
-        '高清': [/hq/i, /high/i, /高清/i], // 高清相关标识
-        '标清': [/sd/i, /standard/i, /标清/i] // 标清相关标识
+        '4K': [/4k/i, /2160p/i, /3840x2160/i, /超高清/i],
+        '1080P': [/1080p/i, /fhd/i, /1920x1080/i, /全高清/i],
+        '720P': [/720p/i, /hd/i, /1280x720/i],
+        '高清': [/hq/i, /high/i, /高清/i],
+        '标清': [/sd/i, /standard/i, /标清/i]
     };
-    // 遍历关键词，找到匹配的画质
-    for (const quality in qualityKeywords) {
-        if (qualityKeywords[quality].some(regex => regex.test(m3u8Url))) {
-            // 如果文件名能直接认出，直接返回结果
-            return { quality: quality, loadSpeed: '快速识别', pingTime: 0 };
+    for (const q of Object.keys(qualityKeywords)) {
+        if (qualityKeywords[q].some(rx => rx.test(m3u8Url))) {
+            return { quality: q, loadSpeed: '快速识别', pingTime: 0 };
         }
     }
 
-    // 第三步：如果文件名没线索，解析M3U8文件内容（深入查细节）
+    // —— 第三步：fetch M3U8 内容，测量速度和首字节时延 —— 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8秒超时保护
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     const startTime = performance.now();
     let firstByteTime = -1;
 
     try {
-        // 用代理请求M3U8文件（避免跨域问题）
-        const proxyM3u8Url = PROXY_URL + encodeURIComponent(m3u8Url);
-        const response = await fetch(proxyM3u8Url, {
+        const proxyUrl = PROXY_URL + encodeURIComponent(m3u8Url);
+        const resp = await fetch(proxyUrl, {
             signal: controller.signal,
             headers: {
-                'Referer': window.location.origin, // 补充 Referer，模拟同域请求
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0' // 模拟浏览器请求
+                'Referer': window.location.origin,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
             }
         });
-        firstByteTime = performance.now() - startTime; // 记录响应时间
+        firstByteTime = performance.now() - startTime;
 
-        if (!response.ok) {
-            throw new Error(`链接无效（状态码：${response.status}）`);
-        }
-
-        // 读取M3U8内容
-        const m3u8Content = await response.text();
-        const endTime = performance.now();
-        const duration = endTime - startTime;
-        const sizeInKB = m3u8Content.length / 1024;
-        const speedKbps = sizeInKB > 0 ? (sizeInKB / (duration / 1000)) : 0;
+        if (!resp.ok) throw new Error(`状态码 ${resp.status}`);
+        const text = await resp.text();
+        const duration = performance.now() - startTime;
+        const kb = text.length / 1024;
+        const speedKbps = kb / (duration / 1000);
         const loadSpeed = speedKbps > 1024
             ? `${(speedKbps / 1024).toFixed(1)} MB/s`
             : `${Math.round(speedKbps)} KB/s`;
 
-        // 检查是否有子M3U8（很多画质藏在子文件里）
-        let subM3u8Url = '';
-        const lines = m3u8Content.split('\n');
+        const lines = text.split(/\r?\n/).map(l => l.trim());
+
+        // —— 第四步：在 Master Playlist 中收集所有变体 —— 
+        const variants = [];
         for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            // 如果找到子文件标记，取子链接
-            if (line.startsWith('#EXT-X-STREAM-INF') && i + 1 < lines.length) {
-                subM3u8Url = lines[i + 1].trim();
-                break;
+            if (lines[i].startsWith('#EXT-X-STREAM-INF')) {
+                const uri = lines[i + 1] || '';
+                variants.push({ info: lines[i], uri });
             }
         }
-        // 如果有子文件，递归查子文件的画质（重要！能找到真实画质）
-        if (subM3u8Url) {
-            const subResult = await precheckSource(subM3u8Url);
+
+        // —— 4.1 如果存在变体，先用它们的 RESOLUTION/BANDWIDTH 判断 —— 
+        if (variants.length > 0) {
+            let maxWidth = 0, maxBandwidth = 0;
+            for (const { info } of variants) {
+                const bwMatch = info.match(/BANDWIDTH=(\d+)/);
+                if (bwMatch) maxBandwidth = Math.max(maxBandwidth, +bwMatch[1]);
+                const resMatch = info.match(/RESOLUTION=(\d+)x(\d+)/);
+                if (resMatch) maxWidth = Math.max(maxWidth, +resMatch[1]);
+            }
+            // 有分辨率或码率，直接决策返回
+            if (maxWidth > 0 || maxBandwidth > 0) {
+                let quality = '高清';
+                if (maxWidth >= 3800 || maxBandwidth > 15000000) quality = '4K';
+                else if (maxWidth >= 1900 || maxBandwidth > 5000000) quality = '1080P';
+                else if (maxWidth >= 1200 || maxBandwidth > 2000000) quality = '720P';
+                else if (maxWidth >= 800 || maxBandwidth > 1000000) quality = '高清';
+                else quality = '标清';
+                return { quality, loadSpeed, pingTime: Math.round(firstByteTime) };
+            }
+
+            // 否则没有元数据，再递归第一个子列表
+            const subUrl = resolveUrl(m3u8Url, variants[0].uri);
+            const subResult = await precheckSource(subUrl);
             return { ...subResult, loadSpeed, pingTime: Math.round(firstByteTime) };
         }
 
-        // 第四步：从当前M3U8提取分辨率和码率（判断画质）
-        let quality = '高清'; // 默认值
-        let maxBandwidth = 0; // 最大码率
-        let maxWidth = 0; // 最大宽度（分辨率）
+        // —— 4.2 无变体（Media Playlist），回退默认“高清” —— 
+        return { quality: '高清', loadSpeed, pingTime: Math.round(firstByteTime) };
 
-        for (const line of lines) {
-            if (line.startsWith('#EXT-X-STREAM-INF')) {
-                // 提取码率（如 BANDWIDTH=8000000 表示8Mbps）
-                const bandwidthMatch = line.match(/BANDWIDTH=(\d+)/);
-                if (bandwidthMatch) {
-                    maxBandwidth = Math.max(maxBandwidth, parseInt(bandwidthMatch[1], 10));
-                }
-                // 提取分辨率（如 RESOLUTION=1920x1080）
-                const resolutionMatch = line.match(/RESOLUTION=(\d+)x(\d+)/);
-                if (resolutionMatch) {
-                    maxWidth = Math.max(maxWidth, parseInt(resolutionMatch[1], 10));
-                }
-            }
-        }
-
-        // 优先用分辨率判断（最准确）
-        if (maxWidth > 0) {
-            if (maxWidth >= 3800) quality = '4K'; // 3840x2160左右
-            else if (maxWidth >= 1900) quality = '1080P'; // 1920x1080左右
-            else if (maxWidth >= 1200) quality = '720P'; // 1280x720左右
-            else if (maxWidth >= 800) quality = '高清'; // 800x450以上
-            else quality = '标清'; // 低于800x450
-        }
-        // 如果没有分辨率，用码率判断（备用方案）
-        else if (maxBandwidth > 0) {
-            if (maxBandwidth > 15000000) quality = '4K'; // 15Mbps以上
-            else if (maxBandwidth > 5000000) quality = '1080P'; // 5-15Mbps
-            else if (maxBandwidth > 2000000) quality = '720P'; // 2-5Mbps
-            else if (maxBandwidth > 1000000) quality = '高清'; // 1-2Mbps
-            else quality = '标清'; // 1Mbps以下
-        }
-
-        return { quality, loadSpeed, pingTime: Math.round(firstByteTime) };
-    } catch (error) {
-        console.warn(`检测失败：${error.message}`);
+    } catch (err) {
+        console.warn(`检测失败：${err.message}`);
         return { quality: '未知', loadSpeed: 'N/A', pingTime: -1 };
     } finally {
-        clearTimeout(timeoutId); // 清理超时器
+        clearTimeout(timeoutId);
     }
 }
+
 
 // 导出函数到全局
 window.precheckSource = precheckSource;
