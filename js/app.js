@@ -3,17 +3,37 @@ const QUALITY_CACHE_KEY = 'qualityCache';
 const qualityCache = new Map(JSON.parse(sessionStorage.getItem(QUALITY_CACHE_KEY) || '[]'));
 
 /**
- * 将画质探测结果保存到内存和 sessionStorage
- * @param {string} qualityId - 视频的唯一ID
- * @param {string} quality - 探测到的画质
+ * 缓存10分钟，超时自动重新检测
  */
 function saveQualityCache(qualityId, quality) {
-    qualityCache.set(qualityId, quality);
+    // 记录画质和缓存时间（10分钟后过期）
+    qualityCache.set(qualityId, {
+        quality: quality,
+        cacheTime: Date.now() // 缓存时间戳
+    });
+    // 保存到本地缓存，避免刷新后丢失
     try {
         sessionStorage.setItem(QUALITY_CACHE_KEY, JSON.stringify(Array.from(qualityCache.entries())));
     } catch (e) {
-        console.warn("无法保存画质缓存，可能存储已满:", e);
+        console.warn("缓存空间不足，已自动跳过");
     }
+}
+
+/**
+ * 读取缓存的画质结果，过期则返回null（需要重新检测）
+ */
+function getCachedQuality(qualityId) {
+    const cachedData = qualityCache.get(qualityId);
+    if (!cachedData) {
+        return null; // 没有缓存，需要检测
+    }
+    // 缓存超过10分钟（600000毫秒）则过期
+    const isExpired = Date.now() - cachedData.cacheTime > 600000;
+    if (isExpired) {
+        qualityCache.delete(qualityId); // 删除过期缓存
+        return null; // 提示重新检测
+    }
+    return cachedData.quality; // 返回有效缓存
 }
 
 // 主应用程序逻辑 使用AppState进行状态管理，DOMCache进行DOM元素缓存
@@ -1012,15 +1032,32 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         const el = modalContent.querySelector(`[data-field="${key}"]`);
         if (el) el.textContent = value;
     }
+    // 渲染画质标签（在showVideoEpisodesModal函数里）
     const qualityTagElement = modalContent.querySelector('[data-field="quality-tag"]');
     if (qualityTagElement) {
-        qualityTagElement.textContent = videoData.quality || '未知';
-        if (videoData.quality === '1080P' || videoData.quality === '4K') {
-            qualityTagElement.style.backgroundColor = '#4f46e5';
-        } else if (videoData.quality === '720P' || videoData.quality === '高清') {
-            qualityTagElement.style.backgroundColor = '#2563eb';
+        // 第一步：优先用数据源直接给的画质（如果有的话）
+        let sourceQuality = videoData.vod_quality || videoData.quality || '未知';
+        // 第二步：如果数据源没给，用我们检测的结果
+        const detectedQuality = videoData.quality || '高清';
+        // 最终显示的画质（数据源有则用数据源，否则用检测结果）
+        const finalQuality = sourceQuality !== '未知' ? sourceQuality : detectedQuality;
+
+        // 显示画质文字
+        qualityTagElement.textContent = finalQuality;
+
+        // 给不同画质加颜色（方便区分）
+        if (finalQuality === '4K') {
+            qualityTagElement.style.backgroundColor = '#4f46e5'; // 紫色
+        } else if (finalQuality === '1080P') {
+            qualityTagElement.style.backgroundColor = '#7c3aed'; // 深紫色
+        } else if (finalQuality === '720P') {
+            qualityTagElement.style.backgroundColor = '#2563eb'; // 蓝色
+        } else if (finalQuality === '高清') {
+            qualityTagElement.style.backgroundColor = '#10b981'; // 绿色
+        } else if (finalQuality === '标清') {
+            qualityTagElement.style.backgroundColor = '#6b7280'; // 灰色
         } else {
-            qualityTagElement.style.backgroundColor = '#4b5563';
+            qualityTagElement.style.backgroundColor = '#6b7280'; // 未知用灰色
         }
     }
     const speedTagElement = modalContent.querySelector('[data-field="speed-tag"]');
