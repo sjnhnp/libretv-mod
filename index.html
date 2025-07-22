@@ -23,6 +23,8 @@
 
     <!-- 加载 Tailwind CSS（本地JS方式，保持原逻辑）-->
     <script src="libs/tailwindcss.min.js"></script>
+
+
 </head>
 
 <body class="page-bg text-white">
@@ -329,7 +331,7 @@
                         <h1 class="text-6xl font-bold gradient-text ml-4 tracking-tight">X</h1>
                     </a>
                 </div>
-                <p class="text-white/60 text-lg font-light mb-12">无故卡住, Try关闭去广告<br>搜索结果：按加载速度排序</p>
+                <p class="text-white/60 text-lg font-light mb-12">画质检测常误<br>速度排序结果<br>无故卡住, Try关闭去广告</p>
             </header>
             <!-- 搜索区 -->
             <section id="searchArea" class="flex flex-col items-center" aria-label="搜索区">
@@ -522,6 +524,11 @@
     <!-- 延迟加载主应用脚本（defer避免阻塞）-->
     <script src="js/config.js" defer></script>
     <script src="js/simple_quality_detector.js" defer></script>
+    <!-- 新增：无感画质检测系统 -->
+    <script src="js/quality_predictor.js" defer></script>
+    <script src="js/quality_cache.js" defer></script>
+    <script src="js/quality_intelligence.js" defer></script>
+    <script src="js/quality_system_init.js" defer></script>
     <script src="js/ui.js" defer></script>
     <script src="js/api.js" defer></script>
     <script src="js/api_source_manager.js" defer></script>

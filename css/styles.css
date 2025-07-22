@@ -1009,3 +1009,57 @@ body {
   color: #fff !important;
   font-weight: bold;
 }
+/* --
+------ 14. 无感画质检测系统样式 -------- */
+
+/* Phase 1: 预测状态的视觉提示 */
+.quality-predicted {
+  position: relative;
+  overflow: hidden;
+}
+
+.quality-predicted::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* 优雅的过渡效果 */
+.quality-badge {
+  transition: all 0.3s ease;
+}
+
+.quality-badge:hover {
+  transform: scale(1.05);
+}
+
+/* 画质检测状态指示 */
+.quality-badge[data-prediction-status="predicted"] {
+  opacity: 0.9;
+}
+
+.quality-badge[data-prediction-confidence="high"] {
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.quality-badge[data-prediction-confidence="medium"] {
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.quality-badge[data-prediction-confidence="low"] {
+  border: 1px solid rgba(158, 158, 158, 0.3);
+}

@@ -557,8 +557,24 @@ function renderSearchResults(allResults, doubanSearchedTitle = null) {
     const gridContainer = document.createElement('div');
     gridContainer.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4';
     const fragment = document.createDocumentFragment();
-    allResults.forEach(item => {
-        fragment.appendChild(createResultItemUsingTemplate(item));
+    allResults.forEach((item, index) => {
+        // 添加索引用于优先级判断
+        item.index = index;
+        const cardElement = createResultItemUsingTemplate(item);
+        
+        // Phase 2: 设置视口观察
+        if (typeof window.progressiveDetector !== 'undefined') {
+            const card = cardElement.querySelector('.card-hover');
+            if (card) {
+                card.dataset.index = index;
+                // 对于非高优先级的项目，使用视口检测
+                if (index >= 5) {
+                    window.progressiveDetector.observe(card);
+                }
+            }
+        }
+        
+        fragment.appendChild(cardElement);
     });
     gridContainer.appendChild(fragment);
     searchResultsContainer.appendChild(gridContainer);
@@ -898,8 +914,31 @@ function createResultItemUsingTemplate(item) {
         const qualityBadge = document.createElement('span');
         const qualityId = `${item.source_code}_${item.vod_id}`;
         qualityBadge.setAttribute('data-quality-id', qualityId);
-        updateQualityBadgeUI(qualityId, item.quality || '未知', qualityBadge); // 直接调用更新函数
+        
+        // Phase 1: 立即预测画质
+        let displayQuality = item.quality || '未知';
+        if (typeof window.predictQualityInstantly === 'function') {
+            const prediction = window.predictQualityInstantly(
+                item.vod_play_url, 
+                item.source_name, 
+                item
+            );
+            displayQuality = prediction.quality;
+            
+            // 标记为预测状态
+            qualityBadge.setAttribute('data-prediction-status', prediction.status);
+            qualityBadge.setAttribute('data-prediction-confidence', prediction.confidence);
+        }
+        
+        updateQualityBadgeUI(qualityId, displayQuality, qualityBadge);
         sourceContainer.appendChild(qualityBadge);
+        
+        // Phase 2: 添加到渐进式检测队列
+        if (typeof window.progressiveDetector !== 'undefined') {
+            // 前5个结果高优先级，其余正常优先级
+            const priority = sourceContainer.closest('.card-hover')?.dataset.index < 5 ? 'high' : 'normal';
+            window.progressiveDetector.addToQueue(item, priority);
+        }
     }
     cardElement.dataset.id = item.vod_id || '';
     cardElement.dataset.name = item.vod_name || '';
@@ -920,6 +959,12 @@ function createResultItemUsingTemplate(item) {
 function handleResultClick(event) {
     const card = event.currentTarget;
     const { id, name, sourceCode, apiUrl = '', year, typeName, videoKey, blurb, remarks, area, actor, director } = card.dataset;
+    
+    // Phase 3: 记录用户点击行为
+    if (typeof window.behaviorAnalyzer !== 'undefined' && card.videoData) {
+        window.behaviorAnalyzer.recordClick(card.videoData);
+    }
+    
     if (typeof showVideoEpisodesModal === 'function') {
         showVideoEpisodesModal(id, name, sourceCode, apiUrl, { year, typeName, videoKey, blurb, remarks, area, actor, director });
     } else {
@@ -931,6 +976,49 @@ function handleResultClick(event) {
 window.handleResultClick = handleResultClick;
 window.copyLinks = copyLinks;
 window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
+
+/**
+ * 无感知更新画质标签
+ */
+function updateQualityBadgeSeamlessly(qualityId, newQuality) {
+    const badge = document.querySelector(`.quality-badge[data-quality-id="${qualityId}"]`);
+    if (!badge) return;
+    
+    const currentQuality = badge.textContent;
+    
+    // 如果预测准确，无需更新
+    if (currentQuality === newQuality) {
+        // 移除预测状态，表示检测完成
+        badge.removeAttribute('data-prediction-status');
+        badge.classList.remove('quality-predicted');
+        return;
+    }
+    
+    // 优雅的更新动画
+    badge.style.transition = 'all 0.3s ease';
+    badge.style.transform = 'scale(0.95)';
+    badge.style.opacity = '0.8';
+    
+    setTimeout(() => {
+        // 更新内容和样式
+        updateQualityBadgeUI(qualityId, newQuality, badge);
+        
+        // 移除预测状态
+        badge.removeAttribute('data-prediction-status');
+        badge.classList.remove('quality-predicted');
+        
+        // 恢复正常状态
+        badge.style.transform = 'scale(1)';
+        badge.style.opacity = '1';
+        
+        // 清理过渡效果
+        setTimeout(() => {
+            badge.style.transition = '';
+        }, 300);
+    }, 150);
+}
+
+window.updateQualityBadgeSeamlessly = updateQualityBadgeSeamlessly;
 
 async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackData) {
     const videoDataMap = AppState.get('videoDataMap');
@@ -1227,6 +1315,12 @@ function updateQualityBadgeUI(qualityId, quality, badgeElement) {
     badge.title = '';
     badge.style.cursor = 'default';
     badge.onclick = null;
+    
+    // 添加预测状态的视觉提示
+    const predictionStatus = badge.getAttribute('data-prediction-status');
+    if (predictionStatus === 'predicted') {
+        badge.classList.add('quality-predicted');
+    }
 
     // FIX: 根据画质设置不同的颜色（使用小写并增加更多情况）
     switch (String(quality).toLowerCase()) {

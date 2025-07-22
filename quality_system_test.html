@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无感画质检测系统测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-section {
+            background: #333;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .test-result {
+            background: #444;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .success { border-left: 4px solid #4CAF50; }
+        .warning { border-left: 4px solid #FF9800; }
+        .error { border-left: 4px solid #f44336; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .quality-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin: 2px;
+        }
+        .quality-predicted {
+            position: relative;
+            overflow: hidden;
+            background: #666;
+        }
+        .quality-predicted::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 无感画质检测系统测试</h1>
+    
+    <div class="test-section">
+        <h2>系统状态检查</h2>
+        <button onclick="checkSystemStatus()">检查系统状态</button>
+        <div id="systemStatus"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Phase 1: 快速预测测试</h2>
+        <button onclick="testQuickPrediction()">测试快速预测</button>
+        <div id="predictionResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Phase 2: 缓存系统测试</h2>
+        <button onclick="testCacheSystem()">测试缓存系统</button>
+        <button onclick="clearCache()">清空缓存</button>
+        <div id="cacheResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Phase 3: 智能预测测试</h2>
+        <button onclick="testIntelligentPrediction()">测试智能预测</button>
+        <button onclick="simulateUserBehavior()">模拟用户行为</button>
+        <div id="intelligentResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>UI效果测试</h2>
+        <button onclick="testUIEffects()">测试UI效果</button>
+        <div id="uiTestArea"></div>
+    </div>
+
+    <!-- 引入所有相关脚本 -->
+    <script src="js/config.js"></script>
+    <script src="js/simple_quality_detector.js"></script>
+    <script src="js/quality_predictor.js"></script>
+    <script src="js/quality_cache.js"></script>
+    <script src="js/quality_intelligence.js"></script>
+    <script src="js/quality_system_init.js"></script>
+
+    <script>
+        // 等待系统初始化
+        setTimeout(() => {
+            if (typeof initQualitySystem === 'function') {
+                initQualitySystem();
+            }
+        }, 500);
+
+        function checkSystemStatus() {
+            const statusDiv = document.getElementById('systemStatus');
+            const status = getQualitySystemStatus();
+            
+            let html = '<h3>系统组件状态:</h3>';
+            html += `<div class="test-result ${status.phase1 ? 'success' : 'error'}">
+                Phase 1 (快速预测): ${status.phase1 ? '✅ 正常' : '❌ 异常'}
+            </div>`;
+            html += `<div class="test-result ${status.phase2 ? 'success' : 'error'}">
+                Phase 2 (缓存系统): ${status.phase2 ? '✅ 正常' : '❌ 异常'}
+            </div>`;
+            html += `<div class="test-result ${status.phase3 ? 'success' : 'error'}">
+                Phase 3 (智能分析): ${status.phase3 ? '✅ 正常' : '❌ 异常'}
+            </div>`;
+            html += `<div class="test-result">缓存项数量: ${status.cacheSize}</div>`;
+            html += `<div class="test-result">行为历史数量: ${status.behaviorHistory}</div>`;
+            
+            statusDiv.innerHTML = html;
+        }
+
+        function testQuickPrediction() {
+            const resultsDiv = document.getElementById('predictionResults');
+            const testUrls = [
+                'https://example.com/video_1080p.m3u8',
+                'https://example.com/video_4k_uhd.m3u8',
+                'https://example.com/video_720p_hd.m3u8',
+                'https://example.com/video_sd.m3u8',
+                'https://example.com/video_unknown.m3u8'
+            ];
+            
+            let html = '<h3>快速预测结果:</h3>';
+            
+            testUrls.forEach(url => {
+                if (typeof predictQualityInstantly === 'function') {
+                    const result = predictQualityInstantly(url, 'test_source', {
+                        vod_year: '2023',
+                        type_name: '电影'
+                    });
+                    
+                    html += `<div class="test-result">
+                        <strong>URL:</strong> ${url}<br>
+                        <strong>预测画质:</strong> <span class="quality-badge">${result.quality}</span><br>
+                        <strong>置信度:</strong> ${result.confidence}<br>
+                        <strong>方法:</strong> ${result.method}
+                    </div>`;
+                } else {
+                    html += `<div class="test-result error">预测函数不可用</div>`;
+                }
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        function testCacheSystem() {
+            const resultsDiv = document.getElementById('cacheResults');
+            
+            if (typeof qualityCache === 'undefined') {
+                resultsDiv.innerHTML = '<div class="test-result error">缓存系统不可用</div>';
+                return;
+            }
+            
+            // 测试缓存操作
+            const testData = {
+                quality: '1080p',
+                loadSpeed: '2.5 MB/s',
+                pingTime: 150
+            };
+            
+            const testUrl = 'https://test.com/video.m3u8';
+            
+            // 设置缓存
+            qualityCache.set(testUrl, testData);
+            
+            // 读取缓存
+            const cached = qualityCache.get(testUrl);
+            
+            let html = '<h3>缓存系统测试:</h3>';
+            html += `<div class="test-result ${cached ? 'success' : 'error'}">
+                缓存写入/读取: ${cached ? '✅ 成功' : '❌ 失败'}
+            </div>`;
+            
+            if (cached) {
+                html += `<div class="test-result">
+                    缓存内容: ${JSON.stringify(cached, null, 2)}
+                </div>`;
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        function clearCache() {
+            if (typeof qualityCache !== 'undefined') {
+                qualityCache.clear();
+                document.getElementById('cacheResults').innerHTML = 
+                    '<div class="test-result success">缓存已清空</div>';
+            }
+        }
+
+        function testIntelligentPrediction() {
+            const resultsDiv = document.getElementById('intelligentResults');
+            
+            if (typeof intelligentPredictor === 'undefined') {
+                resultsDiv.innerHTML = '<div class="test-result error">智能预测系统不可用</div>';
+                return;
+            }
+            
+            const testItem = {
+                vod_name: '测试电影',
+                source_name: '测试源',
+                type_name: '电影',
+                vod_year: '2023',
+                vod_play_url: 'https://test.com/movie.m3u8'
+            };
+            
+            const prediction = intelligentPredictor.predictQuality(testItem);
+            
+            let html = '<h3>智能预测结果:</h3>';
+            html += `<div class="test-result">
+                <strong>预测画质:</strong> <span class="quality-badge">${prediction.quality}</span><br>
+                <strong>置信度:</strong> ${(prediction.confidence * 100).toFixed(1)}%<br>
+                <strong>方法:</strong> ${prediction.method}
+            </div>`;
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        function simulateUserBehavior() {
+            if (typeof behaviorAnalyzer === 'undefined') {
+                return;
+            }
+            
+            // 模拟一些用户点击行为
+            const mockClicks = [
+                { quality: '1080p', source_name: '源A', type_name: '电影', vod_year: '2023' },
+                { quality: '720p', source_name: '源B', type_name: '电视剧', vod_year: '2022' },
+                { quality: '1080p', source_name: '源A', type_name: '电影', vod_year: '2023' },
+                { quality: '4K', source_name: '源C', type_name: '纪录片', vod_year: '2024' }
+            ];
+            
+            mockClicks.forEach(click => {
+                behaviorAnalyzer.recordClick(click);
+            });
+            
+            const preferences = behaviorAnalyzer.getUserPreferences();
+            
+            let html = '<h3>用户行为分析:</h3>';
+            html += `<div class="test-result">
+                <strong>画质偏好:</strong> ${preferences.qualityPreference.preferred}<br>
+                <strong>偏好分布:</strong> ${JSON.stringify(preferences.qualityPreference.distribution)}
+            </div>`;
+            
+            document.getElementById('intelligentResults').innerHTML = html;
+        }
+
+        function testUIEffects() {
+            const testArea = document.getElementById('uiTestArea');
+            
+            let html = '<h3>UI效果演示:</h3>';
+            html += '<div style="margin: 20px 0;">';
+            
+            // 创建一些测试标签
+            const qualities = ['1080p', '720p', '4K', '480p'];
+            qualities.forEach(quality => {
+                html += `<span class="quality-badge quality-predicted" style="background: #666; color: white; margin: 5px;">
+                    ${quality}
+                </span>`;
+            });
+            
+            html += '</div>';
+            html += '<button onclick="simulateUpdate()">模拟无感更新</button>';
+            
+            testArea.innerHTML = html;
+        }
+
+        function simulateUpdate() {
+            const badges = document.querySelectorAll('.quality-predicted');
+            badges.forEach((badge, index) => {
+                setTimeout(() => {
+                    // 模拟无感更新效果
+                    badge.style.transition = 'all 0.3s ease';
+                    badge.style.transform = 'scale(0.95)';
+                    badge.style.opacity = '0.8';
+                    
+                    setTimeout(() => {
+                        badge.textContent = badge.textContent + ' ✓';
+                        badge.classList.remove('quality-predicted');
+                        badge.style.background = '#4CAF50';
+                        badge.style.transform = 'scale(1)';
+                        badge.style.opacity = '1';
+                    }, 150);
+                }, index * 500);
+            });
+        }
+    </script>
+</body>
+</html>
