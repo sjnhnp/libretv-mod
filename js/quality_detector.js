@@ -181,7 +181,7 @@ async function getVideoResolutionFromM3u8(m3u8Url) {
 async function improvedPrecheckSource(m3u8Url) {
     // —— 第一步：校验 URL —— 
     if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
-        return { quality: '无效链接', loadSpeed: 'N/A', pingTime: -1 };
+        return { quality: '检测失败', loadSpeed: 'N/A', pingTime: -1 };
     }
 
     // —— 第二步：文件名关键词快速识别 —— 

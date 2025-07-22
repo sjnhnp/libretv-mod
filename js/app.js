@@ -463,22 +463,22 @@ async function performSearch(query, selectedAPIs) {
         const checkedResults = await Promise.all(precheckPromises);
         checkedResults.sort((a, b) => {
             // 新的排序逻辑：优先级 + 速度
-            
+
             // 1. 首先按检测方法的可靠性排序（sortPriority越小越优先）
             const priorityA = a.sortPriority || 50;
             const priorityB = b.sortPriority || 50;
-            
+
             if (priorityA !== priorityB) {
                 return priorityA - priorityB;
             }
-            
+
             // 2. 相同优先级的情况下，按实际速度排序
             const getSpeedValue = (loadSpeed) => {
                 if (!loadSpeed || loadSpeed === 'N/A') return 0;
                 if (loadSpeed === '极速') return 10000; // 关键词识别的最高分
                 if (loadSpeed === '连接正常') return 1000; // 连接正常的固定分数
                 if (loadSpeed === '连接超时') return 0; // 超时的最低分
-                
+
                 // 解析实际速度
                 const match = loadSpeed.match(/^([\d.]+)\s*(KB\/s|MB\/s)$/);
                 if (match) {
@@ -486,13 +486,13 @@ async function performSearch(query, selectedAPIs) {
                     const unit = match[2];
                     return unit === 'MB/s' ? value * 1024 : value;
                 }
-                
+
                 return 100; // 其他情况的默认分数
             };
-            
+
             const speedA = getSpeedValue(a.loadSpeed);
             const speedB = getSpeedValue(b.loadSpeed);
-            
+
             return speedB - speedA; // 速度高的排在前面
         });
         const videoDataMap = AppState.get('videoDataMap') || new Map();
@@ -1248,11 +1248,12 @@ function updateQualityBadgeUI(qualityId, quality, badgeElement) {
         case '标清':
             badge.classList.add('bg-gray-500', 'text-gray-100');
             break;
-        case '无效链接':
         case '检测失败':
         case '检测超时':
         case '编码不支持':
         case '播放失败':
+        case '未知':
+        case '无有效链接':
             badge.classList.add('bg-red-600', 'text-red-100');
             badge.title = '点击重新检测';
             badge.style.cursor = 'pointer';
