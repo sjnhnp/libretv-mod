@@ -4,168 +4,173 @@
 // ================================
 
 /**
- * 改进的画质检测函数
+ * 简化但更有效的画质检测函数
  * @param {string} m3u8Url - m3u8播放地址
  * @returns {Promise<{quality: string, loadSpeed: string, pingTime: number}>}
  */
 async function getVideoResolutionFromM3u8(m3u8Url) {
-    try {
-        // 直接使用m3u8 URL作为视频源，避免CORS问题
-        return new Promise((resolve, reject) => {
-            const video = document.createElement('video');
-            video.muted = true;
-            video.preload = 'metadata';
-            video.style.display = 'none';
-            video.crossOrigin = 'anonymous';
+    return new Promise((resolve) => {
+        const video = document.createElement('video');
+        video.muted = true;
+        video.preload = 'metadata';
+        video.style.display = 'none';
+        video.style.position = 'absolute';
+        video.style.top = '-9999px';
+        
+        // 测量网络延迟
+        const pingStart = performance.now();
+        let pingTime = 0;
 
-            // 测量网络延迟（ping时间）
-            const pingStart = performance.now();
-            let pingTime = 0;
+        // 设置超时处理
+        const timeout = setTimeout(() => {
+            cleanup();
+            resolve({ quality: '检测超时', loadSpeed: 'N/A', pingTime: -1 });
+        }, 6000);
 
-            // 测量ping时间（使用m3u8 URL）
-            fetch(m3u8Url, { method: 'HEAD', mode: 'no-cors' })
-                .then(() => {
-                    pingTime = performance.now() - pingStart;
-                })
-                .catch(() => {
-                    pingTime = performance.now() - pingStart; // 记录到失败为止的时间
+        let actualLoadSpeed = '未知';
+        let hasSpeedCalculated = false;
+        let hasMetadataLoaded = false;
+        let fragmentStartTime = 0;
+
+        const cleanup = () => {
+            clearTimeout(timeout);
+            if (video.hls) {
+                video.hls.destroy();
+            }
+            if (video.parentNode) {
+                video.parentNode.removeChild(video);
+            }
+        };
+
+        // 检查是否可以返回结果
+        const checkAndResolve = () => {
+            if (hasMetadataLoaded) {
+                const width = video.videoWidth;
+                let quality = '高清';
+                
+                if (width && width > 0) {
+                    // 根据视频宽度判断画质
+                    if (width >= 3840) quality = '4K';
+                    else if (width >= 2560) quality = '2K';
+                    else if (width >= 1920) quality = '1080p';
+                    else if (width >= 1280) quality = '720p';
+                    else if (width >= 854) quality = '480p';
+                    else quality = 'SD';
+                }
+
+                cleanup();
+                resolve({
+                    quality,
+                    loadSpeed: actualLoadSpeed,
+                    pingTime: Math.round(pingTime),
                 });
+            }
+        };
 
-            // 设置超时处理
-            const timeout = setTimeout(() => {
-                cleanup();
-                reject(new Error('Timeout loading video metadata'));
-            }, 8000);
+        video.onerror = () => {
+            cleanup();
+            resolve({ quality: '播放失败', loadSpeed: 'N/A', pingTime: Math.round(performance.now() - pingStart) });
+        };
 
-            video.onerror = () => {
-                cleanup();
-                reject(new Error('Failed to load video metadata'));
-            };
-
-            let actualLoadSpeed = '未知';
-            let hasSpeedCalculated = false;
-            let hasMetadataLoaded = false;
-            let fragmentStartTime = 0;
-
-            const cleanup = () => {
-                clearTimeout(timeout);
-                if (video.parentNode) {
-                    video.parentNode.removeChild(video);
-                }
-            };
-
-            // 检查是否可以返回结果
-            const checkAndResolve = () => {
-                if (hasMetadataLoaded && (hasSpeedCalculated || actualLoadSpeed !== '未知')) {
-                    const width = video.videoWidth;
-                    if (width && width > 0) {
-                        cleanup();
-                        // 根据视频宽度判断视频质量等级，使用经典分辨率的宽度作为分割点
-                        const quality = width >= 3840 ? '4K'    // 4K: 3840x2160
-                            : width >= 2560 ? '2K'               // 2K: 2560x1440
-                            : width >= 1920 ? '1080p'            // 1080p: 1920x1080
-                            : width >= 1280 ? '720p'             // 720p: 1280x720
-                            : width >= 854 ? '480p'              // 480p: 854x480
-                            : 'SD';                              // 标清
-
-                        resolve({
-                            quality,
-                            loadSpeed: actualLoadSpeed,
-                            pingTime: Math.round(pingTime),
-                        });
-                    } else {
-                        // webkit 无法获取尺寸，直接返回
-                        cleanup();
-                        resolve({
-                            quality: '未知',
-                            loadSpeed: actualLoadSpeed,
-                            pingTime: Math.round(pingTime),
-                        });
-                    }
-                }
-            };
-
-            // 尝试使用HLS.js（如果可用）
-            if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+        // 尝试使用HLS.js（如果可用）
+        if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+            try {
                 const hls = new Hls({
                     debug: false,
                     enableWorker: true,
                     lowLatencyMode: true,
-                    maxBufferLength: 10,
-                    backBufferLength: 10,
-                    maxBufferSize: 10 * 1000 * 1000,
+                    maxBufferLength: 5,
+                    backBufferLength: 5,
+                    maxBufferSize: 5 * 1000 * 1000,
                 });
+
+                // 测量ping时间
+                fetch(m3u8Url, { method: 'HEAD', mode: 'no-cors' })
+                    .then(() => {
+                        pingTime = performance.now() - pingStart;
+                    })
+                    .catch(() => {
+                        pingTime = performance.now() - pingStart;
+                    });
 
                 // 监听片段加载开始
                 hls.on(Hls.Events.FRAG_LOADING, () => {
                     fragmentStartTime = performance.now();
                 });
 
-                // 监听片段加载完成，只需首个分片即可计算速度
+                // 监听片段加载完成
                 hls.on(Hls.Events.FRAG_LOADED, (event, data) => {
                     if (fragmentStartTime > 0 && data && data.payload && !hasSpeedCalculated) {
                         const loadTime = performance.now() - fragmentStartTime;
                         const size = data.payload.byteLength || 0;
                         if (loadTime > 0 && size > 0) {
                             const speedKBps = size / 1024 / (loadTime / 1000);
-                            // 立即计算速度，无需等待更多分片
-                            const avgSpeedKBps = speedKBps;
-                            if (avgSpeedKBps >= 1024) {
-                                actualLoadSpeed = `${(avgSpeedKBps / 1024).toFixed(1)} MB/s`;
+                            if (speedKBps >= 1024) {
+                                actualLoadSpeed = `${(speedKBps / 1024).toFixed(1)} MB/s`;
                             } else {
-                                actualLoadSpeed = `${avgSpeedKBps.toFixed(1)} KB/s`;
+                                actualLoadSpeed = `${speedKBps.toFixed(1)} KB/s`;
                             }
                             hasSpeedCalculated = true;
-                            checkAndResolve(); // 尝试返回结果
                         }
                     }
                 });
 
                 hls.loadSource(m3u8Url);
                 hls.attachMedia(video);
+                video.hls = hls;
 
-                // 监听hls.js错误
+                // 监听HLS错误
                 hls.on(Hls.Events.ERROR, (event, data) => {
-                    console.error('HLS错误:', data);
+                    console.warn('HLS错误:', data);
                     if (data.fatal) {
                         cleanup();
-                        reject(new Error(`HLS播放失败: ${data.type}`));
+                        resolve({ quality: '播放失败', loadSpeed: 'N/A', pingTime: Math.round(pingTime) });
                     }
                 });
 
                 // 监听视频元数据加载完成
                 video.onloadedmetadata = () => {
                     hasMetadataLoaded = true;
-                    checkAndResolve(); // 尝试返回结果
+                    checkAndResolve();
                 };
 
                 document.body.appendChild(video);
-            } else {
-                // 回退到原生video元素
-                video.onloadedmetadata = () => {
-                    const width = video.videoWidth;
-                    const quality = width >= 3840 ? '4K'
-                        : width >= 2560 ? '2K'
-                        : width >= 1920 ? '1080p'
-                        : width >= 1280 ? '720p'
-                        : width >= 854 ? '480p'
-                        : width > 0 ? 'SD' : '未知';
-
-                    cleanup();
-                    resolve({
-                        quality,
-                        loadSpeed: '未知',
-                        pingTime: Math.round(pingTime),
-                    });
-                };
-
-                document.body.appendChild(video);
-                video.src = m3u8Url;
+            } catch (hlsError) {
+                console.warn('HLS.js初始化失败，回退到原生video:', hlsError);
+                // 回退到原生video
+                fallbackToNativeVideo();
             }
-        });
-    } catch (error) {
-        throw new Error(`Error getting video resolution: ${error instanceof Error ? error.message : String(error)}`);
-    }
+        } else {
+            // 回退到原生video元素
+            fallbackToNativeVideo();
+        }
+
+        function fallbackToNativeVideo() {
+            video.onloadedmetadata = () => {
+                const width = video.videoWidth;
+                let quality = '高清';
+                
+                if (width && width > 0) {
+                    if (width >= 3840) quality = '4K';
+                    else if (width >= 2560) quality = '2K';
+                    else if (width >= 1920) quality = '1080p';
+                    else if (width >= 1280) quality = '720p';
+                    else if (width >= 854) quality = '480p';
+                    else quality = 'SD';
+                }
+
+                cleanup();
+                resolve({
+                    quality,
+                    loadSpeed: '原生检测',
+                    pingTime: Math.round(performance.now() - pingStart),
+                });
+            };
+
+            document.body.appendChild(video);
+            video.src = m3u8Url;
+        }
+    });
 }
 
 /**
@@ -195,26 +200,28 @@ async function improvedPrecheckSource(m3u8Url) {
         }
     }
 
-    // —— 第三步：尝试多种检测方法 —— 
-    // 优先使用video元素检测（更准确）
-    try {
-        return await getVideoResolutionFromM3u8(m3u8Url);
-    } catch (error) {
-        console.warn('Video元素检测失败:', error.message);
-    }
-
-    // 回退到M3U8内容解析
+    // —— 第三步：先尝试M3U8内容解析（更快） —— 
     try {
         const m3u8Result = await parseM3u8Content(m3u8Url);
-        if (m3u8Result.quality !== '未知') {
+        if (m3u8Result.quality !== '未知' && m3u8Result.quality !== '高清') {
             return m3u8Result;
         }
     } catch (error) {
         console.warn('M3U8解析失败:', error.message);
     }
 
+    // —— 第四步：使用video元素检测（更准确但较慢） —— 
+    try {
+        const videoResult = await getVideoResolutionFromM3u8(m3u8Url);
+        if (videoResult.quality !== '检测超时' && videoResult.quality !== '播放失败') {
+            return videoResult;
+        }
+    } catch (error) {
+        console.warn('Video元素检测失败:', error.message);
+    }
+
     // 最后的回退
-    return { quality: '检测失败', loadSpeed: 'N/A', pingTime: -1 };
+    return { quality: '高清', loadSpeed: 'N/A', pingTime: -1 };
 }
 
 /**
@@ -224,44 +231,60 @@ async function improvedPrecheckSource(m3u8Url) {
  */
 async function parseM3u8Content(m3u8Url) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
     const startTime = performance.now();
 
     try {
         let resp, text;
         let loadSpeed = '未知';
         
-        // 尝试直接请求
-        try {
-            resp = await fetch(m3u8Url, {
+        // 尝试多种请求方式
+        const requestMethods = [
+            // 方法1：直接请求
+            () => fetch(m3u8Url, {
                 signal: controller.signal,
                 headers: {
-                    'Referer': window.location.origin,
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
                 },
                 mode: 'cors'
-            });
-        } catch (corsError) {
-            // 如果CORS失败，尝试使用代理
-            if (typeof PROXY_URL !== 'undefined') {
-                const proxyUrl = PROXY_URL + encodeURIComponent(m3u8Url);
-                resp = await fetch(proxyUrl, {
-                    signal: controller.signal,
-                    headers: {
-                        'Referer': window.location.origin,
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
-                    }
-                });
-            } else {
-                throw corsError;
+            }),
+            // 方法2：no-cors模式
+            () => fetch(m3u8Url, {
+                signal: controller.signal,
+                mode: 'no-cors'
+            }),
+            // 方法3：使用代理（如果可用）
+            () => {
+                if (typeof PROXY_URL !== 'undefined') {
+                    return fetch(PROXY_URL + encodeURIComponent(m3u8Url), {
+                        signal: controller.signal,
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
+                        }
+                    });
+                }
+                throw new Error('No proxy available');
+            }
+        ];
+
+        let lastError;
+        for (const method of requestMethods) {
+            try {
+                resp = await method();
+                if (resp.ok) {
+                    text = await resp.text();
+                    break;
+                }
+            } catch (error) {
+                lastError = error;
+                continue;
             }
         }
 
-        if (!resp.ok) {
-            throw new Error(`HTTP ${resp.status}`);
+        if (!text) {
+            throw lastError || new Error('All request methods failed');
         }
 
-        text = await resp.text();
         const duration = performance.now() - startTime;
         const kb = text.length / 1024;
         const speedKbps = kb / (duration / 1000);
@@ -270,7 +293,7 @@ async function parseM3u8Content(m3u8Url) {
             : `${Math.round(speedKbps)} KB/s`;
 
         const lines = text.split(/\r?\n/).map(l => l.trim());
-        const pingTime = Math.round(performance.now() - startTime);
+        const pingTime = Math.round(duration);
 
         // 解析变体流
         const variants = [];
@@ -291,12 +314,13 @@ async function parseM3u8Content(m3u8Url) {
             }
             
             if (maxWidth > 0 || maxBandwidth > 0) {
-                let quality = 'SD';
+                let quality = '高清';
                 if (maxWidth >= 3840 || maxBandwidth > 15000000) quality = '4K';
                 else if (maxWidth >= 2560 || maxBandwidth > 8000000) quality = '2K';
                 else if (maxWidth >= 1920 || maxBandwidth > 5000000) quality = '1080p';
                 else if (maxWidth >= 1280 || maxBandwidth > 2000000) quality = '720p';
                 else if (maxWidth >= 854 || maxBandwidth > 1000000) quality = '480p';
+                else if (maxWidth > 0 || maxBandwidth > 0) quality = 'SD';
                 
                 return { quality, loadSpeed, pingTime };
             }
@@ -312,17 +336,33 @@ async function parseM3u8Content(m3u8Url) {
             });
             const [width] = maxRes.split('x').map(Number);
             
-            let quality = 'SD';
+            let quality = '高清';
             if (width >= 3840) quality = '4K';
             else if (width >= 2560) quality = '2K';
             else if (width >= 1920) quality = '1080p';
             else if (width >= 1280) quality = '720p';
             else if (width >= 854) quality = '480p';
+            else quality = 'SD';
             
             return { quality, loadSpeed, pingTime };
         }
 
-        return { quality: '未知', loadSpeed, pingTime };
+        // 检查码率信息
+        const bandwidthMatch = text.match(/BANDWIDTH=(\d+)/g);
+        if (bandwidthMatch && bandwidthMatch.length > 0) {
+            const maxBandwidth = Math.max(...bandwidthMatch.map(b => parseInt(b.split('=')[1])));
+            let quality = '高清';
+            if (maxBandwidth > 15000000) quality = '4K';
+            else if (maxBandwidth > 8000000) quality = '2K';
+            else if (maxBandwidth > 5000000) quality = '1080p';
+            else if (maxBandwidth > 2000000) quality = '720p';
+            else if (maxBandwidth > 1000000) quality = '480p';
+            else quality = 'SD';
+            
+            return { quality, loadSpeed, pingTime };
+        }
+
+        return { quality: '高清', loadSpeed, pingTime };
 
     } catch (error) {
         throw new Error(`M3U8解析失败: ${error.message}`);
