@@ -332,6 +332,7 @@ async function testSiteAvailability(apiUrl) {
     }
 }
 
+// [最终强化版] 请用此完整代码替换 js/api.js 中现有的 precheckSource 函数
 
 /**
  * 辅助函数：将相对URL解析为绝对URL
@@ -341,15 +342,13 @@ async function testSiteAvailability(apiUrl) {
  */
 function resolveUrl(baseUrl, relativeUrl) {
     try {
-        // 如果已经是绝对URL，直接返回
         if (/^https?:\/\//i.test(relativeUrl)) {
             return relativeUrl;
         }
-        // 使用URL构造函数进行解析
         return new URL(relativeUrl, baseUrl).toString();
     } catch (e) {
         console.warn(`URL resolve failed for "${relativeUrl}" with base "${baseUrl}"`, e);
-        return relativeUrl; // 解析失败则返回原始相对路径
+        return relativeUrl;
     }
 }
 
@@ -360,7 +359,7 @@ function resolveUrl(baseUrl, relativeUrl) {
  * @returns {Promise<{quality: string, loadSpeed: string, pingTime: number}>}
  */
 async function precheckSource(m3u8Url, depth = 0) {
-    const MAX_RECURSION_DEPTH = 3; // 设置最大递归深度
+    const MAX_RECURSION_DEPTH = 3; // 防止因错误文件导致无限递归
     if (depth > MAX_RECURSION_DEPTH) {
         console.warn(`[Precheck] Max recursion depth reached for ${m3u8Url}`);
         return { quality: '检测超时', loadSpeed: 'N/A', pingTime: -1 };
@@ -371,7 +370,7 @@ async function precheckSource(m3u8Url, depth = 0) {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8秒超时
 
     const startTime = performance.now();
     let firstByteTime = -1;
@@ -379,7 +378,7 @@ async function precheckSource(m3u8Url, depth = 0) {
     try {
         const proxyM3u8Url = PROXY_URL + encodeURIComponent(m3u8Url);
         const response = await fetch(proxyM3u8Url, { signal: controller.signal });
-        
+
         firstByteTime = performance.now() - startTime;
 
         if (!response.ok) {
@@ -388,32 +387,31 @@ async function precheckSource(m3u8Url, depth = 0) {
 
         const m3u8Content = await response.text();
         const endTime = performance.now();
-        
+
         const duration = endTime - startTime;
         const sizeInKB = m3u8Content.length / 1024;
         const speedKbps = sizeInKB > 0 ? sizeInKB / (duration / 1000) : 0;
-        
-        let loadSpeed = speedKbps > 1024 
-            ? `${(speedKbps / 1024).toFixed(1)} MB/s` 
+
+        let loadSpeed = speedKbps > 1024
+            ? `${(speedKbps / 1024).toFixed(1)} MB/s`
             : `${Math.round(speedKbps)} KB/s`;
 
         const lines = m3u8Content.split('\n');
-        
+
         // --- [核心升级] 判断是否为主播放列表 ---
         if (m3u8Content.includes('#EXT-X-STREAM-INF')) {
-            console.log(`[Precheck] Master playlist detected for ${m3u8Url}. Diving deeper...`);
             let bestStream = { bandwidth: 0, url: '', resolution: '' };
 
             for (let i = 0; i < lines.length; i++) {
                 if (lines[i].startsWith('#EXT-X-STREAM-INF')) {
                     const bandwidthMatch = lines[i].match(/BANDWIDTH=(\d+)/);
-                    const resolutionMatch = lines[i].match(/RESOLUTION=([\dx]+)/);
                     const currentBandwidth = bandwidthMatch ? parseInt(bandwidthMatch[1], 10) : 0;
 
+                    // 始终选择码率最高的流进行检测
                     if (currentBandwidth > bestStream.bandwidth) {
-                        // 寻找下一行的URL
                         for (let j = i + 1; j < lines.length; j++) {
                             if (lines[j] && !lines[j].startsWith('#')) {
+                                const resolutionMatch = lines[i].match(/RESOLUTION=([\dx]+)/);
                                 bestStream = {
                                     bandwidth: currentBandwidth,
                                     url: lines[j].trim(),
@@ -448,8 +446,8 @@ async function precheckSource(m3u8Url, depth = 0) {
         if (bestWidth >= 3800) quality = '4K';
         else if (bestWidth >= 1900) quality = '1080P';
         else if (bestWidth >= 1200) quality = '720P';
-        
-        const unsupportedCodes = ['HEVC', 'H.265', 'AV1'];
+
+        const unsupportedCodes = ['HEVC', 'H.255', 'AV1'];
         if (unsupportedCodes.some(code => m3u8Content.toUpperCase().includes(code))) {
             quality = '编码不支持';
         }
