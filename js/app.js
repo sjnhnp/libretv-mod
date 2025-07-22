@@ -1146,6 +1146,12 @@ function copyLinks() {
 
 window.showVideoEpisodesModal = showVideoEpisodesModal;
 
+/**
+ * 更新画质标签的UI显示
+ * @param {string} qualityId - 视频的唯一ID
+ * @param {string} quality - 探测到的画质
+ * @param {HTMLElement} badgeElement - 标签元素
+ */
 function updateQualityBadgeUI(qualityId, quality, badgeElement) {
     const badge = badgeElement || document.querySelector(`.quality-badge[data-quality-id="${qualityId}"]`);
     if (!badge) return;
@@ -1159,21 +1165,40 @@ function updateQualityBadgeUI(qualityId, quality, badgeElement) {
     badge.style.cursor = 'default';
     badge.onclick = null;
 
-    if (quality === '1080P' || quality === '4K') {
-        badge.classList.add('bg-purple-600', 'text-purple-100');
-    } else if (quality === '720P' || quality === '高清') {
-        badge.classList.add('bg-blue-600', 'text-blue-100');
-    } else if (['未知', '检测失败', '无效链接'].includes(quality)) {
-        badge.classList.add('bg-gray-600', 'text-gray-200', 'cursor-pointer', 'hover:opacity-80');
-        badge.title = '点击重新检测';
-        if (videoData) {
-            badge.onclick = (event) => {
-                event.stopPropagation();
-                manualRetryDetection(qualityId, videoData);
-            };
-        }
-    } else {
-        badge.classList.add('bg-orange-600', 'text-white');
+    // 根据画质设置不同的颜色
+    switch (quality) {
+        case '4K':
+            badge.classList.add('bg-amber-500', 'text-white');
+            break;
+        case '1080P':
+            badge.classList.add('bg-purple-600', 'text-purple-100');
+            break;
+        case '720P':
+            badge.classList.add('bg-blue-600', 'text-blue-100');
+            break;
+        case '高清':
+            badge.classList.add('bg-green-600', 'text-green-100');
+            break;
+        case '标清':
+            badge.classList.add('bg-gray-500', 'text-gray-100');
+            break;
+        case '无效链接':
+        case '检测失败':
+        case '检测超时':
+        case '编码不支持':
+            badge.classList.add('bg-red-600', 'text-red-100');
+            badge.title = '点击重新检测';
+            badge.style.cursor = 'pointer';
+            if (videoData) {
+                badge.onclick = (event) => {
+                    event.stopPropagation();
+                    manualRetryDetection(qualityId, videoData);
+                };
+            }
+            break;
+        default:
+            badge.classList.add('bg-gray-600', 'text-gray-200');
+            break;
     }
 }
 
