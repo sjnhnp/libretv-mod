@@ -1407,6 +1407,49 @@ header {
   transition: opacity .3s ease-in-out;
 }
 
+/* 网页全屏退出按钮样式 */
+#web-fullscreen-exit-btn {
+  position: fixed !important;
+  top: 1rem !important;
+  right: 1rem !important;
+  z-index: 10000 !important;
+  background: rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  transition: all 0.3s ease !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 48px !important;
+  height: 48px !important;
+}
+
+#web-fullscreen-exit-btn:hover {
+  background: rgba(0, 0, 0, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  color: white !important;
+  transform: scale(1.05) !important;
+}
+
+#web-fullscreen-exit-btn:active {
+  transform: scale(0.95) !important;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  #web-fullscreen-exit-btn {
+    top: 0.75rem !important;
+    right: 0.75rem !important;
+    width: 44px !important;
+    height: 44px !important;
+    padding: 10px !important;
+  }
+}
+
 /* 最终综艺按钮专用样式 (播放页)  */
 
 /* 综艺节目容器的自适应网格布局 */

@@ -46,9 +46,8 @@ function toggleWebFullscreen() {
         
         playerRegion.style.height = '100vh';
         
-        // 隐藏其他元素
+        // 隐藏其他元素，但保留顶部导航栏
         const elementsToHide = [
-            'header',
             '.flex.items-center.justify-between.p-6',
             '.p-6.bg-white\\/5',
             '#episodes-container'
@@ -61,9 +60,15 @@ function toggleWebFullscreen() {
             });
         });
         
+        // 创建网页全屏退出按钮
+        createWebFullscreenExitButton();
+        
+        // 添加双击播放器退出网页全屏
+        addWebFullscreenDoubleClickExit();
+        
         isWebFullscreen = true;
         updateWebFullscreenButton();
-        showToast('已进入网页全屏', 'info', 1500);
+        showToast('已进入网页全屏，点击右上角按钮、双击播放器或按W键退出', 'info', 3000);
     } else {
         // 退出网页全屏
         playerContainer.style.position = '';
@@ -78,7 +83,6 @@ function toggleWebFullscreen() {
         
         // 显示其他元素
         const elementsToShow = [
-            'header',
             '.flex.items-center.justify-between.p-6',
             '.p-6.bg-white\\/5',
             '#episodes-container'
@@ -91,9 +95,71 @@ function toggleWebFullscreen() {
             });
         });
         
+        // 移除网页全屏退出按钮
+        removeWebFullscreenExitButton();
+        
+        // 移除双击退出事件
+        removeWebFullscreenDoubleClickExit();
+        
         isWebFullscreen = false;
         updateWebFullscreenButton();
         showToast('已退出网页全屏', 'info', 1500);
+    }
+}
+
+// 创建网页全屏模式下的退出按钮
+function createWebFullscreenExitButton() {
+    // 避免重复创建
+    if (document.getElementById('web-fullscreen-exit-btn')) return;
+    
+    const exitButton = document.createElement('button');
+    exitButton.id = 'web-fullscreen-exit-btn';
+    exitButton.className = 'fixed top-4 right-4 z-[10000] bg-black/70 hover:bg-black/90 backdrop-blur-md border border-white/30 hover:border-white/50 rounded-xl p-3 text-white/90 hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl';
+    exitButton.setAttribute('aria-label', '退出网页全屏');
+    exitButton.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 14 10 14 10 20"></polyline>
+            <polyline points="20 10 14 10 14 4"></polyline>
+            <line x1="14" y1="10" x2="21" y2="3"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+        </svg>
+    `;
+    
+    exitButton.addEventListener('click', toggleWebFullscreen);
+    document.body.appendChild(exitButton);
+}
+
+// 移除网页全屏退出按钮
+function removeWebFullscreenExitButton() {
+    const exitButton = document.getElementById('web-fullscreen-exit-btn');
+    if (exitButton) {
+        exitButton.remove();
+    }
+}
+
+// 添加双击播放器退出网页全屏功能
+function addWebFullscreenDoubleClickExit() {
+    const playerRegion = document.getElementById('player-region');
+    if (playerRegion) {
+        playerRegion.addEventListener('dblclick', handleWebFullscreenDoubleClick);
+    }
+}
+
+// 移除双击退出事件
+function removeWebFullscreenDoubleClickExit() {
+    const playerRegion = document.getElementById('player-region');
+    if (playerRegion) {
+        playerRegion.removeEventListener('dblclick', handleWebFullscreenDoubleClick);
+    }
+}
+
+// 处理双击事件
+function handleWebFullscreenDoubleClick(e) {
+    // 只在网页全屏模式下响应双击
+    if (isWebFullscreen) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleWebFullscreen();
     }
 }
 
