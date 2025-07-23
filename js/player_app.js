@@ -556,7 +556,7 @@ function addPlayerEventListeners() {
 
     const playerElement = document.getElementById('player');
     if (playerElement) {
-        playerElement.addEventListener('click', handlePlayerRegionClick);
+        playerElement.addEventListener('pointerup', handlePlayerRegionClick);
         playerElement.addEventListener('mousemove', handlePlayerRegionMouseMove);
     }
 
