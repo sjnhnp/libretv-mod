@@ -273,6 +273,17 @@ function initializeAppState() {
                 console.warn("检测到旧版视频缓存，已清除。");
             } else {
                 restoredMap = new Map(rawArr);
+
+                // 关键修复：将恢复的数据同步到统一画质管理器
+                if (window.unifiedQualityManager) {
+                    console.log('🔄 同步已恢复的视频数据到 UnifiedQualityManager...');
+                    for (const [qualityId, videoData] of restoredMap.entries()) {
+                        // 传递完整的 videoData 对象，其中包含 quality, loadSpeed 等信息
+                        // 注意：setQualityInfo 会自动处理UI更新，但此时UI元素还未创建，所以它主要是填充缓存
+                        window.unifiedQualityManager.setQualityInfo(qualityId, videoData);
+                    }
+                    console.log('✅ 数据同步完成。');
+                }
             }
         }
         AppState.set('videoDataMap', restoredMap);
@@ -450,11 +461,11 @@ async function performSearch(query, selectedAPIs) {
         const resultsWithPrediction = allResults.map(item => {
             // 生成唯一ID用于缓存查询
             const qualityId = `${item.source_code}_${item.vod_id}`;
-            
+
             // 统一画质：优先从缓存获取，否则使用1080p默认值
             let finalQuality = '1080p';
             let finalLoadSpeed = null;
-            
+
             const cachedData = getCachedQualityData(qualityId);
             if (cachedData && cachedData.quality) {
                 finalQuality = cachedData.quality;
@@ -473,7 +484,7 @@ async function performSearch(query, selectedAPIs) {
         });
 
         let checkedResults = resultsWithPrediction;
-        
+
         // 🎯 使用统一系统按速度排序（检测完成后会自动重新排序）
         if (window.unifiedQualityManager) {
             checkedResults = window.unifiedQualityManager.sortBySpeed(checkedResults);
@@ -869,7 +880,6 @@ window.playPreviousEpisode = playPreviousEpisode;
 window.playNextEpisode = playNextEpisode;
 window.playFromHistory = playFromHistory;
 
-// [替换] 整个 createResultItemUsingTemplate 函数
 function createResultItemUsingTemplate(item) {
     const template = document.getElementById('search-result-template');
     if (!template) return document.createDocumentFragment();
@@ -933,14 +943,24 @@ function createResultItemUsingTemplate(item) {
         const qualityId = `${item.source_code}_${item.vod_id}`;
         qualityBadge.setAttribute('data-quality-id', qualityId);
 
-        // 使用统一系统获取画质信息
-        let displayQuality = '1080p';
+        // 关键修复：直接从已同步的 unifiedQualityManager 获取画质信息
+        let displayQuality = '1080p'; // 默认值
         if (window.unifiedQualityManager) {
             const qualityInfo = window.unifiedQualityManager.getQualityInfo(qualityId);
             displayQuality = qualityInfo.quality;
         }
 
-        updateQualityBadgeUI(qualityId, displayQuality, qualityBadge);
+        // 直接设置UI，不再调用外部更新函数
+        qualityBadge.textContent = displayQuality;
+        qualityBadge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded';
+        if (window.unifiedQualityManager) {
+            // 复用 manager 的颜色设置逻辑
+            window.unifiedQualityManager.setQualityColor(qualityBadge, displayQuality);
+        } else {
+            // 备用颜色
+            qualityBadge.classList.add('bg-gray-600', 'text-gray-100');
+        }
+
         sourceContainer.appendChild(qualityBadge);
     }
     cardElement.dataset.id = item.vod_id || '';
@@ -988,7 +1008,7 @@ window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 function updateQualityBadgeSeamlessly(qualityId, result) {
     const newQuality = result.quality;
     const newSpeed = result.loadSpeed;
-    
+
     console.log(`🔄 更新显示信息: ${qualityId} -> 画质:${newQuality}, 速度:${newSpeed}`);
 
     // 1. 统一更新所有缓存系统
@@ -1019,7 +1039,7 @@ function updateAllCacheSystems(qualityId, result) {
         existingData.pingTime = result.pingTime;
         videoDataMap.set(qualityId, existingData);
         AppState.set('videoDataMap', videoDataMap);
-        
+
         // 同步到sessionStorage
         try {
             sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
@@ -1036,7 +1056,7 @@ function updateAllCacheSystems(qualityId, result) {
  */
 function updateResultCardBadges(qualityId, newQuality) {
     const badges = document.querySelectorAll(`.quality-badge[data-quality-id="${qualityId}"]`);
-    
+
     if (badges.length === 0) {
         console.warn(`⚠️ 未找到画质标签: ${qualityId}`);
         return;
@@ -1134,17 +1154,17 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     const videoDataMap = AppState.get('videoDataMap');
     const uniqueVideoKey = `${sourceCode}_${id}`;
     let videoData = videoDataMap ? videoDataMap.get(uniqueVideoKey) : null;
-    
+
     // 🔧 修复：如果缓存中没有数据，尝试从sessionStorage恢复
     if (!videoData) {
         try {
             const cachedResults = sessionStorage.getItem('searchResults');
             if (cachedResults) {
                 const results = JSON.parse(cachedResults);
-                videoData = results.find(item => 
+                videoData = results.find(item =>
                     item.source_code === sourceCode && item.vod_id === id
                 );
-                
+
                 // 如果找到了，重新添加到缓存中
                 if (videoData) {
                     // 🔧 确保恢复的数据包含所有必要字段
@@ -1168,11 +1188,11 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
                         pingTime: videoData.pingTime || 0,
                         ...videoData // 保留其他可能的字段
                     };
-                    
+
                     const restoredMap = AppState.get('videoDataMap') || new Map();
                     restoredMap.set(uniqueVideoKey, completeVideoData);
                     AppState.set('videoDataMap', restoredMap);
-                    
+
                     // 🔧 同时恢复到统一系统缓存
                     if (window.unifiedQualityManager) {
                         window.unifiedQualityManager.setQualityInfo(uniqueVideoKey, {
@@ -1181,7 +1201,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
                             pingTime: completeVideoData.pingTime
                         });
                     }
-                    
+
                     console.log('✅ 从sessionStorage恢复视频数据:', uniqueVideoKey);
                     videoData = completeVideoData; // 更新本地变量
                 }
@@ -1190,7 +1210,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             console.error('从sessionStorage恢复数据失败:', e);
         }
     }
-    
+
     if (!videoData) {
         hideLoading();
         showToast('缓存中找不到视频数据，请刷新后重试', 'error');
