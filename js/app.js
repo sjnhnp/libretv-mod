@@ -1289,6 +1289,25 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         const el = modalContent.querySelector(`[data-field="${key}"]`);
         if (el) el.textContent = value;
     }
+
+    // 获取最新的画质信息（在两个标签之前定义，确保都能访问）
+    let finalQuality = '未知';
+
+    // 1. 优先从缓存系统获取最新结果
+    const cachedData = getCachedQualityData(uniqueVideoKey);
+    if (cachedData && cachedData.quality) {
+        finalQuality = cachedData.quality;
+        console.log('🎯 弹窗使用缓存系统的画质:', finalQuality);
+    }
+
+    // 2. 回退到videoData中的信息
+    if (finalQuality === '未知') {
+        const sourceProvidedQuality = videoData.vod_quality; // API直接提供的质量
+        const detectedQuality = videoData.quality; // 我们检测的质量
+        finalQuality = sourceProvidedQuality || detectedQuality || '未知';
+        console.log('🎯 弹窗使用videoData中的画质:', finalQuality);
+    }
+
     // 渲染画质标签（在showVideoEpisodesModal函数里）
     const qualityTagElement = modalContent.querySelector('[data-field="quality-tag"]');
     if (qualityTagElement) {
@@ -1296,24 +1315,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         const sourceProvidedQuality = videoData.vod_quality; // API直接提供的质量
         const detectedQuality = videoData.quality; // 我们检测的质量
 
-        // 优先用API提供的，其次用我们检测的，最后是未知
-        // 获取最新的画质信息
-        let finalQuality = '未知';
 
-        // 1. 优先从缓存系统获取最新结果
-        const cachedData = getCachedQualityData(uniqueVideoKey);
-        if (cachedData && cachedData.quality) {
-            finalQuality = cachedData.quality;
-            console.log('🎯 弹窗使用缓存系统的画质:', finalQuality);
-        }
-
-        // 2. 回退到videoData中的信息
-        if (finalQuality === '未知') {
-            const sourceProvidedQuality = videoData.vod_quality; // API直接提供的质量
-            const detectedQuality = videoData.quality; // 我们检测的质量
-            finalQuality = sourceProvidedQuality || detectedQuality || '未知';
-            console.log('🎯 弹窗使用videoData中的画质:', finalQuality);
-        }
 
         qualityTagElement.textContent = finalQuality;
 
@@ -1362,7 +1364,8 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             console.log('✅ 弹窗显示速度信息:', loadSpeed);
         } else {
             // 如果没有真实速度，显示一个默认值
-            if (finalQuality !== '未知') {
+            const currentQuality = qualityTagElement ? qualityTagElement.textContent : '未知';
+            if (currentQuality !== '未知') {
                 speedTagElement.textContent = '速度未知';
                 speedTagElement.classList.remove('hidden');
                 speedTagElement.style.backgroundColor = '#6b7280'; // 灰色
