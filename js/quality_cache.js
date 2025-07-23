@@ -215,10 +215,11 @@ class ProgressiveDetector {
      * 更新UI显示
      */
     updateUI(qualityId, result) {
-        // 更新UI标签
-        const badge = document.querySelector(`.quality-badge[data-quality-id="${qualityId}"]`);
-        if (badge && typeof window.updateQualityBadgeSeamlessly === 'function') {
+
+        if (typeof window.updateQualityBadgeSeamlessly === 'function') {
             window.updateQualityBadgeSeamlessly(qualityId, result.quality);
+        } else {
+            console.warn('⚠️ window.updateQualityBadgeSeamlessly function not found. UI will not be updated live.');
         }
         
         // 同步更新videoDataMap，确保弹窗显示最新数据
