@@ -105,17 +105,19 @@ function toggleWebFullscreen() {
 }
 
 // 创建统一的网页全屏浮动按钮
+// 修正后的代码 (正确顺序)
 function createWebFullscreenFloatingButton() {
-    // 避免重复创建
     if (document.getElementById('web-fullscreen-floating-btn')) return;
 
     const floatingButton = document.createElement('button');
     floatingButton.id = 'web-fullscreen-floating-btn';
     floatingButton.className = 'fixed z-[10000] bg-black/70 hover:bg-black/90 backdrop-blur-md border border-white/30 hover:border-white/50 rounded-xl p-3 text-white/90 hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl opacity-0 pointer-events-none';
 
-    updateWebFullscreenFloatingButton();
     floatingButton.addEventListener('click', toggleWebFullscreen);
-    document.body.appendChild(floatingButton);
+
+    // 【调整顺序】
+    document.body.appendChild(floatingButton);       // 1. 先把按钮添加到页面
+    updateWebFullscreenFloatingButton();           // 2. 然后再更新它的内容（此时 getElementById 可以找到它了）
 }
 
 // 移除网页全屏浮动按钮
