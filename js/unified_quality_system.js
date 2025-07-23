@@ -40,7 +40,7 @@ class UnifiedQualityManager {
         // 清理旧的缓存
         try {
             localStorage.removeItem('qualityCache');
-            sessionStorage.removeItem('videoDataCache');
+            // sessionStorage.removeItem('videoDataCache'); // 关键修复：注释掉此行，避免删除app.js依赖的核心数据缓存
         } catch (e) {
             console.warn('清理旧缓存失败:', e);
         }
