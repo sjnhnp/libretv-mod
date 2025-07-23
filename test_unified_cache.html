@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>统一缓存系统测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #1a1a1a; color: white; }
+        .test-section { background: #333; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .result { background: #444; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { border-left: 4px solid #4CAF50; }
+        .error { border-left: 4px solid #f44336; }
+        .warning { border-left: 4px solid #FF9800; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .speed-tag { display: inline-block; padding: 6px 12px; border-radius: 4px; margin: 5px; color: white; background: #16a34a; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <h1>🔧 统一缓存系统测试</h1>
+    
+    <div class="test-section">
+        <h2>1. 缓存系统测试</h2>
+        <button onclick="testCacheSystem()">测试缓存功能</button>
+        <div id="cacheResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 速度标签过滤测试</h2>
+        <button onclick="testSpeedFiltering()">测试速度过滤</button>
+        <div id="speedResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 弹窗速度显示测试</h2>
+        <div>
+            <p>画质: <span class="speed-tag">1080p</span></p>
+            <p>速度: <span class="speed-tag hidden" data-field="speed-tag">测试速度</span></p>
+        </div>
+        <button onclick="testModalSpeed('2.5 MB/s')">测试真实速度</button>
+        <button onclick="testModalSpeed('预测结果')">测试预测结果</button>
+        <button onclick="testModalSpeed('M3U8解析')">测试解析结果</button>
+        <button onclick="testModalSpeed('连接正常')">测试连接状态</button>
+    </div>
+
+    <!-- 加载必要的脚本 -->
+    <script src="js/config.js"></script>
+    <script src="js/simple_quality_detector.js"></script>
+    <script src="js/quality_predictor.js"></script>
+    <script src="js/quality_cache.js"></script>
+    <script src="js/quality_intelligence.js"></script>
+
+    <script>
+        // 模拟统一缓存系统
+        function saveQualityCache(qualityId, quality, loadSpeed = 'N/A', pingTime = -1) {
+            if (typeof window.qualityCache !== 'undefined') {
+                window.qualityCache.set(qualityId, { 
+                    quality, 
+                    loadSpeed, 
+                    pingTime 
+                });
+                console.log('✅ 保存画质缓存:', qualityId, quality);
+                return true;
+            }
+            return false;
+        }
+        
+        function getCachedQuality(qualityId) {
+            if (typeof window.qualityCache !== 'undefined') {
+                const cached = window.qualityCache.get(qualityId);
+                if (cached) {
+                    return cached.quality;
+                }
+            }
+            return null;
+        }
+        
+        function getCachedQualityData(qualityId) {
+            if (typeof window.qualityCache !== 'undefined') {
+                return window.qualityCache.get(qualityId);
+            }
+            return null;
+        }
+        
+        function testCacheSystem() {
+            const resultsDiv = document.getElementById('cacheResults');
+            let html = '<h3>缓存系统测试结果:</h3>';
+            
+            // 测试保存和读取
+            const testId = 'test_video_123';
+            const saved = saveQualityCache(testId, '1080p', '2.5 MB/s', 150);
+            
+            if (saved) {
+                const quality = getCachedQuality(testId);
+                const fullData = getCachedQualityData(testId);
+                
+                html += `<div class="result ${quality === '1080p' ? 'success' : 'error'}">
+                    画质缓存: ${quality === '1080p' ? '✅ 成功' : '❌ 失败'} (${quality})
+                </div>`;
+                
+                html += `<div class="result ${fullData ? 'success' : 'error'}">
+                    完整数据: ${fullData ? '✅ 成功' : '❌ 失败'}
+                    ${fullData ? `<br>画质: ${fullData.quality}<br>速度: ${fullData.loadSpeed}<br>延迟: ${fullData.pingTime}ms` : ''}
+                </div>`;
+            } else {
+                html += '<div class="result error">❌ 缓存系统不可用</div>';
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        function testSpeedFiltering() {
+            const resultsDiv = document.getElementById('speedResults');
+            let html = '<h3>速度过滤测试结果:</h3>';
+            
+            const testSpeeds = [
+                '2.5 MB/s',      // 真实速度 - 应该显示
+                '150 KB/s',      // 真实速度 - 应该显示
+                '连接正常',       // 连接状态 - 应该显示
+                '连接超时',       // 连接状态 - 应该显示
+                '预测结果',       // 非速度信息 - 应该隐藏
+                'M3U8解析',      // 非速度信息 - 应该隐藏
+                'Video检测',     // 非速度信息 - 应该隐藏
+                '极速',          // 非速度信息 - 应该隐藏
+                'N/A'           // 无效信息 - 应该隐藏
+            ];
+            
+            testSpeeds.forEach(speed => {
+                const isRealSpeed = speed && (
+                    speed.match(/\d+(\.\d+)?\s*(KB\/s|MB\/s)$/i) || 
+                    speed.includes('连接')
+                );
+                
+                const shouldShow = isRealSpeed ? '显示' : '隐藏';
+                const className = isRealSpeed ? 'success' : 'warning';
+                
+                html += `<div class="result ${className}">
+                    "${speed}" → ${shouldShow} ${isRealSpeed ? '✅' : '⚠️'}
+                </div>`;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        function testModalSpeed(testSpeed) {
+            const speedTag = document.querySelector('[data-field="speed-tag"]');
+            if (speedTag) {
+                const isRealSpeed = testSpeed && (
+                    testSpeed.match(/\d+(\.\d+)?\s*(KB\/s|MB\/s)$/i) || 
+                    testSpeed.includes('连接')
+                );
+                
+                if (isRealSpeed) {
+                    speedTag.textContent = testSpeed;
+                    speedTag.classList.remove('hidden');
+                    console.log('✅ 显示速度:', testSpeed);
+                } else {
+                    speedTag.classList.add('hidden');
+                    console.log('⚠️ 隐藏非速度信息:', testSpeed);
+                }
+            }
+        }
+        
+        // 初始化测试
+        setTimeout(() => {
+            console.log('🚀 统一缓存系统测试初始化完成');
+        }, 500);
+    </script>
+</body>
+</html>

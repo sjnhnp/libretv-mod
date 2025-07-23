@@ -243,7 +243,12 @@ class ProgressiveDetector {
                         console.warn('更新videoDataCache失败:', e);
                     }
                     
-                    console.log('✅ 已同步更新videoDataMap:', qualityId, result.quality);
+                    // 同时调用统一的缓存保存函数
+                    if (typeof window.saveQualityCache === 'function') {
+                        window.saveQualityCache(qualityId, result.quality, result.loadSpeed, result.pingTime);
+                    }
+                    
+                    console.log('✅ 已同步更新所有缓存系统:', qualityId, result.quality);
                 }
             }
         }

@@ -1,53 +1,38 @@
-// ✅ 使用 sessionStorage 进行持久化缓存 (旧系统，待迁移)
-const LEGACY_QUALITY_CACHE_KEY = 'legacyQualityCache';
-const legacyQualityCache = new Map(JSON.parse(sessionStorage.getItem(LEGACY_QUALITY_CACHE_KEY) || '[]'));
-
 /**
- * 缓存10分钟，超时自动重新检测
+ * 统一的画质缓存系统
  */
-function saveQualityCache(qualityId, quality) {
-    // 记录画质和缓存时间（10分钟后过期）
-    legacyQualityCache.set(qualityId, {
-        quality: quality,
-        cacheTime: Date.now() // 缓存时间戳
-    });
-    // 保存到本地缓存，避免刷新后丢失
-    try {
-        sessionStorage.setItem(LEGACY_QUALITY_CACHE_KEY, JSON.stringify(Array.from(legacyQualityCache.entries())));
-    } catch (e) {
-        console.warn("缓存空间不足，已自动跳过");
-    }
-    
-    // 同时保存到新的缓存系统
+function saveQualityCache(qualityId, quality, loadSpeed = 'N/A', pingTime = -1) {
     if (typeof window.qualityCache !== 'undefined') {
-        window.qualityCache.set(qualityId, { quality, loadSpeed: 'N/A', pingTime: -1 });
+        window.qualityCache.set(qualityId, { 
+            quality, 
+            loadSpeed, 
+            pingTime 
+        });
+        console.log('✅ 保存画质缓存:', qualityId, quality);
     }
 }
 
 /**
- * 读取缓存的画质结果，过期则返回null（需要重新检测）
+ * 读取缓存的画质结果
  */
 function getCachedQuality(qualityId) {
-    // 优先使用新的缓存系统
     if (typeof window.qualityCache !== 'undefined') {
-        const newCached = window.qualityCache.get(qualityId);
-        if (newCached) {
-            return newCached.quality;
+        const cached = window.qualityCache.get(qualityId);
+        if (cached) {
+            return cached.quality;
         }
     }
-    
-    // 回退到旧的缓存系统
-    const cachedData = legacyQualityCache.get(qualityId);
-    if (!cachedData) {
-        return null; // 没有缓存，需要检测
+    return null;
+}
+
+/**
+ * 读取完整的缓存结果（包括速度信息）
+ */
+function getCachedQualityData(qualityId) {
+    if (typeof window.qualityCache !== 'undefined') {
+        return window.qualityCache.get(qualityId);
     }
-    // 缓存超过10分钟（600000毫秒）则过期
-    const isExpired = Date.now() - cachedData.cacheTime > 600000;
-    if (isExpired) {
-        legacyQualityCache.delete(qualityId); // 删除过期缓存
-        return null; // 提示重新检测
-    }
-    return cachedData.quality; // 返回有效缓存
+    return null;
 }
 
 // 主应用程序逻辑 使用AppState进行状态管理，DOMCache进行DOM元素缓存
@@ -1107,13 +1092,20 @@ function updateModalQualityInfo(qualityId, newQuality) {
                         modalQualityTag.style.backgroundColor = '#6b7280';
                     }
                     
-                    // 尝试更新速度信息
-                    if (modalSpeedTag && typeof window.qualityCache !== 'undefined' && videoData._detectionUrl) {
-                        const latestResult = window.qualityCache.get(videoData._detectionUrl);
-                        if (latestResult && latestResult.loadSpeed && latestResult.loadSpeed !== 'N/A') {
-                            modalSpeedTag.textContent = latestResult.loadSpeed;
-                            modalSpeedTag.classList.remove('hidden');
-                            modalSpeedTag.style.backgroundColor = '#16a34a';
+                    // 更新速度信息（只显示真实速度）
+                    if (modalSpeedTag) {
+                        const cachedData = getCachedQualityData(qualityId);
+                        if (cachedData && cachedData.loadSpeed) {
+                            const loadSpeed = cachedData.loadSpeed;
+                            const isRealSpeed = loadSpeed.match(/\d+(\.\d+)?\s*(KB\/s|MB\/s)$/i) || loadSpeed.includes('连接');
+                            
+                            if (isRealSpeed) {
+                                modalSpeedTag.textContent = loadSpeed;
+                                modalSpeedTag.classList.remove('hidden');
+                                modalSpeedTag.style.backgroundColor = '#16a34a';
+                            } else {
+                                modalSpeedTag.classList.add('hidden');
+                            }
                         }
                     }
                     
@@ -1263,25 +1255,14 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         // 获取最新的画质信息
         let finalQuality = '未知';
         
-        // 1. 尝试从新缓存系统获取最新结果
-        if (typeof window.qualityCache !== 'undefined' && videoData._detectionUrl) {
-            const latestResult = window.qualityCache.get(videoData._detectionUrl);
-            if (latestResult && latestResult.quality) {
-                finalQuality = latestResult.quality;
-                console.log('🎯 弹窗使用新缓存系统的画质:', finalQuality);
-            }
+        // 1. 优先从缓存系统获取最新结果
+        const cachedData = getCachedQualityData(uniqueVideoKey);
+        if (cachedData && cachedData.quality) {
+            finalQuality = cachedData.quality;
+            console.log('🎯 弹窗使用缓存系统的画质:', finalQuality);
         }
         
-        // 2. 回退到旧缓存系统
-        if (finalQuality === '未知') {
-            const cachedQuality = getCachedQuality(uniqueVideoKey);
-            if (cachedQuality) {
-                finalQuality = cachedQuality;
-                console.log('🎯 弹窗使用旧缓存系统的画质:', finalQuality);
-            }
-        }
-        
-        // 3. 使用videoData中的信息
+        // 2. 回退到videoData中的信息
         if (finalQuality === '未知') {
             const sourceProvidedQuality = videoData.vod_quality; // API直接提供的质量
             const detectedQuality = videoData.quality; // 我们检测的质量
@@ -1309,30 +1290,34 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     }
     const speedTagElement = modalContent.querySelector('[data-field="speed-tag"]');
     if (speedTagElement) {
-        // 获取最新的速度信息
-        let loadSpeed = 'N/A';
+        // 只显示实际的网络速度，不显示其他信息
+        let loadSpeed = null;
         
-        // 1. 尝试从新缓存系统获取最新结果
-        if (typeof window.qualityCache !== 'undefined' && videoData._detectionUrl) {
-            const latestResult = window.qualityCache.get(videoData._detectionUrl);
-            if (latestResult && latestResult.loadSpeed) {
-                loadSpeed = latestResult.loadSpeed;
-                console.log('🎯 弹窗使用新缓存系统的速度:', loadSpeed);
-            }
+        // 1. 从缓存系统获取速度信息
+        const cachedData = getCachedQualityData(uniqueVideoKey);
+        if (cachedData && cachedData.loadSpeed) {
+            loadSpeed = cachedData.loadSpeed;
         }
         
         // 2. 回退到videoData中的信息
-        if (loadSpeed === 'N/A' && videoData.loadSpeed && videoData.loadSpeed !== 'N/A') {
+        if (!loadSpeed && videoData.loadSpeed) {
             loadSpeed = videoData.loadSpeed;
-            console.log('🎯 弹窗使用videoData中的速度:', loadSpeed);
         }
         
-        if (loadSpeed && loadSpeed !== 'N/A') {
+        // 只显示真实的速度数据，过滤掉非速度信息
+        const isRealSpeed = loadSpeed && (
+            loadSpeed.match(/\d+(\.\d+)?\s*(KB\/s|MB\/s)$/i) || // 实际速度
+            loadSpeed.includes('连接') // 连接状态
+        );
+        
+        if (isRealSpeed) {
             speedTagElement.textContent = loadSpeed;
             speedTagElement.classList.remove('hidden');
             speedTagElement.style.backgroundColor = '#16a34a';
+            console.log('🎯 弹窗显示速度信息:', loadSpeed);
         } else {
             speedTagElement.classList.add('hidden');
+            console.log('🎯 弹窗隐藏速度标签，无有效速度数据');
         }
     }
     const episodeButtonsGrid = modalContent.querySelector('[data-field="episode-buttons-grid"]');
@@ -1540,7 +1525,7 @@ async function manualRetryDetection(qualityId, videoData) {
             const newQuality = checkResult.quality;
 
             // 更新缓存和UI
-            saveQualityCache(qualityId, newQuality);
+            saveQualityCache(qualityId, newQuality, checkResult.loadSpeed, checkResult.pingTime);
             updateQualityBadgeUI(qualityId, newQuality);
 
             // 更新 videoDataMap 中的数据
