@@ -302,11 +302,13 @@ async function tryParseM3u8Resolution(m3u8Url) {
 /**
  * 使用video元素进行检测
  */
+// js/simple_quality_detector.js
+
 async function performVideoElementDetection(m3u8Url) {
     return new Promise((resolve) => {
         const video = document.createElement('video');
         video.muted = true;
-        video.preload = 'metadata';
+        video.preload = 'auto'; // 改为 auto 以便开始播放
         video.style.display = 'none';
         video.style.position = 'absolute';
         video.style.top = '-9999px';
@@ -315,9 +317,14 @@ async function performVideoElementDetection(m3u8Url) {
 
         const startTime = performance.now();
         let resolved = false;
+        let checkTimer = null;
 
         const cleanup = () => {
+            clearTimeout(timeout);
+            clearTimeout(checkTimer);
             if (video.parentNode) {
+                video.pause();
+                video.src = ''; // 释放资源
                 video.parentNode.removeChild(video);
             }
         };
@@ -330,40 +337,61 @@ async function performVideoElementDetection(m3u8Url) {
             }
         };
 
-        // 设置超时
         const timeout = setTimeout(() => {
             resolveOnce({
                 quality: '检测超时',
                 loadSpeed: 'N/A',
                 pingTime: Math.round(performance.now() - startTime)
             });
-        }, 3000); // 缩短超时时间
+        }, 5000); // 将总超时延长到5秒
 
-        video.onloadedmetadata = () => {
-            clearTimeout(timeout);
+        const checkResolution = () => {
             const width = video.videoWidth;
             const height = video.videoHeight;
-            const pingTime = Math.round(performance.now() - startTime);
 
-            let quality = '高清';
-            if (width && width > 0) {
+            // 如果在1.5秒后仍然没有获取到有效分辨率，则认为失败
+            if (width === 0 && video.currentTime > 1.5) {
+                resolveOnce({
+                    quality: '播放失败',
+                    loadSpeed: 'N/A',
+                    pingTime: -1
+                });
+                return;
+            }
+
+            if (width > 0) {
+                const pingTime = Math.round(performance.now() - startTime);
+                let quality = '高清';
                 if (width >= 3840) quality = '4K';
                 else if (width >= 2560) quality = '2K';
                 else if (width >= 1920) quality = '1080p';
                 else if (width >= 1280) quality = '720p';
                 else if (width >= 854) quality = '480p';
                 else quality = 'SD';
-            }
 
-            resolveOnce({
-                quality,
-                loadSpeed: `${width}x${height}`,
-                pingTime
+                resolveOnce({
+                    quality,
+                    loadSpeed: `${width}x${height}`,
+                    pingTime
+                });
+            }
+        };
+
+        video.onloadedmetadata = () => {
+            video.play().catch(() => {
+                resolveOnce({
+                    quality: '播放失败',
+                    loadSpeed: 'N/A',
+                    pingTime: -1
+                });
             });
         };
 
+        // 监听播放时间和分辨率变化
+        video.ontimeupdate = checkResolution;
+        video.onresize = checkResolution; // 当分辨率变化时也检测
+
         video.onerror = () => {
-            clearTimeout(timeout);
             resolveOnce({
                 quality: '播放失败',
                 loadSpeed: 'N/A',
@@ -371,7 +399,6 @@ async function performVideoElementDetection(m3u8Url) {
             });
         };
 
-        // 添加到DOM并设置源
         document.body.appendChild(video);
         video.src = m3u8Url;
     });
