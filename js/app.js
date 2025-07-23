@@ -1147,10 +1147,43 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
                 
                 // 如果找到了，重新添加到缓存中
                 if (videoData) {
+                    // 🔧 确保恢复的数据包含所有必要字段
+                    const completeVideoData = {
+                        vod_id: videoData.vod_id,
+                        vod_name: videoData.vod_name,
+                        vod_pic: videoData.vod_pic,
+                        vod_year: videoData.vod_year,
+                        vod_area: videoData.vod_area,
+                        vod_director: videoData.vod_director,
+                        vod_actor: videoData.vod_actor,
+                        vod_blurb: videoData.vod_blurb,
+                        vod_remarks: videoData.vod_remarks,
+                        vod_play_url: videoData.vod_play_url,
+                        vod_play_from: videoData.vod_play_from,
+                        type_name: videoData.type_name,
+                        source_name: videoData.source_name,
+                        source_code: videoData.source_code,
+                        quality: videoData.quality || '1080p',
+                        loadSpeed: videoData.loadSpeed,
+                        pingTime: videoData.pingTime || 0,
+                        ...videoData // 保留其他可能的字段
+                    };
+                    
                     const restoredMap = AppState.get('videoDataMap') || new Map();
-                    restoredMap.set(uniqueVideoKey, videoData);
+                    restoredMap.set(uniqueVideoKey, completeVideoData);
                     AppState.set('videoDataMap', restoredMap);
+                    
+                    // 🔧 同时恢复到统一系统缓存
+                    if (window.unifiedQualityManager) {
+                        window.unifiedQualityManager.setQualityInfo(uniqueVideoKey, {
+                            quality: completeVideoData.quality,
+                            loadSpeed: completeVideoData.loadSpeed,
+                            pingTime: completeVideoData.pingTime
+                        });
+                    }
+                    
                     console.log('✅ 从sessionStorage恢复视频数据:', uniqueVideoKey);
+                    videoData = completeVideoData; // 更新本地变量
                 }
             }
         } catch (e) {
@@ -1282,7 +1315,17 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     }
 
     // 获取统一的画质信息
-    let finalQuality = videoData.quality || '1080p';
+    // 🔧 修复：使用统一系统获取画质信息，确保与卡片一致
+    let finalQuality = '1080p';
+    if (window.unifiedQualityManager) {
+        const qualityInfo = window.unifiedQualityManager.getQualityInfo(uniqueVideoKey);
+        finalQuality = qualityInfo.quality;
+        console.log(`✅ 从统一系统获取弹窗画质: ${uniqueVideoKey} -> ${finalQuality}`);
+    } else {
+        // 备用逻辑
+        finalQuality = videoData.quality || '1080p';
+        console.log(`⚠️ 使用备用画质逻辑: ${finalQuality}`);
+    }
 
     // 渲染画质标签（在showVideoEpisodesModal函数里）
     const qualityTagElement = modalContent.querySelector('[data-field="quality-tag"]');

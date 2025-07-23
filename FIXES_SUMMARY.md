@@ -1,17 +1,29 @@
-# 画质系统问题修复总结
+# 画质系统问题修复总结 (更新版)
 
 ## 修复的问题
 
-### 1. 刷新网页后点击卡片打不开弹窗
+### 1. 刷新网页后点击卡片打不开弹窗 ✅ 已修复
+
+**问题现象**：
+- 刷新页面后点击搜索结果卡片
+- 提示"缓存中找不到视频数据，请刷新后重试"
+- 无法正常打开弹窗
+
+### 2. 弹窗和卡片画质显示不一致 ✅ 已修复
+
+**问题现象**：
+- 弹窗默认显示1080p
+- 卡片显示检测到的实际画质
+- 两者不同步，造成用户困惑
 
 **问题原因**：
 - `showVideoEpisodesModal` 函数依赖 `AppState.videoDataMap` 缓存
 - 刷新页面后，内存中的 `videoDataMap` 被清空
 - 导致找不到视频数据，提示"缓存中找不到视频数据，请刷新后重试"
 
-**修复方案**：
+**修复方案1 - 缓存恢复机制**：
 ```javascript
-// 在 js/app.js 的 showVideoEpisodesModal 函数中添加恢复逻辑
+// 在 showVideoEpisodesModal 函数中添加完整的数据恢复逻辑
 if (!videoData) {
     try {
         const cachedResults = sessionStorage.getItem('searchResults');
@@ -21,17 +33,53 @@ if (!videoData) {
                 item.source_code === sourceCode && item.vod_id === id
             );
             
-            // 如果找到了，重新添加到缓存中
             if (videoData) {
+                // 🔧 确保恢复的数据包含所有必要字段
+                const completeVideoData = {
+                    vod_id: videoData.vod_id,
+                    vod_name: videoData.vod_name,
+                    // ... 所有必要字段
+                    quality: videoData.quality || '1080p',
+                    loadSpeed: videoData.loadSpeed,
+                    pingTime: videoData.pingTime || 0,
+                    ...videoData
+                };
+                
+                // 恢复到内存缓存
                 const restoredMap = AppState.get('videoDataMap') || new Map();
-                restoredMap.set(uniqueVideoKey, videoData);
+                restoredMap.set(uniqueVideoKey, completeVideoData);
                 AppState.set('videoDataMap', restoredMap);
-                console.log('✅ 从sessionStorage恢复视频数据:', uniqueVideoKey);
+                
+                // 🔧 同时恢复到统一系统缓存
+                if (window.unifiedQualityManager) {
+                    window.unifiedQualityManager.setQualityInfo(uniqueVideoKey, {
+                        quality: completeVideoData.quality,
+                        loadSpeed: completeVideoData.loadSpeed,
+                        pingTime: completeVideoData.pingTime
+                    });
+                }
+                
+                videoData = completeVideoData;
             }
         }
     } catch (e) {
         console.error('从sessionStorage恢复数据失败:', e);
     }
+}
+```
+
+**修复方案2 - 统一画质显示**：
+```javascript
+// 弹窗中使用统一系统获取画质，确保与卡片一致
+let finalQuality = '1080p';
+if (window.unifiedQualityManager) {
+    const qualityInfo = window.unifiedQualityManager.getQualityInfo(uniqueVideoKey);
+    finalQuality = qualityInfo.quality;
+    console.log(`✅ 从统一系统获取弹窗画质: ${uniqueVideoKey} -> ${finalQuality}`);
+} else {
+    // 备用逻辑
+    finalQuality = videoData.quality || '1080p';
+    console.log(`⚠️ 使用备用画质逻辑: ${finalQuality}`);
 }
 ```
 
@@ -130,11 +178,35 @@ sortBySpeed(results) {
 
 ## 测试验证
 
-创建了 `test_fixes.html` 测试页面，包含：
+### 测试页面
+1. **`test_fixes.html`** - 基础功能测试
+2. **`debug_modal_issue.html`** - 弹窗问题专项调试
 
-1. **弹窗修复测试**：模拟刷新后的缓存恢复
-2. **速度排序测试**：验证排序算法正确性
-3. **动态重排序测试**：模拟检测完成后的重排序
+### 测试步骤
+1. **弹窗修复测试**：
+   ```bash
+   # 打开 debug_modal_issue.html
+   # 1. 点击"设置测试环境" - 模拟搜索结果
+   # 2. 点击"模拟刷新" - 清空内存缓存
+   # 3. 点击"测试弹窗" - 验证是否能恢复数据
+   ```
+
+2. **画质一致性测试**：
+   ```bash
+   # 在实际页面中
+   # 1. 搜索任意内容
+   # 2. 等待画质检测完成
+   # 3. 点击卡片打开弹窗
+   # 4. 对比卡片和弹窗的画质标签是否一致
+   ```
+
+3. **速度排序测试**：
+   ```bash
+   # 1. 搜索热门内容（结果较多）
+   # 2. 观察初始排序
+   # 3. 等待检测完成后观察重排序
+   # 4. 验证是否按速度从快到慢排列
+   ```
 
 ## 使用说明
 
@@ -149,5 +221,55 @@ sortBySpeed(results) {
 - ✅ `js/unified_quality_system.js` - 增强动态排序功能
 - ✅ `test_fixes.html` - 创建测试验证页面
 - ✅ `FIXES_SUMMARY.md` - 本文档
+
+## 问题排查指南
+
+如果修复后仍有问题，请按以下步骤排查：
+
+### 1. 弹窗仍无法打开
+```javascript
+// 在浏览器控制台执行以下代码检查缓存状态
+console.log('sessionStorage:', sessionStorage.getItem('searchResults'));
+console.log('videoDataMap:', AppState.get('videoDataMap'));
+console.log('统一系统:', window.unifiedQualityManager?.cache);
+```
+
+**可能原因**：
+- sessionStorage 被清空或损坏
+- 数据结构不匹配
+- 统一系统未正确加载
+
+### 2. 画质仍不一致
+```javascript
+// 检查特定视频的画质信息
+const qualityId = 'source_code_vod_id'; // 替换为实际ID
+console.log('统一系统画质:', window.unifiedQualityManager?.getQualityInfo(qualityId));
+console.log('videoData画质:', AppState.get('videoDataMap')?.get(qualityId)?.quality);
+```
+
+**可能原因**：
+- 统一系统缓存未同步
+- 弹窗未使用统一系统获取画质
+- 检测结果未正确更新
+
+### 3. 速度排序不工作
+```javascript
+// 检查排序功能
+const results = [/* 搜索结果数组 */];
+const sorted = window.unifiedQualityManager?.sortBySpeed(results);
+console.log('排序结果:', sorted);
+```
+
+**可能原因**：
+- 速度数据格式不正确
+- 排序函数逻辑错误
+- DOM重排序失败
+
+## 联系支持
+
+如果问题仍然存在，请提供：
+1. 浏览器控制台错误信息
+2. 具体的重现步骤
+3. 使用的浏览器版本
 
 修复完成后，用户将享受到更流畅的使用体验：刷新页面后仍可正常操作，搜索结果按网络速度智能排序。
