@@ -1421,8 +1421,8 @@ header {
   justify-content: center !important;
   width: 48px !important;
   height: 48px !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
+  opacity: 0;
+  pointer-events: none;
 }
 
 #web-fullscreen-floating-btn:hover {
