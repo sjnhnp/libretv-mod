@@ -1345,18 +1345,23 @@ header {
   padding: 6px 0;
 }
 
+#web-fullscreen-button,
 #fullscreen-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: auto;
   width: 44px;
   height: 44px;
   border-radius: 50%;
   background: rgba(30, 30, 30, 0.7);
 }
 
+#fullscreen-button {
+  margin-left: auto;
+}
+
 #back-button svg,
+#web-fullscreen-button svg,
 #fullscreen-button svg {
   vertical-align: middle;
 }

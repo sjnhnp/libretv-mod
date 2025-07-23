@@ -27,6 +27,85 @@ let lastFailedAction = null;
 let availableAlternativeSources = [];
 let adFilteringEnabled = false;
 let universalId = '';
+let isWebFullscreen = false;
+
+// 网页全屏功能
+function toggleWebFullscreen() {
+    const playerContainer = document.querySelector('.player-container');
+    const playerRegion = document.getElementById('player-region');
+    
+    if (!isWebFullscreen) {
+        // 进入网页全屏
+        playerContainer.style.position = 'fixed';
+        playerContainer.style.top = '0';
+        playerContainer.style.left = '0';
+        playerContainer.style.width = '100vw';
+        playerContainer.style.height = '100vh';
+        playerContainer.style.zIndex = '9999';
+        playerContainer.style.background = '#000';
+        
+        playerRegion.style.height = '100vh';
+        
+        // 隐藏其他元素
+        const elementsToHide = [
+            'header',
+            '.flex.items-center.justify-between.p-6',
+            '.p-6.bg-white\\/5',
+            '#episodes-container'
+        ];
+        
+        elementsToHide.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(el => {
+                el.style.display = 'none';
+            });
+        });
+        
+        isWebFullscreen = true;
+        updateWebFullscreenButton();
+        showToast('已进入网页全屏', 'info', 1500);
+    } else {
+        // 退出网页全屏
+        playerContainer.style.position = '';
+        playerContainer.style.top = '';
+        playerContainer.style.left = '';
+        playerContainer.style.width = '';
+        playerContainer.style.height = '';
+        playerContainer.style.zIndex = '';
+        playerContainer.style.background = '';
+        
+        playerRegion.style.height = '60vh';
+        
+        // 显示其他元素
+        const elementsToShow = [
+            'header',
+            '.flex.items-center.justify-between.p-6',
+            '.p-6.bg-white\\/5',
+            '#episodes-container'
+        ];
+        
+        elementsToShow.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(el => {
+                el.style.display = '';
+            });
+        });
+        
+        isWebFullscreen = false;
+        updateWebFullscreenButton();
+        showToast('已退出网页全屏', 'info', 1500);
+    }
+}
+
+function updateWebFullscreenButton() {
+    const webFsButton = document.getElementById('web-fullscreen-button');
+    if (webFsButton) {
+        webFsButton.innerHTML = isWebFullscreen ?
+            `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-minimize-2"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>` :
+            `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-monitor"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>`;
+        webFsButton.setAttribute('aria-label', isWebFullscreen ? '退出网页全屏' : '网页全屏');
+    }
+}
 
 // 提取核心标题，用于匹配同一作品的不同版本
 function getCoreTitle(title, typeName = '') {
@@ -669,6 +748,13 @@ function setupPlayerControls() {
     const backButton = document.getElementById('back-button');
     if (backButton) backButton.addEventListener('click', () => { window.location.href = 'index.html'; });
 
+    const webFullscreenButton = document.getElementById('web-fullscreen-button');
+    if (webFullscreenButton) {
+        webFullscreenButton.addEventListener('click', () => {
+            toggleWebFullscreen();
+        });
+    }
+
     const fullscreenButton = document.getElementById('fullscreen-button');
     if (fullscreenButton) {
         fullscreenButton.addEventListener('click', () => {
@@ -739,6 +825,12 @@ function handleKeyboardShortcuts(e) {
             //   player.currentTime += 10;
             //   actionText = '前进 10s';
             //}
+            break;
+
+        case 'w':
+        case 'W':
+            toggleWebFullscreen();
+            actionText = '切换网页全屏';
             break;
 
         case 'f':
