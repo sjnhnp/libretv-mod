@@ -33,7 +33,7 @@ let isWebFullscreen = false;
 function toggleWebFullscreen() {
     const playerContainer = document.querySelector('.player-container');
     const playerRegion = document.getElementById('player-region');
-    
+
     if (!isWebFullscreen) {
         // 进入网页全屏
         playerContainer.style.position = 'fixed';
@@ -43,9 +43,9 @@ function toggleWebFullscreen() {
         playerContainer.style.height = '100vh';
         playerContainer.style.zIndex = '9999';
         playerContainer.style.background = '#000';
-        
+
         playerRegion.style.height = '100vh';
-        
+
         // 隐藏其他元素，包括顶部导航栏
         const elementsToHide = [
             'header',
@@ -53,17 +53,17 @@ function toggleWebFullscreen() {
             '.p-6.bg-white\\/5',
             '#episodes-container'
         ];
-        
+
         elementsToHide.forEach(selector => {
             const elements = document.querySelectorAll(selector);
             elements.forEach(el => {
                 el.style.display = 'none';
             });
         });
-        
+
         // 添加播放器区域点击显示按钮
         addWebFullscreenClickHandler();
-        
+
         isWebFullscreen = true;
         updateWebFullscreenFloatingButton();
         showToast('已进入网页全屏，点击播放器显示控制按钮或按W键退出', 'info', 2500);
@@ -76,9 +76,9 @@ function toggleWebFullscreen() {
         playerContainer.style.height = '';
         playerContainer.style.zIndex = '';
         playerContainer.style.background = '';
-        
+
         playerRegion.style.height = '60vh';
-        
+
         // 显示其他元素
         const elementsToShow = [
             'header',
@@ -86,19 +86,19 @@ function toggleWebFullscreen() {
             '.p-6.bg-white\\/5',
             '#episodes-container'
         ];
-        
+
         elementsToShow.forEach(selector => {
             const elements = document.querySelectorAll(selector);
             elements.forEach(el => {
                 el.style.display = '';
             });
         });
-        
+
         // 移除点击事件处理
         removeWebFullscreenClickHandler();
-        
+
         isWebFullscreen = false;
-        updateWebFullscreenFloatingButton(); 
+        updateWebFullscreenFloatingButton();
         hideWebFullscreenFloatingButton();
         showToast('已退出网页全屏', 'info', 1500);
     }
@@ -108,11 +108,11 @@ function toggleWebFullscreen() {
 function createWebFullscreenFloatingButton() {
     // 避免重复创建
     if (document.getElementById('web-fullscreen-floating-btn')) return;
-    
+
     const floatingButton = document.createElement('button');
     floatingButton.id = 'web-fullscreen-floating-btn';
     floatingButton.className = 'fixed top-4 right-4 z-[10000] bg-black/70 hover:bg-black/90 backdrop-blur-md border border-white/30 hover:border-white/50 rounded-xl p-3 text-white/90 hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl opacity-0 pointer-events-none';
-    
+
     updateWebFullscreenFloatingButton();
     floatingButton.addEventListener('click', toggleWebFullscreen);
     document.body.appendChild(floatingButton);
@@ -144,7 +144,7 @@ function removeWebFullscreenClickHandler() {
         playerRegion.removeEventListener('click', handleWebFullscreenClick);
         playerRegion.removeEventListener('mousemove', handleWebFullscreenMouseMove);
     }
-    
+
     // 清除定时器
     if (webFullscreenHideTimer) {
         clearTimeout(webFullscreenHideTimer);
@@ -172,18 +172,16 @@ function showWebFullscreenFloatingButton() {
     if (floatingButton) {
         floatingButton.style.opacity = '1';
         floatingButton.style.pointerEvents = 'auto';
-        
-        // 清除之前的定时器
+
+        // 清除之前的定时器，防止冲突
         if (webFullscreenHideTimer) {
             clearTimeout(webFullscreenHideTimer);
         }
-        
-        // 在网页全屏模式下3秒后自动隐藏，非网页全屏模式下保持显示
-        if (isWebFullscreen) {
-            webFullscreenHideTimer = setTimeout(() => {
-                hideWebFullscreenFloatingButton();
-            }, 3000);
-        }
+
+        // 【修改】移除 if 条件，让定时器在任何情况下都生效
+        webFullscreenHideTimer = setTimeout(() => {
+            hideWebFullscreenFloatingButton();
+        }, 3000);
     }
 }
 
@@ -878,7 +876,7 @@ function setupPlayerControls() {
 
     // 创建网页全屏浮动按钮
     createWebFullscreenFloatingButton();
-    
+
     // 添加播放器区域交互处理（非网页全屏状态下）
     addPlayerRegionInteraction();
 
