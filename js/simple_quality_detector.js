@@ -1,7 +1,6 @@
 // ================================
 // 简化的画质检测模块 - 专门解决CORS问题
 // ================================
-
 /**
  * 简化的画质检测函数 - 主要通过URL分析和简单的网络测试
  * @param {string} m3u8Url - m3u8播放地址
@@ -13,7 +12,7 @@ async function simplePrecheckSource(m3u8Url) {
         return { quality: '检测失败', loadSpeed: 'N/A', pingTime: -1 };
     }
 
-    // 第二步：文件名关键词快速识别 (保持不变)
+    // 第二步：文件名关键词快速识别 (最高优先级)
     const qualityKeywords = {
         '4K': [/4k/i, /2160p/i, /3840x2160/i, /超高清/i, /uhd/i],
         '2K': [/2k/i, /1440p/i, /2560x1440/i, /qhd/i],
@@ -28,7 +27,7 @@ async function simplePrecheckSource(m3u8Url) {
         }
     }
 
-    // 第三步：进行实际的网络测速 (保持不变)
+    // 第三步：进行实际的网络测速
     const startTime = performance.now();
     try {
         const response = await fetch(m3u8Url, { method: 'GET', mode: 'cors', signal: AbortSignal.timeout(5000) });
@@ -60,53 +59,51 @@ async function simplePrecheckSource(m3u8Url) {
         }
         const pingTime = Math.round(firstByteTime);
 
-        // --- BUG FIX STARTS HERE ---
         let quality = '未知';
-        const numbers = m3u8Url.match(/\d+/g) || [];
-        const commonResolutions = [3840, 2560, 1920, 1280, 854, 720, 480];
-        let foundResolution = null;
 
-        for (const res of commonResolutions) {
-            if (numbers.some(n => Math.abs(parseInt(n) - res) <= 50)) {
-                foundResolution = res;
-                break;
-            }
-        }
-
-        if (!foundResolution) {
-            const pathResolutionMatch = m3u8Url.match(/\/(\d{3,4})p?\//);
-            if (pathResolutionMatch) {
-                const pathRes = parseInt(pathResolutionMatch[1]);
-                if (pathRes >= 480 && pathRes <= 4000) foundResolution = pathRes;
-            }
-        }
-
-        if (foundResolution) {
-            if (foundResolution >= 3840) quality = '4K';
-            else if (foundResolution >= 2560) quality = '2K';
-            else if (foundResolution >= 1920) quality = '1080p';
-            else if (foundResolution >= 1280) quality = '720p';
-            else if (foundResolution >= 854) quality = '480p';
-            // 修正点：明确指定480p，并移除最后的 else，避免错误归类
-            else if (foundResolution >= 480) quality = '480p';
-            else quality = 'SD';
+        // 优先级 1: 检查是否是现代CDN哈希URL
+        const hashMatch = m3u8Url.match(/[a-f0-9]{20,}/i);
+        if (hashMatch) {
+            quality = '1080p';
+            console.log('启发式规则匹配：长哈希值URL，猜测为 1080p');
         } else {
-            // 如果没有找到分辨率数字，则执行启发式规则
-            const hashMatch = m3u8Url.match(/[a-f0-9]{20,}/i);
-            if (hashMatch) {
-                quality = '1080p';
-                console.log('启发式规则匹配：长哈希值URL，猜测为 1080p');
+            // 优先级 2: 如果不是CDN URL，才进行数字分析
+            const numbers = m3u8Url.match(/\d+/g) || [];
+            const commonResolutions = [3840, 2560, 1920, 1280, 854, 720, 480];
+            let foundResolution = null;
+
+            // 使用严格的数字检查，只匹配精确的数字
+            for (const res of commonResolutions) {
+                if (numbers.some(n => parseInt(n) === res)) {
+                    foundResolution = res;
+                    break;
+                }
+            }
+
+            if (foundResolution) {
+                if (foundResolution >= 3840) quality = '4K';
+                else if (foundResolution >= 2560) quality = '2K';
+                else if (foundResolution >= 1920) quality = '1080p';
+                else if (foundResolution >= 1280) quality = '720p';
+                else if (foundResolution >= 854) quality = '480p';
+                else quality = 'SD';
             } else {
-                const filename = m3u8Url.split('/').pop().replace('.m3u8', '');
-                if (filename.length > 30) quality = '1080p';
-                else if (filename.length > 20) quality = '720p';
+                // 优先级 3: 最后的备用方案，融合码率和文件名长度
+                const bitrateMatch = m3u8Url.match(/(\d+)kb/i);
+                if (bitrateMatch) {
+                    const bitrate = parseInt(bitrateMatch[1]);
+                    if (bitrate >= 5000) quality = '4K';
+                    else if (bitrate >= 3000) quality = '1080p';
+                    else if (bitrate >= 1500) quality = '720p';
+                    else if (bitrate >= 800) quality = '480p';
+                    else quality = 'SD';
+                } else {
+                    const filename = m3u8Url.split('/').pop().replace('.m3u8', '');
+                    if (filename.length > 30) quality = '1080p';
+                    else if (filename.length > 20) quality = '720p';
+                }
             }
         }
-        // --- BUG FIX ENDS HERE ---
-
-        if (/high|hq|超清|高清/i.test(m3u8Url)) quality = '1080p';
-        if (/medium|mq|中等/i.test(m3u8Url)) quality = '720p';
-        if (/low|lq|标清/i.test(m3u8Url)) quality = '480p';
 
         return { quality, loadSpeed: actualLoadSpeed, pingTime };
     } catch (error) {
