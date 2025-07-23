@@ -215,9 +215,37 @@ class ProgressiveDetector {
      * 更新UI显示
      */
     updateUI(qualityId, result) {
+        // 更新UI标签
         const badge = document.querySelector(`.quality-badge[data-quality-id="${qualityId}"]`);
         if (badge && typeof window.updateQualityBadgeSeamlessly === 'function') {
             window.updateQualityBadgeSeamlessly(qualityId, result.quality);
+        }
+        
+        // 同步更新videoDataMap，确保弹窗显示最新数据
+        if (typeof window.AppState !== 'undefined') {
+            const videoDataMap = window.AppState.get('videoDataMap');
+            if (videoDataMap) {
+                const videoData = videoDataMap.get(qualityId);
+                if (videoData) {
+                    // 更新缓存中的画质信息
+                    videoData.quality = result.quality;
+                    videoData.loadSpeed = result.loadSpeed;
+                    videoData.pingTime = result.pingTime;
+                    
+                    // 保存更新后的数据
+                    videoDataMap.set(qualityId, videoData);
+                    window.AppState.set('videoDataMap', videoDataMap);
+                    
+                    // 同步到sessionStorage
+                    try {
+                        sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
+                    } catch (e) {
+                        console.warn('更新videoDataCache失败:', e);
+                    }
+                    
+                    console.log('✅ 已同步更新videoDataMap:', qualityId, result.quality);
+                }
+            }
         }
     }
     

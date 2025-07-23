@@ -464,8 +464,9 @@ async function performSearch(query, selectedAPIs) {
                 });
             }
         });
-        // 🚀 无感画质检测：立即返回结果，后台检测
+        // 🚀 无感画质检测：立即预测，保持原始数据结构
         const resultsWithPrediction = allResults.map(item => {
+            // 提取第一集URL用于画质检测，但不覆盖原始数据
             let firstEpisodeUrl = '';
             if (item.vod_play_url) {
                 const firstSegment = item.vod_play_url.split('#')[0];
@@ -479,12 +480,14 @@ async function performSearch(query, selectedAPIs) {
                 predictedQuality = prediction.quality;
             }
             
+            // 保持原始数据结构，只添加画质预测信息
             return {
-                ...item,
+                ...item, // 保持所有原始数据，包括完整的vod_play_url
                 quality: predictedQuality,
                 loadSpeed: '预测结果',
                 pingTime: 0,
-                vod_play_url: firstEpisodeUrl // 保存处理后的URL用于后续检测
+                // 添加检测用的URL，但不覆盖原始URL
+                _detectionUrl: firstEpisodeUrl
             };
         });
         
@@ -621,9 +624,15 @@ function startBackgroundQualityDetection(results) {
     setTimeout(() => {
         results.forEach((item, index) => {
             if (typeof window.progressiveDetector !== 'undefined') {
+                // 创建检测用的数据，使用_detectionUrl
+                const detectionItem = {
+                    ...item,
+                    vod_play_url: item._detectionUrl || item.vod_play_url
+                };
+                
                 // 前5个高优先级，立即检测
                 const priority = index < 5 ? 'high' : 'normal';
-                window.progressiveDetector.addToQueue(item, priority);
+                window.progressiveDetector.addToQueue(detectionItem, priority);
             }
         });
     }, 100);
@@ -957,11 +966,14 @@ function createResultItemUsingTemplate(item) {
         const qualityId = `${item.source_code}_${item.vod_id}`;
         qualityBadge.setAttribute('data-quality-id', qualityId);
         
-        // Phase 1: 立即预测画质
+        // Phase 1: 使用已有的画质信息（来自performSearch的预测）
         let displayQuality = item.quality || '未知';
-        if (typeof window.predictQualityInstantly === 'function') {
+        
+        // 如果还没有画质信息，进行预测
+        if (displayQuality === '未知' && typeof window.predictQualityInstantly === 'function') {
+            const detectionUrl = item._detectionUrl || item.vod_play_url;
             const prediction = window.predictQualityInstantly(
-                item.vod_play_url, 
+                detectionUrl, 
                 item.source_name, 
                 item
             );
@@ -1057,7 +1069,59 @@ function updateQualityBadgeSeamlessly(qualityId, newQuality) {
         setTimeout(() => {
             badge.style.transition = '';
         }, 300);
+        
+        // 🔄 同时更新弹窗中的画质信息（如果弹窗是打开的）
+        updateModalQualityInfo(qualityId, newQuality);
     }, 150);
+}
+
+/**
+ * 更新弹窗中的画质信息
+ */
+function updateModalQualityInfo(qualityId, newQuality) {
+    const modal = document.getElementById('modal');
+    if (modal && !modal.classList.contains('hidden')) {
+        const modalQualityTag = modal.querySelector('[data-field="quality-tag"]');
+        const modalSpeedTag = modal.querySelector('[data-field="speed-tag"]');
+        
+        if (modalQualityTag) {
+            // 检查当前弹窗是否对应这个qualityId
+            const videoDataMap = AppState.get('videoDataMap');
+            if (videoDataMap) {
+                const videoData = videoDataMap.get(qualityId);
+                if (videoData) {
+                    // 更新画质
+                    modalQualityTag.textContent = newQuality;
+                    
+                    // 更新画质颜色
+                    const qualityLower = newQuality.toLowerCase();
+                    if (qualityLower.includes('4k')) {
+                        modalQualityTag.style.backgroundColor = '#4f46e5';
+                    } else if (qualityLower.includes('1080')) {
+                        modalQualityTag.style.backgroundColor = '#7c3aed';
+                    } else if (qualityLower.includes('720')) {
+                        modalQualityTag.style.backgroundColor = '#2563eb';
+                    } else if (newQuality === '高清') {
+                        modalQualityTag.style.backgroundColor = '#10b981';
+                    } else {
+                        modalQualityTag.style.backgroundColor = '#6b7280';
+                    }
+                    
+                    // 尝试更新速度信息
+                    if (modalSpeedTag && typeof window.qualityCache !== 'undefined' && videoData._detectionUrl) {
+                        const latestResult = window.qualityCache.get(videoData._detectionUrl);
+                        if (latestResult && latestResult.loadSpeed && latestResult.loadSpeed !== 'N/A') {
+                            modalSpeedTag.textContent = latestResult.loadSpeed;
+                            modalSpeedTag.classList.remove('hidden');
+                            modalSpeedTag.style.backgroundColor = '#16a34a';
+                        }
+                    }
+                    
+                    console.log('✅ 已同步更新弹窗画质信息:', qualityId, newQuality);
+                }
+            }
+        }
+    }
 }
 
 window.updateQualityBadgeSeamlessly = updateQualityBadgeSeamlessly;
@@ -1196,7 +1260,34 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         const detectedQuality = videoData.quality; // 我们检测的质量
 
         // 优先用API提供的，其次用我们检测的，最后是未知
-        const finalQuality = sourceProvidedQuality || detectedQuality || '未知';
+        // 获取最新的画质信息
+        let finalQuality = '未知';
+        
+        // 1. 尝试从新缓存系统获取最新结果
+        if (typeof window.qualityCache !== 'undefined' && videoData._detectionUrl) {
+            const latestResult = window.qualityCache.get(videoData._detectionUrl);
+            if (latestResult && latestResult.quality) {
+                finalQuality = latestResult.quality;
+                console.log('🎯 弹窗使用新缓存系统的画质:', finalQuality);
+            }
+        }
+        
+        // 2. 回退到旧缓存系统
+        if (finalQuality === '未知') {
+            const cachedQuality = getCachedQuality(uniqueVideoKey);
+            if (cachedQuality) {
+                finalQuality = cachedQuality;
+                console.log('🎯 弹窗使用旧缓存系统的画质:', finalQuality);
+            }
+        }
+        
+        // 3. 使用videoData中的信息
+        if (finalQuality === '未知') {
+            const sourceProvidedQuality = videoData.vod_quality; // API直接提供的质量
+            const detectedQuality = videoData.quality; // 我们检测的质量
+            finalQuality = sourceProvidedQuality || detectedQuality || '未知';
+            console.log('🎯 弹窗使用videoData中的画质:', finalQuality);
+        }
 
         qualityTagElement.textContent = finalQuality;
 
@@ -1217,10 +1308,32 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         }
     }
     const speedTagElement = modalContent.querySelector('[data-field="speed-tag"]');
-    if (speedTagElement && videoData.loadSpeed && videoData.loadSpeed !== 'N/A') {
-        speedTagElement.textContent = videoData.loadSpeed;
-        speedTagElement.classList.remove('hidden');
-        speedTagElement.style.backgroundColor = '#16a34a';
+    if (speedTagElement) {
+        // 获取最新的速度信息
+        let loadSpeed = 'N/A';
+        
+        // 1. 尝试从新缓存系统获取最新结果
+        if (typeof window.qualityCache !== 'undefined' && videoData._detectionUrl) {
+            const latestResult = window.qualityCache.get(videoData._detectionUrl);
+            if (latestResult && latestResult.loadSpeed) {
+                loadSpeed = latestResult.loadSpeed;
+                console.log('🎯 弹窗使用新缓存系统的速度:', loadSpeed);
+            }
+        }
+        
+        // 2. 回退到videoData中的信息
+        if (loadSpeed === 'N/A' && videoData.loadSpeed && videoData.loadSpeed !== 'N/A') {
+            loadSpeed = videoData.loadSpeed;
+            console.log('🎯 弹窗使用videoData中的速度:', loadSpeed);
+        }
+        
+        if (loadSpeed && loadSpeed !== 'N/A') {
+            speedTagElement.textContent = loadSpeed;
+            speedTagElement.classList.remove('hidden');
+            speedTagElement.style.backgroundColor = '#16a34a';
+        } else {
+            speedTagElement.classList.add('hidden');
+        }
     }
     const episodeButtonsGrid = modalContent.querySelector('[data-field="episode-buttons-grid"]');
     const varietyShowTypes = ['综艺', '脱口秀', '真人秀', '纪录片'];

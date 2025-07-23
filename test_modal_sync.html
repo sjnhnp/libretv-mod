@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>弹窗同步测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #1a1a1a; color: white; }
+        .test-section { background: #333; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .mock-card { background: #444; padding: 15px; margin: 10px; border-radius: 8px; display: inline-block; width: 200px; }
+        .quality-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin: 5px 0; transition: all 0.3s ease; background: #666; color: white; }
+        .mock-modal { background: #222; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #555; }
+        .quality-tag { display: inline-block; padding: 6px 12px; border-radius: 4px; margin: 5px; color: white; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .log { background: #111; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔄 弹窗同步测试</h1>
+    
+    <div class="test-section">
+        <h2>模拟结果卡片</h2>
+        <div class="mock-card">
+            <h3>测试电影</h3>
+            <div class="quality-badge" data-quality-id="test_source_123">1080p</div>
+            <button onclick="updateQuality()">模拟画质更新</button>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>模拟弹窗</h2>
+        <div class="mock-modal" id="modal">
+            <h3>电影详情</h3>
+            <p>画质: <span class="quality-tag" data-field="quality-tag">1080p</span></p>
+            <p>速度: <span class="quality-tag" data-field="speed-tag">预测结果</span></p>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>测试日志</h2>
+        <button onclick="clearLog()">清空日志</button>
+        <div id="log" class="log"></div>
+    </div>
+
+    <!-- 加载必要的脚本 -->
+    <script src="js/config.js"></script>
+    <script src="js/simple_quality_detector.js"></script>
+    <script src="js/quality_predictor.js"></script>
+    <script src="js/quality_cache.js"></script>
+    <script src="js/quality_intelligence.js"></script>
+
+    <script>
+        let logs = [];
+        function log(msg) {
+            logs.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
+            document.getElementById('log').innerHTML = logs.join('<br>');
+        }
+        
+        function clearLog() {
+            logs = [];
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        // 模拟AppState
+        window.AppState = {
+            data: new Map(),
+            get: function(key) { return this.data.get(key); },
+            set: function(key, value) { this.data.set(key, value); }
+        };
+        
+        // 模拟videoDataMap
+        const mockVideoDataMap = new Map();
+        mockVideoDataMap.set('test_source_123', {
+            vod_id: '123',
+            vod_name: '测试电影',
+            source_code: 'test_source',
+            quality: '1080p',
+            loadSpeed: '预测结果',
+            _detectionUrl: 'https://example.com/test.m3u8'
+        });
+        window.AppState.set('videoDataMap', mockVideoDataMap);
+        
+        // 模拟qualityCache
+        if (typeof window.qualityCache !== 'undefined') {
+            window.qualityCache.set('https://example.com/test.m3u8', {
+                quality: '4K',
+                loadSpeed: '5.2 MB/s',
+                pingTime: 120
+            });
+        }
+        
+        // 模拟updateQualityBadgeSeamlessly函数
+        function updateQualityBadgeSeamlessly(qualityId, newQuality) {
+            log(`🔄 更新画质标签: ${qualityId} -> ${newQuality}`);
+            
+            const badge = document.querySelector(`[data-quality-id="${qualityId}"]`);
+            if (badge) {
+                badge.textContent = newQuality;
+                log(`✅ 卡片画质已更新: ${newQuality}`);
+            }
+            
+            // 更新弹窗
+            updateModalQualityInfo(qualityId, newQuality);
+        }
+        
+        // 模拟updateModalQualityInfo函数
+        function updateModalQualityInfo(qualityId, newQuality) {
+            log(`🎯 尝试更新弹窗画质: ${qualityId} -> ${newQuality}`);
+            
+            const modal = document.getElementById('modal');
+            if (modal) {
+                const modalQualityTag = modal.querySelector('[data-field="quality-tag"]');
+                const modalSpeedTag = modal.querySelector('[data-field="speed-tag"]');
+                
+                if (modalQualityTag) {
+                    modalQualityTag.textContent = newQuality;
+                    
+                    // 更新颜色
+                    const qualityLower = newQuality.toLowerCase();
+                    if (qualityLower.includes('4k')) {
+                        modalQualityTag.style.backgroundColor = '#4f46e5';
+                    } else if (qualityLower.includes('1080')) {
+                        modalQualityTag.style.backgroundColor = '#7c3aed';
+                    } else {
+                        modalQualityTag.style.backgroundColor = '#6b7280';
+                    }
+                    
+                    log(`✅ 弹窗画质已更新: ${newQuality}`);
+                }
+                
+                // 更新速度
+                if (modalSpeedTag && typeof window.qualityCache !== 'undefined') {
+                    const latestResult = window.qualityCache.get('https://example.com/test.m3u8');
+                    if (latestResult && latestResult.loadSpeed) {
+                        modalSpeedTag.textContent = latestResult.loadSpeed;
+                        modalSpeedTag.style.backgroundColor = '#16a34a';
+                        log(`✅ 弹窗速度已更新: ${latestResult.loadSpeed}`);
+                    }
+                }
+            }
+        }
+        
+        function updateQuality() {
+            log('🚀 开始模拟画质更新...');
+            updateQualityBadgeSeamlessly('test_source_123', '4K');
+        }
+        
+        // 初始化
+        setTimeout(() => {
+            log('✅ 测试环境初始化完成');
+            log('💡 点击"模拟画质更新"按钮测试同步功能');
+        }, 500);
+    </script>
+</body>
+</html>
