@@ -1405,7 +1405,7 @@ header {
 /* 网页全屏浮动按钮样式 */
 #web-fullscreen-floating-btn {
   position: fixed !important;
-  top: 1rem !important;
+  top: 72px !important;
   right: 1rem !important;
   z-index: 10000 !important;
   background: rgba(0, 0, 0, 0.7) !important;

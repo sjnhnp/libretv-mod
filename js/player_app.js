@@ -98,6 +98,7 @@ function toggleWebFullscreen() {
         removeWebFullscreenClickHandler();
         
         isWebFullscreen = false;
+        updateWebFullscreenFloatingButton(); 
         hideWebFullscreenFloatingButton();
         showToast('已退出网页全屏', 'info', 1500);
     }
