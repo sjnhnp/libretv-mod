@@ -11,6 +11,7 @@ class UnifiedQualityManager {
         this.cache = new Map(); // 内存缓存
         this.detectionQueue = new Set(); // 防重复检测
         this.isInitialized = false;
+        this.resortTimeout = null; // 排序防抖定时器
     }
 
     /**
@@ -106,6 +107,74 @@ class UnifiedQualityManager {
         
         // 3. 同步到全局状态
         this.syncToGlobalState(qualityId, data);
+        
+        // 4. 🔄 触发重新排序（如果有速度数据）
+        if (data.loadSpeed) {
+            this.triggerResort();
+        }
+    }
+
+    /**
+     * 触发结果重新排序
+     */
+    triggerResort() {
+        // 防抖处理，避免频繁排序
+        if (this.resortTimeout) {
+            clearTimeout(this.resortTimeout);
+        }
+        
+        this.resortTimeout = setTimeout(() => {
+            this.performResort();
+        }, 1000); // 1秒后执行排序
+    }
+
+    /**
+     * 执行结果重新排序
+     */
+    performResort() {
+        try {
+            // 获取当前搜索结果
+            const searchResultsContainer = document.getElementById('searchResults');
+            if (!searchResultsContainer) return;
+            
+            const gridContainer = searchResultsContainer.querySelector('.grid');
+            if (!gridContainer) return;
+            
+            const cards = Array.from(gridContainer.children);
+            if (cards.length === 0) return;
+            
+            // 提取卡片数据并排序
+            const cardData = cards.map(card => {
+                const cardElement = card.querySelector('.card-hover');
+                if (!cardElement || !cardElement.videoData) return null;
+                
+                return {
+                    element: card,
+                    data: cardElement.videoData
+                };
+            }).filter(Boolean);
+            
+            // 按速度排序
+            const sortedCardData = this.sortBySpeed(cardData.map(item => item.data));
+            
+            // 重新排列DOM元素
+            const fragment = document.createDocumentFragment();
+            sortedCardData.forEach(sortedItem => {
+                const cardItem = cardData.find(item => 
+                    item.data.source_code === sortedItem.source_code && 
+                    item.data.vod_id === sortedItem.vod_id
+                );
+                if (cardItem) {
+                    fragment.appendChild(cardItem.element);
+                }
+            });
+            
+            gridContainer.appendChild(fragment);
+            console.log('✅ 结果已按速度重新排序');
+            
+        } catch (error) {
+            console.warn('重新排序失败:', error);
+        }
     }
 
     /**

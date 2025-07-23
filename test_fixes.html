@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>修复测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #2a2a2a;
+        }
+        .test-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: #333;
+            border-radius: 4px;
+        }
+        .speed-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #16a34a;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .quality-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #7c3aed;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #3730a3;
+        }
+        .log {
+            background: #111;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>画质系统修复测试</h1>
+    
+    <div class="test-section">
+        <h2>问题1: 刷新后弹窗打不开</h2>
+        <p>测试步骤：</p>
+        <ol>
+            <li>模拟搜索结果缓存</li>
+            <li>清空videoDataMap（模拟刷新）</li>
+            <li>尝试打开弹窗</li>
+        </ol>
+        <button onclick="testModalFix()">测试弹窗修复</button>
+        <div id="modalTestResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>问题2: 速度排序不工作</h2>
+        <p>测试步骤：</p>
+        <ol>
+            <li>创建测试数据</li>
+            <li>设置不同的速度</li>
+            <li>验证排序结果</li>
+        </ol>
+        <button onclick="testSpeedSorting()">测试速度排序</button>
+        <div id="sortTestResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>动态重排序测试</h2>
+        <p>模拟检测完成后的动态重排序</p>
+        <div id="testResults"></div>
+        <button onclick="testDynamicResorting()">测试动态重排序</button>
+        <div id="resortTestResult" class="log"></div>
+    </div>
+
+    <!-- 加载必要的脚本 -->
+    <script src="js/unified_quality_system.js"></script>
+    <script>
+        // 模拟AppState
+        window.AppState = {
+            data: new Map(),
+            set: function(key, value) { this.data.set(key, value); },
+            get: function(key) { return this.data.get(key); }
+        };
+
+        // 测试数据
+        const testData = [
+            {
+                source_code: 'test1',
+                vod_id: '001',
+                vod_name: '测试视频1',
+                vod_play_url: 'http://test1.m3u8'
+            },
+            {
+                source_code: 'test2', 
+                vod_id: '002',
+                vod_name: '测试视频2',
+                vod_play_url: 'http://test2.m3u8'
+            },
+            {
+                source_code: 'test3',
+                vod_id: '003', 
+                vod_name: '测试视频3',
+                vod_play_url: 'http://test3.m3u8'
+            }
+        ];
+
+        function log(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '<br>';
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function testModalFix() {
+            log('modalTestResult', '开始测试弹窗修复...');
+            
+            // 1. 模拟搜索结果缓存
+            sessionStorage.setItem('searchResults', JSON.stringify(testData));
+            log('modalTestResult', '✅ 已设置sessionStorage缓存');
+            
+            // 2. 清空videoDataMap（模拟刷新）
+            AppState.set('videoDataMap', new Map());
+            log('modalTestResult', '⚠️ 已清空videoDataMap（模拟刷新）');
+            
+            // 3. 模拟showVideoEpisodesModal调用
+            const videoDataMap = AppState.get('videoDataMap');
+            const uniqueVideoKey = 'test1_001';
+            let videoData = videoDataMap ? videoDataMap.get(uniqueVideoKey) : null;
+            
+            log('modalTestResult', `初始查找结果: ${videoData ? '找到' : '未找到'}`);
+            
+            // 4. 尝试从sessionStorage恢复
+            if (!videoData) {
+                try {
+                    const cachedResults = sessionStorage.getItem('searchResults');
+                    if (cachedResults) {
+                        const results = JSON.parse(cachedResults);
+                        videoData = results.find(item => 
+                            item.source_code === 'test1' && item.vod_id === '001'
+                        );
+                        
+                        if (videoData) {
+                            const restoredMap = AppState.get('videoDataMap') || new Map();
+                            restoredMap.set(uniqueVideoKey, videoData);
+                            AppState.set('videoDataMap', restoredMap);
+                            log('modalTestResult', '✅ 从sessionStorage恢复视频数据成功');
+                        }
+                    }
+                } catch (e) {
+                    log('modalTestResult', '❌ 从sessionStorage恢复数据失败: ' + e.message);
+                }
+            }
+            
+            log('modalTestResult', `最终结果: ${videoData ? '✅ 可以打开弹窗' : '❌ 仍然无法打开弹窗'}`);
+        }
+
+        function testSpeedSorting() {
+            log('sortTestResult', '开始测试速度排序...');
+            
+            if (!window.unifiedQualityManager) {
+                log('sortTestResult', '❌ 统一画质管理器未加载');
+                return;
+            }
+            
+            // 设置测试速度数据
+            window.unifiedQualityManager.setQualityInfo('test1_001', {
+                quality: '1080p',
+                loadSpeed: '500 KB/s',
+                pingTime: 100
+            });
+            
+            window.unifiedQualityManager.setQualityInfo('test2_002', {
+                quality: '720p', 
+                loadSpeed: '2.5 MB/s',
+                pingTime: 80
+            });
+            
+            window.unifiedQualityManager.setQualityInfo('test3_003', {
+                quality: '1080p',
+                loadSpeed: '1.2 MB/s', 
+                pingTime: 120
+            });
+            
+            log('sortTestResult', '✅ 已设置测试速度数据');
+            
+            // 执行排序
+            const sortedResults = window.unifiedQualityManager.sortBySpeed(testData);
+            
+            log('sortTestResult', '排序结果:');
+            sortedResults.forEach((item, index) => {
+                const qualityId = `${item.source_code}_${item.vod_id}`;
+                const info = window.unifiedQualityManager.getQualityInfo(qualityId);
+                log('sortTestResult', `${index + 1}. ${item.vod_name} - ${info.loadSpeed || '无速度'}`);
+            });
+        }
+
+        function testDynamicResorting() {
+            log('resortTestResult', '开始测试动态重排序...');
+            
+            // 创建模拟的搜索结果DOM
+            const testResultsDiv = document.getElementById('testResults');
+            testResultsDiv.innerHTML = `
+                <div class="grid">
+                    <div>
+                        <div class="card-hover" data-source-code="test1" data-vod-id="001">
+                            <span class="quality-badge">1080p</span>
+                            测试视频1
+                            <span class="speed-badge">500 KB/s</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="card-hover" data-source-code="test2" data-vod-id="002">
+                            <span class="quality-badge">720p</span>
+                            测试视频2
+                            <span class="speed-badge">2.5 MB/s</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="card-hover" data-source-code="test3" data-vod-id="003">
+                            <span class="quality-badge">1080p</span>
+                            测试视频3
+                            <span class="speed-badge">1.2 MB/s</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 为卡片添加videoData
+            const cards = testResultsDiv.querySelectorAll('.card-hover');
+            cards.forEach((card, index) => {
+                card.videoData = testData[index];
+            });
+            
+            log('resortTestResult', '✅ 已创建模拟DOM结构');
+            
+            // 模拟检测完成，触发重排序
+            if (window.unifiedQualityManager) {
+                // 先设置速度数据
+                window.unifiedQualityManager.setQualityInfo('test1_001', {
+                    quality: '1080p',
+                    loadSpeed: '500 KB/s',
+                    pingTime: 100
+                });
+                
+                // 这个会触发重排序
+                window.unifiedQualityManager.setQualityInfo('test2_002', {
+                    quality: '720p',
+                    loadSpeed: '2.5 MB/s', 
+                    pingTime: 80
+                });
+                
+                log('resortTestResult', '✅ 已触发动态重排序');
+                
+                // 检查排序结果
+                setTimeout(() => {
+                    const sortedCards = testResultsDiv.querySelectorAll('.card-hover');
+                    log('resortTestResult', '重排序后的顺序:');
+                    sortedCards.forEach((card, index) => {
+                        const name = card.textContent.match(/测试视频\d+/)[0];
+                        log('resortTestResult', `${index + 1}. ${name}`);
+                    });
+                }, 1500);
+            }
+        }
+
+        // 初始化统一系统
+        if (window.unifiedQualityManager) {
+            window.unifiedQualityManager.init();
+            console.log('✅ 统一画质系统已初始化');
+        }
+    </script>
+</body>
+</html>

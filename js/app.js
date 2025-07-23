@@ -477,6 +477,7 @@ async function performSearch(query, selectedAPIs) {
         // 🎯 使用统一系统按速度排序（检测完成后会自动重新排序）
         if (window.unifiedQualityManager) {
             checkedResults = window.unifiedQualityManager.sortBySpeed(checkedResults);
+            console.log('✅ 初始搜索结果已按速度排序');
         }
         const videoDataMap = AppState.get('videoDataMap') || new Map();
         checkedResults.forEach(item => {
@@ -1132,7 +1133,31 @@ window.updateQualityBadgeSeamlessly = updateQualityBadgeSeamlessly;
 async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackData) {
     const videoDataMap = AppState.get('videoDataMap');
     const uniqueVideoKey = `${sourceCode}_${id}`;
-    const videoData = videoDataMap ? videoDataMap.get(uniqueVideoKey) : null;
+    let videoData = videoDataMap ? videoDataMap.get(uniqueVideoKey) : null;
+    
+    // 🔧 修复：如果缓存中没有数据，尝试从sessionStorage恢复
+    if (!videoData) {
+        try {
+            const cachedResults = sessionStorage.getItem('searchResults');
+            if (cachedResults) {
+                const results = JSON.parse(cachedResults);
+                videoData = results.find(item => 
+                    item.source_code === sourceCode && item.vod_id === id
+                );
+                
+                // 如果找到了，重新添加到缓存中
+                if (videoData) {
+                    const restoredMap = AppState.get('videoDataMap') || new Map();
+                    restoredMap.set(uniqueVideoKey, videoData);
+                    AppState.set('videoDataMap', restoredMap);
+                    console.log('✅ 从sessionStorage恢复视频数据:', uniqueVideoKey);
+                }
+            }
+        } catch (e) {
+            console.error('从sessionStorage恢复数据失败:', e);
+        }
+    }
+    
     if (!videoData) {
         hideLoading();
         showToast('缓存中找不到视频数据，请刷新后重试', 'error');
