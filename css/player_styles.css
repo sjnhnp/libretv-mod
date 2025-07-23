@@ -1345,23 +1345,18 @@ header {
   padding: 6px 0;
 }
 
-#web-fullscreen-button,
 #fullscreen-button {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-left: auto;
   width: 44px;
   height: 44px;
   border-radius: 50%;
   background: rgba(30, 30, 30, 0.7);
 }
 
-#fullscreen-button {
-  margin-left: auto;
-}
-
 #back-button svg,
-#web-fullscreen-button svg,
 #fullscreen-button svg {
   vertical-align: middle;
 }
@@ -1407,8 +1402,8 @@ header {
   transition: opacity .3s ease-in-out;
 }
 
-/* 网页全屏退出按钮样式 */
-#web-fullscreen-exit-btn {
+/* 网页全屏浮动按钮样式 */
+#web-fullscreen-floating-btn {
   position: fixed !important;
   top: 1rem !important;
   right: 1rem !important;
@@ -1419,29 +1414,31 @@ header {
   border-radius: 12px !important;
   padding: 12px !important;
   color: rgba(255, 255, 255, 0.9) !important;
-  transition: all 0.3s ease !important;
+  transition: all 0.3s ease, opacity 0.3s ease !important;
   cursor: pointer !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   width: 48px !important;
   height: 48px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
-#web-fullscreen-exit-btn:hover {
+#web-fullscreen-floating-btn:hover {
   background: rgba(0, 0, 0, 0.9) !important;
   border-color: rgba(255, 255, 255, 0.5) !important;
   color: white !important;
   transform: scale(1.05) !important;
 }
 
-#web-fullscreen-exit-btn:active {
+#web-fullscreen-floating-btn:active {
   transform: scale(0.95) !important;
 }
 
 /* 移动端优化 */
 @media (max-width: 768px) {
-  #web-fullscreen-exit-btn {
+  #web-fullscreen-floating-btn {
     top: 0.75rem !important;
     right: 0.75rem !important;
     width: 44px !important;
