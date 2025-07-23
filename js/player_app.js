@@ -216,21 +216,21 @@ function handlePlayerRegionMouseMove(e) {
 }
 
 // 更新浮动按钮的图标和文本
+
 function updateWebFullscreenFloatingButton() {
     const floatingButton = document.getElementById('web-fullscreen-floating-btn');
     if (floatingButton) {
+        // 根据 isWebFullscreen 的状态，切换两种不同的 SVG 图标
         floatingButton.innerHTML = isWebFullscreen ?
+            // 退出网页全屏 (Minimize) 图标：四个角向内收缩
             `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="4 14 10 14 10 20"></polyline>
-                <polyline points="20 10 14 10 14 4"></polyline>
-                <line x1="14" y1="10" x2="21" y2="3"></line>
-                <line x1="3" y1="21" x2="10" y2="14"></line>
+                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
             </svg>` :
+            // 进入网页全屏 (Maximize) 图标：四个角向外展开
             `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                <line x1="8" y1="21" x2="16" y2="21"></line>
-                <line x1="12" y1="17" x2="12" y2="21"></line>
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
             </svg>`;
+            
         floatingButton.setAttribute('aria-label', isWebFullscreen ? '退出网页全屏' : '网页全屏');
     }
 }
