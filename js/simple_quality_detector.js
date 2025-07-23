@@ -1,3 +1,5 @@
+// js/simple_quality_detector.js (已根据您的方案优化)
+
 // ================================
 // 简化的画质检测模块 - 专门解决CORS问题
 // ================================
@@ -84,7 +86,7 @@ async function simplePrecheckSource(m3u8Url) {
         const pingTime = Math.round(firstByteTime);
 
         // 基于URL特征推断画质
-        let quality = '高清';
+        let quality = '未知';
 
         // 检查URL中的数字特征 - 改进版，更智能地识别分辨率数字
         const numbers = m3u8Url.match(/\d+/g) || [];
@@ -135,22 +137,29 @@ async function simplePrecheckSource(m3u8Url) {
             else if (foundResolution >= 854) quality = '480p';
             else quality = 'SD';
         } else {
-            // 如果没有找到明显的分辨率数字，使用启发式方法
-            const filename = m3u8Url.split('/').pop().replace('.m3u8', '');
-
-            // 检查文件名中的码率信息（如3309kb表示高码率）
-            const bitrateMatch = m3u8Url.match(/(\d+)kb/i);
-            if (bitrateMatch) {
-                const bitrate = parseInt(bitrateMatch[1]);
-                if (bitrate >= 5000) quality = '4K';
-                else if (bitrate >= 3000) quality = '1080p';
-                else if (bitrate >= 1500) quality = '720p';
-                else if (bitrate >= 800) quality = '480p';
-                else quality = 'SD';
-            } else if (filename.length > 30) {
-                quality = '1080p'; // 复杂文件名通常表示高质量
-            } else if (filename.length > 20) {
-                quality = '720p';
+            // --- 变更点 3：增加新的启发式规则 ---
+            // 规则：如果URL路径中包含一个长哈希值（通常是UUID或SHA），则很有可能是现代CDN，画质较高。
+            // 正则表达式匹配一个连续的、超过20个字符的十六进制字符串。
+            const hashMatch = m3u8Url.match(/[a-f0-9]{20,}/i);
+            if (hashMatch) {
+                quality = '1080p'; // 这是一个有根据的猜测
+                console.log('启发式规则匹配：长哈希值URL，猜测为 1080p');
+            } else {
+                // 如果没有找到明显的分辨率数字，使用旧的启发式方法
+                const filename = m3u8Url.split('/').pop().replace('.m3u8', '');
+                const bitrateMatch = m3u8Url.match(/(\d+)kb/i);
+                if (bitrateMatch) {
+                    const bitrate = parseInt(bitrateMatch[1]);
+                    if (bitrate >= 5000) quality = '4K';
+                    else if (bitrate >= 3000) quality = '1080p';
+                    else if (bitrate >= 1500) quality = '720p';
+                    else if (bitrate >= 800) quality = '480p';
+                    else quality = 'SD';
+                } else if (filename.length > 30) {
+                    quality = '1080p';
+                } else if (filename.length > 20) {
+                    quality = '720p';
+                }
             }
         }
 
@@ -166,24 +175,12 @@ async function simplePrecheckSource(m3u8Url) {
         };
 
     } catch (error) {
-        // 网络测试失败，尝试简单的ping测试
-        try {
-            const pingStart = performance.now();
-            await fetch(m3u8Url, { method: 'HEAD', mode: 'no-cors', signal: AbortSignal.timeout(2000) });
-            const pingTime = Math.round(performance.now() - pingStart);
-
-            return {
-                quality: '1080p', // 默认假设为1080p
-                loadSpeed: '连接正常',
-                pingTime
-            };
-        } catch (pingError) {
-            return {
-                quality: '1080p',
-                loadSpeed: '连接超时',
-                pingTime: Math.round(performance.now() - startTime)
-            };
-        }
+        // --- 变更点 2 ---：网络测试完全失败时，返回明确的失败状态
+        return {
+            quality: '检测失败',
+            loadSpeed: '连接超时',
+            pingTime: Math.round(performance.now() - startTime)
+        };
     }
 }
 
@@ -300,15 +297,13 @@ async function tryParseM3u8Resolution(m3u8Url) {
 }
 
 /**
- * 使用video元素进行检测
+ * 增强版：使用video元素进行检测 (采纳方案1)
  */
-// js/simple_quality_detector.js
-
 async function performVideoElementDetection(m3u8Url) {
     return new Promise((resolve) => {
         const video = document.createElement('video');
         video.muted = true;
-        video.preload = 'auto'; // 改为 auto 以便开始播放
+        video.preload = 'auto';
         video.style.display = 'none';
         video.style.position = 'absolute';
         video.style.top = '-9999px';
@@ -317,14 +312,11 @@ async function performVideoElementDetection(m3u8Url) {
 
         const startTime = performance.now();
         let resolved = false;
-        let checkTimer = null;
 
         const cleanup = () => {
-            clearTimeout(timeout);
-            clearTimeout(checkTimer);
             if (video.parentNode) {
                 video.pause();
-                video.src = ''; // 释放资源
+                video.src = '';
                 video.parentNode.removeChild(video);
             }
         };
@@ -343,25 +335,13 @@ async function performVideoElementDetection(m3u8Url) {
                 loadSpeed: 'N/A',
                 pingTime: Math.round(performance.now() - startTime)
             });
-        }, 5000); // 将总超时延长到5秒
+        }, 5000); // 5秒超时
 
         const checkResolution = () => {
             const width = video.videoWidth;
-            const height = video.videoHeight;
-
-            // 如果在1.5秒后仍然没有获取到有效分辨率，则认为失败
-            if (width === 0 && video.currentTime > 1.5) {
-                resolveOnce({
-                    quality: '播放失败',
-                    loadSpeed: 'N/A',
-                    pingTime: -1
-                });
-                return;
-            }
-
             if (width > 0) {
                 const pingTime = Math.round(performance.now() - startTime);
-                let quality = '高清';
+                let quality = '未知'; // 默认是未知
                 if (width >= 3840) quality = '4K';
                 else if (width >= 2560) quality = '2K';
                 else if (width >= 1920) quality = '1080p';
@@ -371,7 +351,7 @@ async function performVideoElementDetection(m3u8Url) {
 
                 resolveOnce({
                     quality,
-                    loadSpeed: `${width}x${height}`,
+                    loadSpeed: `${width}x${video.videoHeight}`,
                     pingTime
                 });
             }
@@ -379,17 +359,12 @@ async function performVideoElementDetection(m3u8Url) {
 
         video.onloadedmetadata = () => {
             video.play().catch(() => {
-                resolveOnce({
-                    quality: '播放失败',
-                    loadSpeed: 'N/A',
-                    pingTime: -1
-                });
+                resolveOnce({ quality: '播放失败', loadSpeed: 'N/A', pingTime: -1 });
             });
         };
 
-        // 监听播放时间和分辨率变化
         video.ontimeupdate = checkResolution;
-        video.onresize = checkResolution; // 当分辨率变化时也检测
+        video.onresize = checkResolution;
 
         video.onerror = () => {
             resolveOnce({
@@ -404,13 +379,13 @@ async function performVideoElementDetection(m3u8Url) {
     });
 }
 
+
 /**
  * 综合画质检测函数 - 重新设计优先级逻辑
  * @param {string} m3u8Url - m3u8播放地址
  * @returns {Promise<{quality: string, loadSpeed: string, pingTime: number}>}
  */
 async function comprehensiveQualityCheck(m3u8Url) {
-    console.log('开始综合画质检测:', m3u8Url);
 
     // 并行执行所有检测方法
     const detectionPromises = [];
@@ -496,23 +471,18 @@ async function comprehensiveQualityCheck(m3u8Url) {
     // 优先级4: 简单检测
     if (!bestResult) {
         const simpleResult = results.find(r => r.method === 'simple_analysis');
-        if (simpleResult && simpleResult.quality !== '检测失败') {
+        if (simpleResult && simpleResult.quality !== '检测失败' && simpleResult.quality !== '未知') {
             console.log('采用简单检测结果:', simpleResult.quality);
             bestResult = simpleResult;
-
-            // 修正一些通用术语
-            if (bestResult.quality === '高清') {
-                bestResult.quality = '1080p';
-            }
         }
     }
 
-    // 如果所有方法都失败，返回默认结果
+    // --- 变更点 2 ---：如果所有方法都失败，返回明确的'未知'
     if (!bestResult) {
-        console.log('所有检测方法都失败，返回默认结果');
+        console.log('所有检测方法都失败，返回未知');
         bestResult = {
-            quality: '1080p',
-            loadSpeed: '未知',
+            quality: '未知', // 不再猜测，返回真实状态
+            loadSpeed: 'N/A',
             pingTime: -1,
             method: 'fallback',
             priority: 99
