@@ -196,15 +196,6 @@ function hideWebFullscreenFloatingButton() {
     }
 }
 
-// 添加播放器区域交互处理（适用于所有状态）
-function addPlayerRegionInteraction() {
-    const playerRegion = document.getElementById('player-region');
-    if (playerRegion) {
-        playerRegion.addEventListener('click', handlePlayerRegionClick);
-        playerRegion.addEventListener('mousemove', handlePlayerRegionMouseMove);
-    }
-}
-
 // 处理播放器区域点击
 function handlePlayerRegionClick(e) {
     showWebFullscreenFloatingButton();
@@ -230,7 +221,7 @@ function updateWebFullscreenFloatingButton() {
             `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
             </svg>`;
-            
+
         floatingButton.setAttribute('aria-label', isWebFullscreen ? '退出网页全屏' : '网页全屏');
     }
 }
@@ -563,6 +554,12 @@ async function initPlayer(videoUrl, title) {
 function addPlayerEventListeners() {
     if (!player) return;
 
+    const playerElement = document.getElementById('player');
+    if (playerElement) {
+        playerElement.addEventListener('click', handlePlayerRegionClick);
+        playerElement.addEventListener('mousemove', handlePlayerRegionMouseMove);
+    }
+
     player.addEventListener('fullscreen-change', (event) => {
         const isFullscreen = event.detail;
         const fsButton = document.getElementById('fullscreen-button');
@@ -878,9 +875,6 @@ function setupPlayerControls() {
 
     // 创建网页全屏浮动按钮
     createWebFullscreenFloatingButton();
-
-    // 添加播放器区域交互处理（非网页全屏状态下）
-    addPlayerRegionInteraction();
 
     const fullscreenButton = document.getElementById('fullscreen-button');
     if (fullscreenButton) {
