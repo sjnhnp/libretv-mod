@@ -449,7 +449,7 @@ async function performSearch(query, selectedAPIs) {
                 });
             }
         });
-        // 🚀 无感画质检测：立即预测，保持原始数据结构
+        // 🚀 无感画质检测：优先使用缓存，然后预测
         const resultsWithPrediction = allResults.map(item => {
             // 提取第一集URL用于画质检测，但不覆盖原始数据
             let firstEpisodeUrl = '';
@@ -458,18 +458,30 @@ async function performSearch(query, selectedAPIs) {
                 firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
             }
             
-            // Phase 1: 立即预测画质
-            let predictedQuality = '高清';
-            if (typeof window.predictQualityInstantly === 'function') {
+            // 生成唯一ID用于缓存查询
+            const qualityId = `${item.source_code}_${item.vod_id}`;
+            let finalQuality = '高清';
+            let finalLoadSpeed = '预测结果';
+            
+            // 1. 优先从缓存系统获取
+            const cachedData = getCachedQualityData(qualityId);
+            if (cachedData && cachedData.quality) {
+                finalQuality = cachedData.quality;
+                finalLoadSpeed = cachedData.loadSpeed || '已检测';
+                console.log(`✅ 搜索[${qualityId}]使用缓存画质:`, finalQuality);
+            }
+            // 2. 如果没有缓存，进行预测
+            else if (typeof window.predictQualityInstantly === 'function') {
                 const prediction = window.predictQualityInstantly(firstEpisodeUrl, item.source_name, item);
-                predictedQuality = prediction.quality;
+                finalQuality = prediction.quality;
+                console.log(`✅ 搜索[${qualityId}]使用预测画质:`, finalQuality);
             }
             
             // 保持原始数据结构，只添加画质预测信息
             return {
                 ...item, // 保持所有原始数据，包括完整的vod_play_url
-                quality: predictedQuality,
-                loadSpeed: '预测结果',
+                quality: finalQuality,
+                loadSpeed: finalLoadSpeed,
                 pingTime: 0,
                 // 添加检测用的URL，但不覆盖原始URL
                 _detectionUrl: firstEpisodeUrl
@@ -951,11 +963,22 @@ function createResultItemUsingTemplate(item) {
         const qualityId = `${item.source_code}_${item.vod_id}`;
         qualityBadge.setAttribute('data-quality-id', qualityId);
         
-        // Phase 1: 使用已有的画质信息（来自performSearch的预测）
-        let displayQuality = item.quality || '未知';
+        // 统一获取画质信息的逻辑
+        let displayQuality = '未知';
         
-        // 如果还没有画质信息，进行预测
-        if (displayQuality === '未知' && typeof window.predictQualityInstantly === 'function') {
+        // 1. 优先从缓存系统获取
+        const cachedData = getCachedQualityData(qualityId);
+        if (cachedData && cachedData.quality) {
+            displayQuality = cachedData.quality;
+            console.log(`✅ 卡片[${qualityId}]使用缓存画质:`, displayQuality);
+        }
+        // 2. 其次使用item中的画质
+        else if (item.quality) {
+            displayQuality = item.quality;
+            console.log(`✅ 卡片[${qualityId}]使用预设画质:`, displayQuality);
+        }
+        // 3. 最后进行即时预测
+        else if (typeof window.predictQualityInstantly === 'function') {
             const detectionUrl = item._detectionUrl || item.vod_play_url;
             const prediction = window.predictQualityInstantly(
                 detectionUrl, 
@@ -963,6 +986,7 @@ function createResultItemUsingTemplate(item) {
                 item
             );
             displayQuality = prediction.quality;
+            console.log(`✅ 卡片[${qualityId}]使用预测画质:`, displayQuality);
             
             // 标记为预测状态
             qualityBadge.setAttribute('data-prediction-status', prediction.status);
@@ -1020,44 +1044,58 @@ window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
  * 无感知更新画质标签
  */
 function updateQualityBadgeSeamlessly(qualityId, newQuality) {
-    const badge = document.querySelector(`.quality-badge[data-quality-id="${qualityId}"]`);
-    if (!badge) return;
+    console.log(`🔄 更新画质标签: ${qualityId} -> ${newQuality}`);
     
-    const currentQuality = badge.textContent;
-    
-    // 如果预测准确，无需更新
-    if (currentQuality === newQuality) {
-        // 移除预测状态，表示检测完成
-        badge.removeAttribute('data-prediction-status');
-        badge.classList.remove('quality-predicted');
+    // 查找所有匹配的标签（可能有多个相同ID的卡片）
+    const badges = document.querySelectorAll(`.quality-badge[data-quality-id="${qualityId}"]`);
+    if (badges.length === 0) {
+        console.log(`⚠️ 未找到画质标签: ${qualityId}`);
         return;
     }
     
-    // 优雅的更新动画
-    badge.style.transition = 'all 0.3s ease';
-    badge.style.transform = 'scale(0.95)';
-    badge.style.opacity = '0.8';
+    console.log(`✅ 找到${badges.length}个画质标签`);
     
-    setTimeout(() => {
-        // 更新内容和样式
-        updateQualityBadgeUI(qualityId, newQuality, badge);
+    // 更新所有匹配的标签
+    badges.forEach(badge => {
+        const currentQuality = badge.textContent;
         
-        // 移除预测状态
-        badge.removeAttribute('data-prediction-status');
-        badge.classList.remove('quality-predicted');
+        // 如果预测准确，无需更新
+        if (currentQuality === newQuality) {
+            // 移除预测状态，表示检测完成
+            badge.removeAttribute('data-prediction-status');
+            badge.classList.remove('quality-predicted');
+            console.log(`✅ 预测准确，无需更新: ${qualityId}`);
+            return;
+        }
         
-        // 恢复正常状态
-        badge.style.transform = 'scale(1)';
-        badge.style.opacity = '1';
+        // 优雅的更新动画
+        badge.style.transition = 'all 0.3s ease';
+        badge.style.transform = 'scale(0.95)';
+        badge.style.opacity = '0.8';
         
-        // 清理过渡效果
         setTimeout(() => {
-            badge.style.transition = '';
-        }, 300);
-        
-        // 🔄 同时更新弹窗中的画质信息（如果弹窗是打开的）
-        updateModalQualityInfo(qualityId, newQuality);
-    }, 150);
+            // 更新内容和样式
+            updateQualityBadgeUI(qualityId, newQuality, badge);
+            
+            // 移除预测状态
+            badge.removeAttribute('data-prediction-status');
+            badge.classList.remove('quality-predicted');
+            
+            // 恢复正常状态
+            badge.style.transform = 'scale(1)';
+            badge.style.opacity = '1';
+            
+            // 清理过渡效果
+            setTimeout(() => {
+                badge.style.transition = '';
+            }, 300);
+            
+            console.log(`✅ 画质标签更新完成: ${qualityId} -> ${newQuality}`);
+        }, 150);
+    });
+    
+    // 🔄 同时更新弹窗中的画质信息（如果弹窗是打开的）
+    updateModalQualityInfo(qualityId, newQuality);
 }
 
 /**
@@ -1066,6 +1104,13 @@ function updateQualityBadgeSeamlessly(qualityId, newQuality) {
 function updateModalQualityInfo(qualityId, newQuality) {
     const modal = document.getElementById('modal');
     if (modal && !modal.classList.contains('hidden')) {
+        // 检查是否是当前显示的视频
+        const currentVideoId = modal.getAttribute('data-current-video-id');
+        if (currentVideoId && currentVideoId !== qualityId) {
+            console.log(`⚠️ 弹窗显示的不是当前视频: ${currentVideoId} ≠ ${qualityId}`);
+            return; // 不更新不相关的弹窗
+        }
+        
         const modalQualityTag = modal.querySelector('[data-field="quality-tag"]');
         const modalSpeedTag = modal.querySelector('[data-field="speed-tag"]');
         
@@ -1314,10 +1359,17 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             speedTagElement.textContent = loadSpeed;
             speedTagElement.classList.remove('hidden');
             speedTagElement.style.backgroundColor = '#16a34a';
-            console.log('🎯 弹窗显示速度信息:', loadSpeed);
+            console.log('✅ 弹窗显示速度信息:', loadSpeed);
         } else {
-            speedTagElement.classList.add('hidden');
-            console.log('🎯 弹窗隐藏速度标签，无有效速度数据');
+            // 如果没有真实速度，显示一个默认值
+            if (finalQuality !== '未知') {
+                speedTagElement.textContent = '速度未知';
+                speedTagElement.classList.remove('hidden');
+                speedTagElement.style.backgroundColor = '#6b7280'; // 灰色
+                console.log('ℹ️ 弹窗显示默认速度信息');
+            } else {
+                speedTagElement.classList.add('hidden');
+                console.log('⚠️ 弹窗隐藏速度标签，无有效数据');
         }
     }
     const episodeButtonsGrid = modalContent.querySelector('[data-field="episode-buttons-grid"]');
@@ -1338,6 +1390,13 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         orderIcon.style.transform = (AppState.get('episodesReversed') || false) ? 'rotate(180deg)' : 'rotate(0deg)';
     }
     showModal(modalContent, `${effectiveTitle} (${sourceNameForDisplay})`);
+    
+    // 设置当前视频ID，用于防止错误更新
+    const modal = document.getElementById('modal');
+    if (modal) {
+        modal.setAttribute('data-current-video-id', uniqueVideoKey);
+        console.log(`✅ 设置弹窗当前视频ID: ${uniqueVideoKey}`);
+    }
 }
 
 function toggleEpisodeOrderUI(container) {
