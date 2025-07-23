@@ -111,7 +111,7 @@ function createWebFullscreenFloatingButton() {
 
     const floatingButton = document.createElement('button');
     floatingButton.id = 'web-fullscreen-floating-btn';
-    floatingButton.className = 'fixed top-4 right-4 z-[10000] bg-black/70 hover:bg-black/90 backdrop-blur-md border border-white/30 hover:border-white/50 rounded-xl p-3 text-white/90 hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl opacity-0 pointer-events-none';
+    floatingButton.className = 'fixed z-[10000] bg-black/70 hover:bg-black/90 backdrop-blur-md border border-white/30 hover:border-white/50 rounded-xl p-3 text-white/90 hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl opacity-0 pointer-events-none';
 
     updateWebFullscreenFloatingButton();
     floatingButton.addEventListener('click', toggleWebFullscreen);

@@ -1405,7 +1405,7 @@ header {
 /* 网页全屏浮动按钮样式 */
 #web-fullscreen-floating-btn {
   position: fixed !important;
-  bottom: 1rem !important;
+  top: 112px !important;
   right: 1rem !important;
   z-index: 10000 !important;
   background: rgba(0, 0, 0, 0.7) !important;
@@ -1439,7 +1439,7 @@ header {
 /* 移动端优化 */
 @media (max-width: 768px) {
   #web-fullscreen-floating-btn {
-    bottom: 0.75rem !important;
+    top: 64px !important;
     right: 0.75rem !important;
     width: 44px !important;
     height: 44px !important;
