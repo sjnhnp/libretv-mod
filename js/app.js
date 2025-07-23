@@ -1042,14 +1042,20 @@ window.toggleEpisodeOrderUI = toggleEpisodeOrderUI;
 
 /**
  * 无感知更新画质标签
+ * @param {string} qualityId - 视频的唯一ID
+ * @param {object} result - 包含画质、速度等信息的完整结果对象
  */
-function updateQualityBadgeSeamlessly(qualityId, newQuality) {
+function updateQualityBadgeSeamlessly(qualityId, result) {
+    const newQuality = result.quality;
     console.log(`🔄 更新画质标签: ${qualityId} -> ${newQuality}`);
 
     // 查找所有匹配的标签（可能有多个相同ID的卡片）
     const badges = document.querySelectorAll(`.quality-badge[data-quality-id="${qualityId}"]`);
+    
+    // 【修复】即使找不到卡片标签，也要尝试更新弹窗
     if (badges.length === 0) {
-        console.log(`⚠️ 未找到画质标签: ${qualityId}`);
+        console.log(`⚠️ 未找到画质标签: ${qualityId}，但仍将尝试更新弹窗。`);
+        updateModalQualityInfo(qualityId, result);
         return;
     }
 
@@ -1095,13 +1101,16 @@ function updateQualityBadgeSeamlessly(qualityId, newQuality) {
     });
 
     // 🔄 同时更新弹窗中的画质信息（如果弹窗是打开的）
-    updateModalQualityInfo(qualityId, newQuality);
+    updateModalQualityInfo(qualityId, result);
 }
+
 
 /**
  * 更新弹窗中的画质信息
+ * @param {string} qualityId - 视频的唯一ID
+ * @param {object} result - 包含画质、速度等信息的完整结果对象
  */
-function updateModalQualityInfo(qualityId, newQuality) {
+function updateModalQualityInfo(qualityId, result) {
     const modal = document.getElementById('modal');
     if (modal && !modal.classList.contains('hidden')) {
         // 检查是否是当前显示的视频
@@ -1113,50 +1122,47 @@ function updateModalQualityInfo(qualityId, newQuality) {
 
         const modalQualityTag = modal.querySelector('[data-field="quality-tag"]');
         const modalSpeedTag = modal.querySelector('[data-field="speed-tag"]');
+        const newQuality = result.quality;
 
         if (modalQualityTag) {
-            // 检查当前弹窗是否对应这个qualityId
-            const videoDataMap = AppState.get('videoDataMap');
-            if (videoDataMap) {
-                const videoData = videoDataMap.get(qualityId);
-                if (videoData) {
-                    // 更新画质
-                    modalQualityTag.textContent = newQuality;
+            // 更新画质
+            modalQualityTag.textContent = newQuality;
 
-                    // 更新画质颜色
-                    const qualityLower = newQuality.toLowerCase();
-                    if (qualityLower.includes('4k')) {
-                        modalQualityTag.style.backgroundColor = '#4f46e5';
-                    } else if (qualityLower.includes('1080')) {
-                        modalQualityTag.style.backgroundColor = '#7c3aed';
-                    } else if (qualityLower.includes('720')) {
-                        modalQualityTag.style.backgroundColor = '#2563eb';
-                    } else if (newQuality === '高清') {
-                        modalQualityTag.style.backgroundColor = '#10b981';
+            // 更新画质颜色
+            const qualityLower = newQuality.toLowerCase();
+            if (qualityLower.includes('4k')) {
+                modalQualityTag.style.backgroundColor = '#4f46e5';
+            } else if (qualityLower.includes('1080')) {
+                modalQualityTag.style.backgroundColor = '#7c3aed';
+            } else if (qualityLower.includes('720')) {
+                modalQualityTag.style.backgroundColor = '#2563eb';
+            } else if (newQuality === '高清') {
+                modalQualityTag.style.backgroundColor = '#10b981';
+            } else {
+                modalQualityTag.style.backgroundColor = '#6b7280';
+            }
+
+            // 【修复】直接使用 result 对象中的速度信息，不再重新读取缓存
+            if (modalSpeedTag) {
+                const loadSpeed = result.loadSpeed;
+                const isRealSpeed = loadSpeed && (loadSpeed.match(/\d+(\.\d+)?\s*(KB\/s|MB\/s)$/i) || loadSpeed.includes('连接'));
+
+                if (isRealSpeed) {
+                    modalSpeedTag.textContent = loadSpeed;
+                    modalSpeedTag.classList.remove('hidden');
+                    modalSpeedTag.style.backgroundColor = '#16a34a';
+                } else {
+                    // 如果没有真实速度，但有画质，显示“速度未知”
+                    if (newQuality !== '未知' && newQuality !== '检测失败' && newQuality !== '检测超时') {
+                        modalSpeedTag.textContent = '速度未知';
+                        modalSpeedTag.classList.remove('hidden');
+                        modalSpeedTag.style.backgroundColor = '#6b7280';
                     } else {
-                        modalQualityTag.style.backgroundColor = '#6b7280';
+                        modalSpeedTag.classList.add('hidden');
                     }
-
-                    // 更新速度信息（只显示真实速度）
-                    if (modalSpeedTag) {
-                        const cachedData = getCachedQualityData(qualityId);
-                        if (cachedData && cachedData.loadSpeed) {
-                            const loadSpeed = cachedData.loadSpeed;
-                            const isRealSpeed = loadSpeed.match(/\d+(\.\d+)?\s*(KB\/s|MB\/s)$/i) || loadSpeed.includes('连接');
-
-                            if (isRealSpeed) {
-                                modalSpeedTag.textContent = loadSpeed;
-                                modalSpeedTag.classList.remove('hidden');
-                                modalSpeedTag.style.backgroundColor = '#16a34a';
-                            } else {
-                                modalSpeedTag.classList.add('hidden');
-                            }
-                        }
-                    }
-
-                    console.log('✅ 已同步更新弹窗画质信息:', qualityId, newQuality);
                 }
             }
+            console.log('✅ 已同步更新弹窗画质及速度信息:', qualityId, newQuality, result.loadSpeed);
         }
     }
 }
