@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>统一画质系统测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #2a2a2a;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background: #1f4f2f; }
+        .error { background: #4f1f1f; }
+        .warning { background: #4f4f1f; }
+        .quality-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin: 2px;
+        }
+        .speed-tag {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin: 2px;
+            background: #16a34a;
+        }
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #3730a3;
+        }
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            min-width: 300px;
+            z-index: 1000;
+        }
+        .modal.hidden {
+            display: none;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        .overlay.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>统一画质系统测试</h1>
+    
+    <div class="test-section">
+        <h2>系统状态检查</h2>
+        <div id="systemStatus"></div>
+        <button onclick="checkSystemStatus()">检查系统状态</button>
+    </div>
+
+    <div class="test-section">
+        <h2>画质检测测试</h2>
+        <div id="detectionResults"></div>
+        <button onclick="testQualityDetection()">开始画质检测测试</button>
+    </div>
+
+    <div class="test-section">
+        <h2>UI更新测试</h2>
+        <div id="uiTestArea">
+            <div class="quality-badge" data-quality-id="test_video_1">检测中...</div>
+            <div class="quality-badge" data-quality-id="test_video_2">检测中...</div>
+            <div class="quality-badge" data-quality-id="test_video_3">检测中...</div>
+        </div>
+        <button onclick="testUIUpdates()">测试UI更新</button>
+    </div>
+
+    <div class="test-section">
+        <h2>弹窗测试</h2>
+        <button onclick="showTestModal()">显示测试弹窗</button>
+    </div>
+
+    <div class="test-section">
+        <h2>速度排序测试</h2>
+        <div id="sortingResults"></div>
+        <button onclick="testSpeedSorting()">测试速度排序</button>
+    </div>
+
+    <!-- 测试弹窗 -->
+    <div id="overlay" class="overlay hidden" onclick="hideTestModal()"></div>
+    <div id="testModal" class="modal hidden">
+        <h3>测试视频详情</h3>
+        <p>画质: <span data-field="quality-tag">1080p</span></p>
+        <p>速度: <span data-field="speed-tag" class="speed-tag hidden">未知</span></p>
+        <button onclick="hideTestModal()">关闭</button>
+    </div>
+
+    <!-- 引入统一画质系统 -->
+    <script src="js/unified_quality_system.js"></script>
+
+    <script>
+        // 模拟AppState
+        window.AppState = {
+            data: new Map(),
+            get: function(key) { return this.data.get(key); },
+            set: function(key, value) { this.data.set(key, value); }
+        };
+
+        function checkSystemStatus() {
+            const statusDiv = document.getElementById('systemStatus');
+            let html = '<h3>系统状态:</h3>';
+            
+            // 检查统一管理器
+            if (window.unifiedQualityManager) {
+                html += '<div class="test-result success">✅ 统一画质管理器已加载</div>';
+                html += `<div class="test-result success">✅ 初始化状态: ${window.unifiedQualityManager.isInitialized}</div>';
+            } else {
+                html += '<div class="test-result error">❌ 统一画质管理器未找到</div>';
+            }
+
+            // 检查旧系统清理状态
+            if (!window.progressiveDetector) {
+                html += '<div class="test-result success">✅ 旧的progressiveDetector已清理</div>';
+            } else {
+                html += '<div class="test-result warning">⚠️ 旧的progressiveDetector仍存在</div>';
+            }
+
+            if (!window.qualityCache) {
+                html += '<div class="test-result success">✅ 旧的qualityCache已清理</div>';
+            } else {
+                html += '<div class="test-result warning">⚠️ 旧的qualityCache仍存在</div>';
+            }
+
+            statusDiv.innerHTML = html;
+        }
+
+        async function testQualityDetection() {
+            const resultsDiv = document.getElementById('detectionResults');
+            resultsDiv.innerHTML = '<p>正在测试画质检测...</p>';
+
+            const testUrls = [
+                'https://example.com/video_4k.m3u8',
+                'https://example.com/video_1080p.m3u8',
+                'https://example.com/video_720p.m3u8',
+                'https://example.com/video_480p.m3u8'
+            ];
+
+            let html = '<h3>检测结果:</h3>';
+
+            for (let i = 0; i < testUrls.length; i++) {
+                const qualityId = `test_video_${i + 1}`;
+                const url = testUrls[i];
+
+                try {
+                    // 使用统一系统检测
+                    await window.unifiedQualityManager.detectQuality(qualityId, url);
+                    const info = window.unifiedQualityManager.getQualityInfo(qualityId);
+                    
+                    html += `<div class="test-result success">
+                        ✅ ${qualityId}: ${info.quality} 
+                        ${info.loadSpeed ? `(${info.loadSpeed})` : '(无速度数据)'}
+                    </div>`;
+                } catch (error) {
+                    html += `<div class="test-result error">❌ ${qualityId}: 检测失败 - ${error.message}</div>`;
+                }
+            }
+
+            resultsDiv.innerHTML = html;
+        }
+
+        function testUIUpdates() {
+            const testData = [
+                { id: 'test_video_1', quality: '4K', speed: '5.2 MB/s' },
+                { id: 'test_video_2', quality: '1080p', speed: '2.1 MB/s' },
+                { id: 'test_video_3', quality: '720p', speed: null }
+            ];
+
+            testData.forEach(data => {
+                window.unifiedQualityManager.setQualityInfo(data.id, {
+                    quality: data.quality,
+                    loadSpeed: data.speed,
+                    pingTime: 100
+                });
+            });
+
+            // 检查UI是否正确更新
+            setTimeout(() => {
+                const badges = document.querySelectorAll('.quality-badge');
+                let allUpdated = true;
+                badges.forEach(badge => {
+                    if (badge.textContent === '检测中...') {
+                        allUpdated = false;
+                    }
+                });
+
+                if (allUpdated) {
+                    alert('✅ UI更新测试成功！所有标签都已更新');
+                } else {
+                    alert('❌ UI更新测试失败！部分标签未更新');
+                }
+            }, 500);
+        }
+
+        function showTestModal() {
+            const modal = document.getElementById('testModal');
+            const overlay = document.getElementById('overlay');
+            
+            modal.classList.remove('hidden');
+            overlay.classList.remove('hidden');
+            
+            // 设置当前视频ID
+            modal.setAttribute('data-current-video-id', 'test_video_1');
+            
+            // 模拟更新弹窗信息
+            setTimeout(() => {
+                window.unifiedQualityManager.setQualityInfo('test_video_1', {
+                    quality: '4K',
+                    loadSpeed: '3.8 MB/s',
+                    pingTime: 120
+                });
+            }, 1000);
+        }
+
+        function hideTestModal() {
+            const modal = document.getElementById('testModal');
+            const overlay = document.getElementById('overlay');
+            
+            modal.classList.add('hidden');
+            overlay.classList.add('hidden');
+        }
+
+        function testSpeedSorting() {
+            const resultsDiv = document.getElementById('sortingResults');
+            
+            const testItems = [
+                { source_code: 'test', vod_id: '1', vod_name: '视频A' },
+                { source_code: 'test', vod_id: '2', vod_name: '视频B' },
+                { source_code: 'test', vod_id: '3', vod_name: '视频C' },
+                { source_code: 'test', vod_id: '4', vod_name: '视频D' }
+            ];
+
+            // 设置不同的速度
+            window.unifiedQualityManager.setQualityInfo('test_1', { quality: '1080p', loadSpeed: '1.5 MB/s' });
+            window.unifiedQualityManager.setQualityInfo('test_2', { quality: '720p', loadSpeed: '800 KB/s' });
+            window.unifiedQualityManager.setQualityInfo('test_3', { quality: '4K', loadSpeed: '5.2 MB/s' });
+            window.unifiedQualityManager.setQualityInfo('test_4', { quality: '1080p', loadSpeed: null });
+
+            // 排序
+            const sortedItems = window.unifiedQualityManager.sortBySpeed(testItems);
+
+            let html = '<h3>排序结果（按速度从快到慢）:</h3>';
+            sortedItems.forEach((item, index) => {
+                const qualityId = `${item.source_code}_${item.vod_id}`;
+                const info = window.unifiedQualityManager.getQualityInfo(qualityId);
+                html += `<div class="test-result ${index === 0 ? 'success' : 'warning'}">
+                    ${index + 1}. ${item.vod_name} - ${info.quality} - ${info.loadSpeed || '无速度数据'}
+                </div>`;
+            });
+
+            resultsDiv.innerHTML = html;
+        }
+
+        // 页面加载完成后自动检查系统状态
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(checkSystemStatus, 500);
+        });
+    </script>
+</body>
+</html>
