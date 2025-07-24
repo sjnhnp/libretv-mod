@@ -247,15 +247,15 @@ function initCustomRightControls() {
                 }
             });
 
-            playerRegion.addEventListener('mouseleave', () => {
-                hideTimeout = setTimeout(() => {
-                    const rightControls = document.getElementById('custom-right-controls');
-                    if (rightControls && !isWebFullscreen) {
-                        rightControls.style.opacity = '0';
-                        rightControls.style.pointerEvents = 'none';
-                    }
-                }, 3000); // 3秒后隐藏
-            });
+        playerRegion.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => {
+                const rightControls = document.getElementById('custom-right-controls');
+                if (rightControls) { // 移除了 !isWebFullscreen 条件
+                    rightControls.style.opacity = '0';
+                    rightControls.style.pointerEvents = 'none';
+                }
+            }, 3000); // 3秒后隐藏
+        });
         }
     }
 }
