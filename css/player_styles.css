@@ -327,11 +327,12 @@ media-player:focus-within #custom-right-controls {
 }
 
 
-/* 在网页全屏模式下，右侧控制条始终显示 */
+/* 在网页全屏模式下，右侧控制条始终显示 
 .web-fullscreen-active #custom-right-controls {
   opacity: 1 !important;
   pointer-events: auto !important;
-}
+} 
+*/
 
 #play-settings-dropdown,
 #line-switch-dropdown,
