@@ -1483,7 +1483,7 @@ header {
 /* 移动端优化 */
 @media (max-width: 768px) {
   #web-fullscreen-floating-btn {
-    top: 64px !important;
+    top: 112px !important;
     right: 0.75rem !important;
     width: 44px !important;
     height: 44px !important;
