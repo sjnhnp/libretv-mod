@@ -281,18 +281,19 @@ media-player:focus-within #custom-right-controls {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px; /* 调整按钮宽度，使其更小 */
-  height: 32px; /* 调整按钮高度，使其更小 */
+  width: 32px;
+  height: 32px;
   border: none;
-  background: transparent; /* 将背景设置为透明 */
-  backdrop-filter: blur(0); /* 移除背景模糊效果，使其更透明 */
-  border: 1px solid rgba(255, 255, 255, 0); /* 边框也设为透明 */
+  background: transparent; /* Current background */
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: rgba(255, 255, 255, 0.9);
   cursor: pointer;
   border-radius: 8px;
   transition: all 0.3s ease;
-  box-shadow: none; /* 移除阴影 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
+
 /* 按钮悬停效果 */
 #web-fullscreen-control-btn:hover {
   background: rgba(0, 0, 0, 0.7);
