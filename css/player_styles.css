@@ -251,8 +251,7 @@ media-player .vds-controls-group {
 
 /* 网页全屏按钮样式 */
 #web-fullscreen-control-btn {
-  position: relative;
-  display: inline-flex !important;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: var(--media-button-size, 40px);
@@ -264,6 +263,12 @@ media-player .vds-controls-group {
   border-radius: 4px;
   transition: all 0.2s ease;
   opacity: 0.8;
+}
+
+/* Hide the web fullscreen button initially to prevent it from appearing in the center. */
+/* It will become visible once the player layout is initialized and has the 'data-started' attribute. */
+media-player:not([data-started]) #web-fullscreen-control-btn {
+  display: none !important;
 }
 
 #web-fullscreen-control-btn:hover {
@@ -292,6 +297,7 @@ media-player .vds-controls-group {
   height: 20px;
   stroke-width: 2;
 }
+
 #play-settings-dropdown,
 #line-switch-dropdown,
 #skip-control-dropdown {
@@ -627,9 +633,12 @@ media-player .vds-controls-group {
 
 /* 新增：被禁用的控制按钮容器的样式 */
 .control-btn-container.control-disabled {
-  pointer-events: none; /* 彻底禁用鼠标事件，无法再触发 hover 或 click */
-  opacity: 0.4;         /* 视觉上变暗，表示不可用 */
-  filter: grayscale(80%); /* （可选）进一步灰度化，增强禁用感 */
+  pointer-events: none;
+  /* 彻底禁用鼠标事件，无法再触发 hover 或 click */
+  opacity: 0.4;
+  /* 视觉上变暗，表示不可用 */
+  filter: grayscale(80%);
+  /* （可选）进一步灰度化，增强禁用感 */
 }
 
 /* 强化：确保锁屏按钮激活时，其容器的透明度不会被错误影响 */
@@ -1485,17 +1494,14 @@ header {
   color: #fff;
 }
 
-/* 网页全屏按钮 */
-media-player > #web-fullscreen-control-btn {
-  display: none !important;
-}
-
 /* 2. Reposition the button to be on the left of the native fullscreen button */
 /* We use flexbox's 'order' property for this. */
 #web-fullscreen-control-btn {
-  order: 1; /* Lower order number comes first */
+  order: 1;
+  /* Lower order number comes first */
 }
 
 media-fullscreen-button {
-  order: 2; /* Higher order number comes second */
+  order: 2;
+  /* Higher order number comes second */
 }
