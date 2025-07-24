@@ -246,8 +246,9 @@ media-player .vds-controls-group {
 /* 自定义右侧控制条 - 覆盖在播放器上，与底部控制条同步 */
 #custom-right-controls {
   position: absolute;
-  top: 1rem;
+  top: 50%; /* 将顶部定位改为50% */
   right: 1rem;
+  transform: translateY(-50%); /* 使用transform向上偏移自身高度的一半，实现垂直居中 */
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
