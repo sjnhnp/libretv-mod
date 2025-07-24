@@ -281,19 +281,18 @@ media-player:focus-within #custom-right-controls {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 32px; /* 调整按钮宽度，使其更小 */
+  height: 32px; /* 调整按钮高度，使其更小 */
   border: none;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent; /* 将背景设置为透明 */
+  backdrop-filter: blur(0); /* 移除背景模糊效果，使其更透明 */
+  border: 1px solid rgba(255, 255, 255, 0); /* 边框也设为透明 */
   color: rgba(255, 255, 255, 0.9);
   cursor: pointer;
   border-radius: 8px;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: none; /* 移除阴影 */
 }
-
 /* 按钮悬停效果 */
 #web-fullscreen-control-btn:hover {
   background: rgba(0, 0, 0, 0.7);
@@ -321,10 +320,11 @@ media-player:focus-within #custom-right-controls {
 
 /* 确保按钮图标居中 */
 #web-fullscreen-control-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 16px; /* 调整图标宽度，使其更小 */
+  height: 16px; /* 调整图标高度，使其更小 */
   stroke-width: 2;
 }
+
 
 /* 在网页全屏模式下，右侧控制条始终显示 */
 .web-fullscreen-active #custom-right-controls {
