@@ -49,7 +49,8 @@
 
         <!-- 顶部导航栏 -->
         <header class="flex items-center justify-between p-6">
-            <button id="back-button" class="flex items-center gap-3 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 hover:border-white/40 rounded-xl px-4 py-2.5 text-white/90 hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl"
+            <button id="back-button"
+                class="flex items-center gap-3 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 hover:border-white/40 rounded-xl px-4 py-2.5 text-white/90 hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl"
                 aria-label="返回">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -61,7 +62,8 @@
             </button>
             <div class="flex items-center ml-auto">
                 <button id="fullscreen-button"
-                    class="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 hover:border-white/40 rounded-xl p-3 text-white/90 hover:text-white allow-when-locked transition-all duration-300 shadow-lg hover:shadow-xl" aria-label="全屏">
+                    class="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 hover:border-white/40 rounded-xl p-3 text-white/90 hover:text-white allow-when-locked transition-all duration-300 shadow-lg hover:shadow-xl"
+                    aria-label="全屏">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                         class="feather feather-maximize" aria-hidden="true">
@@ -74,11 +76,58 @@
         </header>
 
         <!-- 播放器区域 -->
+        <!-- 播放器区域 -->
         <div id="player-region" class="relative" role="region" aria-label="视频播放区域">
-            <!-- Vidstack 播放器将通过 JS 注入到这个 div -->
-            <div id="player" class="w-full h-full"></div>
+            <!-- 
+              声明式 Vidstack 播放器布局
+              我们不再使用 JS 创建播放器，而是直接在 HTML 中定义它。
+            -->
+            <media-player id="player" class="w-full h-full" crossOrigin>
+                <media-provider></media-provider>
 
-            <!-- 加载和错误覆盖层 -->
+                <!-- Vidstack 默认视频布局 -->
+                <media-video-layout>
+                    <!-- 自定义控制栏 -->
+                    <media-controls slot="bottom-controls" class="vds-controls">
+                        <media-controls-group class="vds-controls-group">
+                            <media-play-button class="vds-button"></media-play-button>
+                            <media-mute-button class="vds-button"></media-mute-button>
+                            <media-volume-slider class="vds-slider"></media-volume-slider>
+                            <media-time-group class="vds-time-group">
+                                <media-time class="vds-time" type="current"></media-time>
+                                <div class="vds-time-divider">/</div>
+                                <media-time class="vds-time" type="duration"></media-time>
+                            </media-time-group>
+                        </media-controls-group>
+                        <media-seek-slider class="vds-slider"></media-seek-slider>
+                        <media-controls-group class="vds-controls-group">
+                            <media-chapter-title class="vds-chapter-title"></media-chapter-title>
+                            <media-pip-button class="vds-button"></media-pip-button>
+
+                            <!-- 
+                              【核心修复】
+                              将我们的网页全屏按钮直接放在这里，就在原生全屏按钮的前面。
+                              使用 vds-button 和 vds-icon class 来确保样式和行为一致。
+                            -->
+                            <button id="web-fullscreen-control-btn" class="vds-button" title="网页全屏 (W)"
+                                aria-label="网页全屏">
+                                <!-- 初始图标 (进入) -->
+                                <svg class="vds-icon" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M3 8V5a2 2 0 0 1 2-2h3m11 0h3a2 2 0 0 1 2 2v3m0 11v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"
+                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round"></path>
+                                </svg>
+                            </button>
+
+                            <media-fullscreen-button class="vds-button"></media-fullscreen-button>
+                        </media-controls-group>
+                    </media-controls>
+                </media-video-layout>
+            </media-player>
+
+            <!-- 加载和错误覆盖层 (保持不变) -->
             <div id="loading" class="loading-container hidden" aria-live="polite">
                 <div class="loading-spinner" aria-hidden="true"></div>
                 <div class="mt-4">加载中...</div>
@@ -110,7 +159,8 @@
                 </svg>
                 <span>上一集</span>
             </button>
-            <span id="episode-info-span" class="text-xl font-semibold text-white/90 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2 hidden"></span>
+            <span id="episode-info-span"
+                class="text-xl font-semibold text-white/90 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2 hidden"></span>
             <button id="next-episode"
                 class="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 hover:border-white/40 rounded-xl px-5 py-3 text-white/90 hover:text-white flex items-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl font-medium"
                 aria-label="下一集">
@@ -141,7 +191,8 @@
                             </svg>
                             <span class="control-text text-sm">设置</span>
                         </button>
-                        <div id="play-settings-dropdown" class="hidden absolute right-0 bottom-full mb-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl shadow-xl p-4 w-56">
+                        <div id="play-settings-dropdown"
+                            class="hidden absolute right-0 bottom-full mb-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl shadow-xl p-4 w-56">
                             <div class="flex items-center justify-between mb-3">
                                 <span class="text-white/90 text-sm font-medium">自动播放</span>
                                 <label class="switch">
@@ -152,13 +203,15 @@
                             <div class="flex items-center justify-between mb-3">
                                 <span class="text-white/90 text-sm font-medium">记住进度</span>
                                 <label class="switch">
-                                    <input type="checkbox" id="remember-episode-progress-toggle" checked aria-label="记住进度">
+                                    <input type="checkbox" id="remember-episode-progress-toggle" checked
+                                        aria-label="记住进度">
                                     <span class="slider"></span>
                                 </label>
                             </div>
                             <div class="flex items-center justify-between">
                                 <span class="text-white/90 text-sm font-medium">播放速率</span>
-                                <select id="playback-speed-select" class="bg-white/10 text-white/90 rounded-lg px-2 py-1 text-sm border border-white/20 focus:border-white/40 focus:outline-none">
+                                <select id="playback-speed-select"
+                                    class="bg-white/10 text-white/90 rounded-lg px-2 py-1 text-sm border border-white/20 focus:border-white/40 focus:outline-none">
                                     <option value="0.5">0.5x</option>
                                     <option value="0.75">0.75x</option>
                                     <option value="1" selected>1x</option>
@@ -169,7 +222,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- 线路切换按钮 -->
                     <div class="control-btn-container line-switch-container">
                         <button id="line-switch-button"
@@ -183,7 +236,7 @@
                         </button>
                         <div id="line-switch-dropdown" class="hidden"></div>
                     </div>
-                    
+
                     <!-- 跳过控制按钮 -->
                     <div class="control-btn-container skip-control-container">
                         <button id="skip-control-button" title="跳过设置"
@@ -198,12 +251,14 @@
                         <div id="skip-control-dropdown"
                             class="hidden absolute right-0 bottom-full mb-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl shadow-xl p-4 w-52">
                             <div class="flex items-center mb-3">
-                                <label for="skip-intro-input" class="text-white/90 text-sm mr-3 shrink-0 font-medium">跳片头</label>
+                                <label for="skip-intro-input"
+                                    class="text-white/90 text-sm mr-3 shrink-0 font-medium">跳片头</label>
                                 <input id="skip-intro-input" type="number" min="0" step="1" placeholder="秒"
                                     class="w-full bg-white/10 text-white/90 rounded-lg p-2 text-sm border border-white/20 focus:border-white/40 focus:outline-none">
                             </div>
                             <div class="flex items-center mb-4">
-                                <label for="skip-outro-input" class="text-white/90 text-sm mr-3 shrink-0 font-medium">跳片尾</label>
+                                <label for="skip-outro-input"
+                                    class="text-white/90 text-sm mr-3 shrink-0 font-medium">跳片尾</label>
                                 <input id="skip-outro-input" type="number" min="0" step="1" placeholder="秒"
                                     class="w-full bg-white/10 text-white/90 rounded-lg p-2 text-sm border border-white/20 focus:border-white/40 focus:outline-none">
                             </div>
@@ -213,7 +268,7 @@
                                 class="w-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white rounded-lg p-2 text-sm font-medium transition-all duration-300 border border-white/20">重置</button>
                         </div>
                     </div>
-                    
+
                     <!-- 复制链接按钮 -->
                     <div class="control-btn-container">
                         <button onclick="copyLinks()" title="复制当前视频链接"
@@ -227,29 +282,29 @@
                             <span class="control-text text-sm">复制</span>
                         </button>
                     </div>
-                    
+
                     <!-- 剧集顺序按钮 -->
                     <div class="control-btn-container">
                         <button id="order-button"
                             class="control-btn bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 hover:border-white/40 rounded-xl p-3 text-white/90 hover:text-white transition-all duration-300"
                             aria-label="切换剧集顺序">
-                            <svg id="order-icon" xmlns="http://www.w3.org/2000/svg" class="control-icon" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" style="transition: transform 0.3s ease;">
+                            <svg id="order-icon" xmlns="http://www.w3.org/2000/svg" class="control-icon"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease;">
                                 <polyline points="6 9 12 15 18 9"></polyline>
                             </svg>
                             <span class="control-text text-sm">顺序</span>
                         </button>
                     </div>
-                    
+
                     <!-- 锁屏按钮 -->
                     <div class="control-btn-container">
                         <button id="lock-button"
                             class="control-btn bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 hover:border-white/40 rounded-xl p-3 text-white/90 hover:text-white transition-all duration-300"
                             aria-label="锁定/解锁屏幕控制">
-                            <svg id="lock-icon" xmlns="http://www.w3.org/2000/svg" class="control-icon" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
+                            <svg id="lock-icon" xmlns="http://www.w3.org/2000/svg" class="control-icon"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                             </svg>
@@ -265,9 +320,12 @@
             <div class="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-xl">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-bold text-white/90">选集</h2>
-                    <span id="episodes-count" class="text-white/60 bg-white/10 px-3 py-1 rounded-lg text-sm font-medium"></span>
+                    <span id="episodes-count"
+                        class="text-white/60 bg-white/10 px-3 py-1 rounded-lg text-sm font-medium"></span>
                 </div>
-                <div id="episode-grid" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 max-h-80 overflow-y-auto"></div>
+                <div id="episode-grid"
+                    class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 max-h-80 overflow-y-auto">
+                </div>
             </div>
         </div>
 

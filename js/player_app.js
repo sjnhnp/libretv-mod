@@ -112,86 +112,6 @@ function toggleWebFullscreen() {
     updateWebFullscreenControlButton();
 }
 
-// 添加网页全屏按钮到Vidstack控制栏 (已修复)
-function addWebFullscreenButtonToControls() {
-    // 防止重复添加
-    if (document.getElementById('web-fullscreen-control-btn')) {
-        return;
-    }
-
-    const mediaPlayer = document.querySelector('media-player');
-    if (!mediaPlayer) {
-        console.error("无法找到 <media-player> 元素，无法添加网页全屏按钮。");
-        return;
-    }
-
-    const insertButton = (parent, referenceNode = null) => {
-        // 再次检查，防止在重试间隔中被其他逻辑添加
-        if (document.getElementById('web-fullscreen-control-btn')) return;
-
-        const webFullscreenBtn = document.createElement('button');
-        webFullscreenBtn.id = 'web-fullscreen-control-btn';
-        webFullscreenBtn.className = 'vds-button'; // 使用Vidstack的class以继承样式和行为
-        webFullscreenBtn.setAttribute('data-part', 'web-fullscreen-button'); // 遵循Vidstack模式
-        webFullscreenBtn.setAttribute('aria-label', '网页全屏');
-        webFullscreenBtn.setAttribute('title', '网页全屏 (W)');
-
-        webFullscreenBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleWebFullscreen();
-        });
-
-        // 使用 insertBefore 将新按钮插入到参考节点（如原生全屏按钮）的前面
-        // 如果没有参考节点，它会像 appendChild 一样添加到父节点的末尾
-        parent.insertBefore(webFullscreenBtn, referenceNode);
-
-        console.log('✅ 网页全屏按钮已成功添加到Vidstack控制栏');
-        updateWebFullscreenControlButton(webFullscreenBtn);
-    };
-
-    let attempts = 0;
-    const maxAttempts = 20;
-    const interval = 250;
-
-    const tryLoop = setInterval(() => {
-        attempts++;
-        let success = false;
-
-        // 策略 1: 找到右侧控制组，并在原生全屏按钮前插入
-        const controlsEndGroup = mediaPlayer.querySelector('.vds-controls-group[data-placement="end"]');
-        const fullscreenBtn = mediaPlayer.querySelector('[data-part="fullscreen-button"]');
-
-        if (controlsEndGroup && fullscreenBtn && controlsEndGroup.contains(fullscreenBtn)) {
-            console.log('策略 1: 找到右侧控制组和全屏按钮。');
-            insertButton(controlsEndGroup, fullscreenBtn);
-            success = true;
-        }
-        // 策略 2: 如果找不到全屏按钮，但找到了右侧控制组，则添加到组的末尾
-        else if (controlsEndGroup) {
-            console.log('策略 2: 找到右侧控制组，在末尾添加。');
-            insertButton(controlsEndGroup, null);
-            success = true;
-        }
-        // 策略 3 (回退): 如果连组都找不到，直接添加到主控制栏
-        else {
-            const controlsContainer = mediaPlayer.querySelector('.vds-controls');
-            if (controlsContainer) {
-                console.log('策略 3 (回退): 找到主控制容器，在末尾添加。');
-                insertButton(controlsContainer, null);
-                success = true;
-            }
-        }
-
-        if (success || attempts >= maxAttempts) {
-            clearInterval(tryLoop);
-            if (!success) {
-                console.error('添加网页全屏按钮失败: 尝试多次后仍未找到合适的插入位置。');
-            }
-        }
-    }, interval);
-}
-
 // 添加网页全屏键盘快捷键支持 (已修复)
 function addWebFullscreenKeyboardShortcut() {
     // 避免重复添加事件监听器
@@ -306,13 +226,8 @@ function updateWebFullscreenControlButton(button) {
         // 直接在按钮上切换CSS类，使其能响应 .web-fullscreen-active 的样式
         button.classList.toggle('web-fullscreen-active', isWebFullscreen);
 
-    } else {
-        // This can happen during the retry loop, it's not a critical error.
-        // console.warn('未找到网页全屏按钮，无法更新图标');
     }
 }
-
-
 
 // 提取核心标题，用于匹配同一作品的不同版本
 function getCoreTitle(title, typeName = '') {
@@ -567,89 +482,53 @@ async function processVideoUrl(url) {
 }
 
 // --- 播放器核心逻辑 ---
+// --- 播放器核心逻辑 ---
 async function initPlayer(videoUrl, title) {
-    const playerContainer = document.getElementById('player');
-    if (!playerContainer) {
-        showError("播放器容器 (#player) 未找到");
+    // 【核心修复】我们不再使用 VidstackPlayer.create()
+    // 而是直接获取在 HTML 中声明的播放器元素。
+    player = document.getElementById('player');
+
+    if (!player) {
+        showError("播放器元素 (#player) 未在HTML中找到");
         return;
     }
-    if (player) {
-        // 清理旧的Blob URL
-        if (player.currentSrc && player.currentSrc.startsWith('blob:')) {
-            URL.revokeObjectURL(player.currentSrc);
-        }
-        player.destroy();
-        player = null;
+
+    // 在设置新源之前，清理可能存在的旧Blob URL
+    if (player.currentSrc && player.currentSrc.startsWith('blob:')) {
+        URL.revokeObjectURL(player.currentSrc);
     }
 
-    // 清理播放器容器中的所有内容
-    playerContainer.innerHTML = '';
-
-    // 移除可能存在的网页全屏按钮
-    const existingBtn = document.getElementById('web-fullscreen-control-btn');
-    if (existingBtn) {
-        existingBtn.remove();
-    }
-    // 在创建播放器前处理URL
     const processedUrl = await processVideoUrl(videoUrl);
-    let retryCount = 0;
-    const maxRetries = 3;
-    const retryInterval = 3000;
-    const attemptInitPlayer = async () => {
-        try {
-            player = await VidstackPlayer.create({
-                target: playerContainer,
-                // 使用处理过的URL
-                src: { src: processedUrl, type: 'application/x-mpegurl' },
-                title: title,
-                autoplay: true,
-                preload: 'auto',
-                layout: new VidstackPlayerLayout({
-                    seekTime: 10,
-                    //clickToFullscreen: true
-                }),
-                // layout: new PlyrLayout(),
-                playsInline: true,
-                crossOrigin: true,
-                keyTarget: 'document',
-                keyShortcuts: {
-                    togglePaused: 'k Space',
-                    toggleMuted: 'm',
-                    togglePictureInPicture: 'i',
-                    // toggleFullscreen: 'f',
-                    seekBackward: ['j', 'J', 'ArrowLeft'],
-                    seekForward: ['l', 'L', 'ArrowRight'],
-                    volumeUp: 'ArrowUp',
-                    volumeDown: 'ArrowDown',
-                    speedUp: '>',
-                    slowDown: '<',
-                }
-            });
-            window.player = player;
-            addPlayerEventListeners();
-            handleSkipIntroOutro(player);
-            // 应用保存的播放速率
-            const savedSpeed = localStorage.getItem('playbackSpeed') || '1';
-            if (player.playbackRate !== undefined) {
-                player.playbackRate = parseFloat(savedSpeed);
-            }
-            // 添加网页全屏按钮到控制栏
-            addWebFullscreenButtonToControls();
-            // 添加网页全屏快捷键支持
-            addWebFullscreenKeyboardShortcut();
-        } catch (error) {
-            if (retryCount < maxRetries) {
-                retryCount++;
-                setTimeout(() => {
-                    attemptInitPlayer();
-                }, retryInterval);
-            } else {
-                console.error("Vidstack Player 创建失败:", error);
-                showError("播放器初始化失败");
-            }
-        }
-    };
-    await attemptInitPlayer();
+
+    // 为播放器设置属性
+    player.title = title;
+    player.src = { src: processedUrl, type: 'application/x-mpegurl' };
+
+    // 确保事件监听器只被添加一次
+    if (!player.dataset.listenersAdded) {
+        addPlayerEventListeners();
+        player.dataset.listenersAdded = 'true';
+    }
+
+    handleSkipIntroOutro(player);
+
+    // 应用保存的播放速率
+    const savedSpeed = localStorage.getItem('playbackSpeed') || '1';
+    player.playbackRate = parseFloat(savedSpeed);
+
+    // 网页全屏按钮现在由HTML管理，但我们仍需绑定快捷键
+    addWebFullscreenKeyboardShortcut();
+
+    // 找到网页全屏按钮并绑定点击事件
+    const webFullscreenBtn = document.getElementById('web-fullscreen-control-btn');
+    if (webFullscreenBtn && !webFullscreenBtn.dataset.clickAdded) {
+        webFullscreenBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleWebFullscreen();
+        });
+        webFullscreenBtn.dataset.clickAdded = 'true';
+    }
 }
 
 function addPlayerEventListeners() {
