@@ -591,11 +591,7 @@ async function initPlayer(videoUrl, title) {
 function addPlayerEventListeners() {
     if (!player) return;
 
-    const playerElement = document.getElementById('player');
-    if (playerElement) {
-        playerElement.addEventListener('pointerup', handlePlayerRegionClick);
-        playerElement.addEventListener('mousemove', handlePlayerRegionMouseMove);
-    }
+    // 播放器区域事件监听器已移除，因为不再需要浮动按钮功能
 
     player.addEventListener('fullscreen-change', (event) => {
         const isFullscreen = event.detail;
