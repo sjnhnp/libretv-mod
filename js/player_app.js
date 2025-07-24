@@ -112,8 +112,6 @@ function toggleWebFullscreen() {
     updateWebFullscreenControlButton();
 }
 
-
-
 // 添加网页全屏按钮到Vidstack控制栏 (已修复)
 function addWebFullscreenButtonToControls() {
     // 防止重复添加
@@ -121,58 +119,77 @@ function addWebFullscreenButtonToControls() {
         return;
     }
 
-    let attempts = 0;
-    const maxAttempts = 20;
+    const mediaPlayer = document.querySelector('media-player');
+    if (!mediaPlayer) {
+        console.error("无法找到 <media-player> 元素，无法添加网页全屏按钮。");
+        return;
+    }
 
-    const tryAddButton = () => {
-        attempts++;
+    const insertButton = (parent, referenceNode = null) => {
+        // 再次检查，防止在重试间隔中被其他逻辑添加
+        if (document.getElementById('web-fullscreen-control-btn')) return;
 
-        const mediaPlayer = document.querySelector('media-player');
-        if (!mediaPlayer) {
-            if (attempts < maxAttempts) setTimeout(tryAddButton, 200);
-            return;
-        }
+        const webFullscreenBtn = document.createElement('button');
+        webFullscreenBtn.id = 'web-fullscreen-control-btn';
+        webFullscreenBtn.className = 'vds-button'; // 使用Vidstack的class以继承样式和行为
+        webFullscreenBtn.setAttribute('data-part', 'web-fullscreen-button'); // 遵循Vidstack模式
+        webFullscreenBtn.setAttribute('aria-label', '网页全屏');
+        webFullscreenBtn.setAttribute('title', '网页全屏 (W)');
 
-        // 精确查找Vidstack的原生全屏按钮
-        const fullscreenBtn = mediaPlayer.querySelector('[data-part="fullscreen-button"]');
+        webFullscreenBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleWebFullscreen();
+        });
 
-        if (fullscreenBtn && fullscreenBtn.parentElement) {
-            // 创建网页全屏按钮
-            const webFullscreenBtn = document.createElement('button');
-            webFullscreenBtn.id = 'web-fullscreen-control-btn';
-            // 使用Vidstack的class来确保样式和行为一致性
-            webFullscreenBtn.className = 'vds-button';
-            webFullscreenBtn.setAttribute('data-part', 'web-fullscreen-button'); // 遵循Vidstack模式
-            webFullscreenBtn.setAttribute('aria-label', '网页全屏');
-            webFullscreenBtn.setAttribute('title', '网页全屏 (W)');
+        // 使用 insertBefore 将新按钮插入到参考节点（如原生全屏按钮）的前面
+        // 如果没有参考节点，它会像 appendChild 一样添加到父节点的末尾
+        parent.insertBefore(webFullscreenBtn, referenceNode);
 
-            // 添加点击事件
-            webFullscreenBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleWebFullscreen();
-            });
-
-            // 将新按钮插入到原生全屏按钮的前面
-            fullscreenBtn.parentElement.insertBefore(webFullscreenBtn, fullscreenBtn);
-
-            console.log('✅ 网页全屏按钮已成功添加到Vidstack控制栏');
-
-            // 成功添加后，更新其初始图标状态
-            updateWebFullscreenControlButton(webFullscreenBtn);
-
-        } else {
-            // 如果找不到原生按钮，则重试
-            if (attempts < maxAttempts) {
-                setTimeout(tryAddButton, 250);
-            } else {
-                console.error('添加网页全屏按钮失败: 未找到Vidstack原生全屏按钮。');
-            }
-        }
+        console.log('✅ 网页全屏按钮已成功添加到Vidstack控制栏');
+        updateWebFullscreenControlButton(webFullscreenBtn);
     };
 
-    // 延迟启动，给播放器足够的时间来渲染其初始UI
-    setTimeout(tryAddButton, 1000);
+    let attempts = 0;
+    const maxAttempts = 20;
+    const interval = 250;
+
+    const tryLoop = setInterval(() => {
+        attempts++;
+        let success = false;
+
+        // 策略 1: 找到右侧控制组，并在原生全屏按钮前插入
+        const controlsEndGroup = mediaPlayer.querySelector('.vds-controls-group[data-placement="end"]');
+        const fullscreenBtn = mediaPlayer.querySelector('[data-part="fullscreen-button"]');
+
+        if (controlsEndGroup && fullscreenBtn && controlsEndGroup.contains(fullscreenBtn)) {
+            console.log('策略 1: 找到右侧控制组和全屏按钮。');
+            insertButton(controlsEndGroup, fullscreenBtn);
+            success = true;
+        }
+        // 策略 2: 如果找不到全屏按钮，但找到了右侧控制组，则添加到组的末尾
+        else if (controlsEndGroup) {
+            console.log('策略 2: 找到右侧控制组，在末尾添加。');
+            insertButton(controlsEndGroup, null);
+            success = true;
+        }
+        // 策略 3 (回退): 如果连组都找不到，直接添加到主控制栏
+        else {
+            const controlsContainer = mediaPlayer.querySelector('.vds-controls');
+            if (controlsContainer) {
+                console.log('策略 3 (回退): 找到主控制容器，在末尾添加。');
+                insertButton(controlsContainer, null);
+                success = true;
+            }
+        }
+
+        if (success || attempts >= maxAttempts) {
+            clearInterval(tryLoop);
+            if (!success) {
+                console.error('添加网页全屏按钮失败: 尝试多次后仍未找到合适的插入位置。');
+            }
+        }
+    }, interval);
 }
 
 // 添加网页全屏键盘快捷键支持 (已修复)
@@ -204,8 +221,6 @@ function addWebFullscreenKeyboardShortcut() {
             toggleWebFullscreen(); // 调用同一个函数来处理退出逻辑
         }
     });
-
-    console.log('网页全屏快捷键已添加 (W键和ESC键)');
 }
 
 // 添加网页全屏退出提示
@@ -277,11 +292,11 @@ function updateWebFullscreenControlButton(button) {
         // 根据当前状态设置不同的图标
         button.innerHTML = isWebFullscreen ?
             // 退出网页全屏图标 (收缩)
-            `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            `<svg class="vds-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16v3a2 2 0 0 0 2 2h3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>` :
             // 进入网页全屏图标 (展开)
-            `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            `<svg class="vds-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                  <path d="M3 8V5a2 2 0 0 1 2-2h3m11 0h3a2 2 0 0 1 2 2v3m0 11v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>`;
 
@@ -292,7 +307,8 @@ function updateWebFullscreenControlButton(button) {
         button.classList.toggle('web-fullscreen-active', isWebFullscreen);
 
     } else {
-        console.warn('未找到网页全屏按钮，无法更新图标');
+        // This can happen during the retry loop, it's not a critical error.
+        // console.warn('未找到网页全屏按钮，无法更新图标');
     }
 }
 
