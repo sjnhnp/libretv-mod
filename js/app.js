@@ -1,6 +1,6 @@
-// ✅ 使用 sessionStorage 进行持久化缓存
+// ✅ 使用 localStorage 进行持久化缓存 (从 sessionStorage 改为 localStorage)
 const QUALITY_CACHE_KEY = 'qualityCache';
-const qualityCache = new Map(JSON.parse(sessionStorage.getItem(QUALITY_CACHE_KEY) || '[]'));
+const qualityCache = new Map(JSON.parse(localStorage.getItem(QUALITY_CACHE_KEY) || '[]'));
 
 /**
  * 缓存10分钟，超时自动重新检测
@@ -13,7 +13,7 @@ function saveQualityCache(qualityId, quality) {
     });
     // 保存到本地缓存，避免刷新后丢失
     try {
-        sessionStorage.setItem(QUALITY_CACHE_KEY, JSON.stringify(Array.from(qualityCache.entries())));
+        localStorage.setItem(QUALITY_CACHE_KEY, JSON.stringify(Array.from(qualityCache.entries()))); // 修改为 localStorage
     } catch (e) {
         console.warn("缓存空间不足，已自动跳过");
     }
@@ -31,9 +31,15 @@ function getCachedQuality(qualityId) {
     const isExpired = Date.now() - cachedData.cacheTime > 600000;
     if (isExpired) {
         qualityCache.delete(qualityId); // 删除过期缓存
+        // 当缓存过期并删除时，立即更新 localStorage
+        try {
+            localStorage.setItem(QUALITY_CACHE_KEY, JSON.stringify(Array.from(qualityCache.entries())));
+        } catch (e) {
+            console.warn("更新缓存失败，空间不足:", e);
+        }
         return null; // 提示重新检测
     }
-    return cachedData.quality; // 返回有效缓存
+    return cachedData;
 }
 
 // 主应用程序逻辑 使用AppState进行状态管理，DOMCache进行DOM元素缓存
