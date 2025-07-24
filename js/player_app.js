@@ -1644,18 +1644,16 @@ function handleDocumentClick(event) {
     const playSettingsContainer = document.querySelector('.play-settings-container');
     const lineSwitchContainer = document.querySelector('.line-switch-container');
     const skipControlContainer = document.querySelector('.skip-control-container');
-    const playerRegion = document.getElementById('player-region');
-    const playerContainer = document.getElementById('player');
 
-    // 检查是否点击了播放器区域
-    const isPlayerAreaClick = (playerRegion && playerRegion.contains(event.target)) ||
-        (playerContainer && playerContainer.contains(event.target));
-
-    // 如果点击了播放器区域，直接关闭所有下拉菜单
-    if (isPlayerAreaClick) {
-        closeAllDropdowns();
-        return;
-    }
+    // 【解决方案】移除下面这个导致问题的代码块
+    // const playerRegion = document.getElementById('player-region');
+    // const playerContainer = document.getElementById('player');
+    // const isPlayerAreaClick = (playerRegion && playerRegion.contains(event.target)) ||
+    //     (playerContainer && playerContainer.contains(event.target));
+    // if (isPlayerAreaClick) {
+    //     closeAllDropdowns();
+    //     return;
+    // }
 
     // 如果点击不在任何下拉容器内，关闭所有下拉菜单
     if (playSettingsContainer && !playSettingsContainer.contains(event.target)) {
@@ -1685,18 +1683,16 @@ function handleDocumentTouch(event) {
     const playSettingsContainer = document.querySelector('.play-settings-container');
     const lineSwitchContainer = document.querySelector('.line-switch-container');
     const skipControlContainer = document.querySelector('.skip-control-container');
-    const playerRegion = document.getElementById('player-region');
-    const playerContainer = document.getElementById('player');
 
-    // 检查是否触摸了播放器区域
-    const isPlayerAreaTouch = (playerRegion && playerRegion.contains(event.target)) ||
-        (playerContainer && playerContainer.contains(event.target));
-
-    // 如果触摸了播放器区域，直接关闭所有下拉菜单
-    if (isPlayerAreaTouch) {
-        closeAllDropdowns();
-        return;
-    }
+    // 【解决方案】移除下面这个导致问题的代码块
+    // const playerRegion = document.getElementById('player-region');
+    // const playerContainer = document.getElementById('player');
+    // const isPlayerAreaTouch = (playerRegion && playerRegion.contains(event.target)) ||
+    //     (playerContainer && playerContainer.contains(event.target));
+    // if (isPlayerAreaTouch) {
+    //     closeAllDropdowns();
+    //     return;
+    // }
 
     // 如果触摸不在任何下拉容器内，关闭所有下拉菜单
     const isOutsideAllContainers =

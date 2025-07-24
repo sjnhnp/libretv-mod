@@ -77,55 +77,35 @@
 
         <!-- 播放器区域 -->
         <div id="player-region" class="relative" role="region" aria-label="视频播放区域">
-            <!-- 
-              【核心修复】
-              使用官方文档中最标准的 Default Layout 结构。
-              添加了关键的 <media-seek-slider>。
+            <!--
+              【解决方案】
+              使用官方推荐的 <media-video-layout> 组件。
+              这将自动渲染一个完整的、功能正常的播放器UI，包括手势、控件和菜单。
+              我们将通过 slot 属性将自定义的网页全屏按钮注入到正确的位置。
             -->
             <media-player id="player" class="w-full h-full" crossOrigin key-target="document">
                 <media-provider></media-provider>
-
-                <media-video-layout></media-video-layout>
-
-                <media-controls class="vds-controls">
-                    <!-- 左侧控件组 -->
-                    <media-controls-group class="vds-controls-group">
-                        <media-play-button class="vds-button"></media-play-button>
-                        <media-mute-button class="vds-button"></media-mute-button>
-                        <media-volume-slider class="vds-slider"></media-volume-slider>
-                        <media-time-group class="vds-time-group">
-                            <media-time class="vds-time" type="current"></media-time>
-                            <div class="vds-time-divider">/</div>
-                            <media-time class="vds-time" type="duration"></media-time>
-                        </media-time-group>
-                    </media-controls-group>
-
-                    <!-- 中间：进度条 -->
-                    <media-seek-slider class="vds-slider"></media-seek-slider>
-
-                    <!-- 右侧控件组 -->
-                    <media-controls-group class="vds-controls-group">
-                        <media-chapter-title class="vds-chapter-title"></media-chapter-title>
-                        <media-pip-button class="vds-button"></media-pip-button>
-
-                        <!-- 
-                          【核心修复】
-                          将网页全屏按钮放在右侧控件组中，就在原生全屏按钮的前面。
-                        -->
-                        <button id="web-fullscreen-control-btn" class="vds-button" title="网页全屏 (W)" aria-label="网页全屏">
-                            <!-- 初始图标 (进入) -->
-                            <svg class="vds-icon" width="22" height="22" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M3 8V5a2 2 0 0 1 2-2h3m11 0h3a2 2 0 0 1 2 2v3m0 11v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"
-                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round"></path>
-                            </svg>
-                        </button>
-
-                        <media-fullscreen-button class="vds-button"></media-fullscreen-button>
-                    </media-controls-group>
-                </media-controls>
+                
+                <!--
+                  此组件会构建完整的默认UI。
+                  它会包含一个 <media-controls> 元素，我们可以通过 slot 向其添加按钮。
+                -->
+                <media-video-layout>
+                    <!--
+                      通过 slot="controls" 将自定义按钮添加到控件栏的右侧组。
+                      Vidstack 的默认布局会自动处理其样式和定位。
+                    -->
+                    <button id="web-fullscreen-control-btn" class="vds-button" title="网页全屏 (W)" aria-label="网页全屏" slot="controls">
+                        <!-- 初始图标 (进入) -->
+                        <svg class="vds-icon" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M3 8V5a2 2 0 0 1 2-2h3m11 0h3a2 2 0 0 1 2 2v3m0 11v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round"></path>
+                        </svg>
+                    </button>
+                </media-video-layout>
             </media-player>
 
             <!-- 加载和错误覆盖层 (保持不变) -->
