@@ -97,7 +97,6 @@ function toggleWebFullscreen() {
 
         // 移除网页全屏状态CSS类
         document.body.classList.remove('web-fullscreen-active');
-        const playerContainer = document.querySelector('.player-container');
         if (playerContainer) {
             playerContainer.classList.remove('web-fullscreen-active');
         }
@@ -110,7 +109,7 @@ function toggleWebFullscreen() {
 
 
 
-// 添加网页全屏按钮到播放器区域
+// 添加网页全屏按钮到Vidstack控制栏
 function addWebFullscreenButtonToControls() {
     // 防止重复添加
     if (document.getElementById('web-fullscreen-control-btn')) {
@@ -118,56 +117,76 @@ function addWebFullscreenButtonToControls() {
         return;
     }
 
-    console.log('开始添加网页全屏按钮');
+    console.log('开始添加网页全屏按钮到Vidstack控制栏');
     
-    // 延迟执行，确保播放器DOM完全加载
-    setTimeout(() => {
+    // 使用多次尝试，确保播放器完全加载
+    let attempts = 0;
+    const maxAttempts = 20;
+    
+    const tryAddButton = () => {
+        attempts++;
+        console.log(`尝试添加网页全屏按钮 (第${attempts}次)`);
+        
         try {
-            const playerRegion = document.getElementById('player-region');
-            
-            if (!playerRegion) {
-                console.warn('未找到player-region元素，无法添加网页全屏按钮');
+            // 查找media-player元素
+            const mediaPlayer = document.querySelector('media-player');
+            if (!mediaPlayer) {
+                if (attempts < maxAttempts) {
+                    setTimeout(tryAddButton, 200);
+                }
                 return;
             }
 
-            console.log('找到player-region元素，添加网页全屏按钮');
+            // 查找Vidstack的控制栏
+            const controls = mediaPlayer.querySelector('.vds-controls');
+            if (!controls) {
+                console.log('未找到.vds-controls，尝试查找其他控制栏选择器');
+                if (attempts < maxAttempts) {
+                    setTimeout(tryAddButton, 200);
+                }
+                return;
+            }
+
+            console.log('找到Vidstack控制栏:', controls);
+
+            // 查找底部控制栏组（通常包含播放按钮、音量、全屏等）
+            const bottomGroup = controls.querySelector('.vds-controls-group:last-child') || 
+                              controls.querySelector('[data-part="controls-group"]:last-child');
+            
+            if (!bottomGroup) {
+                console.log('未找到底部控制栏组，直接添加到controls');
+                if (attempts < maxAttempts) {
+                    setTimeout(tryAddButton, 200);
+                }
+                return;
+            }
+
+            console.log('找到底部控制栏组:', bottomGroup);
 
             // 创建网页全屏按钮
             const webFullscreenBtn = document.createElement('button');
             webFullscreenBtn.id = 'web-fullscreen-control-btn';
+            webFullscreenBtn.className = 'vds-button';
             webFullscreenBtn.setAttribute('aria-label', '网页全屏');
             webFullscreenBtn.setAttribute('title', '网页全屏 (W)');
+            webFullscreenBtn.setAttribute('data-part', 'web-fullscreen-button');
             
-            // 设置按钮样式 - 固定在播放器区域右上角
+            // 使用Vidstack的按钮样式
             webFullscreenBtn.style.cssText = `
-                position: absolute;
-                top: 15px;
-                right: 15px;
-                width: 44px;
-                height: 44px;
-                border: none;
-                background: rgba(0, 0, 0, 0.6);
-                color: white;
-                cursor: pointer;
-                border-radius: 8px;
-                transition: all 0.2s ease;
-                z-index: 1000;
-                display: flex;
+                display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                backdrop-filter: blur(4px);
-                border: 1px solid rgba(255, 255, 255, 0.2);
+                background: transparent;
+                border: none;
+                color: currentColor;
+                cursor: pointer;
+                font-size: inherit;
+                padding: 0;
+                width: var(--media-button-size, 40px);
+                height: var(--media-button-size, 40px);
+                border-radius: var(--media-border-radius, 4px);
+                transition: background-color 0.2s ease;
             `;
-
-            // 添加悬停效果
-            webFullscreenBtn.addEventListener('mouseenter', () => {
-                webFullscreenBtn.style.background = 'rgba(0, 0, 0, 0.8)';
-                webFullscreenBtn.style.transform = 'scale(1.05)';
-            });
-            webFullscreenBtn.addEventListener('mouseleave', () => {
-                webFullscreenBtn.style.background = 'rgba(0, 0, 0, 0.6)';
-                webFullscreenBtn.style.transform = 'scale(1)';
-            });
 
             // 设置初始图标
             updateWebFullscreenControlButton(webFullscreenBtn);
@@ -181,15 +200,32 @@ function addWebFullscreenButtonToControls() {
                 updateWebFullscreenControlButton(webFullscreenBtn);
             });
 
-            // 添加到播放器区域
-            playerRegion.appendChild(webFullscreenBtn);
+            // 查找全屏按钮，插入到它前面
+            const fullscreenBtn = bottomGroup.querySelector('[data-part="fullscreen-button"]') ||
+                                bottomGroup.querySelector('button[aria-label*="全屏"]') ||
+                                bottomGroup.querySelector('button[aria-label*="Fullscreen"]');
 
-            console.log('✅ 网页全屏按钮已成功添加到播放器区域');
+            if (fullscreenBtn) {
+                console.log('找到全屏按钮，插入网页全屏按钮到其前面');
+                bottomGroup.insertBefore(webFullscreenBtn, fullscreenBtn);
+            } else {
+                console.log('未找到全屏按钮，添加到控制栏组末尾');
+                bottomGroup.appendChild(webFullscreenBtn);
+            }
+
+            console.log('✅ 网页全屏按钮已成功添加到Vidstack控制栏');
+            return; // 成功添加，退出重试循环
 
         } catch (error) {
             console.error('添加网页全屏按钮失败:', error);
+            if (attempts < maxAttempts) {
+                setTimeout(tryAddButton, 200);
+            }
         }
-    }, 1500);
+    };
+
+    // 开始尝试添加按钮
+    setTimeout(tryAddButton, 1000);
 }
 
 // 添加网页全屏键盘快捷键支持
@@ -228,15 +264,15 @@ function updateWebFullscreenControlButton(button) {
     if (button) {
         // 根据当前状态设置不同的图标
         button.innerHTML = isWebFullscreen ?
-            // 退出网页全屏图标 - 使用收缩箭头
-            `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
+            // 退出网页全屏图标
+            `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16v3a2 2 0 0 0 2 2h3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>` :
-            // 进入网页全屏图标 - 使用简洁的网页图标设计
-            `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="4" width="18" height="14" rx="2" ry="2"/>
-                <line x1="3" y1="8" x2="21" y2="8"/>
-                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+            // 进入网页全屏图标 - 使用浏览器窗口图标
+            `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+                <path d="M9 9h6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M21 3l-12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>`;
         
         button.setAttribute('aria-label', isWebFullscreen ? '退出网页全屏' : '网页全屏');
