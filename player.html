@@ -79,20 +79,16 @@
         <div id="player-region" class="relative" role="region" aria-label="视频播放区域">
             <!-- 
               【核心修复】
-              1. 使用官方推荐的、完整的声明式布局。
-              2. 添加 key-target="document" 属性，让快捷键全局生效。
+              使用官方文档中最标准的 Default Layout 结构。
+              添加了关键的 <media-seek-slider>。
             -->
             <media-player id="player" class="w-full h-full" crossOrigin key-target="document">
                 <media-provider></media-provider>
-                <media-video-layout>
-                    <!-- 这里可以放置自定义的浮动UI，例如手势提示 -->
-                </media-video-layout>
-                <!-- 
-                  【核心修复】
-                  使用 vds-controls 结构，并把我们的按钮放在正确的位置。
-                  slot="bottom-controls" 是 Vidstack 1.x 的用法，现在直接嵌套即可。
-                -->
+
+                <media-video-layout></media-video-layout>
+
                 <media-controls class="vds-controls">
+                    <!-- 左侧控件组 -->
                     <media-controls-group class="vds-controls-group">
                         <media-play-button class="vds-button"></media-play-button>
                         <media-mute-button class="vds-button"></media-mute-button>
@@ -104,16 +100,17 @@
                         </media-time-group>
                     </media-controls-group>
 
-                    <div class="vds-controls-spacer"></div>
+                    <!-- 中间：进度条 -->
+                    <media-seek-slider class="vds-slider"></media-seek-slider>
 
+                    <!-- 右侧控件组 -->
                     <media-controls-group class="vds-controls-group">
                         <media-chapter-title class="vds-chapter-title"></media-chapter-title>
                         <media-pip-button class="vds-button"></media-pip-button>
 
                         <!-- 
                           【核心修复】
-                          将网页全屏按钮放在这里，就在原生全屏按钮的前面。
-                          它现在是 Vidstack 布局的一部分，所有行为都会正确。
+                          将网页全屏按钮放在右侧控件组中，就在原生全屏按钮的前面。
                         -->
                         <button id="web-fullscreen-control-btn" class="vds-button" title="网页全屏 (W)" aria-label="网页全屏">
                             <!-- 初始图标 (进入) -->
