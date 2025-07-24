@@ -1484,3 +1484,18 @@ header {
   background: #333;
   color: #fff;
 }
+
+/* 网页全屏按钮 */
+media-player > #web-fullscreen-control-btn {
+  display: none !important;
+}
+
+/* 2. Reposition the button to be on the left of the native fullscreen button */
+/* We use flexbox's 'order' property for this. */
+#web-fullscreen-control-btn {
+  order: 1; /* Lower order number comes first */
+}
+
+media-fullscreen-button {
+  order: 2; /* Higher order number comes second */
+}
