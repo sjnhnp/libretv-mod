@@ -237,7 +237,7 @@ function initCustomRightControls() {
         const playerRegion = document.getElementById('player-region');
         if (playerRegion) {
             let hideTimeout;
-            
+
             playerRegion.addEventListener('mouseenter', () => {
                 clearTimeout(hideTimeout);
                 const rightControls = document.getElementById('custom-right-controls');
@@ -247,15 +247,15 @@ function initCustomRightControls() {
                 }
             });
 
-        playerRegion.addEventListener('mouseleave', () => {
-            hideTimeout = setTimeout(() => {
-                const rightControls = document.getElementById('custom-right-controls');
-                if (rightControls) { // 移除了 !isWebFullscreen 条件
-                    rightControls.style.opacity = '0';
-                    rightControls.style.pointerEvents = 'none';
-                }
-            }, 3000); // 3秒后隐藏
-        });
+            playerRegion.addEventListener('mouseleave', () => {
+                hideTimeout = setTimeout(() => {
+                    const rightControls = document.getElementById('custom-right-controls');
+                    if (rightControls) { // 移除了 !isWebFullscreen 条件
+                        rightControls.style.opacity = '0';
+                        rightControls.style.pointerEvents = 'none';
+                    }
+                }, 3000); // 3秒后隐藏
+            });
         }
     }
 }
@@ -577,7 +577,7 @@ async function initPlayer(videoUrl, title) {
 
     // 网页全屏功能初始化
     addWebFullscreenKeyboardShortcut();
-    
+
     // 等待播放器完全初始化后再初始化右侧控制条
     setTimeout(() => {
         initCustomRightControls();
