@@ -248,6 +248,50 @@ media-player .vds-controls-group {
 */
 
 /* 但是要确保下拉菜单有更高的z-index */
+
+/* 网页全屏按钮样式 */
+#web-fullscreen-control-btn {
+  position: relative;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: var(--media-button-size, 40px);
+  height: var(--media-button-size, 40px);
+  border: none;
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  opacity: 0.8;
+}
+
+#web-fullscreen-control-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+#web-fullscreen-control-btn:active {
+  transform: scale(0.95);
+}
+
+/* 网页全屏状态下的按钮样式 */
+.web-fullscreen-active #web-fullscreen-control-btn {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.web-fullscreen-active #web-fullscreen-control-btn:hover {
+  background-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+/* 确保按钮图标居中 */
+#web-fullscreen-control-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+}
 #play-settings-dropdown,
 #line-switch-dropdown,
 #skip-control-dropdown {
