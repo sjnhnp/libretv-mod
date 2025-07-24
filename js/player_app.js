@@ -696,24 +696,25 @@ async function doEpisodeSwitch(index, episodeString) {
         const sourceMapJSON = sessionStorage.getItem('videoSourceMap');
         if (sourceMapJSON) {
             try {
-                const sourceMap = JSON.parse(sourceMapJSON);
+                // 从JSON重建Map
+                const sourceMap = new Map(JSON.parse(sourceMapJSON));
 
                 const coreClickedTitle = getCoreTitle(currentVideoTitle, currentVideoTypeName);
-
                 const relevantSources = [];
-                for (const key in sourceMap) {
-                    if (sourceMap.hasOwnProperty(key)) {
-                        const sourceItem = sourceMap[key][0];
-                        if (!sourceItem) continue;
 
-                        const coreKeyTitle = getCoreTitle(sourceItem.vod_name, sourceItem.type_name);
+                // 遍历Map中的每一个线路列表
+                for (const sourceList of sourceMap.values()) {
+                    const sourceItem = sourceList[0];
+                    if (!sourceItem) continue;
 
-                        const clickedYear = currentVideoYear;
-                        const keyYear = sourceItem.vod_year;
+                    // 使用与搜索时相同的核心标题提取逻辑进行匹配
+                    const coreKeyTitle = getCoreTitle(sourceItem.vod_name, sourceItem.type_name);
+                    const clickedYear = currentVideoYear;
+                    const keyYear = sourceItem.vod_year;
 
-                        if (coreKeyTitle === coreClickedTitle && (!clickedYear || !keyYear || keyYear === clickedYear)) {
-                            relevantSources.push(...sourceMap[key]);
-                        }
+                    // 如果核心标题匹配且年份兼容，则认为属于同一作品，加入备选列表
+                    if (coreKeyTitle === coreClickedTitle && (!clickedYear || !keyYear || keyYear === clickedYear)) {
+                        relevantSources.push(...sourceList);
                     }
                 }
                 availableAlternativeSources = relevantSources;
