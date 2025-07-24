@@ -19,12 +19,6 @@
 media-player {
   width: 100%;
   height: 100%;
-  display: flex;
-  /* 添加弹性布局 */
-  justify-content: center;
-  /* 水平居中 */
-  align-items: center;
-  /* 垂直居中 */
   background-color: black;
   /* 黑边背景 */
 }
@@ -251,7 +245,10 @@ media-player .vds-controls-group {
 
 /* 网页全屏按钮样式 */
 #web-fullscreen-control-btn {
+  /* position: relative; */
+  /* Removed */
   display: inline-flex;
+  /* Removed !important */
   align-items: center;
   justify-content: center;
   width: var(--media-button-size, 40px);
@@ -265,8 +262,6 @@ media-player .vds-controls-group {
   opacity: 0.8;
 }
 
-/* Hide the web fullscreen button initially to prevent it from appearing in the center. */
-/* It will become visible once the player layout is initialized and has the 'data-started' attribute. */
 media-player:not([data-started]) #web-fullscreen-control-btn {
   display: none !important;
 }
