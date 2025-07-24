@@ -496,6 +496,22 @@ async function performSearch(query, selectedAPIs) {
             return speedB - speedA; // 速度高的排在前面
         });
         const videoDataMap = AppState.get('videoDataMap') || new Map();
+
+        // 将所有搜索结果按影片分组，以供播放页的线路切换功能使用
+        const videoSourceMap = new Map();
+        checkedResults.forEach(item => {
+            if (item.vod_id) {
+                // 使用 "名称|年份" 作为分组的键
+                const videoKey = `${item.vod_name}|${item.vod_year || ''}`;
+                if (!videoSourceMap.has(videoKey)) {
+                    videoSourceMap.set(videoKey, []);
+                }
+                videoSourceMap.get(videoKey).push(item);
+            }
+        });
+        // 将分组后的线路信息保存到 sessionStorage
+        sessionStorage.setItem('videoSourceMap', JSON.stringify(Array.from(videoSourceMap.entries())));
+
         checkedResults.forEach(item => {
             if (item.vod_id) {
                 const uniqueVideoKey = `${item.source_code}_${item.vod_id}`;
