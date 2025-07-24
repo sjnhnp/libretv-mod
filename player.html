@@ -76,55 +76,59 @@
         </header>
 
         <!-- 播放器区域 -->
-        <!-- 播放器区域 -->
         <div id="player-region" class="relative" role="region" aria-label="视频播放区域">
             <!-- 
-              声明式 Vidstack 播放器布局
-              我们不再使用 JS 创建播放器，而是直接在 HTML 中定义它。
+              【核心修复】
+              1. 使用官方推荐的、完整的声明式布局。
+              2. 添加 key-target="document" 属性，让快捷键全局生效。
             -->
-            <media-player id="player" class="w-full h-full" crossOrigin>
+            <media-player id="player" class="w-full h-full" crossOrigin key-target="document">
                 <media-provider></media-provider>
-
-                <!-- Vidstack 默认视频布局 -->
                 <media-video-layout>
-                    <!-- 自定义控制栏 -->
-                    <media-controls slot="bottom-controls" class="vds-controls">
-                        <media-controls-group class="vds-controls-group">
-                            <media-play-button class="vds-button"></media-play-button>
-                            <media-mute-button class="vds-button"></media-mute-button>
-                            <media-volume-slider class="vds-slider"></media-volume-slider>
-                            <media-time-group class="vds-time-group">
-                                <media-time class="vds-time" type="current"></media-time>
-                                <div class="vds-time-divider">/</div>
-                                <media-time class="vds-time" type="duration"></media-time>
-                            </media-time-group>
-                        </media-controls-group>
-                        <media-seek-slider class="vds-slider"></media-seek-slider>
-                        <media-controls-group class="vds-controls-group">
-                            <media-chapter-title class="vds-chapter-title"></media-chapter-title>
-                            <media-pip-button class="vds-button"></media-pip-button>
-
-                            <!-- 
-                              【核心修复】
-                              将我们的网页全屏按钮直接放在这里，就在原生全屏按钮的前面。
-                              使用 vds-button 和 vds-icon class 来确保样式和行为一致。
-                            -->
-                            <button id="web-fullscreen-control-btn" class="vds-button" title="网页全屏 (W)"
-                                aria-label="网页全屏">
-                                <!-- 初始图标 (进入) -->
-                                <svg class="vds-icon" width="22" height="22" viewBox="0 0 24 24" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M3 8V5a2 2 0 0 1 2-2h3m11 0h3a2 2 0 0 1 2 2v3m0 11v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"
-                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round"></path>
-                                </svg>
-                            </button>
-
-                            <media-fullscreen-button class="vds-button"></media-fullscreen-button>
-                        </media-controls-group>
-                    </media-controls>
+                    <!-- 这里可以放置自定义的浮动UI，例如手势提示 -->
                 </media-video-layout>
+                <!-- 
+                  【核心修复】
+                  使用 vds-controls 结构，并把我们的按钮放在正确的位置。
+                  slot="bottom-controls" 是 Vidstack 1.x 的用法，现在直接嵌套即可。
+                -->
+                <media-controls class="vds-controls">
+                    <media-controls-group class="vds-controls-group">
+                        <media-play-button class="vds-button"></media-play-button>
+                        <media-mute-button class="vds-button"></media-mute-button>
+                        <media-volume-slider class="vds-slider"></media-volume-slider>
+                        <media-time-group class="vds-time-group">
+                            <media-time class="vds-time" type="current"></media-time>
+                            <div class="vds-time-divider">/</div>
+                            <media-time class="vds-time" type="duration"></media-time>
+                        </media-time-group>
+                    </media-controls-group>
+
+                    <div class="vds-controls-spacer"></div>
+
+                    <media-controls-group class="vds-controls-group">
+                        <media-chapter-title class="vds-chapter-title"></media-chapter-title>
+                        <media-pip-button class="vds-button"></media-pip-button>
+
+                        <!-- 
+                          【核心修复】
+                          将网页全屏按钮放在这里，就在原生全屏按钮的前面。
+                          它现在是 Vidstack 布局的一部分，所有行为都会正确。
+                        -->
+                        <button id="web-fullscreen-control-btn" class="vds-button" title="网页全屏 (W)" aria-label="网页全屏">
+                            <!-- 初始图标 (进入) -->
+                            <svg class="vds-icon" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M3 8V5a2 2 0 0 1 2-2h3m11 0h3a2 2 0 0 1 2 2v3m0 11v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round"></path>
+                            </svg>
+                        </button>
+
+                        <media-fullscreen-button class="vds-button"></media-fullscreen-button>
+                    </media-controls-group>
+                </media-controls>
             </media-player>
 
             <!-- 加载和错误覆盖层 (保持不变) -->

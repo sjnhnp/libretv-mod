@@ -484,8 +484,7 @@ async function processVideoUrl(url) {
 // --- 播放器核心逻辑 ---
 // --- 播放器核心逻辑 ---
 async function initPlayer(videoUrl, title) {
-    // 【核心修复】我们不再使用 VidstackPlayer.create()
-    // 而是直接获取在 HTML 中声明的播放器元素。
+    // 【核心修复】直接获取在 HTML 中声明好的播放器元素。
     player = document.getElementById('player');
 
     if (!player) {
@@ -504,7 +503,7 @@ async function initPlayer(videoUrl, title) {
     player.title = title;
     player.src = { src: processedUrl, type: 'application/x-mpegurl' };
 
-    // 确保事件监听器只被添加一次
+    // 确保核心事件监听器只被添加一次
     if (!player.dataset.listenersAdded) {
         addPlayerEventListeners();
         player.dataset.listenersAdded = 'true';
@@ -516,10 +515,10 @@ async function initPlayer(videoUrl, title) {
     const savedSpeed = localStorage.getItem('playbackSpeed') || '1';
     player.playbackRate = parseFloat(savedSpeed);
 
-    // 网页全屏按钮现在由HTML管理，但我们仍需绑定快捷键
+    // 网页全屏按钮现在由HTML管理，我们只需绑定快捷键和点击事件
     addWebFullscreenKeyboardShortcut();
 
-    // 找到网页全屏按钮并绑定点击事件
+    // 找到网页全屏按钮并确保点击事件已绑定
     const webFullscreenBtn = document.getElementById('web-fullscreen-control-btn');
     if (webFullscreenBtn && !webFullscreenBtn.dataset.clickAdded) {
         webFullscreenBtn.addEventListener('click', (e) => {
