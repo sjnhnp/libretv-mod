@@ -243,33 +243,63 @@ media-player .vds-controls-group {
 
 /* 但是要确保下拉菜单有更高的z-index */
 
+/* 自定义右侧控制条 - 覆盖在播放器上，与底部控制条同步 */
+#custom-right-controls {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 50;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+/* 当鼠标悬停在播放器区域时显示右侧控制条 */
+#player-region:hover #custom-right-controls {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 播放器未开始时隐藏右侧控制条 */
+media-player:not([data-started]) #custom-right-controls {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* 当播放器获得焦点时显示右侧控制条 */
+media-player:focus-within #custom-right-controls {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* 网页全屏按钮样式 */
 #web-fullscreen-control-btn {
-  /* position: relative; */
-  /* Removed */
-  display: inline-flex;
-  /* Removed !important */
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--media-button-size, 40px);
-  height: var(--media-button-size, 40px);
+  width: 40px;
+  height: 40px;
   border: none;
-  background: transparent;
-  color: white;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
   cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  opacity: 0.8;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-media-player:not([data-started]) #web-fullscreen-control-btn {
-  display: none !important;
-}
-
+/* 按钮悬停效果 */
 #web-fullscreen-control-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  opacity: 1;
+  background: rgba(0, 0, 0, 0.7);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: white;
   transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 #web-fullscreen-control-btn:active {
@@ -278,12 +308,14 @@ media-player:not([data-started]) #web-fullscreen-control-btn {
 
 /* 网页全屏状态下的按钮样式 */
 .web-fullscreen-active #web-fullscreen-control-btn {
-  background-color: rgba(59, 130, 246, 0.2);
+  background: rgba(59, 130, 246, 0.3);
+  border-color: rgba(59, 130, 246, 0.5);
   color: #60a5fa;
 }
 
 .web-fullscreen-active #web-fullscreen-control-btn:hover {
-  background-color: rgba(59, 130, 246, 0.3) !important;
+  background: rgba(59, 130, 246, 0.4);
+  border-color: rgba(59, 130, 246, 0.6);
 }
 
 /* 确保按钮图标居中 */
@@ -291,6 +323,12 @@ media-player:not([data-started]) #web-fullscreen-control-btn {
   width: 20px;
   height: 20px;
   stroke-width: 2;
+}
+
+/* 在网页全屏模式下，右侧控制条始终显示 */
+.web-fullscreen-active #custom-right-controls {
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 #play-settings-dropdown,

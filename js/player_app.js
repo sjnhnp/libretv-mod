@@ -201,6 +201,65 @@ function removeWebFullscreenExitHint() {
     }
 }
 
+// 初始化自定义右侧控制条
+function initCustomRightControls() {
+    // 避免重复初始化
+    if (window.customRightControlsInitialized) return;
+    window.customRightControlsInitialized = true;
+
+    // 绑定网页全屏按钮点击事件
+    const webFullscreenBtn = document.getElementById('web-fullscreen-control-btn');
+    if (webFullscreenBtn) {
+        webFullscreenBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleWebFullscreen();
+        });
+    }
+
+    // 监听播放器状态变化，同步右侧控制条显示/隐藏
+    if (player) {
+        // 监听播放器控制条显示/隐藏事件
+        player.addEventListener('controls-change', (event) => {
+            const rightControls = document.getElementById('custom-right-controls');
+            if (rightControls) {
+                if (event.detail) {
+                    rightControls.style.opacity = '1';
+                    rightControls.style.pointerEvents = 'auto';
+                } else {
+                    rightControls.style.opacity = '0';
+                    rightControls.style.pointerEvents = 'none';
+                }
+            }
+        });
+
+        // 监听鼠标进入/离开播放器区域
+        const playerRegion = document.getElementById('player-region');
+        if (playerRegion) {
+            let hideTimeout;
+            
+            playerRegion.addEventListener('mouseenter', () => {
+                clearTimeout(hideTimeout);
+                const rightControls = document.getElementById('custom-right-controls');
+                if (rightControls && player.dataset.started) {
+                    rightControls.style.opacity = '1';
+                    rightControls.style.pointerEvents = 'auto';
+                }
+            });
+
+            playerRegion.addEventListener('mouseleave', () => {
+                hideTimeout = setTimeout(() => {
+                    const rightControls = document.getElementById('custom-right-controls');
+                    if (rightControls && !isWebFullscreen) {
+                        rightControls.style.opacity = '0';
+                        rightControls.style.pointerEvents = 'none';
+                    }
+                }, 3000); // 3秒后隐藏
+            });
+        }
+    }
+}
+
 // 更新控制栏中的网页全屏按钮图标
 function updateWebFullscreenControlButton(button) {
     // 如果没有传入按钮元素，就通过ID查找
@@ -212,12 +271,12 @@ function updateWebFullscreenControlButton(button) {
         // 根据当前状态设置不同的图标
         button.innerHTML = isWebFullscreen ?
             // 新的 "退出网页全屏" 图标
-            `<svg class="vds-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            `<svg class="w-5 h-5" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M19.913 6.45826V9.56817C19.913 9.68695 20.0566 9.74644 20.1406 9.66245L24.0458 5.75727C24.3061 5.49692 24.7283 5.49692 24.9886 5.75727L26.2143 6.98293C26.4746 7.24328 26.4746 7.66539 26.2143 7.92573L22.3093 11.8306C22.2253 11.9146 22.2848 12.0583 22.4036 12.0583H25.5137C25.8819 12.0583 26.1804 12.3567 26.1804 12.7249V14.4583C26.1804 14.8265 25.8819 15.1249 25.5137 15.1249L19.2468 15.1249C19.2466 15.1249 19.2469 15.1249 19.2468 15.1249H17.5137C17.1455 15.1249 16.8463 14.8265 16.8463 14.4583V6.45826C16.8463 6.09007 17.1448 5.7916 17.513 5.7916H19.2463C19.6145 5.7916 19.913 6.09007 19.913 6.45826Z" fill="currentColor" />
                 <path d="M9.73054 19.9416C9.84933 19.9416 9.90882 20.0852 9.82482 20.1692L5.91991 24.0741C5.65956 24.3345 5.65956 24.7566 5.91991 25.0169L7.14556 26.2426C7.40591 26.5029 7.82802 26.5029 8.08837 26.2426L11.9935 22.3374C12.0775 22.2534 12.2212 22.3129 12.2212 22.4317V25.5416C12.2212 25.9098 12.5196 26.2083 12.8878 26.2083H14.6212C14.9893 26.2083 15.2878 25.9098 15.2878 25.5416L15.2878 17.5416C15.2878 17.1734 14.9893 16.8749 14.6212 16.8749H6.62046C6.25227 16.8749 5.9538 17.1734 5.9538 17.5416V19.2749C5.9538 19.6431 6.25227 19.9416 6.62046 19.9416H9.73054Z" fill="currentColor" />
             </svg>` :
             // 新的 "进入网页全屏" 图标
-            `<svg class="vds-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            `<svg class="w-5 h-5" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M17.3183 12.4856L21.2231 8.58073C21.3071 8.49674 21.2476 8.35312 21.1288 8.35312H18.0189C17.6507 8.35312 17.3522 8.05464 17.3522 7.68645V5.95312C17.3522 5.58493 17.6507 5.28645 18.0189 5.28645H26.0189C26.387 5.28645 26.6862 5.58493 26.6862 5.95312V13.9531C26.6862 14.3213 26.3877 14.6198 26.0196 14.6198H24.2862C23.918 14.6198 23.6196 14.3213 23.6196 13.9531V10.8431C23.6196 10.7243 23.4759 10.6648 23.3919 10.7488L19.4867 14.6541C19.2264 14.9144 18.8043 14.9144 18.5439 14.6541L17.3183 13.4284C17.0579 13.1681 17.0579 12.7459 17.3183 12.4856Z" fill="currentColor" />
                 <path d="M6.1153 26.7135H14.1153C14.4835 26.7135 14.782 26.4151 14.782 26.0469V24.3135C14.782 23.9453 14.4835 23.6469 14.1153 23.6469H11.0053C10.8865 23.6469 10.827 23.5033 10.911 23.4193L14.8159 19.5144C15.0763 19.254 15.0763 18.8319 14.8159 18.5716L13.5903 17.3459C13.3299 17.0856 12.9078 17.0856 12.6474 17.3459L8.74222 21.2512C8.65822 21.3351 8.5146 21.2757 8.5146 21.1569L8.51461 18.0469C8.51461 17.6787 8.21613 17.3802 7.84794 17.3802H6.11461C5.74642 17.3802 5.44794 17.6787 5.44794 18.0469V26.0469C5.44794 26.4151 5.74711 26.7135 6.1153 26.7135Z" fill="currentColor" />
             </svg>`;
@@ -516,19 +575,13 @@ async function initPlayer(videoUrl, title) {
     const savedSpeed = localStorage.getItem('playbackSpeed') || '1';
     player.playbackRate = parseFloat(savedSpeed);
 
-    // 网页全屏按钮现在由HTML管理，我们只需绑定快捷键和点击事件
+    // 网页全屏功能初始化
     addWebFullscreenKeyboardShortcut();
-
-    // 找到网页全屏按钮并确保点击事件已绑定
-    const webFullscreenBtn = document.getElementById('web-fullscreen-control-btn');
-    if (webFullscreenBtn && !webFullscreenBtn.dataset.clickAdded) {
-        webFullscreenBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleWebFullscreen();
-        });
-        webFullscreenBtn.dataset.clickAdded = 'true';
-    }
+    
+    // 等待播放器完全初始化后再初始化右侧控制条
+    setTimeout(() => {
+        initCustomRightControls();
+    }, 100);
 }
 
 function addPlayerEventListeners() {
