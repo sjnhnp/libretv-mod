@@ -482,10 +482,10 @@ function initializeEventListeners() {
     if (speedDetectionToggle) {
         speedDetectionToggle.addEventListener('change', (e) => {
             const enabled = e.target.checked;
-            localStorage.setItem('speedDetectionEnabled', enabled.toString());
+            localStorage.setItem(PLAYER_CONFIG.speedDetectionStorage, enabled.toString());
             showToast(enabled ? '已启用画质速度检测' : '已禁用画质速度检测', 'info');
         });
-        speedDetectionToggle.checked = getBoolConfig('speedDetectionEnabled', true);
+        speedDetectionToggle.checked = PLAYER_CONFIG.speedDetectionEnabled;
     }
     const preloadingToggle = DOMCache.get('preloadingToggle');
     if (preloadingToggle) {
@@ -572,7 +572,7 @@ function search(options = {}) {
 
 async function performSearch(query, selectedAPIs) {
     // 检查是否启用速度检测
-    const speedDetectionEnabled = getBoolConfig('speedDetectionEnabled', true);
+    const speedDetectionEnabled = getBoolConfig(PLAYER_CONFIG.speedDetectionStorage, PLAYER_CONFIG.speedDetectionEnabled);
     
     // 如果启用速度检测，先检查缓存
     if (speedDetectionEnabled) {
