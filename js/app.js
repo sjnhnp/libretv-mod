@@ -378,13 +378,21 @@ function backgroundSpeedUpdate(results) {
     setTimeout(processNext, 100);
 }
 
+function isValidSpeedValue(speed) {
+    if (!speed || speed === 'N/A' || speed === '连接超时' || speed === '未知' || speed === '检测失败') {
+        return false;
+    }
+    // 只显示包含数字+单位的速度值
+    return /^\d+(\.\d+)?\s*(KB\/s|MB\/s|kb\/s|mb\/s)$/i.test(speed);
+}
+
 function updateModalSpeedDisplay(item) {
     // 更新弹窗中对应项目的速度显示
     const modal = document.getElementById('modal');
     if (!modal || modal.style.display === 'none') return;
     
     const speedElement = modal.querySelector(`[data-vod-id="${item.vod_id}"] .speed-tag`);
-    if (speedElement && item.loadSpeed && item.loadSpeed !== 'N/A' && item.loadSpeed !== '连接超时') {
+    if (speedElement && item.loadSpeed && isValidSpeedValue(item.loadSpeed)) {
         speedElement.textContent = item.loadSpeed;
         speedElement.style.display = 'inline-block';
     }
@@ -1111,11 +1119,15 @@ function createResultItemUsingTemplate(item) {
     }
     const sourceContainer = clone.querySelector('.result-source');
     if (sourceContainer) {
-        const qualityBadge = document.createElement('span');
-        const qualityId = `${item.source_code}_${item.vod_id}`;
-        qualityBadge.setAttribute('data-quality-id', qualityId);
-        updateQualityBadgeUI(qualityId, item.quality || '未知', qualityBadge); // 直接调用更新函数
-        sourceContainer.appendChild(qualityBadge);
+        // 检查是否启用画质检测
+        const speedDetectionEnabled = getBoolConfig(PLAYER_CONFIG.speedDetectionStorage, PLAYER_CONFIG.speedDetectionEnabled);
+        if (speedDetectionEnabled) {
+            const qualityBadge = document.createElement('span');
+            const qualityId = `${item.source_code}_${item.vod_id}`;
+            qualityBadge.setAttribute('data-quality-id', qualityId);
+            updateQualityBadgeUI(qualityId, item.quality || '未知', qualityBadge); // 直接调用更新函数
+            sourceContainer.appendChild(qualityBadge);
+        }
     }
     cardElement.dataset.id = item.vod_id || '';
     cardElement.dataset.name = item.vod_name || '';
@@ -1278,32 +1290,51 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     const qualityTagElement = modalContent.querySelector('[data-field="quality-tag"]');
     if (qualityTagElement) {
         // FIX: 修复了此处的逻辑，优先使用检测结果，并避免回退到“高清”
-        const sourceProvidedQuality = videoData.vod_quality; // API直接提供的质量
-        const detectedQuality = videoData.quality; // 我们检测的质量
+        // 检查是否启用画质检测
+        const speedDetectionEnabled = getBoolConfig(PLAYER_CONFIG.speedDetectionStorage, PLAYER_CONFIG.speedDetectionEnabled);
+        if (speedDetectionEnabled) {
+            const sourceProvidedQuality = videoData.vod_quality; // API直接提供的质量
+            const detectedQuality = videoData.quality; // 我们检测的质量
 
-        // 优先用API提供的，其次用我们检测的，最后是未知
-        const finalQuality = sourceProvidedQuality || detectedQuality || '未知';
+            // 优先用API提供的，其次用我们检测的，最后是未知
+            const finalQuality = sourceProvidedQuality || detectedQuality || '未知';
 
-        qualityTagElement.textContent = finalQuality;
+            qualityTagElement.textContent = finalQuality;
+            qualityTagElement.classList.remove('hidden');
 
-        // 给不同画质加颜色（方便区分）
-        const qualityLower = finalQuality.toLowerCase();
-        if (qualityLower.includes('4k')) {
-            qualityTagElement.style.backgroundColor = '#4f46e5'; // 紫色
-        } else if (qualityLower.includes('1080')) {
-            qualityTagElement.style.backgroundColor = '#7c3aed'; // 深紫色
-        } else if (qualityLower.includes('720')) {
-            qualityTagElement.style.backgroundColor = '#2563eb'; // 蓝色
-        } else if (finalQuality === '高清') {
-            qualityTagElement.style.backgroundColor = '#10b981'; // 绿色
-        } else if (finalQuality === '标清') {
-            qualityTagElement.style.backgroundColor = '#6b7280'; // 灰色
+            // 给不同画质加颜色（方便区分）
+            const qualityLower = finalQuality.toLowerCase();
+            if (qualityLower.includes('4k')) {
+                qualityTagElement.style.backgroundColor = '#4f46e5'; // 紫色
+            } else if (qualityLower.includes('1080')) {
+                qualityTagElement.style.backgroundColor = '#7c3aed'; // 深紫色
+            } else if (qualityLower.includes('720')) {
+                qualityTagElement.style.backgroundColor = '#2563eb'; // 蓝色
+            } else if (finalQuality === '高清') {
+                qualityTagElement.style.backgroundColor = '#10b981'; // 绿色
+            } else if (finalQuality === '标清') {
+                qualityTagElement.style.backgroundColor = '#6b7280'; // 灰色
+            } else {
+                qualityTagElement.style.backgroundColor = '#6b7280'; // 未知用灰色
+            }
+        
+            // 如果是未知或检测失败，添加点击重新检测功能
+            if (['未知', '检测失败', '检测超时', '编码不支持', '播放失败', '无有效链接'].includes(finalQuality)) {
+                qualityTagElement.style.cursor = 'pointer';
+                qualityTagElement.title = '点击重新检测';
+                qualityTagElement.onclick = (event) => {
+                    event.stopPropagation();
+                    const qualityId = `${sourceCode}_${id}`;
+                    manualRetryDetection(qualityId, videoData);
+                };
+            }
         } else {
-            qualityTagElement.style.backgroundColor = '#6b7280'; // 未知用灰色
+            // 关闭画质检测时隐藏标签
+            qualityTagElement.classList.add('hidden');
         }
     }
     const speedTagElement = modalContent.querySelector('[data-field="speed-tag"]');
-    if (speedTagElement && videoData.loadSpeed && videoData.loadSpeed !== 'N/A' && videoData.loadSpeed !== '连接超时') {
+    if (speedTagElement && videoData.loadSpeed && isValidSpeedValue(videoData.loadSpeed)) {
         speedTagElement.textContent = videoData.loadSpeed;
         speedTagElement.classList.remove('hidden');
         speedTagElement.style.backgroundColor = '#16a34a';
@@ -1527,7 +1558,7 @@ async function manualRetryDetection(qualityId, videoData) {
                     modalQualityTag.textContent = newQuality;
                     // ... (此处可以添加更新弹窗样式的逻辑)
                 }
-                if (modalSpeedTag && checkResult.loadSpeed && checkResult.loadSpeed !== 'N/A' && checkResult.loadSpeed !== '连接超时') {
+                if (modalSpeedTag && checkResult.loadSpeed && isValidSpeedValue(checkResult.loadSpeed)) {
                     modalSpeedTag.textContent = checkResult.loadSpeed;
                     modalSpeedTag.classList.remove('hidden');
                 }
