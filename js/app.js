@@ -288,6 +288,108 @@ function getBoolConfig(key, defaultValue) {
     return value === 'true';
 }
 
+// 搜索缓存相关函数
+function getSearchCacheKey(query, selectedAPIs) {
+    return `searchCache_${query}_${selectedAPIs.sort().join('_')}`;
+}
+
+function checkSearchCache(query, selectedAPIs) {
+    try {
+        const cacheKey = getSearchCacheKey(query, selectedAPIs);
+        const cached = localStorage.getItem(cacheKey);
+        if (!cached) return { canUseCache: false };
+        
+        const cacheData = JSON.parse(cached);
+        const now = Date.now();
+        const expireTime = 10 * 60 * 1000; // 10分钟过期
+        
+        if (now - cacheData.timestamp > expireTime) {
+            localStorage.removeItem(cacheKey);
+            return { canUseCache: false };
+        }
+        
+        // 检查API是否有变化
+        const cachedAPIs = cacheData.selectedAPIs || [];
+        const added = selectedAPIs.filter(api => !cachedAPIs.includes(api));
+        const removed = cachedAPIs.filter(api => !selectedAPIs.includes(api));
+        
+        return {
+            canUseCache: added.length === 0 && removed.length === 0,
+            results: cacheData.results || [],
+            newAPIs: added
+        };
+    } catch (e) {
+        console.warn('检查搜索缓存失败:', e);
+        return { canUseCache: false };
+    }
+}
+
+function saveSearchCache(query, selectedAPIs, results) {
+    try {
+        const cacheKey = getSearchCacheKey(query, selectedAPIs);
+        const cacheData = {
+            timestamp: Date.now(),
+            selectedAPIs: [...selectedAPIs],
+            results: results
+        };
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+    } catch (e) {
+        console.warn('保存搜索缓存失败:', e);
+    }
+}
+
+function backgroundSpeedUpdate(results) {
+    // 后台更新速度，限制并发数为3
+    const concurrentLimit = 3;
+    let currentIndex = 0;
+    
+    function processNext() {
+        if (currentIndex >= results.length) return;
+        
+        const batch = results.slice(currentIndex, currentIndex + concurrentLimit);
+        currentIndex += concurrentLimit;
+        
+        const promises = batch.map(async (item) => {
+            if (!item.vod_play_url) return item;
+            
+            const firstSegment = item.vod_play_url.split('#')[0];
+            const firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
+            
+            try {
+                const checkResult = await window.precheckSource(firstEpisodeUrl);
+                // 只更新速度相关字段
+                item.loadSpeed = checkResult.loadSpeed;
+                item.sortPriority = checkResult.sortPriority;
+                
+                // 更新弹窗中的速度显示（如果弹窗打开）
+                updateModalSpeedDisplay(item);
+            } catch (e) {
+                console.warn('后台速度检测失败:', e);
+            }
+            return item;
+        });
+        
+        Promise.all(promises).then(() => {
+            setTimeout(processNext, 100); // 避免过于频繁的请求
+        });
+    }
+    
+    // 延迟100ms开始后台检测，避免阻塞UI
+    setTimeout(processNext, 100);
+}
+
+function updateModalSpeedDisplay(item) {
+    // 更新弹窗中对应项目的速度显示
+    const modal = document.getElementById('modal');
+    if (!modal || modal.style.display === 'none') return;
+    
+    const speedElement = modal.querySelector(`[data-vod-id="${item.vod_id}"] .speed-tag`);
+    if (speedElement && item.loadSpeed && item.loadSpeed !== 'N/A' && item.loadSpeed !== '连接超时') {
+        speedElement.textContent = item.loadSpeed;
+        speedElement.style.display = 'inline-block';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     initializeAppState();
     initializeDOMCache();
@@ -344,6 +446,7 @@ function initializeDOMCache() {
         customApiIsAdult: 'customApiIsAdult',
         yellowFilterToggle: 'yellowFilterToggle',
         adFilteringToggle: 'adFilterToggle',
+        speedDetectionToggle: 'speedDetectionToggle',
         preloadingToggle: 'preloadingToggle',
         preloadCountInput: 'preloadCountInput'
     });
@@ -374,6 +477,15 @@ function initializeEventListeners() {
             showToast(enabled ? '已启用黄色内容过滤' : '已禁用黄色内容过滤', 'info');
         });
         yellowFilterToggle.checked = getBoolConfig('yellowFilterEnabled', true);
+    }
+    const speedDetectionToggle = DOMCache.get('speedDetectionToggle');
+    if (speedDetectionToggle) {
+        speedDetectionToggle.addEventListener('change', (e) => {
+            const enabled = e.target.checked;
+            localStorage.setItem('speedDetectionEnabled', enabled.toString());
+            showToast(enabled ? '已启用画质速度检测' : '已禁用画质速度检测', 'info');
+        });
+        speedDetectionToggle.checked = getBoolConfig('speedDetectionEnabled', true);
     }
     const preloadingToggle = DOMCache.get('preloadingToggle');
     if (preloadingToggle) {
@@ -459,6 +571,19 @@ function search(options = {}) {
 }
 
 async function performSearch(query, selectedAPIs) {
+    // 检查是否启用速度检测
+    const speedDetectionEnabled = getBoolConfig('speedDetectionEnabled', true);
+    
+    // 如果启用速度检测，先检查缓存
+    if (speedDetectionEnabled) {
+        const cacheResult = checkSearchCache(query, selectedAPIs);
+        if (cacheResult.canUseCache) {
+            // 启动后台速度更新
+            setTimeout(() => backgroundSpeedUpdate(cacheResult.results), 100);
+            return cacheResult.results;
+        }
+    }
+    
     const customAPIsFromStorage = JSON.parse(localStorage.getItem('customAPIs') || '[]');
     AppState.set('customAPIs', customAPIsFromStorage);
     const searchPromises = selectedAPIs.map(apiId => {
@@ -492,17 +617,29 @@ async function performSearch(query, selectedAPIs) {
                 });
             }
         });
-        showLoading(`正在检测 ${allResults.length} 个资源...`);
-        const precheckPromises = allResults.map(async (item) => {
-            let firstEpisodeUrl = '';
-            if (item.vod_play_url) {
-                const firstSegment = item.vod_play_url.split('#')[0];
-                firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
-            }
-            const checkResult = await window.precheckSource(firstEpisodeUrl);
-            return { ...item, ...checkResult };
-        });
-        const checkedResults = await Promise.all(precheckPromises);
+        let checkedResults = allResults;
+        
+        // 只有启用速度检测时才进行检测
+        if (speedDetectionEnabled) {
+            showLoading(`正在检测 ${allResults.length} 个资源...`);
+            const precheckPromises = allResults.map(async (item) => {
+                let firstEpisodeUrl = '';
+                if (item.vod_play_url) {
+                    const firstSegment = item.vod_play_url.split('#')[0];
+                    firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
+                }
+                const checkResult = await window.precheckSource(firstEpisodeUrl);
+                return { ...item, ...checkResult };
+            });
+            checkedResults = await Promise.all(precheckPromises);
+        } else {
+            // 不检测时，设置默认值以保持数据结构一致
+            checkedResults = allResults.map(item => ({
+                ...item,
+                loadSpeed: 'N/A',
+                sortPriority: 50
+            }));
+        }
         checkedResults.sort((a, b) => {
             // 新的排序逻辑：优先级 + 速度
 
@@ -562,6 +699,12 @@ async function performSearch(query, selectedAPIs) {
         });
         AppState.set('videoDataMap', videoDataMap);
         sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
+        
+        // 保存搜索缓存（仅在启用速度检测时）
+        if (speedDetectionEnabled) {
+            saveSearchCache(query, selectedAPIs, checkedResults);
+        }
+        
         return checkedResults;
     } catch (error) {
         console.error("执行搜索或预检测时出错:", error);
@@ -1145,7 +1288,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         }
     }
     const speedTagElement = modalContent.querySelector('[data-field="speed-tag"]');
-    if (speedTagElement && videoData.loadSpeed && videoData.loadSpeed !== 'N/A') {
+    if (speedTagElement && videoData.loadSpeed && videoData.loadSpeed !== 'N/A' && videoData.loadSpeed !== '连接超时') {
         speedTagElement.textContent = videoData.loadSpeed;
         speedTagElement.classList.remove('hidden');
         speedTagElement.style.backgroundColor = '#16a34a';
@@ -1369,7 +1512,7 @@ async function manualRetryDetection(qualityId, videoData) {
                     modalQualityTag.textContent = newQuality;
                     // ... (此处可以添加更新弹窗样式的逻辑)
                 }
-                if (modalSpeedTag) {
+                if (modalSpeedTag && checkResult.loadSpeed && checkResult.loadSpeed !== 'N/A' && checkResult.loadSpeed !== '连接超时') {
                     modalSpeedTag.textContent = checkResult.loadSpeed;
                     modalSpeedTag.classList.remove('hidden');
                 }

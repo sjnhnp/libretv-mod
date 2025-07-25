@@ -278,6 +278,30 @@
                     </div>
                 </div>
 
+                <!-- 画质速度检测 -->
+                <div class="bg-white/5 rounded-xl p-4 mb-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label for="speedDetectionToggle" class="text-sm font-medium text-white/90">
+                                画质速度检测
+                            </label>
+                            <p class="text-xs text-white/60 mt-1">
+                                关闭可减少等待
+                            </p>
+                        </div>
+                        <div class="relative inline-block w-12 align-middle select-none">
+                            <input type="checkbox" id="speedDetectionToggle"
+                                class="opacity-0 absolute w-full h-full cursor-pointer z-10" aria-checked="false">
+                            <div
+                                class="toggle-bg bg-white/20 w-12 h-6 rounded-full transition-all duration-300 ease-in-out">
+                            </div>
+                            <div
+                                class="toggle-dot absolute w-5 h-5 bg-white rounded-full top-0.5 left-0.5 transition-all duration-300 ease-in-out shadow-lg">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 播放预加载 -->
                 <div class="bg-white/5 rounded-xl p-4">
                     <div class="flex items-center justify-between">
