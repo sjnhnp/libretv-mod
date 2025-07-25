@@ -298,21 +298,21 @@ function checkSearchCache(query, selectedAPIs) {
         const cacheKey = getSearchCacheKey(query, selectedAPIs);
         const cached = localStorage.getItem(cacheKey);
         if (!cached) return { canUseCache: false };
-        
+
         const cacheData = JSON.parse(cached);
         const now = Date.now();
         const expireTime = 10 * 60 * 1000; // 10分钟过期
-        
+
         if (now - cacheData.timestamp > expireTime) {
             localStorage.removeItem(cacheKey);
             return { canUseCache: false };
         }
-        
+
         // 检查API是否有变化
         const cachedAPIs = cacheData.selectedAPIs || [];
         const added = selectedAPIs.filter(api => !cachedAPIs.includes(api));
         const removed = cachedAPIs.filter(api => !selectedAPIs.includes(api));
-        
+
         return {
             canUseCache: added.length === 0 && removed.length === 0,
             results: cacheData.results || [],
@@ -342,25 +342,25 @@ function backgroundSpeedUpdate(results) {
     // 后台更新速度，限制并发数为3
     const concurrentLimit = 3;
     let currentIndex = 0;
-    
+
     function processNext() {
         if (currentIndex >= results.length) return;
-        
+
         const batch = results.slice(currentIndex, currentIndex + concurrentLimit);
         currentIndex += concurrentLimit;
-        
+
         const promises = batch.map(async (item) => {
             if (!item.vod_play_url) return item;
-            
+
             const firstSegment = item.vod_play_url.split('#')[0];
             const firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
-            
+
             try {
                 const checkResult = await window.precheckSource(firstEpisodeUrl);
                 // 只更新速度相关字段
                 item.loadSpeed = checkResult.loadSpeed;
                 item.sortPriority = checkResult.sortPriority;
-                
+
                 // 更新弹窗中的速度显示（如果弹窗打开）
                 updateModalSpeedDisplay(item);
             } catch (e) {
@@ -368,12 +368,12 @@ function backgroundSpeedUpdate(results) {
             }
             return item;
         });
-        
+
         Promise.all(promises).then(() => {
             setTimeout(processNext, 100); // 避免过于频繁的请求
         });
     }
-    
+
     // 延迟100ms开始后台检测，避免阻塞UI
     setTimeout(processNext, 100);
 }
@@ -390,7 +390,7 @@ function updateModalSpeedDisplay(item) {
     // 更新弹窗中对应项目的速度显示
     const modal = document.getElementById('modal');
     if (!modal || modal.style.display === 'none') return;
-    
+
     const speedElement = modal.querySelector(`[data-vod-id="${item.vod_id}"] .speed-tag`);
     if (speedElement && item.loadSpeed && isValidSpeedValue(item.loadSpeed)) {
         speedElement.textContent = item.loadSpeed;
@@ -589,7 +589,7 @@ function search(options = {}) {
 async function performSearch(query, selectedAPIs) {
     // 检查是否启用速度检测
     const speedDetectionEnabled = getBoolConfig(PLAYER_CONFIG.speedDetectionStorage, PLAYER_CONFIG.speedDetectionEnabled);
-    
+
     // 如果启用速度检测，先检查缓存
     if (speedDetectionEnabled) {
         const cacheResult = checkSearchCache(query, selectedAPIs);
@@ -606,7 +606,7 @@ async function performSearch(query, selectedAPIs) {
             });
         }
     }
-    
+
     const customAPIsFromStorage = JSON.parse(localStorage.getItem('customAPIs') || '[]');
     AppState.set('customAPIs', customAPIsFromStorage);
     const searchPromises = selectedAPIs.map(apiId => {
@@ -641,7 +641,7 @@ async function performSearch(query, selectedAPIs) {
             }
         });
         let checkedResults = allResults;
-        
+
         // 只有启用速度检测时才进行检测
         if (speedDetectionEnabled) {
             showLoading(`正在检测 ${allResults.length} 个资源...`);
@@ -722,12 +722,12 @@ async function performSearch(query, selectedAPIs) {
         });
         AppState.set('videoDataMap', videoDataMap);
         sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
-        
+
         // 保存搜索缓存（仅在启用速度检测时）
         if (speedDetectionEnabled) {
             saveSearchCache(query, selectedAPIs, checkedResults);
         }
-        
+
         return checkedResults;
     } catch (error) {
         console.error("执行搜索或预检测时出错:", error);
@@ -1126,6 +1126,23 @@ function createResultItemUsingTemplate(item) {
             const qualityId = `${item.source_code}_${item.vod_id}`;
             qualityBadge.setAttribute('data-quality-id', qualityId);
             updateQualityBadgeUI(qualityId, item.quality || '未知', qualityBadge); // 直接调用更新函数
+
+            const quality = item.quality || '未知';
+            const isRetryable = ['未知', '检测失败', '检测超时', '编码不支持', '播放失败', '无有效链接'].includes(quality);
+
+            // 如果状态是可重试的，就给它绑定手动重测的点击事件
+            if (isRetryable) {
+                qualityBadge.style.cursor = 'pointer';
+                qualityBadge.title = '点击重新检测';
+                qualityBadge.onclick = (event) => {
+                    // 关键一步：阻止事件冒泡，这样就不会触发父级卡片的弹窗事件了
+                    event.stopPropagation();
+
+                    // 调用手动重测函数
+                    manualRetryDetection(qualityId, item);
+                };
+            }
+
             sourceContainer.appendChild(qualityBadge);
         }
     }
@@ -1150,7 +1167,7 @@ function handleResultClick(event) {
     if (event.target.classList.contains('quality-badge')) {
         return;
     }
-    
+
     const card = event.currentTarget;
     const { id, name, sourceCode, apiUrl = '', year, typeName, videoKey, blurb, remarks, area, actor, director } = card.dataset;
     if (typeof showVideoEpisodesModal === 'function') {
@@ -1322,7 +1339,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             } else {
                 qualityTagElement.style.backgroundColor = '#6b7280'; // 未知用灰色
             }
-        
+
             // 如果是未知或检测失败，添加点击重新检测功能
             if (['未知', '检测失败', '检测超时', '编码不支持', '播放失败', '无有效链接'].includes(finalQuality)) {
                 qualityTagElement.style.cursor = 'pointer';
@@ -1528,59 +1545,41 @@ function updateQualityBadgeUI(qualityId, quality, badgeElement) {
 
 async function manualRetryDetection(qualityId, videoData) {
     const badge = document.querySelector(`.quality-badge[data-quality-id="${qualityId}"]`);
-    if (badge) {
-        badge.textContent = '检测中...';
-        badge.className = 'quality-badge text-xs text-gray-500';
-        badge.title = '检测中，请稍候';
-        badge.onclick = null;
-    }
+    if (!badge || badge.textContent === '检测中...') return; // 防止重复点击
 
-    let episodeUrl = '';
+    // 1. 更新UI，告知用户正在检测
+    badge.textContent = '检测中...';
+    badge.className = 'quality-badge text-xs font-medium py-0.5 px-1.5 rounded bg-gray-500 text-white';
+    badge.style.cursor = 'default';
+    badge.title = '正在检测，请稍候';
+    badge.onclick = null; // 暂时禁用点击
+
     try {
-        if (videoData && videoData.vod_play_url) {
-            const firstSegment = videoData.vod_play_url.split('#')[0];
-            episodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
+        // 2. 调用 SpeedTester 对这一个视频源进行检测
+        // SpeedTester.testSources 期望一个数组，所以我们传入一个只包含当前视频源的数组
+        const [testedResult] = await window.SpeedTester.testSources([videoData]);
+
+        // 3. 更新全局数据缓存，这非常重要！
+        const videoDataMap = AppState.get('videoDataMap');
+        if (videoDataMap) {
+            videoDataMap.set(qualityId, testedResult);
         }
 
-        if (episodeUrl) {
-            const checkResult = await window.precheckSource(episodeUrl);
-            const newQuality = checkResult.quality;
-
-            // 更新缓存和UI
-            saveQualityCache(qualityId, newQuality);
-            updateQualityBadgeUI(qualityId, newQuality);
-
-            // 更新 videoDataMap 中的数据
-            const videoDataMap = AppState.get('videoDataMap');
-            if (videoDataMap && videoDataMap.has(qualityId)) {
-                const existingData = videoDataMap.get(qualityId);
-                videoDataMap.set(qualityId, { ...existingData, ...checkResult });
-                sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
-            }
-
-            // 如果弹窗开着，也更新弹窗
-            const modal = document.getElementById('modal');
-            if (modal && !modal.classList.contains('hidden')) {
-                const modalQualityTag = modal.querySelector(`[data-field="quality-tag"]`);
-                const modalSpeedTag = modal.querySelector(`[data-field="speed-tag"]`);
-                if (modalQualityTag) {
-                    modalQualityTag.textContent = newQuality;
-                    // ... (此处可以添加更新弹窗样式的逻辑)
-                }
-                if (modalSpeedTag && checkResult.loadSpeed && isValidSpeedValue(checkResult.loadSpeed)) {
-                    modalSpeedTag.textContent = checkResult.loadSpeed;
-                    modalSpeedTag.classList.remove('hidden');
-                }
-            }
-        } else {
-            saveQualityCache(qualityId, '无有效链接');
-            updateQualityBadgeUI(qualityId, '无有效链接');
+        // 4. 更新附加到卡片DOM元素上的数据，以便下次点击弹窗时数据是新的
+        const cardElement = badge.closest('.card-hover');
+        if (cardElement) {
+            cardElement.videoData = testedResult;
         }
-    } catch (e) {
-        console.error('手动检测失败:', e);
-        saveQualityCache(qualityId, '检测失败');
-        updateQualityBadgeUI(qualityId, '检测失败');
+
+        // 5. 调用UI函数，用最终结果更新徽章的显示
+        updateQualityBadgeUI(qualityId, testedResult.quality, badge);
+
+    } catch (error) {
+        console.error('手动重新检测失败:', error);
+        // 如果出错，也在UI上明确显示失败
+        updateQualityBadgeUI(qualityId, '检测失败', badge);
     }
 }
 
+// 将这个函数暴露到全局，以便 onclick 属性可以调用它
 window.manualRetryDetection = manualRetryDetection;
