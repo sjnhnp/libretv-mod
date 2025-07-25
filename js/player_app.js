@@ -1154,10 +1154,15 @@ function renderEpisodes() {
             btn.textContent = originalName || episodeName || `第${originalIndex + 1}集`;
             btn.title = btn.textContent;
         } else {
-            // 非综艺：保持原有逻辑（不影响其他类型）
-            const originalName = (originalEpisodeNames && originalEpisodeNames[originalIndex]) || '';
-            btn.textContent = originalName || (originalIndex + 1).toString();
-            btn.title = originalName || `第${originalIndex + 1}集`;
+            // 非综艺：
+            // 1 采用优先原始名称
+            //const originalName = (originalEpisodeNames && originalEpisodeNames[originalIndex]) || '';
+            //btn.textContent = originalName || (originalIndex + 1).toString();
+            // btn.title = originalName || `第${originalIndex + 1}集`;
+
+            // 2 采用默认索引
+            btn.textContent = originalIndex + 1;
+            // 1和2 共有
             btn.title = `第 ${originalIndex + 1} 集`;
         }
 
