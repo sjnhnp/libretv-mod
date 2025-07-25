@@ -1,6 +1,22 @@
 // ================================
 // 简化的画质检测模块 - 专门解决CORS问题
 // ================================
+
+// [新增] 辅助函数，根据宽高正确判断画质，解决竖屏视频问题
+function getQualityStringFromDimensions(width, height) {
+    if (!width || !height) return '未知';
+    // 关键修复：使用宽高中的较小值来判断 "p"
+    const shortSide = Math.min(width, height);
+
+    if (shortSide >= 2160) return '4K';
+    if (shortSide >= 1440) return '2K';
+    if (shortSide >= 1080) return '1080p';
+    if (shortSide >= 720) return '720p';
+    if (shortSide >= 480) return '480p';
+    return 'SD';
+}
+
+
 /**
  * 简化的画质检测函数 - 主要通过URL分析和简单的网络测试
  * @param {string} m3u8Url - m3u8播放地址
@@ -182,12 +198,8 @@ async function tryParseM3u8Resolution(m3u8Url) {
 
                 console.log(`找到RESOLUTION: ${width}x${height}`);
 
-                let quality = 'SD';
-                if (width >= 3840) quality = '4K';
-                else if (width >= 2560) quality = '2K';
-                else if (width >= 1920) quality = '1080p';
-                else if (width >= 1280) quality = '720p';
-                else if (width >= 854) quality = '480p';
+                // [修复] 使用新的辅助函数进行判断
+                const quality = getQualityStringFromDimensions(width, height);
 
                 return {
                     quality,
@@ -266,19 +278,16 @@ async function performVideoElementDetection(m3u8Url) {
 
         const checkResolution = () => {
             const width = video.videoWidth;
-            if (width > 0) {
+            const height = video.videoHeight; // 获取高度
+            if (width > 0 && height > 0) { // 确保宽高都有效
                 const pingTime = Math.round(performance.now() - startTime);
-                let quality = '未知'; // 默认是未知
-                if (width >= 3840) quality = '4K';
-                else if (width >= 2560) quality = '2K';
-                else if (width >= 1920) quality = '1080p';
-                else if (width >= 1280) quality = '720p';
-                else if (width >= 854) quality = '480p';
-                else quality = 'SD';
+                
+                // [修复] 使用新的辅助函数进行判断
+                const quality = getQualityStringFromDimensions(width, height);
 
                 resolveOnce({
                     quality,
-                    loadSpeed: `${width}x${video.videoHeight}`,
+                    loadSpeed: `${width}x${height}`,
                     pingTime
                 });
             }
