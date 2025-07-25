@@ -118,6 +118,7 @@ async function playVideo(episodeString, title, episodeIndex, sourceName = '', so
             sourceCode: sourceCode,
             vod_id: vodId,
             year: year,
+            typeName: typeName,
             episodes: AppState.get('currentEpisodes') || []
         };
         addToViewingHistory(videoInfoForHistory);
@@ -175,7 +176,7 @@ function playNextEpisode() {
     }
 }
 
-async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
+async function playFromHistory(url, title, episodeIndex, playbackPosition = 0, typeName = '') {
     let historyItem = null;
     let episodesList = [];
     let vodId = '',
@@ -270,8 +271,9 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     if (actualSourceName) playerUrl.searchParams.set('source', actualSourceName);
     if (actualSourceCode) playerUrl.searchParams.set('source_code', actualSourceCode);
     if (videoYear) playerUrl.searchParams.set('year', videoYear);
-    // 将 currentVideoTypeName 传递给播放器
-    if (currentVideoTypeName) playerUrl.searchParams.set('typeName', currentVideoTypeName);
+    // 将 typeName 传递给播放器（优先使用传入的参数，其次使用历史记录中的）
+    const finalTypeName = typeName || currentVideoTypeName;
+    if (finalTypeName) playerUrl.searchParams.set('typeName', finalTypeName);
     if (playbackPosition > 0) playerUrl.searchParams.set('position', playbackPosition.toString());
     const uid = generateUniversalId(title, videoYear, actualEpisodeIndex);
     playerUrl.searchParams.set('universalId', uid);

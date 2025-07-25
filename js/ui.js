@@ -529,7 +529,8 @@ function handleHistoryListClick(e) {
         const title = historyItem.dataset.title;
         const episodeIndex = parseInt(historyItem.dataset.episodeIndex, 10);
         const playbackPosition = parseInt(historyItem.dataset.playbackPosition, 10);
-        playFromHistory(url, title, episodeIndex, playbackPosition);
+        const typeName = historyItem.dataset.typeName;
+        playFromHistory(url, title, episodeIndex, playbackPosition, typeName);
     }
 }
 
@@ -686,6 +687,7 @@ function loadViewingHistory() {
         historyItem.dataset.episodeIndex = item.episodeIndex || 0;
         historyItem.dataset.playbackPosition = item.playbackPosition || 0;
         historyItem.dataset.internalId = item.internalShowIdentifier;
+        historyItem.dataset.typeName = item.typeName || '';
 
         // 构建历史项内容
         const historyInfo = document.createElement('div');
