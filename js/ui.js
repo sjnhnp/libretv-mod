@@ -549,8 +549,9 @@ function formatPlaybackTime(seconds) {
  * @param {Object} videoInfo 视频信息对象
  */
 function addToViewingHistory(videoInfo) {
-
     if (!checkPasswordProtection()) return;
+    const originalEpisodeNames = JSON.parse(localStorage.getItem('originalEpisodeNames') || '[]');
+    
     try {
         let history = getViewingHistory();
 
