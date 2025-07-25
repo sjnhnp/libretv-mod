@@ -485,7 +485,7 @@ function initializeEventListeners() {
             localStorage.setItem(PLAYER_CONFIG.speedDetectionStorage, enabled.toString());
             showToast(enabled ? '已启用画质速度检测' : '已禁用画质速度检测', 'info');
         });
-        speedDetectionToggle.checked = PLAYER_CONFIG.speedDetectionEnabled;
+        speedDetectionToggle.checked = getBoolConfig(PLAYER_CONFIG.speedDetectionStorage, PLAYER_CONFIG.speedDetectionEnabled);
     }
     const preloadingToggle = DOMCache.get('preloadingToggle');
     if (preloadingToggle) {
@@ -560,6 +560,14 @@ function search(options = {}) {
     performSearch(query, selectedAPIs)
         .then(resultsData => {
             renderSearchResults(resultsData, options.doubanQuery ? query : null);
+            // 如果是缓存结果，显示一个简短的提示
+            const speedDetectionEnabled = getBoolConfig(PLAYER_CONFIG.speedDetectionStorage, PLAYER_CONFIG.speedDetectionEnabled);
+            if (speedDetectionEnabled) {
+                const cacheResult = checkSearchCache(query, selectedAPIs);
+                if (cacheResult.canUseCache) {
+                    showToast('已加载缓存结果，正在后台更新速度...', 'info', 2000);
+                }
+            }
         })
         .catch(error => {
             if (searchResultsContainer) searchResultsContainer.innerHTML = `<div class="text-center py-4 text-red-400">搜索出错: ${error.message}</div>`;
@@ -578,9 +586,16 @@ async function performSearch(query, selectedAPIs) {
     if (speedDetectionEnabled) {
         const cacheResult = checkSearchCache(query, selectedAPIs);
         if (cacheResult.canUseCache) {
+            // 显示缓存加载提示
+            if (typeof showLoading === 'function') {
+                showLoading(`正在加载"${query}"的搜索结果...`);
+            }
             // 启动后台速度更新
             setTimeout(() => backgroundSpeedUpdate(cacheResult.results), 100);
-            return cacheResult.results;
+            // 延迟一点时间让用户看到加载提示，然后返回缓存结果
+            return new Promise(resolve => {
+                setTimeout(() => resolve(cacheResult.results), 300);
+            });
         }
     }
     
