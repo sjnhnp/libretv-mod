@@ -223,7 +223,7 @@ let lastFocusedElement = null;
  * @param {string} content 模态框内容
  * @param {string} title 模态框标题（可选）
  */
-function showModal(contentNode, title = '') { 
+function showModal(contentNode, title = '') {
     const modal = getElement('modal');
     const modalContent = getElement('modalContent');
     const modalTitle = getElement('modalTitle');
@@ -605,7 +605,7 @@ function addToViewingHistory(videoInfo) {
             history.unshift(newItem);
         }
 
-        if (history.length > HISTORY_MAX_ITEMS) { 
+        if (history.length > HISTORY_MAX_ITEMS) {
             history.splice(HISTORY_MAX_ITEMS);
         }
         localStorage.setItem('viewingHistory', JSON.stringify(history));
@@ -648,8 +648,20 @@ function loadViewingHistory() {
         // 防XSS
         const safeTitle = (item.title || '').replace(/[<>"']/g, c => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
         const safeSource = (item.sourceName || '未知来源').replace(/[<>"']/g, c => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-        const episodeText = item.episodeIndex !== undefined ? `第${item.episodeIndex + 1}集` : '';
-
+        let episodeText = '';
+        if (item.episodeIndex !== undefined) {
+            let originalName = '';
+            // 检查历史条目中是否存有完整的剧集列表，并找到对应集数的信息
+            if (item.episodes && item.episodes[item.episodeIndex]) {
+                const episodeString = item.episodes[item.episodeIndex];
+                // 解析 "名称$链接" 格式
+                if (typeof episodeString === 'string' && episodeString.includes('$')) {
+                    originalName = episodeString.split('$')[0].trim();
+                }
+            }
+            // 如果成功解析出原始名称，就用它；否则，回退到显示 "第 X 集"
+            episodeText = originalName || `第${item.episodeIndex + 1}集`;
+        }
         const historyItem = document.createElement('div');
         historyItem.className = 'history-item cursor-pointer relative group';
         historyItem.dataset.url = item.url;
