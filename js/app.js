@@ -245,6 +245,9 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     AppState.set('currentVideoTitle', title);
     localStorage.setItem('currentEpisodeIndex', actualEpisodeIndex.toString());
     localStorage.setItem('currentVideoTitle', title);
+    // 新增：恢复原始剧集名称
+    const originalEpisodeNames = historyItem.originalEpisodeNames || [];
+    localStorage.setItem('originalEpisodeNames', JSON.stringify(originalEpisodeNames));
     const playerUrl = new URL('player.html', window.location.origin);
     playerUrl.searchParams.set('url', finalUrl);
     playerUrl.searchParams.set('title', title);

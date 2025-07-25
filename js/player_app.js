@@ -1155,7 +1155,9 @@ function renderEpisodes() {
             btn.title = btn.textContent;
         } else {
             // 非综艺：保持原有逻辑（不影响其他类型）
-            btn.textContent = originalIndex + 1;
+            const originalName = (originalEpisodeNames && originalEpisodeNames[originalIndex]) || '';
+            btn.textContent = originalName || (originalIndex + 1).toString();
+            btn.title = originalName || `第${originalIndex + 1}集`;
             btn.title = `第 ${originalIndex + 1} 集`;
         }
 

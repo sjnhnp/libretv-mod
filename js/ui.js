@@ -587,7 +587,16 @@ function addToViewingHistory(videoInfo) {
 
             history.splice(idx, 1); // 移除旧条目
             history.unshift(item);  // 将更新后的条目移到最前面
-        } else { // 如果是新的剧集条目
+            // 更新原始剧集名称
+            if (videoInfo.originalEpisodeNames) {
+                item.originalEpisodeNames = videoInfo.originalEpisodeNames;
+            } else if (originalEpisodeNames.length > 0) {
+                item.originalEpisodeNames = originalEpisodeNames;
+            }
+        } else {
+            // 如果是新的剧集条目
+            const originalEpisodeNames = AppState.get('originalEpisodeNames') ||
+                JSON.parse(localStorage.getItem('originalEpisodeNames') || '[]');
             const newItem = {
                 title: videoInfo.title,
                 url: videoInfo.url,
@@ -600,7 +609,8 @@ function addToViewingHistory(videoInfo) {
                 duration: videoInfo.duration,
                 year: videoInfo.year,
                 timestamp: Date.now(),
-                episodes: (videoInfo.episodes && videoInfo.episodes.length > 0) ? [...videoInfo.episodes] : []
+                episodes: (videoInfo.episodes && videoInfo.episodes.length > 0) ? [...videoInfo.episodes] : [],
+                originalEpisodeNames: originalEpisodeNames
             };
             history.unshift(newItem);
         }
@@ -650,17 +660,22 @@ function loadViewingHistory() {
         const safeSource = (item.sourceName || '未知来源').replace(/[<>"']/g, c => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
         let episodeText = '';
         if (item.episodeIndex !== undefined) {
-            let originalName = '';
-            // 检查历史条目中是否存有完整的剧集列表，并找到对应集数的信息
-            if (item.episodes && item.episodes[item.episodeIndex]) {
-                const episodeString = item.episodes[item.episodeIndex];
-                // 解析 "名称$链接" 格式
-                if (typeof episodeString === 'string' && episodeString.includes('$')) {
-                    originalName = episodeString.split('$')[0].trim();
+            // 优先使用保存的原始剧集名称
+            if (item.originalEpisodeNames && item.originalEpisodeNames.length > item.episodeIndex) {
+                episodeText = item.originalEpisodeNames[item.episodeIndex];
+            } else {
+                // 兼容旧记录
+                if (item.episodes && item.episodes[item.episodeIndex]) {
+                    const episodeString = item.episodes[item.episodeIndex];
+                    if (typeof episodeString === 'string' && episodeString.includes('$')) {
+                        episodeText = episodeString.split('$')[0].trim();
+                    }
                 }
             }
-            // 如果成功解析出原始名称，就用它；否则，回退到显示 "第 X 集"
-            episodeText = originalName || `第${item.episodeIndex + 1}集`;
+            // 如果还是没有，则显示"第X集"
+            if (!episodeText) {
+                episodeText = `第${item.episodeIndex + 1}集`;
+            }
         }
         const historyItem = document.createElement('div');
         historyItem.className = 'history-item cursor-pointer relative group';
