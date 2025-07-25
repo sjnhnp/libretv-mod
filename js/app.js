@@ -1146,6 +1146,11 @@ function createResultItemUsingTemplate(item) {
 }
 
 function handleResultClick(event) {
+    // 如果点击的是画质标签，不执行卡片点击逻辑
+    if (event.target.classList.contains('quality-badge')) {
+        return;
+    }
+    
     const card = event.currentTarget;
     const { id, name, sourceCode, apiUrl = '', year, typeName, videoKey, blurb, remarks, area, actor, director } = card.dataset;
     if (typeof showVideoEpisodesModal === 'function') {
@@ -1323,7 +1328,9 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
                 qualityTagElement.style.cursor = 'pointer';
                 qualityTagElement.title = '点击重新检测';
                 qualityTagElement.onclick = (event) => {
+                    event.preventDefault();
                     event.stopPropagation();
+                    event.stopImmediatePropagation();
                     const qualityId = `${sourceCode}_${id}`;
                     manualRetryDetection(qualityId, videoData);
                 };
@@ -1506,7 +1513,9 @@ function updateQualityBadgeUI(qualityId, quality, badgeElement) {
             badge.style.cursor = 'pointer';
             if (videoData) {
                 badge.onclick = (event) => {
+                    event.preventDefault();
                     event.stopPropagation();
+                    event.stopImmediatePropagation();
                     manualRetryDetection(qualityId, videoData);
                 };
             }
