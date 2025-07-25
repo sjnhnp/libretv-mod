@@ -187,6 +187,7 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
             actualSourceName = historyItem.sourceName || '';
             actualSourceCode = historyItem.sourceCode || '';
             videoYear = historyItem.year || '';
+            currentVideoTypeName = historyItem.typeName || '';
         }
     } catch (e) {
         console.error("读取历史记录失败:", e);
@@ -240,7 +241,13 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     if (actualEpisodeIndex >= episodesList.length) {
         actualEpisodeIndex = episodesList.length > 0 ? episodesList.length - 1 : 0;
     }
-    const finalUrl = (episodesList.length > 0 && episodesList[actualEpisodeIndex]) ? episodesList[actualEpisodeIndex] : url;
+    let finalUrl = (episodesList.length > 0 && episodesList[actualEpisodeIndex]) ?
+        episodesList[actualEpisodeIndex] : url;
+
+    // 如果是普通数据源（包含$分隔符），提取URL部分
+    if (typeof finalUrl === 'string' && finalUrl.includes('$')) {
+        finalUrl = finalUrl.split('$')[1];
+    }
     AppState.set('currentEpisodeIndex', actualEpisodeIndex);
     AppState.set('currentVideoTitle', title);
     localStorage.setItem('currentEpisodeIndex', actualEpisodeIndex.toString());

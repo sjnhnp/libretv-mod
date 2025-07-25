@@ -610,7 +610,8 @@ function addToViewingHistory(videoInfo) {
                 year: videoInfo.year,
                 timestamp: Date.now(),
                 episodes: (videoInfo.episodes && videoInfo.episodes.length > 0) ? [...videoInfo.episodes] : [],
-                originalEpisodeNames: originalEpisodeNames
+                originalEpisodeNames: originalEpisodeNames,
+                typeName: videoInfo.typeName || currentVideoTypeName || ''
             };
             history.unshift(newItem);
         }
