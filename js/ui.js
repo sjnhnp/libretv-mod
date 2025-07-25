@@ -611,7 +611,7 @@ function addToViewingHistory(videoInfo) {
                 timestamp: Date.now(),
                 episodes: (videoInfo.episodes && videoInfo.episodes.length > 0) ? [...videoInfo.episodes] : [],
                 originalEpisodeNames: originalEpisodeNames,
-                typeName: videoInfo.typeName || currentVideoTypeName || ''
+                typeName: videoInfo.typeName || (window.currentVideoTypeName || '')
             };
             history.unshift(newItem);
         }
