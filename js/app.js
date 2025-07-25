@@ -191,7 +191,11 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
     } catch (e) {
         console.error("读取历史记录失败:", e);
     }
-    if (vodId && actualSourceCode) {
+    if (historyItem && Array.isArray(historyItem.episodes) && historyItem.episodes.length > 0 && historyItem.episodes[0].includes('$')) {
+        // 优先使用历史记录中缓存的、包含完整名称的剧集列表
+        episodesList = historyItem.episodes;
+    } else if (vodId && actualSourceCode) {
+        // 如果历史记录中没有，再尝试从API获取
         try {
             let apiUrl = `/api/detail?id=${encodeURIComponent(vodId)}&source=${encodeURIComponent(actualSourceCode)}`;
             const apiInfo = typeof APISourceManager !== 'undefined' ? APISourceManager.getSelectedApi(actualSourceCode) : null;
@@ -204,18 +208,29 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
             if (detailData.code === 200 && Array.isArray(detailData.episodes) && detailData.episodes.length > 0) {
                 episodesList = detailData.episodes;
             } else {
-                throw new Error(detailData.msg || 'API返回数据无效');
+                // 如果API获取失败或数据无效，最后尝试从历史记录项中恢复，即使它可能不完整
+                if (historyItem && Array.isArray(historyItem.episodes) && historyItem.episodes.length > 0) {
+                    episodesList = historyItem.episodes;
+                } else {
+                    throw new Error(detailData.msg || 'API返回数据无效');
+                }
             }
         } catch (e) {
-            if (historyItem && Array.isArray(historyItem.episodes) && historyItem.episodes.length > 0) {
-                episodesList = historyItem.episodes;
-            }
+            // API 失败时，最后的兜底措施
+            episodesList = AppState.get('currentEpisodes') || JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
         }
-    } else if (historyItem && Array.isArray(historyItem.episodes)) {
-        episodesList = historyItem.episodes;
-    }
-    if (episodesList.length === 0) {
+    } else {
+        // 最后的兜底
         episodesList = AppState.get('currentEpisodes') || JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
+    }
+
+    // --- 核心修正：无论从何处获取了 episodesList，都在跳转前解析并存储原始名称 ---
+    if (episodesList.length > 0 && typeof episodesList[0] === 'string' && episodesList[0].includes('$')) {
+        const originalEpisodeNames = episodesList.map(ep => ep.split('$')[0].trim());
+        localStorage.setItem('originalEpisodeNames', JSON.stringify(originalEpisodeNames));
+    } else {
+        // 如果列表是纯URL（例如来自旧的、不完整的历史记录），则清空旧的名称缓存，避免显示错误的名称
+        localStorage.removeItem('originalEpisodeNames');
     }
     if (episodesList.length > 0) {
         AppState.set('currentEpisodes', episodesList);
