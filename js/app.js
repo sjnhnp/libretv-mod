@@ -1,42 +1,350 @@
-// 使用 localStorage 进行持久化缓存
-const QUALITY_CACHE_KEY = 'qualityCache';
-const qualityCache = new Map(JSON.parse(localStorage.getItem(QUALITY_CACHE_KEY) || '[]'));
+// ================================
+// 独立画质缓存系统
+// 实现理由1-4：用户体验一致性、性能优化、数据时效性平衡、代码维护性
+// 解决弊端1-8：画质不一致、重复检测、后台浪费、缓存粒度粗、数据混乱、无效代码、缓存键不合理、内存泄漏
+// ================================
 
-// 缓存x分钟，超时自动重新检测
-function saveQualityCache(qualityId, quality) {
-    // 记录画质和缓存时间（x分钟后过期）
-    qualityCache.set(qualityId, {
-        quality: quality,
-        cacheTime: Date.now() // 缓存时间戳
-    });
-    // 保存到本地缓存，避免刷新后丢失
+// 画质缓存配置
+const QUALITY_CACHE_CONFIG = {
+    CACHE_KEY: 'independentQualityCache',
+    EXPIRE_TIME: 30 * 24 * 60 * 60 * 1000, // 30天缓存时间
+    MAX_CACHE_SIZE: 1000 // 最大缓存条目数，防止内存溢出
+};
+
+// 初始化画质缓存
+const qualityCache = new Map(JSON.parse(localStorage.getItem(QUALITY_CACHE_CONFIG.CACHE_KEY) || '[]'));
+
+// 生成画质缓存键 - 基于源码、视频ID和URL特征
+function generateQualityCacheKey(sourceCode, vodId, episodeUrl) {
     try {
-        localStorage.setItem(QUALITY_CACHE_KEY, JSON.stringify(Array.from(qualityCache.entries()))); // 修改为 localStorage
+        // 使用源码 + 视频ID + URL特征生成唯一键
+        const urlHash = episodeUrl ? episodeUrl.slice(-20) : 'unknown';
+        const baseKey = `${sourceCode}_${vodId}_${urlHash}`;
+        
+        // 添加域名信息以区分不同CDN
+        const domain = episodeUrl ? new URL(episodeUrl).hostname : 'unknown';
+        return `${baseKey}_${domain}`;
     } catch (e) {
-        console.warn("缓存空间不足，已自动跳过");
+        // URL解析失败时的备用方案
+        const urlHash = episodeUrl ? episodeUrl.slice(-20) : 'unknown';
+        return `${sourceCode}_${vodId}_${urlHash}`;
     }
 }
 
-// 读取缓存的画质结果，过期则返回null（需要重新检测）
-function getCachedQuality(qualityId) {
-    const cachedData = qualityCache.get(qualityId);
-    if (!cachedData) {
-        return null; // 没有缓存，需要检测
-    }
-    // 缓存超过10分钟（600000毫秒）则过期
-    const isExpired = Date.now() - cachedData.cacheTime > 600000;
-    if (isExpired) {
-        qualityCache.delete(qualityId); // 删除过期缓存
-        // 当缓存过期并删除时，立即更新 localStorage
-        try {
-            localStorage.setItem(QUALITY_CACHE_KEY, JSON.stringify(Array.from(qualityCache.entries())));
-        } catch (e) {
-            console.warn("更新缓存失败，空间不足:", e);
+// 保存画质缓存 - 增强版本，支持完整的检测结果
+function saveQualityCache(cacheKey, qualityResult) {
+    try {
+        // 清理过期缓存，防止内存溢出
+        cleanExpiredQualityCache();
+        
+        // 如果缓存过大，删除最旧的条目
+        if (qualityCache.size >= QUALITY_CACHE_CONFIG.MAX_CACHE_SIZE) {
+            const oldestKey = qualityCache.keys().next().value;
+            qualityCache.delete(oldestKey);
+            console.log(`画质缓存已满，删除最旧条目: ${oldestKey}`);
         }
-        return null; // 提示重新检测
+        
+        // 保存完整的检测结果
+        const cacheData = {
+            quality: qualityResult.quality || '未知',
+            loadSpeed: qualityResult.loadSpeed || 'N/A',
+            pingTime: qualityResult.pingTime || -1,
+            detectionMethod: qualityResult.detectionMethod || 'unknown',
+            sortPriority: qualityResult.sortPriority || 50,
+            cacheTime: Date.now(),
+            version: '1.0' // 缓存版本，便于未来升级
+        };
+        
+        qualityCache.set(cacheKey, cacheData);
+        
+        // 持久化到localStorage
+        localStorage.setItem(
+            QUALITY_CACHE_CONFIG.CACHE_KEY, 
+            JSON.stringify(Array.from(qualityCache.entries()))
+        );
+        
+        console.log(`画质缓存已保存: ${cacheKey} -> ${cacheData.quality}`);
+        
+    } catch (e) {
+        console.warn("保存画质缓存失败:", e);
+        // 缓存失败不应影响主要功能
     }
-    return cachedData;
 }
+
+// 获取画质缓存 - 增强版本，支持过期检查和数据验证
+function getCachedQuality(cacheKey) {
+    try {
+        const cachedData = qualityCache.get(cacheKey);
+        
+        if (!cachedData) {
+            return null; // 没有缓存
+        }
+        
+        // 检查缓存是否过期
+        const isExpired = Date.now() - cachedData.cacheTime > QUALITY_CACHE_CONFIG.EXPIRE_TIME;
+        
+        if (isExpired) {
+            // 删除过期缓存
+            qualityCache.delete(cacheKey);
+            
+            // 更新localStorage
+            try {
+                localStorage.setItem(
+                    QUALITY_CACHE_CONFIG.CACHE_KEY,
+                    JSON.stringify(Array.from(qualityCache.entries()))
+                );
+            } catch (e) {
+                console.warn("更新画质缓存失败:", e);
+            }
+            
+            console.log(`画质缓存已过期: ${cacheKey}`);
+            return null;
+        }
+        
+        // 验证缓存数据完整性
+        if (!cachedData.quality) {
+            console.warn(`画质缓存数据不完整: ${cacheKey}`);
+            qualityCache.delete(cacheKey);
+            return null;
+        }
+        
+        console.log(`画质缓存命中: ${cacheKey} -> ${cachedData.quality}`);
+        return cachedData;
+        
+    } catch (e) {
+        console.warn("读取画质缓存失败:", e);
+        return null;
+    }
+}
+
+// 清理过期的画质缓存
+function cleanExpiredQualityCache() {
+    try {
+        const now = Date.now();
+        let cleanedCount = 0;
+        
+        for (const [key, data] of qualityCache.entries()) {
+            if (now - data.cacheTime > QUALITY_CACHE_CONFIG.EXPIRE_TIME) {
+                qualityCache.delete(key);
+                cleanedCount++;
+            }
+        }
+        
+        if (cleanedCount > 0) {
+            console.log(`清理了 ${cleanedCount} 个过期的画质缓存条目`);
+            
+            // 更新localStorage
+            localStorage.setItem(
+                QUALITY_CACHE_CONFIG.CACHE_KEY,
+                JSON.stringify(Array.from(qualityCache.entries()))
+            );
+        }
+        
+    } catch (e) {
+        console.warn("清理画质缓存失败:", e);
+    }
+}
+
+// 带缓存的画质检测函数 - 核心功能，包装原有检测逻辑
+async function getQualityWithCache(episodeUrl, sourceCode = '', vodId = '') {
+    try {
+        // 生成缓存键
+        const cacheKey = generateQualityCacheKey(sourceCode, vodId, episodeUrl);
+        
+        // 检查缓存
+        const cachedResult = getCachedQuality(cacheKey);
+        if (cachedResult) {
+            // 缓存命中，返回缓存结果
+            return {
+                quality: cachedResult.quality,
+                loadSpeed: cachedResult.loadSpeed,
+                pingTime: cachedResult.pingTime,
+                detectionMethod: cachedResult.detectionMethod + '_cached',
+                sortPriority: cachedResult.sortPriority
+            };
+        }
+        
+        // 缓存未命中，执行原有检测逻辑
+        console.log(`画质缓存未命中，开始检测: ${episodeUrl}`);
+        
+        if (!episodeUrl || !window.precheckSource) {
+            // 检测条件不满足时的默认返回
+            const defaultResult = {
+                quality: '未知',
+                loadSpeed: 'N/A',
+                pingTime: -1,
+                detectionMethod: 'unavailable',
+                sortPriority: 50
+            };
+            
+            // 也缓存默认结果，避免重复的无效检测
+            saveQualityCache(cacheKey, defaultResult);
+            return defaultResult;
+        }
+        
+        // 调用原有的画质检测函数（保持完全兼容）
+        const detectionResult = await window.precheckSource(episodeUrl);
+        
+        // 保存检测结果到缓存
+        saveQualityCache(cacheKey, detectionResult);
+        
+        return detectionResult;
+        
+    } catch (error) {
+        console.error("画质检测失败:", error);
+        
+        // 检测失败时返回默认值，不影响主要功能
+        const errorResult = {
+            quality: '检测失败',
+            loadSpeed: 'N/A',
+            pingTime: -1,
+            detectionMethod: 'error',
+            sortPriority: 99
+        };
+        
+        return errorResult;
+    }
+}
+
+// 获取第一集URL的辅助函数
+function getFirstEpisodeUrl(vodPlayUrl) {
+    try {
+        if (!vodPlayUrl) return '';
+        
+        const firstSegment = vodPlayUrl.split('#')[0];
+        return firstSegment.includes('
+</content>
+</file>') ? firstSegment.split('
+</content>
+</file>')[1] : firstSegment;
+    } catch (e) {
+        console.warn("解析剧集URL失败:", e);
+        return '';
+    }
+}
+
+// 使用画质缓存增强搜索结果（解决弊端1：确保卡片和弹窗数据一致性）
+async function enhanceResultsWithQualityCache(results) {
+    console.log('开始使用画质缓存增强搜索结果...');
+    
+    const enhancedResults = await Promise.all(
+        results.map(async (item) => {
+            try {
+                const firstEpisodeUrl = getFirstEpisodeUrl(item.vod_play_url);
+                if (!firstEpisodeUrl) {
+                    return item; // 没有播放URL，返回原始数据
+                }
+                
+                const cacheKey = generateQualityCacheKey(item.source_code, item.vod_id, firstEpisodeUrl);
+                const cachedQuality = getCachedQuality(cacheKey);
+                
+                if (cachedQuality) {
+                    // 画质缓存命中，使用缓存的画质信息
+                    console.log(`画质缓存命中: ${item.vod_name} -> ${cachedQuality.quality}`);
+                    return {
+                        ...item,
+                        quality: cachedQuality.quality,
+                        loadSpeed: cachedQuality.loadSpeed,
+                        detectionMethod: cachedQuality.detectionMethod + '_cached',
+                        sortPriority: cachedQuality.sortPriority
+                    };
+                } else {
+                    // 画质缓存未命中，保持原有数据，后台检测会更新
+                    console.log(`画质缓存未命中: ${item.vod_name}`);
+                    return item;
+                }
+            } catch (error) {
+                console.warn(`增强画质信息失败: ${item.vod_name}`, error);
+                return item; // 出错时返回原始数据
+            }
+        })
+    );
+    
+    console.log('搜索结果画质信息增强完成');
+    return enhancedResults;
+}
+
+// 获取画质缓存统计信息（用于调试和监控）
+function getQualityCacheStats() {
+    const stats = {
+        totalEntries: qualityCache.size,
+        expiredEntries: 0,
+        validEntries: 0,
+        cacheSize: 0,
+        oldestEntry: null,
+        newestEntry: null
+    };
+    
+    const now = Date.now();
+    let oldestTime = Infinity;
+    let newestTime = 0;
+    
+    for (const [key, data] of qualityCache.entries()) {
+        const age = now - data.cacheTime;
+        const isExpired = age > QUALITY_CACHE_CONFIG.EXPIRE_TIME;
+        
+        if (isExpired) {
+            stats.expiredEntries++;
+        } else {
+            stats.validEntries++;
+        }
+        
+        if (data.cacheTime < oldestTime) {
+            oldestTime = data.cacheTime;
+            stats.oldestEntry = { key, age: Math.floor(age / 1000 / 60) }; // 分钟
+        }
+        
+        if (data.cacheTime > newestTime) {
+            newestTime = data.cacheTime;
+            stats.newestEntry = { key, age: Math.floor(age / 1000 / 60) }; // 分钟
+        }
+    }
+    
+    try {
+        const cacheString = localStorage.getItem(QUALITY_CACHE_CONFIG.CACHE_KEY);
+        stats.cacheSize = cacheString ? Math.round(cacheString.length / 1024) : 0; // KB
+    } catch (e) {
+        stats.cacheSize = -1;
+    }
+    
+    return stats;
+}
+
+// 清空所有画质缓存（用于调试或重置）
+function clearAllQualityCache() {
+    try {
+        qualityCache.clear();
+        localStorage.removeItem(QUALITY_CACHE_CONFIG.CACHE_KEY);
+        console.log('所有画质缓存已清空');
+        return true;
+    } catch (e) {
+        console.error('清空画质缓存失败:', e);
+        return false;
+    }
+}
+
+// 导出缓存管理函数到全局，便于调试
+if (typeof window !== 'undefined') {
+    window.qualityCacheDebug = {
+        getStats: getQualityCacheStats,
+        clearAll: clearAllQualityCache,
+        cleanExpired: cleanExpiredQualityCache,
+        getCache: () => Array.from(qualityCache.entries()),
+        config: QUALITY_CACHE_CONFIG
+    };
+}
+
+// 初始化时清理过期缓存
+document.addEventListener('DOMContentLoaded', function() {
+    cleanExpiredQualityCache();
+    
+    // 输出缓存统计信息（仅在开发模式下）
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        const stats = getQualityCacheStats();
+        console.log('画质缓存统计:', stats);
+        console.log('使用 window.qualityCacheDebug 查看缓存调试信息');
+    }
+});
 
 // 主应用程序逻辑 使用AppState进行状态管理，DOMCache进行DOM元素缓存
 const AppState = (function () {
@@ -352,10 +660,16 @@ function backgroundSpeedUpdate(results) {
             const firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
 
             try {
-                const checkResult = await window.precheckSource(firstEpisodeUrl);
+                // 使用带缓存的画质检测（解决弊端2：避免重复检测）
+                const checkResult = await getQualityWithCache(firstEpisodeUrl, item.source_code, item.vod_id);
+                
                 // 只更新速度相关字段
                 item.loadSpeed = checkResult.loadSpeed;
                 item.sortPriority = checkResult.sortPriority;
+                
+                // 同时更新画质信息，确保数据一致性（解决弊端1：画质显示一致）
+                item.quality = checkResult.quality;
+                item.detectionMethod = checkResult.detectionMethod;
 
                 // 更新弹窗中的速度显示（如果弹窗打开）
                 updateModalSpeedDisplay(item);
@@ -383,15 +697,40 @@ function isValidSpeedValue(speed) {
 }
 
 function updateModalSpeedDisplay(item) {
-    // 更新弹窗中对应项目的速度显示
+    // 更新弹窗中对应项目的速度和画质显示（解决弊端1：确保数据一致性）
     const modal = document.getElementById('modal');
     if (!modal || modal.style.display === 'none') return;
 
-    const speedElement = modal.querySelector(`[data-vod-id="${item.vod_id}"] .speed-tag`);
+    const itemElement = modal.querySelector(`[data-vod-id="${item.vod_id}"]`);
+    if (!itemElement) return;
+
+    // 更新速度标签
+    const speedElement = itemElement.querySelector('.speed-tag');
     if (speedElement && item.loadSpeed && isValidSpeedValue(item.loadSpeed)) {
         speedElement.textContent = item.loadSpeed;
         speedElement.style.display = 'inline-block';
     }
+
+    // 更新画质标签（新增功能，确保弹窗和卡片一致）
+    const qualityElement = itemElement.querySelector('.quality-tag');
+    if (qualityElement && item.quality && item.quality !== '未知' && item.quality !== '检测失败') {
+        qualityElement.textContent = item.quality;
+        qualityElement.style.display = 'inline-block';
+        
+        // 根据画质设置不同的颜色
+        const qualityColors = {
+            '4K': '#dc2626',      // 红色
+            '2K': '#ea580c',      // 橙色  
+            '1080p': '#16a34a',   // 绿色
+            '720p': '#2563eb',    // 蓝色
+            '480p': '#7c3aed',    // 紫色
+            'SD': '#6b7280'       // 灰色
+        };
+        
+        qualityElement.style.backgroundColor = qualityColors[item.quality] || '#6b7280';
+    }
+    
+    console.log(`弹窗显示已更新: ${item.vod_name} -> ${item.quality} / ${item.loadSpeed}`);
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -587,12 +926,15 @@ async function performSearch(query, selectedAPIs) {
             if (typeof showLoading === 'function') {
                 showLoading(`正加载"${query}"的搜索结果`);
             }
+            // 增强缓存结果的画质信息（解决弊端1：确保数据一致性）
+            const enhancedResults = await enhanceResultsWithQualityCache(cacheResult.results);
+            
             // 启动后台速度更新
-            setTimeout(() => backgroundSpeedUpdate(cacheResult.results), 100);
+            setTimeout(() => backgroundSpeedUpdate(enhancedResults), 100);
 
             // 确保缓存结果也构建videoSourceMap
             const videoSourceMap = new Map();
-            cacheResult.results.forEach(item => {
+            enhancedResults.forEach(item => {
                 if (item.vod_id) {
                     const videoKey = `${item.vod_name}|${item.vod_year || ''}`;
                     if (!videoSourceMap.has(videoKey)) {
@@ -603,9 +945,9 @@ async function performSearch(query, selectedAPIs) {
             });
             sessionStorage.setItem('videoSourceMap', JSON.stringify(Array.from(videoSourceMap.entries())));
 
-            // 延迟一点时间让用户看到加载提示，然后返回缓存结果
+            // 延迟一点时间让用户看到加载提示，然后返回增强后的结果
             return new Promise(resolve => {
-                setTimeout(() => resolve(cacheResult.results), 300);
+                setTimeout(() => resolve(enhancedResults), 300);
             });
         }
     }
@@ -668,18 +1010,23 @@ async function performSearch(query, selectedAPIs) {
                 }
 
                 try {
-                    const qualityResult = await window.precheckSource(firstEpisodeUrl);
+                    // 使用带缓存的画质检测（解决弊端2：避免重复检测，弊端4：精确缓存控制）
+                    const qualityResult = await getQualityWithCache(firstEpisodeUrl, item.source_code, item.vod_id);
+                    
                     // 合并速度和画质结果
                     return {
                         ...item, // 包含速度信息
                         quality: qualityResult.quality, // 覆盖为真实画质
-                        detectionMethod: qualityResult.detectionMethod // 使用画质检测的方法
+                        loadSpeed: qualityResult.loadSpeed, // 使用缓存的速度信息
+                        detectionMethod: qualityResult.detectionMethod, // 使用画质检测的方法
+                        sortPriority: qualityResult.sortPriority // 排序优先级
                     };
                 } catch (error) {
                     return {
                         ...item, // 保留速度信息
                         quality: '检测失败',
-                        detectionMethod: 'failed'
+                        detectionMethod: 'failed',
+                        sortPriority: 99
                     };
                 }
             });
@@ -1594,7 +1941,8 @@ async function manualRetryDetection(qualityId, videoData) {
 
         let qualityResult = { quality: '未知', detectionMethod: 'none' };
         if (firstEpisodeUrl) {
-            qualityResult = await window.precheckSource(firstEpisodeUrl);
+            // 使用带缓存的画质检测（解决弊端2：避免重复检测，确保数据一致性）
+            qualityResult = await getQualityWithCache(firstEpisodeUrl, videoData.source_code, videoData.vod_id);
         }
 
         // 4. 合并结果
