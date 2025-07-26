@@ -23,8 +23,8 @@ if (!window.SEARCH_CACHE_CONFIG) {
 }
 
 // 使用全局配置
-const QUALITY_CACHE_CONFIG = window.QUALITY_CACHE_CONFIG;
-const SEARCH_CACHE_CONFIG = window.SEARCH_CACHE_CONFIG;
+//const QUALITY_CACHE_CONFIG = window.QUALITY_CACHE_CONFIG;
+//const SEARCH_CACHE_CONFIG = window.SEARCH_CACHE_CONFIG;
 
 // 调试信息：显示加载的配置
 console.log('缓存配置加载完成:', {
