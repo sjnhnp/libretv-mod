@@ -714,8 +714,34 @@ async function performSearch(query, selectedAPIs) {
         // 1) 速度：只有 loadSpeed === '检测中...' 的才补测
         if (speedDetectionEnabled &&
             cacheResult.results.some(r => r.loadSpeed === '检测中...')) {
-            setTimeout(() => backgroundSpeedUpdate(cacheResult.results), 100);
+
+            backgroundSpeedUpdate(cacheResult.results).then(() => {
+                /* ---- 重新排序 ---- */
+                cacheResult.results.sort((a, b) => {
+                    const prA = a.sortPriority ?? 50;
+                    const prB = b.sortPriority ?? 50;
+                    if (prA !== prB) return prA - prB;
+
+                    const speedToNum = v => {
+                        if (!v || v === 'N/A' || v === '连接超时') return 0;
+                        if (v === '极速') return 10000;
+                        if (v === '连接正常') return 1000;
+                        const m = v.match(/^([\d.]+)\s*(KB\/s|MB\/s)$/i);
+                        if (m) {
+                            const n = parseFloat(m[1]);
+                            return m[2].toUpperCase() === 'MB/S' ? n * 1024 : n;
+                        }
+                        return 100;
+                    };
+                    return speedToNum(b.loadSpeed) - speedToNum(a.loadSpeed);
+                });
+
+                /* ---- 覆盖缓存、刷新界面 ---- */
+                rebuildVideoCaches(cacheResult.results);
+                renderSearchResults(cacheResult.results);
+            });
         }
+
 
         // 2) 画质：只要存在 pending 项就补测
         if (cacheResult.results.some(
