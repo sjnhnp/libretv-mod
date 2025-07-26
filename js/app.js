@@ -611,6 +611,29 @@ function backgroundQualityUpdate(results) {
 
             /* -------- 更新页面标签 -------- */
             updateQualityBadgeUI(key, item.quality);
+            /* ============================================================
+ *   把最终检测结果写回 30 天搜索缓存
+ * ============================================================ */
+            try {
+                // 生成本次搜索对应的缓存键
+                const cacheKey = generateSearchCacheKey(
+                    AppState.get('latestQuery'),
+                    AppState.get('latestAPIs')
+                );
+                const cachedArr = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+
+                // 按唯一键 source_code + vod_id 定位条目
+                const idx = cachedArr.findIndex(
+                    c => `${c.source_code}_${c.vod_id}` === key
+                );
+                if (idx !== -1) {
+                    cachedArr[idx] = { ...cachedArr[idx], ...item };
+                    localStorage.setItem(cacheKey, JSON.stringify(cachedArr));
+                }
+            } catch (e) {
+                console.warn('写回搜索缓存失败：', e);
+            }
+
         }
     }
 
@@ -637,9 +660,18 @@ async function performSearch(query, selectedAPIs) {
         rebuildVideoCaches(cacheResult.results);
 
         // 若打开了速度检测，则后台刷新速度；画质检测随配置而定
-        if (speedDetectionEnabled) {
+        // 1) 速度：只有 loadSpeed === '检测中...' 的才补测
+        if (speedDetectionEnabled &&
+            cacheResult.results.some(r => r.loadSpeed === '检测中...')) {
             setTimeout(() => backgroundSpeedUpdate(cacheResult.results), 100);
         }
+
+        // 2) 画质：只要存在 pending 项就补测
+        if (cacheResult.results.some(
+            r => r.detectionMethod === 'pending' || r.quality === '检测中...')) {
+            setTimeout(() => backgroundQualityUpdate(cacheResult.results), 120);
+        }
+
         setTimeout(() => backgroundQualityUpdate(cacheResult.results), 150);
 
         // 让用户至少看到 300 ms loading，保持体验
