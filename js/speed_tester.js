@@ -74,7 +74,8 @@ const SpeedTester = (() => {
             loadSpeed: 'N/A', // 兼容现有代码的字段
             latency: -1,
             pingTime: -1, // 兼容现有代码
-            sortPriority: 50
+            sortPriority: 50,
+            m3u8Content: null  // ★ 预占位，稍后把已下载的 m3u8 文本放进来
         };
 
         if (!source.vod_play_url) return result;
@@ -88,7 +89,7 @@ const SpeedTester = (() => {
             const m3u8Response = await fetchWithTimeout(firstEpisodeUrl);
             result.latency = Math.round(performance.now() - startTime);
             const m3u8Content = await m3u8Response.text();
-
+            result.m3u8Content = m3u8Content;   // ★ 把文本交给 result，后面画质检测可直接用            
             // 2. 从M3U8中找到第一个分片地址
             const segmentUrl = getFirstSegmentUrl(m3u8Content, firstEpisodeUrl);
 

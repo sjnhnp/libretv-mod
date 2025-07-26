@@ -665,7 +665,11 @@ async function performSearch(query, selectedAPIs) {
                 }
 
                 try {
-                    const qualityResult = await window.precheckSource(firstEpisodeUrl);
+                    // 把 SpeedTester 已下载好的 m3u8 文本一起传给画质检测
+                    const qualityResult = await window.precheckSource(
+                        firstEpisodeUrl,
+                        item.m3u8Content || null
+                    );
                     // 合并速度和画质结果
                     return {
                         ...item, // 包含速度信息

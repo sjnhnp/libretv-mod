@@ -145,10 +145,10 @@ async function videoElementDetection(m3u8Url) {
 }
 
 // 尝试解析m3u8文件中的RESOLUTION信息
-async function tryParseM3u8Resolution(m3u8Url) {
+async function tryParseM3u8Resolution(m3u8Url, prefetchedContent = null) {
     try {
         // 尝试多种方式获取m3u8内容
-        let content = null;
+        let content = prefetchedContent || null; // ★ 若已传入，直接使用
 
         // 方法1：直接请求（可能有CORS限制）
         try {
@@ -305,14 +305,13 @@ async function performVideoElementDetection(m3u8Url) {
 
 
 // 综合画质检测函数
-async function comprehensiveQualityCheck(m3u8Url) {
-
+async function comprehensiveQualityCheck(m3u8Url, prefetchedContent = null) {
     // 并行执行所有检测方法
     const detectionPromises = [];
 
     // 1. M3U8 RESOLUTION解析（最准确）
     detectionPromises.push(
-        tryParseM3u8Resolution(m3u8Url)
+        tryParseM3u8Resolution(m3u8Url, prefetchedContent)
             .then(result => ({ ...result, method: 'm3u8_resolution', priority: 1 }))
             .catch(() => ({ quality: '未知', loadSpeed: 'N/A', pingTime: -1, method: 'm3u8_resolution', priority: 1 }))
     );
