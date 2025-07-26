@@ -593,7 +593,7 @@ async function performSearch(query, selectedAPIs) {
             }
             // 启动后台速度更新
             setTimeout(() => backgroundSpeedUpdate(cacheResult.results), 100);
-            
+
             // 确保缓存结果也构建videoSourceMap
             const videoSourceMap = new Map();
             cacheResult.results.forEach(item => {
@@ -606,7 +606,7 @@ async function performSearch(query, selectedAPIs) {
                 }
             });
             sessionStorage.setItem('videoSourceMap', JSON.stringify(Array.from(videoSourceMap.entries())));
-            
+
             // 延迟一点时间让用户看到加载提示，然后返回缓存结果
             return new Promise(resolve => {
                 setTimeout(() => resolve(cacheResult.results), 300);
@@ -1565,42 +1565,24 @@ async function manualRetryDetection(qualityId, videoData) {
     badge.onclick = null; // 暂时禁用点击
 
     try {
-        // 2. 获取第一个剧集的URL进行检测
-        let firstEpisodeUrl = '';
-        if (videoData && videoData.vod_play_url) {
-            const firstSegment = videoData.vod_play_url.split('#')[0];
-            firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
-        }
+        // 2. 调用 SpeedTester 对这一个视频源进行检测
+        // SpeedTester.testSources 期望一个数组，所以我们传入一个只包含当前视频源的数组
+        const [testedResult] = await window.SpeedTester.testSources([videoData]);
 
-        if (!firstEpisodeUrl) {
-            throw new Error('无有效的视频链接');
-        }
-
-        // 显示用户反馈
-        showToast('正在重新检测画质...', 'info', 1500);
-
-        // 3. 调用画质检测函数
-        const checkResult = await window.precheckSource(firstEpisodeUrl);
-        
-        // 4. 合并检测结果到原始数据
-        const testedResult = { ...videoData, ...checkResult };
-
-        // 5. 更新全局数据缓存
+        // 3. 更新全局数据缓存，这非常重要！
         const videoDataMap = AppState.get('videoDataMap');
         if (videoDataMap) {
             videoDataMap.set(qualityId, testedResult);
-            // 同时更新sessionStorage中的缓存
-            sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
         }
 
-        // 6. 更新附加到卡片DOM元素上的数据
+        // 4. 更新附加到卡片DOM元素上的数据，以便下次点击弹窗时数据是新的
         const cardElement = badge.closest('.card-hover');
         if (cardElement) {
             cardElement.videoData = testedResult;
         }
 
-        // 7. 调用UI函数，用最终结果更新徽章的显示
-        updateQualityBadgeUI(qualityId, checkResult.quality, badge);
+        // 5. 调用UI函数，用最终结果更新徽章的显示
+        updateQualityBadgeUI(qualityId, testedResult.quality, badge);
 
     } catch (error) {
         console.error('手动重新检测失败:', error);
