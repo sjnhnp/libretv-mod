@@ -600,6 +600,20 @@ async function performSearch(query, selectedAPIs) {
             }
             // 启动后台速度更新
             setTimeout(() => backgroundSpeedUpdate(cacheResult.results), 100);
+            
+            // 确保缓存结果也构建videoSourceMap
+            const videoSourceMap = new Map();
+            cacheResult.results.forEach(item => {
+                if (item.vod_id) {
+                    const videoKey = `${item.vod_name}|${item.vod_year || ''}`;
+                    if (!videoSourceMap.has(videoKey)) {
+                        videoSourceMap.set(videoKey, []);
+                    }
+                    videoSourceMap.get(videoKey).push(item);
+                }
+            });
+            sessionStorage.setItem('videoSourceMap', JSON.stringify(Array.from(videoSourceMap.entries())));
+            
             // 延迟一点时间让用户看到加载提示，然后返回缓存结果
             return new Promise(resolve => {
                 setTimeout(() => resolve(cacheResult.results), 300);
@@ -659,7 +673,10 @@ async function performSearch(query, selectedAPIs) {
             // 不检测时，设置默认值以保持数据结构一致
             checkedResults = allResults.map(item => ({
                 ...item,
+                quality: '未知',
                 loadSpeed: 'N/A',
+                pingTime: -1,
+                detectionMethod: 'disabled',
                 sortPriority: 50
             }));
         }

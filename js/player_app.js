@@ -771,6 +771,7 @@ async function doEpisodeSwitch(index, episodeString) {
                     }
                 }
                 availableAlternativeSources = relevantSources;
+                console.log('成功构建线路列表，共', availableAlternativeSources.length, '个线路:', availableAlternativeSources);
             } catch (e) {
                 console.error("从 sessionStorage 构建聚合线路列表失败:", e);
                 availableAlternativeSources = [];
@@ -1426,6 +1427,9 @@ function setupLineSwitching() {
 
         const currentId = vodIdForPlayer;
 
+        console.log('setupLineSwitching: 可用线路数量:', availableAlternativeSources.length);
+        console.log('setupLineSwitching: 线路列表:', availableAlternativeSources);
+        
         if (availableAlternativeSources.length > 1) {
             availableAlternativeSources.forEach(source => {
                 const item = document.createElement('button');
