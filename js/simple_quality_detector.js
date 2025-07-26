@@ -306,34 +306,16 @@ async function performVideoElementDetection(m3u8Url) {
 
 // 综合画质检测函数
 async function comprehensiveQualityCheck(m3u8Url, prefetchedContent = null) {
-    /* ---------- Ⅰ. 极速判断：直接解析 m3u8 文本 ---------- */
-    const fastRes = await tryParseM3u8Resolution(m3u8Url, prefetchedContent);
-    if (fastRes && fastRes.quality !== '未知') {
-        return {
-            quality: fastRes.quality,
-            loadSpeed: fastRes.loadSpeed,
-            pingTime: fastRes.pingTime,
-            detectionMethod: 'm3u8_resolution',
-            sortPriority: 1
-        };
-    }
 
-    /* ---------- Ⅱ. 关键词快速判断（无需任何网络） ---------- */
-    const kw = await checkKeywordQuality(m3u8Url);
-    if (kw) {
-        return {
-            quality: kw,
-            loadSpeed: '极速',
-            pingTime: 0,
-            detectionMethod: 'keyword',
-            sortPriority: 3
-        };
-    }
-
-    /* ---------- Ⅲ. 慢速检测（只在前两种都失败时才执行） ---------- */
     // 并行执行所有检测方法
     const detectionPromises = [];
-
+    
+    // 1. M3U8 RESOLUTION解析（最准确）
+    detectionPromises.push(
+        tryParseM3u8Resolution(m3u8Url, prefetchedContent)
+            .then(result => ({ ...result, method: 'm3u8_resolution', priority: 1 }))
+            .catch(() => ({ quality: '未知', loadSpeed: 'N/A', pingTime: -1, method: 'm3u8_resolution', priority: 1 }))
+    );
     // 2. Video元素检测（次准确）
     detectionPromises.push(
         Promise.race([

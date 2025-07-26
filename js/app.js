@@ -779,7 +779,14 @@ async function performSearch(query, selectedAPIs) {
         sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
 
         // 保存搜索缓存
-        saveSearchCache(query, selectedAPIs, checkedResults);
+        const completeResults = checkedResults.filter(item =>
+            item.detectionMethod !== 'pending' &&
+            item.quality !== '检测中...'
+        );
+
+        if (completeResults.length > 0) {
+            saveSearchCache(query, selectedAPIs, completeResults);
+        }
 
 
         return checkedResults;
