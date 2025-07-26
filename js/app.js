@@ -568,6 +568,52 @@ function rebuildVideoCaches(results) {
     );
 }
 
+/* ============================================================
+ *  在后台异步完善画质（不阻塞 UI）
+ * ============================================================ */
+function backgroundQualityUpdate(results) {
+    const concurrency = 2;          // 同时跑 2 个任务即可
+    let cursor = 0;
+
+    async function worker() {
+        while (cursor < results.length) {
+            const item = results[cursor++];
+            if (!item || item.quality !== '检测中...') continue;
+
+            /* -------- 调用画质检测 -------- */
+            let firstEpisodeUrl = '';
+            if (item.vod_play_url) {
+                const firstSeg = item.vod_play_url.split('#')[0];
+                firstEpisodeUrl = firstSeg.includes('$') ? firstSeg.split('$')[1] : firstSeg;
+            }
+
+            try {
+                const q = await window.precheckSource(
+                    firstEpisodeUrl,
+                    item.m3u8Content || null            // 把 m3u8 文本传进去
+                );
+                Object.assign(item, q);                 // 合并画质结果
+            } catch {
+                item.quality = '检测失败';
+                item.detectionMethod = 'failed';
+            }
+
+            /* -------- 更新缓存 -------- */
+            const key = `${item.source_code}_${item.vod_id}`;
+            const videoDataMap = AppState.get('videoDataMap') || new Map();
+            videoDataMap.set(key, item);
+            AppState.set('videoDataMap', videoDataMap);
+            sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
+
+            /* -------- 更新页面标签 -------- */
+            updateQualityBadgeUI(key, item.quality);
+        }
+    }
+
+    // 开启并发 worker
+    Array(concurrency).fill(0).forEach(worker);
+}
+
 async function performSearch(query, selectedAPIs) {
     // 检查是否启用速度检测
     const speedDetectionEnabled = getBoolConfig(PLAYER_CONFIG.speedDetectionStorage, PLAYER_CONFIG.speedDetectionEnabled);
@@ -656,36 +702,25 @@ async function performSearch(query, selectedAPIs) {
                 }
             });
 
-            // 2. 再使用precheckSource进行画质检测，并合并速度结果
-            const precheckPromises = speedResults.map(async (item) => {
-                let firstEpisodeUrl = '';
-                if (item.vod_play_url) {
-                    const firstSegment = item.vod_play_url.split('#')[0];
-                    firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
-                }
+            /* ----------------------------------------------------
+             * 1) 先把测速结果立即返回给前端，质量标记为“检测中...”
+             * 2) 然后在后台异步执行真正的画质检测
+             * ---------------------------------------------------- */
+            const initialResults = speedResults.map(item => ({
+                ...item,
+                quality: '检测中...',
+                detectionMethod: 'pending'
+            }));
 
-                try {
-                    // 把 SpeedTester 已下载好的 m3u8 文本一起传给画质检测
-                    const qualityResult = await window.precheckSource(
-                        firstEpisodeUrl,
-                        item.m3u8Content || null
-                    );
-                    // 合并速度和画质结果
-                    return {
-                        ...item, // 包含速度信息
-                        quality: qualityResult.quality, // 覆盖为真实画质
-                        detectionMethod: qualityResult.detectionMethod // 使用画质检测的方法
-                    };
-                } catch (error) {
-                    return {
-                        ...item, // 保留速度信息
-                        quality: '检测失败',
-                        detectionMethod: 'failed'
-                    };
-                }
-            });
+            // 写入缓存，让页面可立即渲染
+            rebuildVideoCaches(initialResults);
 
-            checkedResults = await Promise.all(precheckPromises);
+            // ★ 启动后台画质检测，不再阻塞 UI
+            backgroundQualityUpdate(speedResults);
+
+            /* 直接用 initialResults 作为函数最终返回值 */
+            checkedResults = initialResults;
+
         } else {
             // 不检测时，设置默认值以保持数据结构一致
             checkedResults = allResults.map(item => ({
