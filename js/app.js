@@ -1,42 +1,4 @@
-// 使用 localStorage 进行持久化缓存
-const QUALITY_CACHE_KEY = 'qualityCache';
-const qualityCache = new Map(JSON.parse(localStorage.getItem(QUALITY_CACHE_KEY) || '[]'));
 
-// 缓存x分钟，超时自动重新检测
-function saveQualityCache(qualityId, quality) {
-    // 记录画质和缓存时间（x分钟后过期）
-    qualityCache.set(qualityId, {
-        quality: quality,
-        cacheTime: Date.now() // 缓存时间戳
-    });
-    // 保存到本地缓存，避免刷新后丢失
-    try {
-        localStorage.setItem(QUALITY_CACHE_KEY, JSON.stringify(Array.from(qualityCache.entries()))); // 修改为 localStorage
-    } catch (e) {
-        console.warn("缓存空间不足，已自动跳过");
-    }
-}
-
-// 读取缓存的画质结果，过期则返回null（需要重新检测）
-function getCachedQuality(qualityId) {
-    const cachedData = qualityCache.get(qualityId);
-    if (!cachedData) {
-        return null; // 没有缓存，需要检测
-    }
-    // 缓存超过10分钟（600000毫秒）则过期
-    const isExpired = Date.now() - cachedData.cacheTime > 600000;
-    if (isExpired) {
-        qualityCache.delete(qualityId); // 删除过期缓存
-        // 当缓存过期并删除时，立即更新 localStorage
-        try {
-            localStorage.setItem(QUALITY_CACHE_KEY, JSON.stringify(Array.from(qualityCache.entries())));
-        } catch (e) {
-            console.warn("更新缓存失败，空间不足:", e);
-        }
-        return null; // 提示重新检测
-    }
-    return cachedData;
-}
 
 // 主应用程序逻辑 使用AppState进行状态管理，DOMCache进行DOM元素缓存
 const AppState = (function () {
@@ -297,7 +259,7 @@ function checkSearchCache(query, selectedAPIs) {
 
         const cacheData = JSON.parse(cached);
         const now = Date.now();
-        const expireTime = 7 * 24 * 60 * 60 * 1000; // 画质缓存7days
+        const expireTime = SEARCH_CACHE_CONFIG.expireTime;
 
         if (now - cacheData.timestamp > expireTime) {
             localStorage.removeItem(cacheKey);

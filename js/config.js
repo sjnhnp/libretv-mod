@@ -3,6 +3,14 @@ const PROXY_URL = '/proxy/';
 const SEARCH_HISTORY_KEY = 'videoSearchHistory';
 const MAX_HISTORY_ITEMS = 5;
 
+// 搜索缓存配置
+const SEARCH_CACHE_CONFIG = {
+    expireTime: 7 * 24 * 60 * 60 * 1000, // 7天过期时间
+    enabled: true // 是否启用搜索缓存
+};
+
+window.SEARCH_CACHE_CONFIG = SEARCH_CACHE_CONFIG;
+
 // 密码保护配置
 window.PASSWORD_CONFIG = window.PASSWORD_CONFIG || {
     localStorageKey: 'passwordVerified',
