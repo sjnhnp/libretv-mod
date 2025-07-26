@@ -296,45 +296,49 @@ function saveSearchCache(query, selectedAPIs, results) {
     }
 }
 
+/* ============================================================
+ *  后台测速：使用 SpeedTester，但不阻塞 UI
+ * ============================================================ */
 function backgroundSpeedUpdate(results) {
-    // 后台更新速度，限制并发数为3
-    const concurrentLimit = 3;
-    let currentIndex = 0;
+    const concurrency = 2;           // 同时跑 2 条线路即可
+    let cursor = 0;
 
-    function processNext() {
-        if (currentIndex >= results.length) return;
-
-        const batch = results.slice(currentIndex, currentIndex + concurrentLimit);
-        currentIndex += concurrentLimit;
-
-        const promises = batch.map(async (item) => {
-            if (!item.vod_play_url) return item;
-
-            const firstSegment = item.vod_play_url.split('#')[0];
-            const firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
+    async function worker() {
+        while (cursor < results.length) {
+            const item = results[cursor++];
+            if (!item || item.loadSpeed !== '检测中...') continue; // 已经测过则跳过
 
             try {
-                const checkResult = await window.precheckSource(firstEpisodeUrl);
-                // 只更新速度相关字段
-                item.loadSpeed = checkResult.loadSpeed;
-                item.sortPriority = checkResult.sortPriority;
-
-                // 更新弹窗中的速度显示（如果弹窗打开）
-                updateModalSpeedDisplay(item);
-            } catch (e) {
-                console.warn('后台速度检测失败:', e);
+                // SpeedTester 只测一条，返回数组
+                const [tested] = await window.SpeedTester.testSources([item], { concurrency: 1 });
+                if (tested && tested.loadSpeed !== 'N/A') {
+                    item.loadSpeed = tested.loadSpeed;
+                    item.sortPriority = tested.sortPriority;
+                } else {
+                    item.loadSpeed = '连接超时';
+                    item.sortPriority = 99;
+                }
+            } catch {
+                item.loadSpeed = '连接超时';
+                item.sortPriority = 99;
             }
-            return item;
-        });
 
-        Promise.all(promises).then(() => {
-            setTimeout(processNext, 100); // 避免过于频繁的请求
-        });
+            /* ---- 写回全局缓存 ---- */
+            const key = `${item.source_code}_${item.vod_id}`;
+            const vMap = AppState.get('videoDataMap') || new Map();
+            vMap.set(key, item);
+            AppState.set('videoDataMap', vMap);
+            sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(vMap.entries())));
+
+            /* ---- 如果弹窗打开就更新显示 ---- */
+            updateModalSpeedDisplay(item);
+        }
     }
 
-    // 延迟100ms开始后台检测，避免阻塞UI
-    setTimeout(processNext, 100);
+    // 启动并发 worker
+    Array(concurrency).fill(0).forEach(worker);
 }
+
 
 function isValidSpeedValue(speed) {
     if (!speed || speed === 'N/A' || speed === '连接超时' || speed === '未知' || speed === '检测失败') {
@@ -688,40 +692,28 @@ async function performSearch(query, selectedAPIs) {
         });
         let checkedResults = allResults;
 
-        // 只有启用速度检测时才进行检测
-        if (speedDetectionEnabled) {
-            showLoading(`正在检测 ${allResults.length} 个资源...`);
+                // 只有启用速度检测时才进行测速 —— 改成后台异步，不阻塞 UI
+                if (speedDetectionEnabled) {
 
-            // 1. 先使用SpeedTester进行批量速度检测
-            const speedResults = await window.SpeedTester.testSources(allResults, {
-                concurrency: 2, // 限制并发数
-                onProgress: (testedSource) => {
-                    if (testedSource.loadSpeed !== 'N/A') {
-                        console.log(`✓ ${testedSource.source_name}: ${testedSource.loadSpeed}`);
-                    }
-                }
-            });
-
-            /* ----------------------------------------------------
-             * 1) 先把测速结果立即返回给前端，质量标记为“检测中...”
-             * 2) 然后在后台异步执行真正的画质检测
-             * ---------------------------------------------------- */
-            const initialResults = speedResults.map(item => ({
-                ...item,
-                quality: '检测中...',
-                detectionMethod: 'pending'
-            }));
-
-            // 写入缓存，让页面可立即渲染
-            rebuildVideoCaches(initialResults);
-
-            // ★ 启动后台画质检测，不再阻塞 UI
-            backgroundQualityUpdate(initialResults);   // 用 initialResults 才含“检测中...”标签
-
-
-            /* 直接用 initialResults 作为函数最终返回值 */
-            checkedResults = initialResults;
-
+                    /* 1. 立即返回占位数据，速度/画质均标记“检测中...” */
+                    const quickResults = allResults.map(item => ({
+                        ...item,
+                        loadSpeed: '检测中...',
+                        pingTime: -1,
+                        sortPriority: 50,
+                        quality: '检测中...',
+                        detectionMethod: 'pending'
+                    }));
+        
+                    // 把占位结果写进缓存，页面可马上渲染
+                    rebuildVideoCaches(quickResults);
+        
+                    /* 2. 后台启动测速 → 画质检测（互不阻塞） */
+                    backgroundSpeedUpdate(quickResults);   // 先测速，结果写回 loadSpeed
+                    backgroundQualityUpdate(quickResults); // 再做画质检测，更新 quality
+        
+                    /* 3. 用占位结果作为函数的立即返回值 */
+                    checkedResults = quickResults;
         } else {
             // 不检测时，设置默认值以保持数据结构一致
             checkedResults = allResults.map(item => ({
