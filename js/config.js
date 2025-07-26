@@ -49,6 +49,32 @@ window.API_SITES = API_SITES;
 const DEFAULT_SELECTED_APIS = ["heimuer", "mozhua", "bfzy", "dyttzy", "maotai", "tyyszy"];
 window.DEFAULT_SELECTED_APIS = DEFAULT_SELECTED_APIS;
 
+// ================================
+// 缓存配置 - 统一管理所有缓存时间设置
+// ================================
+
+// 画质和速度分离缓存配置
+const QUALITY_CACHE_CONFIG = {
+    CACHE_KEY: 'independentQualityCache',
+    QUALITY_EXPIRE_TIME: 15 * 24 * 60 * 60 * 1000, // 15天画质缓存时间 (可修改)
+    SPEED_EXPIRE_TIME: 2 * 60 * 60 * 1000,         // 2小时速度缓存时间 (可修改)
+    MAX_CACHE_SIZE: 1000 // 最大缓存条目数，防止内存溢出
+};
+
+// 搜索结果缓存配置
+const SEARCH_CACHE_CONFIG = {
+    EXPIRE_TIME: 7 * 24 * 60 * 60 * 1000 // 7天搜索结果缓存时间 (可修改)
+};
+
+// 导出缓存配置到全局，供其他模块使用
+window.QUALITY_CACHE_CONFIG = QUALITY_CACHE_CONFIG;
+window.SEARCH_CACHE_CONFIG = SEARCH_CACHE_CONFIG;
+
+// 缓存时间快速修改指南:
+// 画质缓存: 修改 QUALITY_EXPIRE_TIME (建议7-30天)
+// 速度缓存: 修改 SPEED_EXPIRE_TIME (建议30分钟-4小时)  
+// 搜索缓存: 修改 SEARCH_CACHE_CONFIG.EXPIRE_TIME (建议3-14天)
+
 // 聚合搜索配置
 const AGGREGATED_SEARCH_CONFIG = {
     enabled: true,

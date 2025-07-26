@@ -4,13 +4,21 @@
 // 解决弊端1-8：画质不一致、重复检测、后台浪费、缓存粒度粗、数据混乱、无效代码、缓存键不合理、内存泄漏
 // ================================
 
-// 画质和速度缓存配置
-const QUALITY_CACHE_CONFIG = {
+// 缓存配置从 config.js 导入
+const QUALITY_CACHE_CONFIG = window.QUALITY_CACHE_CONFIG || {
     CACHE_KEY: 'independentQualityCache',
-    QUALITY_EXPIRE_TIME: 15 * 24 * 60 * 60 * 1000, // 15天画质缓存时间
-    SPEED_EXPIRE_TIME: 2 * 60 * 60 * 1000, // 2小时速度缓存时间
-    MAX_CACHE_SIZE: 1000 // 最大缓存条目数，防止内存溢出
+    QUALITY_EXPIRE_TIME: 15 * 24 * 60 * 60 * 1000,
+    SPEED_EXPIRE_TIME: 2 * 60 * 60 * 1000,
+    MAX_CACHE_SIZE: 1000
 };
+const SEARCH_CACHE_CONFIG = window.SEARCH_CACHE_CONFIG || {
+    EXPIRE_TIME: 7 * 24 * 60 * 60 * 1000
+};
+
+// 确保配置正确加载
+if (!window.QUALITY_CACHE_CONFIG) {
+    console.warn('缓存配置未从 config.js 正确加载，使用默认配置');
+}
 
 // 初始化画质缓存
 const qualityCache = new Map(JSON.parse(localStorage.getItem(QUALITY_CACHE_CONFIG.CACHE_KEY) || '[]'));
@@ -309,11 +317,7 @@ function getFirstEpisodeUrl(vodPlayUrl) {
         if (!vodPlayUrl) return '';
         
         const firstSegment = vodPlayUrl.split('#')[0];
-        return firstSegment.includes('
-</content>
-</file>') ? firstSegment.split('
-</content>
-</file>')[1] : firstSegment;
+        return firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
     } catch (e) {
         console.warn("解析剧集URL失败:", e);
         return '';
@@ -729,7 +733,7 @@ function checkSearchCache(query, selectedAPIs) {
 
         const cacheData = JSON.parse(cached);
         const now = Date.now();
-        const expireTime = 7 * 24 * 60 * 60 * 1000; // 画质缓存7days
+        const expireTime = SEARCH_CACHE_CONFIG.EXPIRE_TIME; // 使用配置文件中的搜索缓存时间
 
         if (now - cacheData.timestamp > expireTime) {
             localStorage.removeItem(cacheKey);
