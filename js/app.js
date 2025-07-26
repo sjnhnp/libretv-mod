@@ -653,18 +653,44 @@ async function performSearch(query, selectedAPIs) {
         if (speedDetectionEnabled) {
             showLoading(`正在检测 ${allResults.length} 个资源...`);
 
-            // 使用新的SpeedTester进行并发测试
-            checkedResults = await window.SpeedTester.testSources(allResults, {
-                concurrency: 2, // 降低并发数，减少服务器压力
-                onProgress: (testedSource) => {
-                    // 实时进度更新
-                    if (testedSource.loadSpeed !== 'N/A') {
-                        console.log(`✓ ${testedSource.source_name}: ${testedSource.loadSpeed}`);
-                    } else {
-                        console.log(`✗ ${testedSource.source_name}: 检测失败`);
+            // 同时进行速度测试和画质检测
+            const testPromises = allResults.map(async (item) => {
+                try {
+                    // 1. 使用SpeedTester进行速度测试
+                    const [speedResult] = await window.SpeedTester.testSources([item], { concurrency: 1 });
+                    
+                    // 2. 使用原有的precheckSource进行画质检测
+                    let firstEpisodeUrl = '';
+                    if (item.vod_play_url) {
+                        const firstSegment = item.vod_play_url.split('#')[0];
+                        firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
                     }
+                    
+                    let qualityResult = { quality: '未知', detectionMethod: 'none' };
+                    if (firstEpisodeUrl) {
+                        qualityResult = await window.precheckSource(firstEpisodeUrl);
+                    }
+                    
+                    // 3. 合并结果，保持速度优先排序
+                    return {
+                        ...item,
+                        ...speedResult,
+                        quality: qualityResult.quality, // 使用真实的画质检测结果
+                        detectionMethod: qualityResult.detectionMethod
+                    };
+                } catch (error) {
+                    console.log(`检测失败 ${item.source_name}:`, error.message);
+                    return {
+                        ...item,
+                        quality: '检测失败',
+                        loadSpeed: 'N/A',
+                        sortPriority: 99,
+                        detectionMethod: 'failed'
+                    };
                 }
             });
+            
+            checkedResults = await Promise.all(testPromises);
         } else {
             // 不检测时，设置默认值以保持数据结构一致
             checkedResults = allResults.map(item => ({
@@ -1568,15 +1594,31 @@ async function manualRetryDetection(qualityId, videoData) {
     badge.onclick = null; // 暂时禁用点击
 
     try {
-        // 2. 使用SpeedTester进行单个源测试
-        const [testedResult] = await window.SpeedTester.testSources([videoData], {
-            concurrency: 1,
-            onProgress: (result) => {
-                showToast(`检测完成: ${result.loadSpeed}`, 'success', 2000);
-            }
-        });
+        // 2. 同时进行速度测试和画质检测
+        const [speedResult] = await window.SpeedTester.testSources([videoData], { concurrency: 1 });
+        
+        // 3. 使用原有的precheckSource进行画质检测
+        let firstEpisodeUrl = '';
+        if (videoData && videoData.vod_play_url) {
+            const firstSegment = videoData.vod_play_url.split('#')[0];
+            firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
+        }
+        
+        let qualityResult = { quality: '未知' };
+        if (firstEpisodeUrl) {
+            qualityResult = await window.precheckSource(firstEpisodeUrl);
+        }
+        
+        // 4. 合并结果
+        const testedResult = {
+            ...videoData,
+            ...speedResult,
+            quality: qualityResult.quality // 使用真实的画质检测结果
+        };
+        
+        showToast(`检测完成: ${testedResult.quality} - ${testedResult.loadSpeed}`, 'success', 2000);
 
-        // 3. 更新全局数据缓存
+        // 5. 更新全局数据缓存
         const videoDataMap = AppState.get('videoDataMap');
         if (videoDataMap) {
             videoDataMap.set(qualityId, testedResult);
@@ -1584,16 +1626,16 @@ async function manualRetryDetection(qualityId, videoData) {
             sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
         }
 
-        // 4. 更新附加到卡片DOM元素上的数据
+        // 6. 更新附加到卡片DOM元素上的数据
         const cardElement = badge.closest('.card-hover');
         if (cardElement) {
             cardElement.videoData = testedResult;
         }
 
-        // 5. 更新UI显示
+        // 7. 更新UI显示
         updateQualityBadgeUI(qualityId, testedResult.quality, badge);
 
-        // 6. 如果弹窗打开，也更新弹窗中的速度显示
+        // 8. 如果弹窗打开，也更新弹窗中的速度显示
         const modal = document.getElementById('modal');
         if (modal && !modal.classList.contains('hidden')) {
             const modalSpeedTag = modal.querySelector('[data-field="speed-tag"]');

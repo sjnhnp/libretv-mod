@@ -85,7 +85,6 @@ const SpeedTester = (() => {
             ...source,
             speed: 0, // 速度初始化为0
             loadSpeed: 'N/A', // 兼容现有代码的字段
-            quality: '未知', // 添加画质字段
             latency: -1,
             pingTime: -1, // 兼容现有代码
             detectionMethod: 'speed_tester',
@@ -128,18 +127,14 @@ const SpeedTester = (() => {
                         result.loadSpeed = `${speedKBps}KB/s`;
                     }
 
-                    // 根据速度推测画质
+                    // 根据速度设置排序优先级（速度越快优先级越高）
                     if (speedKBps >= 2048) { // >= 2MB/s
-                        result.quality = '1080p';
                         result.sortPriority = 10;
                     } else if (speedKBps >= 1024) { // >= 1MB/s
-                        result.quality = '720p';
                         result.sortPriority = 20;
                     } else if (speedKBps >= 512) { // >= 512KB/s
-                        result.quality = '480p';
                         result.sortPriority = 30;
                     } else if (speedKBps > 0) {
-                        result.quality = 'SD';
                         result.sortPriority = 40;
                     }
                 }
@@ -149,7 +144,6 @@ const SpeedTester = (() => {
         } catch (error) {
             console.log(`测试源失败 ${source.source_name}:`, error.message);
             // 失败时设置合理的默认值
-            result.quality = '检测失败';
             result.loadSpeed = 'N/A';
             result.sortPriority = 99;
             return result;
