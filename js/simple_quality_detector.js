@@ -281,7 +281,7 @@ async function performVideoElementDetection(m3u8Url) {
             const height = video.videoHeight; // 获取高度
             if (width > 0 && height > 0) { // 确保宽高都有效
                 const pingTime = Math.round(performance.now() - startTime);
-                
+
                 // [修复] 使用新的辅助函数进行判断
                 const quality = getQualityStringFromDimensions(width, height);
 

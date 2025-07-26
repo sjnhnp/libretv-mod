@@ -87,7 +87,6 @@ const SpeedTester = (() => {
             loadSpeed: 'N/A', // 兼容现有代码的字段
             latency: -1,
             pingTime: -1, // 兼容现有代码
-            detectionMethod: 'speed_tester',
             sortPriority: 50
         };
 

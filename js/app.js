@@ -653,16 +653,41 @@ async function performSearch(query, selectedAPIs) {
         if (speedDetectionEnabled) {
             showLoading(`正在检测 ${allResults.length} 个资源...`);
 
-            // 恢复原来的逻辑：使用原有的precheckSource进行检测
-            const precheckPromises = allResults.map(async (item) => {
+            // 1. 先使用SpeedTester进行批量速度检测
+            const speedResults = await window.SpeedTester.testSources(allResults, {
+                concurrency: 2, // 限制并发数
+                onProgress: (testedSource) => {
+                    if (testedSource.loadSpeed !== 'N/A') {
+                        console.log(`✓ ${testedSource.source_name}: ${testedSource.loadSpeed}`);
+                    }
+                }
+            });
+            
+            // 2. 再使用precheckSource进行画质检测，并合并速度结果
+            const precheckPromises = speedResults.map(async (item) => {
                 let firstEpisodeUrl = '';
                 if (item.vod_play_url) {
                     const firstSegment = item.vod_play_url.split('#')[0];
                     firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
                 }
-                const checkResult = await window.precheckSource(firstEpisodeUrl);
-                return { ...item, ...checkResult };
+                
+                try {
+                    const qualityResult = await window.precheckSource(firstEpisodeUrl);
+                    // 合并速度和画质结果
+                    return {
+                        ...item, // 包含速度信息
+                        quality: qualityResult.quality, // 覆盖为真实画质
+                        detectionMethod: qualityResult.detectionMethod // 使用画质检测的方法
+                    };
+                } catch (error) {
+                    return {
+                        ...item, // 保留速度信息
+                        quality: '检测失败',
+                        detectionMethod: 'failed'
+                    };
+                }
             });
+            
             checkedResults = await Promise.all(precheckPromises);
         } else {
             // 不检测时，设置默认值以保持数据结构一致
@@ -1567,33 +1592,27 @@ async function manualRetryDetection(qualityId, videoData) {
     badge.onclick = null; // 暂时禁用点击
 
     try {
-        // 2. 同时进行速度测试和画质检测
+        // 2. 先进行速度测试
         const [speedResult] = await window.SpeedTester.testSources([videoData], { concurrency: 1 });
         
-        // 3. 使用原有的precheckSource进行画质检测
+        // 3. 再进行画质检测
         let firstEpisodeUrl = '';
         if (videoData && videoData.vod_play_url) {
             const firstSegment = videoData.vod_play_url.split('#')[0];
             firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
         }
         
-        let qualityResult = { quality: '未知' };
+        let qualityResult = { quality: '未知', detectionMethod: 'none' };
         if (firstEpisodeUrl) {
             qualityResult = await window.precheckSource(firstEpisodeUrl);
         }
         
-        // 4. 合并结果，确保画质检测结果不被覆盖
+        // 4. 合并结果
         const testedResult = {
             ...videoData,
-            // 只取SpeedTester的速度相关字段
-            speed: speedResult.speed,
-            loadSpeed: speedResult.loadSpeed,
-            latency: speedResult.latency,
-            pingTime: speedResult.pingTime,
-            sortPriority: speedResult.sortPriority,
-            // 使用真实的画质检测结果
-            quality: qualityResult.quality,
-            detectionMethod: qualityResult.detectionMethod
+            ...speedResult, // 包含速度信息
+            quality: qualityResult.quality, // 覆盖为真实画质
+            detectionMethod: qualityResult.detectionMethod // 使用画质检测的方法
         };
         
         showToast(`检测完成: ${testedResult.quality} - ${testedResult.loadSpeed}`, 'success', 2000);
