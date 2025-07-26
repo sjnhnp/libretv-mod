@@ -815,14 +815,16 @@ async function doEpisodeSwitch(index, episodeString) {
 
         // 若为自定义detail源，且初始地址无效，自动重新请求
         const sourceCode = urlParams.get('source_code') || '';
+        const customIndex = sourceCode.startsWith('custom_') ? parseInt(sourceCode.replace('custom_', '')) : NaN;
         const isCustomSpecialSource = sourceCode.startsWith('custom_') &&
-            APISourceManager.getCustomApiInfo(parseInt(sourceCode.replace('custom_', '')))?.detail;
+            !isNaN(customIndex) && APISourceManager.getCustomApiInfo(customIndex)?.detail;
 
         // 若初始地址无效（无m3u8链接），二次请求真实地址
         if (isCustomSpecialSource && (!episodeUrlForPlayer || !episodeUrlForPlayer.includes('.m3u8'))) {
             try {
                 const vodId = urlParams.get('id');
                 const customIndex = parseInt(sourceCode.replace('custom_', ''));
+                if (isNaN(customIndex)) throw new Error('自定义源索引无效');
                 const apiInfo = APISourceManager.getCustomApiInfo(customIndex);
                 // 重新调用地址获取接口
                 const detailResult = await handleCustomApiSpecialDetail(vodId, apiInfo.detail);

@@ -481,6 +481,7 @@ const APISourceManager = {
 
         if (sourceCode.startsWith('custom_')) {
             const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
+            if (isNaN(customIndex)) return null;
             const apiInfo = this.getCustomApiInfo(customIndex); // 使用 this 调用对象内部方法
             return apiInfo ? { name: apiInfo.name, url: apiInfo.url, isCustom: true } : null;
         } else {

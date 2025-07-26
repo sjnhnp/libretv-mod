@@ -152,7 +152,10 @@ async function handleApiRequest(url) {
                 if (!result || !Array.isArray(result.list)) throw new Error('API返回的数据格式无效');
 
                 result.list.forEach(item => {
-                    item.source_name = source.startsWith('custom_') ? (window.APISourceManager?.getCustomApiInfo(parseInt(source.replace('custom_', '')))?.name || '自定义源') : API_SITES[source].name;
+                    item.source_name = source.startsWith('custom_') ? (() => {
+                        const idx = parseInt(source.replace('custom_', ''));
+                        return !isNaN(idx) ? (window.APISourceManager?.getCustomApiInfo(idx)?.name || '自定义源') : '自定义源';
+                    })() : API_SITES[source].name;
                     item.source_code = source;
                     if (source.startsWith('custom_')) {
                         item.api_url = customApi;
@@ -186,7 +189,7 @@ async function handleApiRequest(url) {
                 // 处理需要HTML抓取的自定义源（有 detail 字段就走特殊抓取）
                 else if (sourceCode.startsWith('custom_')) {
                     const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
-                    const apiInfo = window.APISourceManager.getCustomApiInfo(customIndex);
+                    const apiInfo = !isNaN(customIndex) ? window.APISourceManager.getCustomApiInfo(customIndex) : null;
                     if (apiInfo && apiInfo.detail) {
                         // 直接用 detail 字段
                         return await handleCustomApiSpecialDetail(id, apiInfo.detail);
@@ -238,7 +241,10 @@ async function handleApiRequest(url) {
                             actor: videoDetail.vod_actor,
                             remarks: videoDetail.vod_remarks,
                             source_name: sourceCode.startsWith('custom_')
-                                ? (window.APISourceManager?.getCustomApiInfo(parseInt(sourceCode.replace('custom_', '')))?.name || '自定义源')
+                                ? (() => {
+                                    const idx = parseInt(sourceCode.replace('custom_', ''));
+                                    return !isNaN(idx) ? (window.APISourceManager?.getCustomApiInfo(idx)?.name || '自定义源') : '自定义源';
+                                })()
                                 : (API_SITES && API_SITES[sourceCode] ? API_SITES[sourceCode].name : '未知来源'),
                             source_code: sourceCode
                         }

@@ -1099,11 +1099,15 @@ async function performSearch(query, selectedAPIs) {
         let apiUrl = `/api/search?wd=${encodeURIComponent(query)}&source=${apiId}`;
         if (apiId.startsWith('custom_')) {
             const customIndex = parseInt(apiId.replace('custom_', ''));
-            const customApi = APISourceManager.getCustomApiInfo(customIndex);
-            if (customApi && customApi.url) {
-                apiUrl += `&customApi=${encodeURIComponent(customApi.url)}`;
+            if (!isNaN(customIndex)) {
+                const customApi = APISourceManager.getCustomApiInfo(customIndex);
+                if (customApi && customApi.url) {
+                    apiUrl += `&customApi=${encodeURIComponent(customApi.url)}`;
+                } else {
+                    return Promise.resolve({ code: 400, msg: `自定义API ${apiId} 无效`, list: [], apiId });
+                }
             } else {
-                return Promise.resolve({ code: 400, msg: `自定义API ${apiId} 无效`, list: [], apiId });
+                return Promise.resolve({ code: 400, msg: `自定义API ${apiId} 索引无效`, list: [], apiId });
             }
         }
         return fetch(apiUrl)
@@ -1121,7 +1125,10 @@ async function performSearch(query, selectedAPIs) {
                         ...item,
                         source_name: result.apiName,
                         source_code: result.apiId,
-                        api_url: result.apiId.startsWith('custom_') ? APISourceManager.getCustomApiInfo(parseInt(result.apiId.replace('custom_', '')))?.url : ''
+                        api_url: result.apiId.startsWith('custom_') ? (() => {
+                            const idx = parseInt(result.apiId.replace('custom_', ''));
+                            return !isNaN(idx) ? APISourceManager.getCustomApiInfo(idx)?.url || '' : '';
+                        })() : ''
                     });
                 });
             }
@@ -1437,7 +1444,9 @@ async function getVideoDetail(id, sourceCode, apiUrl = '') {
         if (sourceCode.startsWith('custom_') && window.APISourceManager?.getCustomApiInfo) {
             try {
                 const idx = parseInt(sourceCode.replace('custom_', ''));
-                sourceName = window.APISourceManager.getCustomApiInfo(idx)?.name || '';
+                if (!isNaN(idx)) {
+                    sourceName = window.APISourceManager.getCustomApiInfo(idx)?.name || '';
+                }
             } catch { }
         } else if (window.API_SITES && window.API_SITES[sourceCode]) {
             sourceName = window.API_SITES[sourceCode].name;
@@ -1758,13 +1767,14 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
 
     // 处理自定义detail源的真实地址获取
     const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
-    const apiInfo = APISourceManager.getCustomApiInfo(customIndex);
+    const apiInfo = !isNaN(customIndex) ? APISourceManager.getCustomApiInfo(customIndex) : null;
     const isCustomSpecialSource = sourceCode.startsWith('custom_') && apiInfo?.detail;
     if (isCustomSpecialSource) {
         // 自定义源弹窗中的异步地址获取
         setTimeout(async () => {
             try {
                 const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
+                if (isNaN(customIndex)) throw new Error('自定义源索引无效');
                 const apiInfo = APISourceManager.getCustomApiInfo(customIndex);
                 if (!apiInfo) throw new Error('自定义源信息不存在');
 

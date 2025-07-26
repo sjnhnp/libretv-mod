@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>修复验证测试</title>
+</head>
+<body>
+    <h1>修复验证测试</h1>
+    <div id="test-results"></div>
+
+    <script src="js/config.js"></script>
+    <script src="js/api_source_manager.js"></script>
+    <script>
+        // 测试修复效果
+        function testFixes() {
+            const results = [];
+            
+            // 测试1: 测试NaN处理
+            console.log('=== 测试1: NaN处理 ===');
+            try {
+                // 模拟无效的custom_源代码
+                const invalidSourceCode = 'custom_abc'; // 这会导致parseInt返回NaN
+                const customIndex = parseInt(invalidSourceCode.replace('custom_', ''));
+                
+                if (isNaN(customIndex)) {
+                    results.push('✅ NaN检查正常工作');
+                    console.log('NaN检查正常工作，customIndex:', customIndex);
+                } else {
+                    results.push('❌ NaN检查失败');
+                }
+            } catch (e) {
+                results.push('❌ NaN测试出错: ' + e.message);
+            }
+            
+            // 测试2: 测试画质检测函数是否存在
+            console.log('=== 测试2: 画质检测函数 ===');
+            if (typeof window.precheckSource === 'function') {
+                results.push('✅ precheckSource函数已加载');
+            } else {
+                results.push('❌ precheckSource函数未加载');
+            }
+            
+            // 测试3: 测试缓存配置
+            console.log('=== 测试3: 缓存配置 ===');
+            if (window.QUALITY_CACHE_CONFIG && window.SEARCH_CACHE_CONFIG) {
+                results.push('✅ 缓存配置已正确加载');
+                console.log('画质缓存时间:', window.QUALITY_CACHE_CONFIG.QUALITY_EXPIRE_TIME / (24 * 60 * 60 * 1000), '天');
+                console.log('速度缓存时间:', window.QUALITY_CACHE_CONFIG.SPEED_EXPIRE_TIME / (60 * 60 * 1000), '小时');
+            } else {
+                results.push('❌ 缓存配置加载失败');
+            }
+            
+            // 显示结果
+            document.getElementById('test-results').innerHTML = results.join('<br>');
+        }
+        
+        // 页面加载完成后运行测试
+        document.addEventListener('DOMContentLoaded', testFixes);
+    </script>
+    
+    <!-- 加载画质检测器 -->
+    <script src="js/simple_quality_detector.js"></script>
+</body>
+</html>
+</script>

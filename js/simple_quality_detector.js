@@ -304,127 +304,95 @@ async function performVideoElementDetection(m3u8Url) {
 }
 
 
-// 综合画质检测函数
+// 快速画质检测函数 - 优化版本，减少不必要的检测步骤
 async function comprehensiveQualityCheck(m3u8Url) {
+    console.log('开始快速画质检测:', m3u8Url);
 
-    // 并行执行所有检测方法
-    const detectionPromises = [];
+    // 1. 首先尝试关键词识别（最快）
+    const keywordResult = await checkKeywordQuality(m3u8Url);
+    if (keywordResult) {
+        console.log('关键词识别成功:', keywordResult);
+        return {
+            quality: keywordResult,
+            loadSpeed: '极速',
+            pingTime: 0,
+            detectionMethod: 'keyword',
+            sortPriority: 1
+        };
+    }
 
-    // 1. M3U8 RESOLUTION解析（最准确）
-    detectionPromises.push(
-        tryParseM3u8Resolution(m3u8Url)
-            .then(result => ({ ...result, method: 'm3u8_resolution', priority: 1 }))
-            .catch(() => ({ quality: '未知', loadSpeed: 'N/A', pingTime: -1, method: 'm3u8_resolution', priority: 1 }))
-    );
+    // 2. 尝试M3U8 RESOLUTION解析（较快且准确）
+    try {
+        const m3u8Result = await tryParseM3u8Resolution(m3u8Url);
+        if (m3u8Result && m3u8Result.quality !== '未知') {
+            console.log('M3U8解析成功:', m3u8Result.quality);
+            return {
+                quality: m3u8Result.quality,
+                loadSpeed: m3u8Result.loadSpeed || 'N/A',
+                pingTime: m3u8Result.pingTime || -1,
+                detectionMethod: 'm3u8_resolution',
+                sortPriority: 2
+            };
+        }
+    } catch (e) {
+        console.log('M3U8解析失败:', e.message);
+    }
 
-    // 2. Video元素检测（次准确）
-    detectionPromises.push(
-        Promise.race([
+    // 3. 使用简单检测作为备选（包含网络测速）
+    try {
+        const simpleResult = await simplePrecheckSource(m3u8Url);
+        if (simpleResult && simpleResult.quality !== '检测失败' && simpleResult.quality !== '未知') {
+            console.log('简单检测成功:', simpleResult.quality);
+            return {
+                quality: simpleResult.quality,
+                loadSpeed: simpleResult.loadSpeed || 'N/A',
+                pingTime: simpleResult.pingTime || -1,
+                detectionMethod: 'simple_analysis',
+                sortPriority: 3
+            };
+        }
+    } catch (e) {
+        console.log('简单检测失败:', e.message);
+    }
+
+    // 4. 最后尝试Video元素检测（最慢，仅在其他方法都失败时使用）
+    // 注意：减少超时时间从3秒到1.5秒，提高响应速度
+    try {
+        const videoResult = await Promise.race([
             performVideoElementDetection(m3u8Url),
             new Promise((resolve) => setTimeout(() => resolve({
                 quality: '检测超时',
                 loadSpeed: 'N/A',
                 pingTime: -1
-            }), 3000))
-        ]).then(result => ({ ...result, method: 'video_element', priority: 2 }))
-            .catch(() => ({ quality: '播放失败', loadSpeed: 'N/A', pingTime: -1, method: 'video_element', priority: 2 }))
-    );
-
-    // 3. 关键词识别（较准确）
-    const keywordResult = await checkKeywordQuality(m3u8Url);
-    if (keywordResult) {
-        detectionPromises.push(
-            Promise.resolve({
-                quality: keywordResult,
-                loadSpeed: '极速',
-                pingTime: 0,
-                method: 'keyword',
-                priority: 3
-            })
-        );
-    }
-
-    // 4. 简单检测（备选）
-    detectionPromises.push(
-        simplePrecheckSource(m3u8Url)
-            .then(result => ({ ...result, method: 'simple_analysis', priority: 4 }))
-            .catch(() => ({ quality: '检测失败', loadSpeed: 'N/A', pingTime: -1, method: 'simple_analysis', priority: 4 }))
-    );
-
-    // 等待所有检测完成
-    const results = await Promise.all(detectionPromises);
-
-    console.log('所有检测结果:', results);
-
-    // 按优先级选择最佳结果
-    let bestResult = null;
-
-    // 优先级1: M3U8 RESOLUTION解析
-    const m3u8Result = results.find(r => r.method === 'm3u8_resolution');
-    if (m3u8Result && m3u8Result.quality !== '未知') {
-        console.log('采用M3U8 RESOLUTION解析结果:', m3u8Result.quality);
-        bestResult = m3u8Result;
-    }
-
-    // 优先级2: Video元素检测
-    if (!bestResult) {
-        const videoResult = results.find(r => r.method === 'video_element');
+            }), 1500)) // 减少超时时间
+        ]);
+        
         if (videoResult &&
             videoResult.quality !== '检测超时' &&
             videoResult.quality !== '播放失败' &&
             videoResult.quality !== '高清' &&
             videoResult.quality !== '未知') {
-            console.log('采用Video元素检测结果:', videoResult.quality);
-            bestResult = videoResult;
+            console.log('Video元素检测成功:', videoResult.quality);
+            return {
+                quality: videoResult.quality,
+                loadSpeed: videoResult.loadSpeed || 'N/A',
+                pingTime: videoResult.pingTime || -1,
+                detectionMethod: 'video_element',
+                sortPriority: 4
+            };
         }
-    }
-
-    // 优先级3: 关键词识别
-    if (!bestResult) {
-        const keywordResult = results.find(r => r.method === 'keyword');
-        if (keywordResult) {
-            console.log('采用关键词识别结果:', keywordResult.quality);
-            bestResult = keywordResult;
-        }
-    }
-
-    // 优先级4: 简单检测
-    if (!bestResult) {
-        const simpleResult = results.find(r => r.method === 'simple_analysis');
-        if (simpleResult && simpleResult.quality !== '检测失败' && simpleResult.quality !== '未知') {
-            console.log('采用简单检测结果:', simpleResult.quality);
-            bestResult = simpleResult;
-        }
+    } catch (e) {
+        console.log('Video元素检测失败:', e.message);
     }
 
     // 如果所有方法都失败，返回明确的'未知'
-    if (!bestResult) {
-        console.log('所有检测方法都失败，返回未知');
-        bestResult = {
-            quality: '未知', // 不再猜测，返回真实状态
-            loadSpeed: 'N/A',
-            pingTime: -1,
-            method: 'fallback',
-            priority: 99
-        };
-    }
-
-    // 合并加载速度信息（优先使用简单检测的网络测速结果）
-    const simpleResult = results.find(r => r.method === 'simple_analysis');
-    if (simpleResult && simpleResult.loadSpeed &&
-        simpleResult.loadSpeed.match(/\d+(\.\d+)?\s*(KB\/s|MB\/s)$/)) {
-        bestResult.loadSpeed = simpleResult.loadSpeed;
-        bestResult.pingTime = simpleResult.pingTime;
-    }
-
-    console.log('最终选择的结果:', bestResult);
-
+    console.log('所有检测方法都失败，返回未知');
     return {
-        quality: bestResult.quality,
-        loadSpeed: bestResult.loadSpeed,
-        pingTime: bestResult.pingTime,
-        detectionMethod: bestResult.method,
-        sortPriority: bestResult.priority
+        quality: '未知',
+        loadSpeed: 'N/A',
+        pingTime: -1,
+        detectionMethod: 'fallback',
+        sortPriority: 99
     };
 }
 
