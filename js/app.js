@@ -623,38 +623,29 @@ async function performSearch(query, selectedAPIs) {
     const speedDetectionEnabled = getBoolConfig(PLAYER_CONFIG.speedDetectionStorage, PLAYER_CONFIG.speedDetectionEnabled);
 
     // 如果启用速度检测，先检查缓存
-    if (speedDetectionEnabled) {
-        const cacheResult = checkSearchCache(query, selectedAPIs);
-        if (cacheResult.canUseCache) {
-            // 显示缓存加载提示
-            if (typeof showLoading === 'function') {
-                showLoading(`正加载"${query}"的搜索结果`);
-            }
-
-            // 关键：把缓存结果重新写入 videoDataMap / videoSourceMap
-            rebuildVideoCaches(cacheResult.results);
-
-            // 启动后台速度更新
-            setTimeout(() => backgroundSpeedUpdate(cacheResult.results), 100);
-
-            // 确保缓存结果也构建videoSourceMap
-            const videoSourceMap = new Map();
-            cacheResult.results.forEach(item => {
-                if (item.vod_id) {
-                    const videoKey = `${item.vod_name}|${item.vod_year || ''}`;
-                    if (!videoSourceMap.has(videoKey)) {
-                        videoSourceMap.set(videoKey, []);
-                    }
-                    videoSourceMap.get(videoKey).push(item);
-                }
-            });
-            sessionStorage.setItem('videoSourceMap', JSON.stringify(Array.from(videoSourceMap.entries())));
-
-            // 延迟一点时间让用户看到加载提示，然后返回缓存结果
-            return new Promise(resolve => {
-                setTimeout(() => resolve(cacheResult.results), 300);
-            });
+    /* ============================================================
+     * 1) 先检查 30 天搜索结果缓存 —— 与速度检测无关
+     * ============================================================ */
+    const cacheResult = checkSearchCache(query, selectedAPIs);
+    if (cacheResult.canUseCache) {
+        // 显示“正在加载缓存”提示
+        if (typeof showLoading === 'function') {
+            showLoading(`正加载 “${query}” 的搜索结果`);
         }
+
+        // 把缓存填回 videoDataMap / videoSourceMap，立即可渲染
+        rebuildVideoCaches(cacheResult.results);
+
+        // 若打开了速度检测，则后台刷新速度；画质检测随配置而定
+        if (speedDetectionEnabled) {
+            setTimeout(() => backgroundSpeedUpdate(cacheResult.results), 100);
+        }
+        setTimeout(() => backgroundQualityUpdate(cacheResult.results), 150);
+
+        // 让用户至少看到 300 ms loading，保持体验
+        return new Promise(resolve => {
+            setTimeout(() => resolve(cacheResult.results), 300);
+        });
     }
 
     const customAPIsFromStorage = JSON.parse(localStorage.getItem('customAPIs') || '[]');
@@ -787,10 +778,9 @@ async function performSearch(query, selectedAPIs) {
         AppState.set('videoDataMap', videoDataMap);
         sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
 
-        // 保存搜索缓存（仅在启用速度检测时）
-        if (speedDetectionEnabled) {
-            saveSearchCache(query, selectedAPIs, checkedResults);
-        }
+        // 保存搜索缓存
+        saveSearchCache(query, selectedAPIs, checkedResults);
+
 
         return checkedResults;
     } catch (error) {
