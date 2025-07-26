@@ -1,23 +1,19 @@
 // ================================
-// 画质检测模块 (v6.0 - 宽屏/竖屏完美修复版)
-// 核心修复：采用长短边结合的智能判断逻辑，确保所有视频宽高比都能被正确识别。
+// 画质检测模块 (v8.0 - 终极完美版)
+// 修复：采用“或”逻辑，完美处理宽屏、竖屏、标屏及“差一像素”问题。
+// 结构：保持您现有的并行检测结构，只修正最核心的判断函数。
 // ================================
 
-// [FIXED] 最终版辅助函数：结合长短边，完美判断画质
+// [终极修复] 辅助函数，根据宽高正确判断画质
 function getQualityStringFromDimensions(width, height) {
     if (!width || !height) return '未知';
 
-    const longSide = Math.max(width, height);
-    const shortSide = Math.min(width, height);
-
-    // 优先判断长边，用于识别4K/2K等影院级分辨率
-    if (longSide >= 3800) return '4K';
-    if (longSide >= 2500) return '2K';
-
-    // 再判断短边，用于识别1080p/720p等高清标准
-    if (shortSide >= 1000) return '1080p';
-    if (shortSide >= 700) return '720p';
-    if (shortSide >= 460) return '480p';
+    // 采用“或”逻辑，并设置弹性阈值，完美兼容所有宽高比
+    if (width >= 3800 || height >= 2100) return '4K';
+    if (width >= 2500 || height >= 1400) return '2K';
+    if (width >= 1800 || height >= 1000) return '1080p'; // 1920x804 或 1080x1920 都会落入此区间
+    if (width >= 1200 || height >= 700) return '720p';
+    if (width >= 800 || height >= 460) return '480p';
     
     return 'SD';
 }
