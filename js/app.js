@@ -537,6 +537,37 @@ function search(options = {}) {
         });
 }
 
+/* ========= 搜索结果 → Map / sessionStorage 公用写入 ========= */
+function rebuildVideoCaches(results) {
+    // 1. videoDataMap
+    const videoDataMap = new Map();
+    results.forEach(item => {
+        if (item && item.vod_id) {
+            const uniqueKey = `${item.source_code}_${item.vod_id}`;
+            videoDataMap.set(uniqueKey, item);
+        }
+    });
+    AppState.set('videoDataMap', videoDataMap);
+    sessionStorage.setItem(
+        'videoDataCache',
+        JSON.stringify(Array.from(videoDataMap.entries()))
+    );
+
+    // 2. videoSourceMap  (给播放器的线路切换使用)
+    const videoSourceMap = new Map();
+    results.forEach(item => {
+        if (item && item.vod_id) {
+            const key = `${item.vod_name}|${item.vod_year || ''}`;
+            if (!videoSourceMap.has(key)) videoSourceMap.set(key, []);
+            videoSourceMap.get(key).push(item);
+        }
+    });
+    sessionStorage.setItem(
+        'videoSourceMap',
+        JSON.stringify(Array.from(videoSourceMap.entries()))
+    );
+}
+
 async function performSearch(query, selectedAPIs) {
     // 检查是否启用速度检测
     const speedDetectionEnabled = getBoolConfig(PLAYER_CONFIG.speedDetectionStorage, PLAYER_CONFIG.speedDetectionEnabled);
@@ -549,6 +580,10 @@ async function performSearch(query, selectedAPIs) {
             if (typeof showLoading === 'function') {
                 showLoading(`正加载"${query}"的搜索结果`);
             }
+
+            // 关键：把缓存结果重新写入 videoDataMap / videoSourceMap
+            rebuildVideoCaches(cacheResult.results);
+
             // 启动后台速度更新
             setTimeout(() => backgroundSpeedUpdate(cacheResult.results), 100);
 
@@ -692,6 +727,8 @@ async function performSearch(query, selectedAPIs) {
 
             return speedB - speedA; // 速度高的排在前面
         });
+        /* -------- 关键：实时搜索结果也写入缓存 -------- */
+        rebuildVideoCaches(checkedResults);
         const videoDataMap = AppState.get('videoDataMap') || new Map();
 
         // 将所有搜索结果按影片分组，以供播放页的线路切换功能使用
