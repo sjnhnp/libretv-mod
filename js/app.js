@@ -692,28 +692,28 @@ async function performSearch(query, selectedAPIs) {
         });
         let checkedResults = allResults;
 
-                // 只有启用速度检测时才进行测速 —— 改成后台异步，不阻塞 UI
-                if (speedDetectionEnabled) {
+        // 只有启用速度检测时才进行测速 —— 改成后台异步，不阻塞 UI
+        if (speedDetectionEnabled) {
 
-                    /* 1. 立即返回占位数据，速度/画质均标记“检测中...” */
-                    const quickResults = allResults.map(item => ({
-                        ...item,
-                        loadSpeed: '检测中...',
-                        pingTime: -1,
-                        sortPriority: 50,
-                        quality: '检测中...',
-                        detectionMethod: 'pending'
-                    }));
-        
-                    // 把占位结果写进缓存，页面可马上渲染
-                    rebuildVideoCaches(quickResults);
-        
-                    /* 2. 后台启动测速 → 画质检测（互不阻塞） */
-                    backgroundSpeedUpdate(quickResults);   // 先测速，结果写回 loadSpeed
-                    backgroundQualityUpdate(quickResults); // 再做画质检测，更新 quality
-        
-                    /* 3. 用占位结果作为函数的立即返回值 */
-                    checkedResults = quickResults;
+            /* 1. 立即返回占位数据，速度/画质均标记“检测中...” */
+            const quickResults = allResults.map(item => ({
+                ...item,
+                loadSpeed: '检测中...',
+                pingTime: -1,
+                sortPriority: 50,
+                quality: '检测中...',
+                detectionMethod: 'pending'
+            }));
+
+            // 把占位结果写进缓存，页面可马上渲染
+            rebuildVideoCaches(quickResults);
+
+            /* 2. 后台启动测速 → 画质检测（互不阻塞） */
+            backgroundSpeedUpdate(quickResults);   // 先测速，结果写回 loadSpeed
+            backgroundQualityUpdate(quickResults); // 再做画质检测，更新 quality
+
+            /* 3. 用占位结果作为函数的立即返回值 */
+            checkedResults = quickResults;
         } else {
             // 不检测时，设置默认值以保持数据结构一致
             checkedResults = allResults.map(item => ({
@@ -1616,6 +1616,11 @@ async function manualRetryDetection(qualityId, videoData) {
         // 2. 先进行速度测试
         const [speedResult] = await window.SpeedTester.testSources([videoData], { concurrency: 1 });
 
+        // ★ 把 m3u8 文本写回 videoData 以便后续重用
+        if (speedResult && speedResult.m3u8Content) {
+            videoData.m3u8Content = speedResult.m3u8Content;
+        }
+
         // 3. 再进行画质检测
         let firstEpisodeUrl = '';
         if (videoData && videoData.vod_play_url) {
@@ -1625,7 +1630,11 @@ async function manualRetryDetection(qualityId, videoData) {
 
         let qualityResult = { quality: '未知', detectionMethod: 'none' };
         if (firstEpisodeUrl) {
-            qualityResult = await window.precheckSource(firstEpisodeUrl);
+            qualityResult = await window.precheckSource(
+                firstEpisodeUrl,
+                videoData.m3u8Content || null      // ★ 复用文本，避免再下
+            );
+
         }
 
         // 4. 合并结果
