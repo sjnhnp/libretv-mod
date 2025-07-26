@@ -1,18 +1,24 @@
 // ================================
-// 简化的画质检测模块 - 专门解决CORS问题
+// 画质检测模块 (v6.0 - 宽屏/竖屏完美修复版)
+// 核心修复：采用长短边结合的智能判断逻辑，确保所有视频宽高比都能被正确识别。
 // ================================
 
-// [新增] 辅助函数，根据宽高正确判断画质，解决竖屏视频问题
+// [FIXED] 最终版辅助函数：结合长短边，完美判断画质
 function getQualityStringFromDimensions(width, height) {
     if (!width || !height) return '未知';
-    // 关键修复：使用宽高中的较小值来判断 "p"
+
+    const longSide = Math.max(width, height);
     const shortSide = Math.min(width, height);
 
-    if (shortSide >= 2160) return '4K';
-    if (shortSide >= 1440) return '2K';
-    if (shortSide >= 1080) return '1080p';
-    if (shortSide >= 720) return '720p';
-    if (shortSide >= 480) return '480p';
+    // 优先判断长边，用于识别4K/2K等影院级分辨率
+    if (longSide >= 3800) return '4K';
+    if (longSide >= 2500) return '2K';
+
+    // 再判断短边，用于识别1080p/720p等高清标准
+    if (shortSide >= 1000) return '1080p';
+    if (shortSide >= 700) return '720p';
+    if (shortSide >= 460) return '480p';
+    
     return 'SD';
 }
 
@@ -198,7 +204,6 @@ async function tryParseM3u8Resolution(m3u8Url) {
 
                 console.log(`找到RESOLUTION: ${width}x${height}`);
 
-                // [修复] 使用新的辅助函数进行判断
                 const quality = getQualityStringFromDimensions(width, height);
 
                 return {
@@ -278,11 +283,10 @@ async function performVideoElementDetection(m3u8Url) {
 
         const checkResolution = () => {
             const width = video.videoWidth;
-            const height = video.videoHeight; // 获取高度
-            if (width > 0 && height > 0) { // 确保宽高都有效
+            const height = video.videoHeight;
+            if (width > 0 && height > 0) {
                 const pingTime = Math.round(performance.now() - startTime);
-
-                // [修复] 使用新的辅助函数进行判断
+                
                 const quality = getQualityStringFromDimensions(width, height);
 
                 resolveOnce({
