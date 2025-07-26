@@ -578,7 +578,7 @@ function backgroundQualityUpdate(results) {
     async function worker() {
         while (cursor < results.length) {
             const item = results[cursor++];
-            if (!item || item.quality !== '检测中...') continue;
+            if (!item || item.detectionMethod !== 'pending') continue;  // 只处理待检测项
 
             /* -------- 调用画质检测 -------- */
             let firstEpisodeUrl = '';
@@ -716,7 +716,8 @@ async function performSearch(query, selectedAPIs) {
             rebuildVideoCaches(initialResults);
 
             // ★ 启动后台画质检测，不再阻塞 UI
-            backgroundQualityUpdate(speedResults);
+            backgroundQualityUpdate(initialResults);   // 用 initialResults 才含“检测中...”标签
+
 
             /* 直接用 initialResults 作为函数最终返回值 */
             checkedResults = initialResults;
