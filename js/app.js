@@ -612,14 +612,22 @@ function backgroundQualityUpdate(results) {
             /* -------- 更新页面标签 -------- */
             updateQualityBadgeUI(key, item.quality);
             /* ============================================================
- *   把最终检测结果写回 30 天搜索缓存
- * ============================================================ */
+              *   把最终检测结果写回 30 天搜索缓存
+           * ============================================================ */
             try {
                 // 生成本次搜索对应的缓存键
-                const cacheKey = generateSearchCacheKey(
-                    AppState.get('latestQuery'),
-                    AppState.get('latestAPIs')
-                );
+                const q = AppState.get('latestQuery');
+                const ap = AppState.get('latestAPIs') || [];
+                if (q && ap.length) {               // 没有键就不写，避免报错
+                    const cacheKey = getSearchCacheKey(q, ap);
+                    const cachedArr = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+                    const idx = cachedArr.findIndex(c => `${c.source_code}_${c.vod_id}` === key);
+                    if (idx !== -1) {
+                        cachedArr[idx] = { ...cachedArr[idx], ...item };
+                        localStorage.setItem(cacheKey, JSON.stringify(cachedArr));
+                    }
+                }
+
                 const cachedArr = JSON.parse(localStorage.getItem(cacheKey) || '[]');
 
                 // 按唯一键 source_code + vod_id 定位条目
@@ -642,6 +650,10 @@ function backgroundQualityUpdate(results) {
 }
 
 async function performSearch(query, selectedAPIs) {
+    // 把本次搜索信息存进全局，供后台线程写缓存用
+    AppState.set('latestQuery', query);
+    AppState.set('latestAPIs', [...selectedAPIs]);
+
     // 检查是否启用速度检测
     const speedDetectionEnabled = getBoolConfig(PLAYER_CONFIG.speedDetectionStorage, PLAYER_CONFIG.speedDetectionEnabled);
 
@@ -671,8 +683,6 @@ async function performSearch(query, selectedAPIs) {
             r => r.detectionMethod === 'pending' || r.quality === '检测中...')) {
             setTimeout(() => backgroundQualityUpdate(cacheResult.results), 120);
         }
-
-        setTimeout(() => backgroundQualityUpdate(cacheResult.results), 150);
 
         // 让用户至少看到 300 ms loading，保持体验
         return new Promise(resolve => {
