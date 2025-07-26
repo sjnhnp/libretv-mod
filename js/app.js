@@ -5,20 +5,33 @@
 // ================================
 
 // 缓存配置从 config.js 导入
-const QUALITY_CACHE_CONFIG = window.QUALITY_CACHE_CONFIG || {
-    CACHE_KEY: 'independentQualityCache',
-    QUALITY_EXPIRE_TIME: 15 * 24 * 60 * 60 * 1000,
-    SPEED_EXPIRE_TIME: 2 * 60 * 60 * 1000,
-    MAX_CACHE_SIZE: 1000
-};
-const SEARCH_CACHE_CONFIG = window.SEARCH_CACHE_CONFIG || {
-    EXPIRE_TIME: 7 * 24 * 60 * 60 * 1000
-};
-
-// 确保配置正确加载
+// 确保配置正确加载，如果未加载则设置默认配置
 if (!window.QUALITY_CACHE_CONFIG) {
     console.warn('缓存配置未从 config.js 正确加载，使用默认配置');
+    window.QUALITY_CACHE_CONFIG = {
+        CACHE_KEY: 'independentQualityCache',
+        QUALITY_EXPIRE_TIME: 15 * 24 * 60 * 60 * 1000,
+        SPEED_EXPIRE_TIME: 2 * 60 * 60 * 1000,
+        MAX_CACHE_SIZE: 1000
+    };
 }
+
+if (!window.SEARCH_CACHE_CONFIG) {
+    window.SEARCH_CACHE_CONFIG = {
+        EXPIRE_TIME: 7 * 24 * 60 * 60 * 1000
+    };
+}
+
+// 使用全局配置
+const QUALITY_CACHE_CONFIG = window.QUALITY_CACHE_CONFIG;
+const SEARCH_CACHE_CONFIG = window.SEARCH_CACHE_CONFIG;
+
+// 调试信息：显示加载的配置
+console.log('缓存配置加载完成:', {
+    qualityExpireTime: `${QUALITY_CACHE_CONFIG.QUALITY_EXPIRE_TIME / (24 * 60 * 60 * 1000)} 天`,
+    speedExpireTime: `${QUALITY_CACHE_CONFIG.SPEED_EXPIRE_TIME / (60 * 60 * 1000)} 小时`,
+    searchExpireTime: `${SEARCH_CACHE_CONFIG.EXPIRE_TIME / (24 * 60 * 60 * 1000)} 天`
+});
 
 // 初始化画质缓存
 const qualityCache = new Map(JSON.parse(localStorage.getItem(QUALITY_CACHE_CONFIG.CACHE_KEY) || '[]'));
