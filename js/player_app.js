@@ -1005,7 +1005,8 @@ function saveToHistory() {
             playbackPosition: Math.floor(player.currentTime),
             duration: Math.floor(player.duration) || 0,
             timestamp: Date.now(),
-            year: currentVideoYear
+            year: currentVideoYear,
+            typeName: currentVideoTypeName 
         };
         window.addToViewingHistory(videoInfo);
     } catch (e) {
@@ -1030,7 +1031,8 @@ function saveCurrentProgress() {
                 duration: Math.floor(duration),
                 timestamp: Date.now(),
                 year: currentVideoYear,
-                episodes: window.currentEpisodes
+                episodes: window.currentEpisodes,
+                typeName: currentVideoTypeName
             };
             window.addToViewingHistory(videoInfo);
         } catch (e) {
@@ -1536,6 +1538,7 @@ async function switchLine(newSourceCode, newVodId) {
         currentVideoYear = targetSourceItem.vod_year;
         // 没拿到新线路的类型时沿用旧值
         currentVideoTypeName = targetSourceItem.type_name || currentVideoTypeName;
+        window.currentVideoTypeName = currentVideoTypeName;
 
         let targetEpisodeIndex = currentEpisodeIndex;
         if (targetEpisodeIndex >= newEps.length) {
