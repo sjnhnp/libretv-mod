@@ -652,13 +652,17 @@ async function performSearch(query, selectedAPIs) {
         // 只有启用速度检测时才进行检测
         if (speedDetectionEnabled) {
             showLoading(`正在检测 ${allResults.length} 个资源...`);
-            
+
             // 使用新的SpeedTester进行并发测试
             checkedResults = await window.SpeedTester.testSources(allResults, {
-                concurrency: 3, // 限制并发数，适合Cloudflare Pages/Vercel
+                concurrency: 2, // 降低并发数，减少服务器压力
                 onProgress: (testedSource) => {
-                    // 可以在这里添加实时进度更新
-                    console.log(`已完成测试: ${testedSource.source_name} - ${testedSource.loadSpeed}`);
+                    // 实时进度更新
+                    if (testedSource.loadSpeed !== 'N/A') {
+                        console.log(`✓ ${testedSource.source_name}: ${testedSource.loadSpeed}`);
+                    } else {
+                        console.log(`✗ ${testedSource.source_name}: 检测失败`);
+                    }
                 }
             });
         } else {
@@ -1588,7 +1592,7 @@ async function manualRetryDetection(qualityId, videoData) {
 
         // 5. 更新UI显示
         updateQualityBadgeUI(qualityId, testedResult.quality, badge);
-        
+
         // 6. 如果弹窗打开，也更新弹窗中的速度显示
         const modal = document.getElementById('modal');
         if (modal && !modal.classList.contains('hidden')) {

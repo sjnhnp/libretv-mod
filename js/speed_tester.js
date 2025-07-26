@@ -16,24 +16,43 @@
 const SpeedTester = (() => {
 
     const PROXY_URL = '/proxy/'; // 使用代理避免跨域问题
-    const TEST_TIMEOUT = 5000; // 每个网络请求的超时时间为5秒
+    const TEST_TIMEOUT = 8000; // 每个网络请求的超时时间为8秒
 
     /**
-     * 带超时的fetch请求
+     * 带超时的fetch请求，支持降级机制
      * @param {string} url - 要请求的URL
      * @returns {Promise<Response>} - 返回原始的Response对象
      */
     async function fetchWithTimeout(url) {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), TEST_TIMEOUT);
+        
         try {
-            const response = await fetch(PROXY_URL + encodeURIComponent(url), {
-                signal: controller.signal
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP请求错误! 状态: ${response.status}`);
+            // 方法1：先尝试直接请求
+            try {
+                const response = await fetch(url, {
+                    signal: controller.signal,
+                    mode: 'cors'
+                });
+                if (response.ok) {
+                    return response;
+                }
+            } catch (corsError) {
+                console.log('直接请求失败，尝试代理:', corsError.message);
             }
-            return response;
+            
+            // 方法2：使用代理
+            if (typeof PROXY_URL !== 'undefined') {
+                const response = await fetch(PROXY_URL + encodeURIComponent(url), {
+                    signal: controller.signal
+                });
+                if (response.ok) {
+                    return response;
+                }
+                throw new Error(`代理请求失败! 状态: ${response.status}`);
+            } else {
+                throw new Error('代理不可用且直接请求失败');
+            }
         } finally {
             clearTimeout(timer);
         }
@@ -128,7 +147,11 @@ const SpeedTester = (() => {
             return result;
 
         } catch (error) {
-            console.error(`测试源失败 ${source.source_name}:`, error.message);
+            console.log(`测试源失败 ${source.source_name}:`, error.message);
+            // 失败时设置合理的默认值
+            result.quality = '检测失败';
+            result.loadSpeed = 'N/A';
+            result.sortPriority = 99;
             return result;
         }
     }
