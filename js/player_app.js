@@ -1534,7 +1534,8 @@ async function switchLine(newSourceCode, newVodId) {
 
         currentVideoTitle = targetSourceItem.vod_name;
         currentVideoYear = targetSourceItem.vod_year;
-        currentVideoTypeName = targetSourceItem.type_name;
+        // 没拿到新线路的类型时沿用旧值
+        currentVideoTypeName = targetSourceItem.type_name || currentVideoTypeName;
 
         let targetEpisodeIndex = currentEpisodeIndex;
         if (targetEpisodeIndex >= newEps.length) {
@@ -1550,7 +1551,7 @@ async function switchLine(newSourceCode, newVodId) {
         newUrlForBrowser.searchParams.set('source', targetSourceItem.source_name);
         newUrlForBrowser.searchParams.set('source_code', newSourceCode);
         if (currentVideoYear) newUrlForBrowser.searchParams.set('year', currentVideoYear);
-        if (currentVideoTypeName) newUrlForBrowser.searchParams.set('typeName', currentVideoTypeName);
+        newUrlForBrowser.searchParams.set('typeName', currentVideoTypeName);
 
         const newVideoKey = `${currentVideoTitle}|${currentVideoYear || ''}`;
         newUrlForBrowser.searchParams.set('videoKey', newVideoKey);
