@@ -632,33 +632,46 @@ function backgroundQualityUpdate(results) {
               *   把最终检测结果写回 30 天搜索缓存
            * ============================================================ */
             try {
-                // 生成本次搜索对应的缓存键
+                /* ------------ 生成缓存键 ------------ */
                 const q = AppState.get('latestQuery');
                 const ap = AppState.get('latestAPIs') || [];
-                if (q && ap.length) {               // 没有键就不写，避免报错
-                    const cacheKey = getSearchCacheKey(q, ap);
-                    const cachedArr = JSON.parse(localStorage.getItem(cacheKey) || '[]');
-                    const idx = cachedArr.findIndex(c => `${c.source_code}_${c.vod_id}` === key);
-                    if (idx !== -1) {
-                        cachedArr[idx] = { ...cachedArr[idx], ...item };
-                        localStorage.setItem(cacheKey, JSON.stringify(cachedArr));
-                    }
+                if (!q || ap.length === 0) return;   // 关键参数缺失直接跳过
+
+                const cacheKey = getSearchCacheKey(q, ap);
+
+                /* ------------ 取出缓存对象 ------------ */
+                let cacheObj;
+                try {
+                    cacheObj = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+                } catch {
+                    cacheObj = {};
                 }
 
-                const cachedArr = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+                /* 若缓存骨架不存在，则新建 */
+                if (!cacheObj.timestamp) {
+                    cacheObj.timestamp = Date.now();
+                    cacheObj.selectedAPIs = [...ap];
+                    cacheObj.results = [];
+                }
 
-                // 按唯一键 source_code + vod_id 定位条目
-                const idx = cachedArr.findIndex(
-                    c => `${c.source_code}_${c.vod_id}` === key
-                );
+                /* ------------ 更新 / 追加当前条目 ------------ */
+                const resultsArr = Array.isArray(cacheObj.results) ? cacheObj.results : [];
+                const idx = resultsArr.findIndex(r => `${r.source_code}_${r.vod_id}` === key);
+
                 if (idx !== -1) {
-                    cachedArr[idx] = { ...cachedArr[idx], ...item };
-                    localStorage.setItem(cacheKey, JSON.stringify(cachedArr));
+                    resultsArr[idx] = { ...resultsArr[idx], ...item };   // 覆盖
+                } else {
+                    resultsArr.push({ ...item });                        // 新增
                 }
-            } catch (e) {
-                console.warn('写回搜索缓存失败：', e);
-            }
 
+                cacheObj.results = resultsArr;
+
+                /* ------------ 写回 localStorage ------------ */
+                localStorage.setItem(cacheKey, JSON.stringify(cacheObj));
+
+            } catch (e) {
+                console.warn('写回搜索缓存失败:', e);
+            }
         }
     }
 
@@ -759,11 +772,15 @@ async function performSearch(query, selectedAPIs) {
             rebuildVideoCaches(quickResults);
 
             /* 2. 后台启动测速 → 画质检测（互不阻塞） */
-            backgroundSpeedUpdate(quickResults);   // 先测速，结果写回 loadSpeed
-            backgroundQualityUpdate(quickResults); // 再做画质检测，更新 quality
+            backgroundSpeedUpdate(quickResults);
+            backgroundQualityUpdate(quickResults);
 
-            /* 3. 用占位结果作为函数的立即返回值 */
+            /* 3. 立即把 quickResults 作为 30 天缓存的初始值写入 */
+            saveSearchCache(query, selectedAPIs, quickResults);
+
+            /* 4. 用占位结果作为函数的立即返回值 */
             checkedResults = quickResults;
+
         } else {
             // 不检测时，设置默认值以保持数据结构一致
             checkedResults = allResults.map(item => ({
