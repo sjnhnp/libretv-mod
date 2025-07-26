@@ -5,7 +5,7 @@ const MAX_HISTORY_ITEMS = 5;
 
 // 搜索缓存配置
 const SEARCH_CACHE_CONFIG = {
-    expireTime: 7 * 24 * 60 * 60 * 1000, // 7天过期时间
+    expireTime: 30 * 24 * 60 * 60 * 1000, // 7天过期时间
     enabled: true // 是否启用搜索缓存
 };
 
