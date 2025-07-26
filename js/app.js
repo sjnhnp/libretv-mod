@@ -652,16 +652,15 @@ async function performSearch(query, selectedAPIs) {
         // 只有启用速度检测时才进行检测
         if (speedDetectionEnabled) {
             showLoading(`正在检测 ${allResults.length} 个资源...`);
-            const precheckPromises = allResults.map(async (item) => {
-                let firstEpisodeUrl = '';
-                if (item.vod_play_url) {
-                    const firstSegment = item.vod_play_url.split('#')[0];
-                    firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
+            
+            // 使用新的SpeedTester进行并发测试
+            checkedResults = await window.SpeedTester.testSources(allResults, {
+                concurrency: 3, // 限制并发数，适合Cloudflare Pages/Vercel
+                onProgress: (testedSource) => {
+                    // 可以在这里添加实时进度更新
+                    console.log(`已完成测试: ${testedSource.source_name} - ${testedSource.loadSpeed}`);
                 }
-                const checkResult = await window.precheckSource(firstEpisodeUrl);
-                return { ...item, ...checkResult };
             });
-            checkedResults = await Promise.all(precheckPromises);
         } else {
             // 不检测时，设置默认值以保持数据结构一致
             checkedResults = allResults.map(item => ({
@@ -1565,24 +1564,41 @@ async function manualRetryDetection(qualityId, videoData) {
     badge.onclick = null; // 暂时禁用点击
 
     try {
-        // 2. 调用 SpeedTester 对这一个视频源进行检测
-        // SpeedTester.testSources 期望一个数组，所以我们传入一个只包含当前视频源的数组
-        const [testedResult] = await window.SpeedTester.testSources([videoData]);
+        // 2. 使用SpeedTester进行单个源测试
+        const [testedResult] = await window.SpeedTester.testSources([videoData], {
+            concurrency: 1,
+            onProgress: (result) => {
+                showToast(`检测完成: ${result.loadSpeed}`, 'success', 2000);
+            }
+        });
 
-        // 3. 更新全局数据缓存，这非常重要！
+        // 3. 更新全局数据缓存
         const videoDataMap = AppState.get('videoDataMap');
         if (videoDataMap) {
             videoDataMap.set(qualityId, testedResult);
+            // 同时更新sessionStorage中的缓存
+            sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
         }
 
-        // 4. 更新附加到卡片DOM元素上的数据，以便下次点击弹窗时数据是新的
+        // 4. 更新附加到卡片DOM元素上的数据
         const cardElement = badge.closest('.card-hover');
         if (cardElement) {
             cardElement.videoData = testedResult;
         }
 
-        // 5. 调用UI函数，用最终结果更新徽章的显示
+        // 5. 更新UI显示
         updateQualityBadgeUI(qualityId, testedResult.quality, badge);
+        
+        // 6. 如果弹窗打开，也更新弹窗中的速度显示
+        const modal = document.getElementById('modal');
+        if (modal && !modal.classList.contains('hidden')) {
+            const modalSpeedTag = modal.querySelector('[data-field="speed-tag"]');
+            if (modalSpeedTag && testedResult.loadSpeed && isValidSpeedValue(testedResult.loadSpeed)) {
+                modalSpeedTag.textContent = testedResult.loadSpeed;
+                modalSpeedTag.classList.remove('hidden');
+                modalSpeedTag.style.backgroundColor = '#16a34a';
+            }
+        }
 
     } catch (error) {
         console.error('手动重新检测失败:', error);

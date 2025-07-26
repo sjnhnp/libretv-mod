@@ -65,7 +65,12 @@ const SpeedTester = (() => {
         const result = {
             ...source,
             speed: 0, // 速度初始化为0
+            loadSpeed: 'N/A', // 兼容现有代码的字段
+            quality: '未知', // 添加画质字段
             latency: -1,
+            pingTime: -1, // 兼容现有代码
+            detectionMethod: 'speed_tester',
+            sortPriority: 50
         };
 
         if (!source.vod_play_url) return result;
@@ -89,17 +94,42 @@ const SpeedTester = (() => {
                 const segmentResponse = await fetchWithTimeout(segmentUrl);
                 const segmentData = await segmentResponse.arrayBuffer();
                 const duration = (performance.now() - segmentStartTime) / 1000;
-                
+
                 if (duration > 0 && segmentData.byteLength > 0) {
                     const speedBps = segmentData.byteLength / duration;
-                    result.speed = Math.round(speedBps / 1024); // 转换为 KB/s
+                    const speedKBps = Math.round(speedBps / 1024);
+                    result.speed = speedKBps;
+                    result.pingTime = result.latency;
+
+                    // 格式化为现有代码期望的格式
+                    if (speedKBps >= 1024) {
+                        const speedMBps = (speedKBps / 1024).toFixed(1);
+                        result.loadSpeed = `${speedMBps}MB/s`;
+                    } else if (speedKBps > 0) {
+                        result.loadSpeed = `${speedKBps}KB/s`;
+                    }
+
+                    // 根据速度推测画质
+                    if (speedKBps >= 2048) { // >= 2MB/s
+                        result.quality = '1080p';
+                        result.sortPriority = 10;
+                    } else if (speedKBps >= 1024) { // >= 1MB/s
+                        result.quality = '720p';
+                        result.sortPriority = 20;
+                    } else if (speedKBps >= 512) { // >= 512KB/s
+                        result.quality = '480p';
+                        result.sortPriority = 30;
+                    } else if (speedKBps > 0) {
+                        result.quality = 'SD';
+                        result.sortPriority = 40;
+                    }
                 }
             }
             return result;
 
         } catch (error) {
             console.error(`测试源失败 ${source.source_name}:`, error.message);
-            return result; 
+            return result;
         }
     }
 
