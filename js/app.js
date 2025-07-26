@@ -1,12 +1,10 @@
-// ✅ 使用 localStorage 进行持久化缓存 (从 sessionStorage 改为 localStorage)
+// 使用 localStorage 进行持久化缓存
 const QUALITY_CACHE_KEY = 'qualityCache';
 const qualityCache = new Map(JSON.parse(localStorage.getItem(QUALITY_CACHE_KEY) || '[]'));
 
-/**
- * 缓存10分钟，超时自动重新检测
- */
+// 缓存x分钟，超时自动重新检测
 function saveQualityCache(qualityId, quality) {
-    // 记录画质和缓存时间（10分钟后过期）
+    // 记录画质和缓存时间（x分钟后过期）
     qualityCache.set(qualityId, {
         quality: quality,
         cacheTime: Date.now() // 缓存时间戳
@@ -19,9 +17,7 @@ function saveQualityCache(qualityId, quality) {
     }
 }
 
-/**
- * 读取缓存的画质结果，过期则返回null（需要重新检测）
- */
+// 读取缓存的画质结果，过期则返回null（需要重新检测）
 function getCachedQuality(qualityId) {
     const cachedData = qualityCache.get(qualityId);
     if (!cachedData) {
@@ -225,7 +221,7 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0, t
         episodesList = AppState.get('currentEpisodes') || JSON.parse(localStorage.getItem('currentEpisodes') || '[]');
     }
 
-    // --- 修复后的核心逻辑：统一处理原始剧集名称 ---
+    // 统一处理原始剧集名称
     let namesToStore = [];
     // 1. 最佳来源：从刚获取的 episodesList 解析
     if (episodesList.length > 0 && typeof episodesList[0] === 'string' && episodesList[0].includes('$')) {
@@ -301,7 +297,7 @@ function checkSearchCache(query, selectedAPIs) {
 
         const cacheData = JSON.parse(cached);
         const now = Date.now();
-        const expireTime = 10 * 60 * 1000; // 10分钟过期
+        const expireTime = 7 * 24 * 60 * 60 * 1000; // 画质缓存7days
 
         if (now - cacheData.timestamp > expireTime) {
             localStorage.removeItem(cacheKey);
@@ -662,7 +658,7 @@ async function performSearch(query, selectedAPIs) {
                     }
                 }
             });
-            
+
             // 2. 再使用precheckSource进行画质检测，并合并速度结果
             const precheckPromises = speedResults.map(async (item) => {
                 let firstEpisodeUrl = '';
@@ -670,7 +666,7 @@ async function performSearch(query, selectedAPIs) {
                     const firstSegment = item.vod_play_url.split('#')[0];
                     firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
                 }
-                
+
                 try {
                     const qualityResult = await window.precheckSource(firstEpisodeUrl);
                     // 合并速度和画质结果
@@ -687,7 +683,7 @@ async function performSearch(query, selectedAPIs) {
                     };
                 }
             });
-            
+
             checkedResults = await Promise.all(precheckPromises);
         } else {
             // 不检测时，设置默认值以保持数据结构一致
@@ -701,7 +697,7 @@ async function performSearch(query, selectedAPIs) {
             }));
         }
         checkedResults.sort((a, b) => {
-            // 新的排序逻辑：优先级 + 速度
+            // 排序逻辑：优先级 + 速度
 
             // 1. 首先按检测方法的可靠性排序（sortPriority越小越优先）
             const priorityA = a.sortPriority || 50;
@@ -909,7 +905,7 @@ async function getVideoDetail(id, sourceCode, apiUrl = '') {
         const response = await fetch(url);
         const data = await response.json();
 
-        // +++ 剧集解析逻辑 - 支持多种格式 +++
+        // 剧集解析逻辑 - 支持多种格式
         let episodes = [];
 
         // 情况1：标准episodes数组
@@ -1096,7 +1092,6 @@ window.playPreviousEpisode = playPreviousEpisode;
 window.playNextEpisode = playNextEpisode;
 window.playFromHistory = playFromHistory;
 
-// [替换] 整个 createResultItemUsingTemplate 函数
 function createResultItemUsingTemplate(item) {
     const template = document.getElementById('search-result-template');
     if (!template) return document.createDocumentFragment();
@@ -1172,7 +1167,7 @@ function createResultItemUsingTemplate(item) {
                 qualityBadge.style.cursor = 'pointer';
                 qualityBadge.title = '点击重新检测';
                 qualityBadge.onclick = (event) => {
-                    // 关键一步：阻止事件冒泡，这样就不会触发父级卡片的弹窗事件了
+                    // 阻止事件冒泡，这样就不会触发父级卡片的弹窗事件了
                     event.stopPropagation();
 
                     // 调用手动重测函数
@@ -1348,7 +1343,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     // 渲染画质标签（在showVideoEpisodesModal函数里）
     const qualityTagElement = modalContent.querySelector('[data-field="quality-tag"]');
     if (qualityTagElement) {
-        // FIX: 修复了此处的逻辑，优先使用检测结果，并避免回退到“高清”
+        // 优先使用检测结果，并避免回退到“高清”
         // 检查是否启用画质检测
         const speedDetectionEnabled = getBoolConfig(PLAYER_CONFIG.speedDetectionStorage, PLAYER_CONFIG.speedDetectionEnabled);
         if (speedDetectionEnabled) {
@@ -1517,12 +1512,7 @@ function copyLinks() {
 
 window.showVideoEpisodesModal = showVideoEpisodesModal;
 
-/**
- * 更新画质标签的UI显示
- * @param {string} qualityId - 视频的唯一ID
- * @param {string} quality - 探测到的画质
- * @param {HTMLElement} badgeElement - 标签元素
- */
+// 更新画质标签的UI显示
 function updateQualityBadgeUI(qualityId, quality, badgeElement) {
     const badge = badgeElement || document.querySelector(`.quality-badge[data-quality-id="${qualityId}"]`);
     if (!badge) return;
@@ -1536,7 +1526,7 @@ function updateQualityBadgeUI(qualityId, quality, badgeElement) {
     badge.style.cursor = 'default';
     badge.onclick = null;
 
-    // FIX: 根据画质设置不同的颜色（使用小写并增加更多情况）
+    // 根据画质设置不同的颜色（使用小写并增加更多情况）
     switch (String(quality).toLowerCase()) {
         case '4k':
             badge.classList.add('bg-amber-500', 'text-white');
@@ -1548,7 +1538,7 @@ function updateQualityBadgeUI(qualityId, quality, badgeElement) {
         case '720p':
             badge.classList.add('bg-blue-600', 'text-blue-100');
             break;
-        case '高清': // 保留以防万一，但新逻辑应避免此情况
+        case '高清':
         case '480p':
             badge.classList.add('bg-green-600', 'text-green-100');
             break;
@@ -1594,19 +1584,19 @@ async function manualRetryDetection(qualityId, videoData) {
     try {
         // 2. 先进行速度测试
         const [speedResult] = await window.SpeedTester.testSources([videoData], { concurrency: 1 });
-        
+
         // 3. 再进行画质检测
         let firstEpisodeUrl = '';
         if (videoData && videoData.vod_play_url) {
             const firstSegment = videoData.vod_play_url.split('#')[0];
             firstEpisodeUrl = firstSegment.includes('$') ? firstSegment.split('$')[1] : firstSegment;
         }
-        
+
         let qualityResult = { quality: '未知', detectionMethod: 'none' };
         if (firstEpisodeUrl) {
             qualityResult = await window.precheckSource(firstEpisodeUrl);
         }
-        
+
         // 4. 合并结果
         const testedResult = {
             ...videoData,
@@ -1614,7 +1604,7 @@ async function manualRetryDetection(qualityId, videoData) {
             quality: qualityResult.quality, // 覆盖为真实画质
             detectionMethod: qualityResult.detectionMethod // 使用画质检测的方法
         };
-        
+
         showToast(`检测完成: ${testedResult.quality} - ${testedResult.loadSpeed}`, 'success', 2000);
 
         // 5. 更新全局数据缓存
@@ -1652,5 +1642,4 @@ async function manualRetryDetection(qualityId, videoData) {
     }
 }
 
-// 将这个函数暴露到全局，以便 onclick 属性可以调用它
 window.manualRetryDetection = manualRetryDetection;

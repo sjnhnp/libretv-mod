@@ -1,10 +1,10 @@
 // ================================
-// 画质检测模块 (v8.0 - 终极完美版)
+// 画质检测模块
 // 修复：采用“或”逻辑，完美处理宽屏、竖屏、标屏及“差一像素”问题。
 // 结构：保持您现有的并行检测结构，只修正最核心的判断函数。
 // ================================
 
-// [终极修复] 辅助函数，根据宽高正确判断画质
+// 辅助函数，根据宽高正确判断画质
 function getQualityStringFromDimensions(width, height) {
     if (!width || !height) return '未知';
 
@@ -14,16 +14,12 @@ function getQualityStringFromDimensions(width, height) {
     if (width >= 1800 || height >= 1000) return '1080p'; // 1920x804 或 1080x1920 都会落入此区间
     if (width >= 1200 || height >= 700) return '720p';
     if (width >= 800 || height >= 460) return '480p';
-    
+
     return 'SD';
 }
 
 
-/**
- * 简化的画质检测函数 - 主要通过URL分析和简单的网络测试
- * @param {string} m3u8Url - m3u8播放地址
- * @returns {Promise<{quality: string, loadSpeed: string, pingTime: number}>}
- */
+// 画质检测函数 - 主要通过URL分析和简单的网络测试
 async function simplePrecheckSource(m3u8Url) {
     // 第一步：校验 URL
     if (!m3u8Url || !m3u8Url.includes('.m3u8')) {
@@ -129,11 +125,7 @@ async function simplePrecheckSource(m3u8Url) {
     }
 }
 
-/**
- * 尝试通过创建video元素来检测画质（无CORS限制）
- * @param {string} m3u8Url - m3u8播放地址
- * @returns {Promise<{quality: string, loadSpeed: string, pingTime: number}>}
- */
+// 尝试通过创建video元素来检测画质（无CORS限制）
 async function videoElementDetection(m3u8Url) {
     return new Promise((resolve) => {
         // 首先尝试直接解析m3u8内容获取RESOLUTION信息
@@ -152,9 +144,7 @@ async function videoElementDetection(m3u8Url) {
     });
 }
 
-/**
- * 尝试解析m3u8文件中的RESOLUTION信息
- */
+// 尝试解析m3u8文件中的RESOLUTION信息
 async function tryParseM3u8Resolution(m3u8Url) {
     try {
         // 尝试多种方式获取m3u8内容
@@ -236,9 +226,7 @@ async function tryParseM3u8Resolution(m3u8Url) {
     return { quality: '未知', loadSpeed: 'N/A', pingTime: -1 };
 }
 
-/**
- * 增强版：使用video元素进行检测 (采纳方案1)
- */
+// 使用video元素进行检测
 async function performVideoElementDetection(m3u8Url) {
     return new Promise((resolve) => {
         const video = document.createElement('video');
@@ -282,7 +270,7 @@ async function performVideoElementDetection(m3u8Url) {
             const height = video.videoHeight;
             if (width > 0 && height > 0) {
                 const pingTime = Math.round(performance.now() - startTime);
-                
+
                 const quality = getQualityStringFromDimensions(width, height);
 
                 resolveOnce({
@@ -316,11 +304,7 @@ async function performVideoElementDetection(m3u8Url) {
 }
 
 
-/**
- * 综合画质检测函数 - 重新设计优先级逻辑
- * @param {string} m3u8Url - m3u8播放地址
- * @returns {Promise<{quality: string, loadSpeed: string, pingTime: number}>}
- */
+// 综合画质检测函数
 async function comprehensiveQualityCheck(m3u8Url) {
 
     // 并行执行所有检测方法
@@ -413,7 +397,7 @@ async function comprehensiveQualityCheck(m3u8Url) {
         }
     }
 
-    // --- 变更点 2 ---：如果所有方法都失败，返回明确的'未知'
+    // 如果所有方法都失败，返回明确的'未知'
     if (!bestResult) {
         console.log('所有检测方法都失败，返回未知');
         bestResult = {

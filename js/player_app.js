@@ -94,7 +94,6 @@ function toggleWebFullscreen() {
         elementsToShow.forEach(selector => {
             const elements = document.querySelectorAll(selector);
             elements.forEach(el => {
-                // 恢复默认 display 样式，而不是写死 'flex' 或 'block'
                 el.style.display = '';
             });
         });
@@ -112,7 +111,7 @@ function toggleWebFullscreen() {
     updateWebFullscreenControlButton();
 }
 
-// 添加网页全屏键盘快捷键支持 (已修复)
+// 添加网页全屏键盘快捷键支持
 function addWebFullscreenKeyboardShortcut() {
     // 避免重复添加事件监听器
     if (window.webFullscreenKeyboardAdded) return;
@@ -260,7 +259,6 @@ function initCustomRightControls() {
     }
 }
 
-// 更新控制栏中的网页全屏按钮图标
 function updateWebFullscreenControlButton(button) {
     // 如果没有传入按钮元素，就通过ID查找
     if (!button) {
@@ -270,12 +268,12 @@ function updateWebFullscreenControlButton(button) {
     if (button) {
         // 根据当前状态设置不同的图标
         button.innerHTML = isWebFullscreen ?
-            // 新的 "退出网页全屏" 图标
+            // "退出网页全屏" 图标
             `<svg class="w-5 h-5" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M19.913 6.45826V9.56817C19.913 9.68695 20.0566 9.74644 20.1406 9.66245L24.0458 5.75727C24.3061 5.49692 24.7283 5.49692 24.9886 5.75727L26.2143 6.98293C26.4746 7.24328 26.4746 7.66539 26.2143 7.92573L22.3093 11.8306C22.2253 11.9146 22.2848 12.0583 22.4036 12.0583H25.5137C25.8819 12.0583 26.1804 12.3567 26.1804 12.7249V14.4583C26.1804 14.8265 25.8819 15.1249 25.5137 15.1249L19.2468 15.1249C19.2466 15.1249 19.2469 15.1249 19.2468 15.1249H17.5137C17.1455 15.1249 16.8463 14.8265 16.8463 14.4583V6.45826C16.8463 6.09007 17.1448 5.7916 17.513 5.7916H19.2463C19.6145 5.7916 19.913 6.09007 19.913 6.45826Z" fill="currentColor" />
                 <path d="M9.73054 19.9416C9.84933 19.9416 9.90882 20.0852 9.82482 20.1692L5.91991 24.0741C5.65956 24.3345 5.65956 24.7566 5.91991 25.0169L7.14556 26.2426C7.40591 26.5029 7.82802 26.5029 8.08837 26.2426L11.9935 22.3374C12.0775 22.2534 12.2212 22.3129 12.2212 22.4317V25.5416C12.2212 25.9098 12.5196 26.2083 12.8878 26.2083H14.6212C14.9893 26.2083 15.2878 25.9098 15.2878 25.5416L15.2878 17.5416C15.2878 17.1734 14.9893 16.8749 14.6212 16.8749H6.62046C6.25227 16.8749 5.9538 17.1734 5.9538 17.5416V19.2749C5.9538 19.6431 6.25227 19.9416 6.62046 19.9416H9.73054Z" fill="currentColor" />
             </svg>` :
-            // 新的 "进入网页全屏" 图标
+            // "进入网页全屏" 图标
             `<svg class="w-5 h-5" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M17.3183 12.4856L21.2231 8.58073C21.3071 8.49674 21.2476 8.35312 21.1288 8.35312H18.0189C17.6507 8.35312 17.3522 8.05464 17.3522 7.68645V5.95312C17.3522 5.58493 17.6507 5.28645 18.0189 5.28645H26.0189C26.387 5.28645 26.6862 5.58493 26.6862 5.95312V13.9531C26.6862 14.3213 26.3877 14.6198 26.0196 14.6198H24.2862C23.918 14.6198 23.6196 14.3213 23.6196 13.9531V10.8431C23.6196 10.7243 23.4759 10.6648 23.3919 10.7488L19.4867 14.6541C19.2264 14.9144 18.8043 14.9144 18.5439 14.6541L17.3183 13.4284C17.0579 13.1681 17.0579 12.7459 17.3183 12.4856Z" fill="currentColor" />
                 <path d="M6.1153 26.7135H14.1153C14.4835 26.7135 14.782 26.4151 14.782 26.0469V24.3135C14.782 23.9453 14.4835 23.6469 14.1153 23.6469H11.0053C10.8865 23.6469 10.827 23.5033 10.911 23.4193L14.8159 19.5144C15.0763 19.254 15.0763 18.8319 14.8159 18.5716L13.5903 17.3459C13.3299 17.0856 12.9078 17.0856 12.6474 17.3459L8.74222 21.2512C8.65822 21.3351 8.5146 21.2757 8.5146 21.1569L8.51461 18.0469C8.51461 17.6787 8.21613 17.3802 7.84794 17.3802H6.11461C5.74642 17.3802 5.44794 17.6787 5.44794 18.0469V26.0469C5.44794 26.4151 5.74711 26.7135 6.1153 26.7135Z" fill="currentColor" />
@@ -542,9 +540,8 @@ async function processVideoUrl(url) {
 }
 
 // --- 播放器核心逻辑 ---
-// --- 播放器核心逻辑 ---
 async function initPlayer(videoUrl, title) {
-    // 【核心修复】直接获取在 HTML 中声明好的播放器元素。
+    // 直接获取在 HTML 中声明好的播放器元素
     player = document.getElementById('player');
 
     if (!player) {
@@ -586,8 +583,6 @@ async function initPlayer(videoUrl, title) {
 
 function addPlayerEventListeners() {
     if (!player) return;
-
-    // 播放器区域事件监听器已移除，因为不再需要浮动按钮功能
 
     player.addEventListener('fullscreen-change', (event) => {
         const isFullscreen = event.detail;
@@ -818,7 +813,7 @@ async function doEpisodeSwitch(index, episodeString) {
             }
         }
 
-        // 新增：若为自定义detail源，且初始地址无效，自动重新请求
+        // 若为自定义detail源，且初始地址无效，自动重新请求
         const sourceCode = urlParams.get('source_code') || '';
         const isCustomSpecialSource = sourceCode.startsWith('custom_') &&
             APISourceManager.getCustomApiInfo(parseInt(sourceCode.replace('custom_', '')))?.detail;
@@ -976,9 +971,6 @@ function handleKeyboardShortcuts(e) {
             //   actionText = '前进 10s';
             //}
             break;
-
-        // 'w' and 'Escape' are handled by addWebFullscreenKeyboardShortcut
-        // to avoid conflicts and ensure they only work when intended.
 
         case 'f':
         case 'F':
@@ -1144,7 +1136,7 @@ function renderEpisodes() {
         const parts = (episodeData || '').split('$');
         const episodeName = parts.length > 1 ? parts[0].trim() : '';
 
-        // 优先使用原始剧集名称（综艺类核心逻辑）
+        // 优先使用原始剧集名称
         // 从保存的原始名称中取对应索引的名称（如“20200101”）
         const originalName = originalEpisodeNames[originalIndex] || '';
 
@@ -1707,16 +1699,6 @@ function handleDocumentClick(event) {
     const lineSwitchContainer = document.querySelector('.line-switch-container');
     const skipControlContainer = document.querySelector('.skip-control-container');
 
-    // 【解决方案】移除下面这个导致问题的代码块
-    // const playerRegion = document.getElementById('player-region');
-    // const playerContainer = document.getElementById('player');
-    // const isPlayerAreaClick = (playerRegion && playerRegion.contains(event.target)) ||
-    //     (playerContainer && playerContainer.contains(event.target));
-    // if (isPlayerAreaClick) {
-    //     closeAllDropdowns();
-    //     return;
-    // }
-
     // 如果点击不在任何下拉容器内，关闭所有下拉菜单
     if (playSettingsContainer && !playSettingsContainer.contains(event.target)) {
         const dropdown = document.getElementById('play-settings-dropdown');
@@ -1745,16 +1727,6 @@ function handleDocumentTouch(event) {
     const playSettingsContainer = document.querySelector('.play-settings-container');
     const lineSwitchContainer = document.querySelector('.line-switch-container');
     const skipControlContainer = document.querySelector('.skip-control-container');
-
-    // 【解决方案】移除下面这个导致问题的代码块
-    // const playerRegion = document.getElementById('player-region');
-    // const playerContainer = document.getElementById('player');
-    // const isPlayerAreaTouch = (playerRegion && playerRegion.contains(event.target)) ||
-    //     (playerContainer && playerContainer.contains(event.target));
-    // if (isPlayerAreaTouch) {
-    //     closeAllDropdowns();
-    //     return;
-    // }
 
     // 如果触摸不在任何下拉容器内，关闭所有下拉菜单
     const isOutsideAllContainers =

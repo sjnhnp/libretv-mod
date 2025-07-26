@@ -1,5 +1,5 @@
 // ================================
-// API请求与聚合处理优化版
+// API请求与聚合处理
 // ================================
 
 async function fetchWithTimeout(targetUrl, options, timeout = 10000, responseType = 'json') {

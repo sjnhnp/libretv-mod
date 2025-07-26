@@ -1,6 +1,6 @@
 /**
  * ==========================================================
- *              独立测速模块 (纯速度版)
+ *              测速模块
  * ==========================================================
  *
  * 核心功能:
@@ -18,15 +18,11 @@ const SpeedTester = (() => {
     const PROXY_URL = '/proxy/'; // 使用代理避免跨域问题
     const TEST_TIMEOUT = 8000; // 每个网络请求的超时时间为8秒
 
-    /**
-     * 带超时的fetch请求，支持降级机制
-     * @param {string} url - 要请求的URL
-     * @returns {Promise<Response>} - 返回原始的Response对象
-     */
+    // 带超时的fetch请求，支持降级机制
     async function fetchWithTimeout(url) {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), TEST_TIMEOUT);
-        
+
         try {
             // 方法1：先尝试直接请求
             try {
@@ -40,7 +36,7 @@ const SpeedTester = (() => {
             } catch (corsError) {
                 console.log('直接请求失败，尝试代理:', corsError.message);
             }
-            
+
             // 方法2：使用代理
             if (typeof PROXY_URL !== 'undefined') {
                 const response = await fetch(PROXY_URL + encodeURIComponent(url), {
@@ -58,12 +54,7 @@ const SpeedTester = (() => {
         }
     }
 
-    /**
-     * 从M3U8内容中解析出第一个视频分片(.ts文件)的URL
-     * @param {string} m3u8Content - M3U8播放列表的文本内容
-     * @param {string} baseUrl - 用于解析相对路径的基础URL
-     * @returns {string|null} - 第一个.ts分片的绝对URL，或null
-     */
+    // 从M3U8内容中解析出第一个视频分片(.ts文件)的URL
     function getFirstSegmentUrl(m3u8Content, baseUrl) {
         const lines = m3u8Content.split('\n');
         for (const line of lines) {
@@ -75,11 +66,7 @@ const SpeedTester = (() => {
         return null;
     }
 
-    /**
-     * 测试单个视频源
-     * @param {object} source - 要测试的视频源对象
-     * @returns {Promise<object>} - 附加了测试结果的视频源对象
-     */
+    // 测试单个视频源
     async function testSingleSource(source) {
         const result = {
             ...source,
@@ -149,14 +136,7 @@ const SpeedTester = (() => {
         }
     }
 
-    /**
-     * 公开方法：并发测试一组视频源
-     * @param {Array<object>} sources - 要测试的视频源数组
-     * @param {object} [options] - 配置选项
-     * @param {number} [options.concurrency=4] - 并发测试数量
-     * @param {function(object): void} [options.onProgress] - 每个源测试完成后的回调
-     * @returns {Promise<Array<object>>} - 返回包含测试结果的视频源数组
-     */
+    // 并发测试一组视频源
     async function testSources(sources, options = {}) {
         const { concurrency = 4, onProgress } = options;
         const results = [];
