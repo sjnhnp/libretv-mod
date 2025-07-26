@@ -611,6 +611,23 @@ function backgroundQualityUpdate(results) {
 
             /* -------- 更新页面标签 -------- */
             updateQualityBadgeUI(key, item.quality);
+            /* -------- 同步回 sessionStorage.searchResults -------- */
+            try {
+                const cachedResultsRaw = sessionStorage.getItem('searchResults');
+                if (cachedResultsRaw) {
+                    const arr = JSON.parse(cachedResultsRaw);
+                    const idx = arr.findIndex(
+                        it => `${it.source_code}_${it.vod_id}` === key
+                    );
+                    if (idx !== -1) {
+                        arr[idx] = { ...arr[idx], ...item };
+                        sessionStorage.setItem('searchResults', JSON.stringify(arr));
+                    }
+                }
+            } catch (e) {
+                console.warn('写回 searchResults 失败：', e);
+            }
+
             /* ============================================================
               *   把最终检测结果写回 30 天搜索缓存
            * ============================================================ */
@@ -913,8 +930,16 @@ function restoreSearchFromCache() {
                     console.warn('恢复API选择状态失败:', e);
                 }
             }
-            renderSearchResultsFromCache(JSON.parse(cachedResults));
+            const parsed = JSON.parse(cachedResults);
+            renderSearchResultsFromCache(parsed);
+            /* ------------ 关键：发现 pending 就补检测 ------------ */
+            if (parsed.some(r =>
+                r.detectionMethod === 'pending' ||
+                r.quality === '检测中...')) {
+                setTimeout(() => backgroundQualityUpdate(parsed), 120);
+            }
             if (typeof closeModal === 'function') closeModal();
+
         }
     } catch (e) {
         console.error('恢复搜索状态失败:', e);
