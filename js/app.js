@@ -300,43 +300,52 @@ function saveSearchCache(query, selectedAPIs, results) {
  *  后台测速：使用 SpeedTester，但不阻塞 UI
  * ============================================================ */
 function backgroundSpeedUpdate(results) {
-    const concurrency = 2;           // 同时跑 2 条线路即可
-    let cursor = 0;
+    return new Promise(resolve => {
+        const concurrency = 2;          // 同时跑 2 条线路即可
+        let cursor = 0;
+        let remain = results.filter(r => r.loadSpeed === '检测中...').length;
+        if (remain === 0) return resolve();  // 没有要测的
 
-    async function worker() {
-        while (cursor < results.length) {
-            const item = results[cursor++];
-            if (!item || item.loadSpeed !== '检测中...') continue; // 已经测过则跳过
+        async function worker() {
+            while (cursor < results.length) {
+                const item = results[cursor++];
+                if (!item || item.loadSpeed !== '检测中...') continue;
 
-            try {
-                // SpeedTester 只测一条，返回数组
-                const [tested] = await window.SpeedTester.testSources([item], { concurrency: 1 });
-                if (tested && tested.loadSpeed !== 'N/A') {
-                    item.loadSpeed = tested.loadSpeed;
-                    item.sortPriority = tested.sortPriority;
-                } else {
+                /* ———原来的测速 try/catch 整段保留——— */
+                try {
+                    const [tested] = await window.SpeedTester
+                        .testSources([item], { concurrency: 1 });
+                    if (tested && tested.loadSpeed !== 'N/A') {
+                        item.loadSpeed = tested.loadSpeed;
+                        item.sortPriority = tested.sortPriority;
+                    } else {
+                        item.loadSpeed = '连接超时';
+                        item.sortPriority = 99;
+                    }
+                } catch {
                     item.loadSpeed = '连接超时';
                     item.sortPriority = 99;
                 }
-            } catch {
-                item.loadSpeed = '连接超时';
-                item.sortPriority = 99;
+
+                /* ---- 更新缓存、弹窗显示（原逻辑不变） ---- */
+                updateModalSpeedDisplay(item);
+                const key = `${item.source_code}_${item.vod_id}`;
+                const vMap = AppState.get('videoDataMap') || new Map();
+                vMap.set(key, item);
+                AppState.set('videoDataMap', vMap);
+                sessionStorage.setItem(
+                    'videoDataCache',
+                    JSON.stringify(Array.from(vMap.entries()))
+                );
+
+                /* ---- 计数，全部结束后 resolve ---- */
+                if (--remain === 0) resolve();
             }
-
-            /* ---- 写回全局缓存 ---- */
-            const key = `${item.source_code}_${item.vod_id}`;
-            const vMap = AppState.get('videoDataMap') || new Map();
-            vMap.set(key, item);
-            AppState.set('videoDataMap', vMap);
-            sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(vMap.entries())));
-
-            /* ---- 如果弹窗打开就更新显示 ---- */
-            updateModalSpeedDisplay(item);
         }
-    }
 
-    // 启动并发 worker
-    Array(concurrency).fill(0).forEach(worker);
+        // 启动并发 worker
+        Array(concurrency).fill(0).forEach(worker);
+    });
 }
 
 
@@ -772,104 +781,129 @@ async function performSearch(query, selectedAPIs) {
             rebuildVideoCaches(quickResults);
 
             /* 2. 后台启动测速 → 画质检测（互不阻塞） */
-            backgroundSpeedUpdate(quickResults);
-            backgroundQualityUpdate(quickResults);
+            backgroundSpeedUpdate(quickResults)
+                .then(() => {
+                    /* -------- 重新排序并刷新界面 -------- */
+                    quickResults.sort((a, b) => {
+                        const prA = a.sortPriority || 50;
+                        const prB = b.sortPriority || 50;
+                        if (prA !== prB) return prA - prB;
 
-            /* 3. 立即把 quickResults 作为 30 天缓存的初始值写入 */
-            saveSearchCache(query, selectedAPIs, quickResults);
+                        const num = v =>
+                            !v || v === 'N/A' || v === '连接超时' ? 0 :
+                                v === '极速' ? 1e4 :
+                                    v === '连接正常' ? 1e3 :
+                                        (/^([\d.]+)\s*(KB\/s|MB\/s)$/i.test(v))
+                                            ? (RegExp.\$2.toUpperCase() === 'MB/S'
+                                                ? parseFloat(RegExp.\$1) * 1024
+                                                : parseFloat(RegExp.\$1))
+                            : 100;
 
-            /* 4. 用占位结果作为函数的立即返回值 */
-            checkedResults = quickResults;
+                    return num(b.loadSpeed) - num(a.loadSpeed);
+                });
 
-        } else {
-            // 不检测时，设置默认值以保持数据结构一致
-            checkedResults = allResults.map(item => ({
-                ...item,
-                quality: '未知',
-                loadSpeed: 'N/A',
-                pingTime: -1,
-                detectionMethod: 'disabled',
-                sortPriority: 50
-            }));
-        }
-        checkedResults.sort((a, b) => {
-            // 排序逻辑：优先级 + 速度
-
-            // 1. 首先按检测方法的可靠性排序（sortPriority越小越优先）
-            const priorityA = a.sortPriority || 50;
-            const priorityB = b.sortPriority || 50;
-
-            if (priorityA !== priorityB) {
-                return priorityA - priorityB;
-            }
-
-            // 2. 相同优先级的情况下，按实际速度排序
-            const getSpeedValue = (loadSpeed) => {
-                if (!loadSpeed || loadSpeed === 'N/A') return 0;
-                if (loadSpeed === '极速') return 10000; // 关键词识别的最高分
-                if (loadSpeed === '连接正常') return 1000; // 连接正常的固定分数
-                if (loadSpeed === '连接超时') return 0; // 超时的最低分
-
-                // 解析实际速度
-                const match = loadSpeed.match(/^([\d.]+)\s*(KB\/s|MB\/s)$/);
-                if (match) {
-                    const value = parseFloat(match[1]);
-                    const unit = match[2];
-                    return unit === 'MB/s' ? value * 1024 : value;
-                }
-
-                return 100; // 其他情况的默认分数
-            };
-
-            const speedA = getSpeedValue(a.loadSpeed);
-            const speedB = getSpeedValue(b.loadSpeed);
-
-            return speedB - speedA; // 速度高的排在前面
+            /* 覆盖全局缓存并重渲染 */
+            rebuildVideoCaches(quickResults);
+            renderSearchResults(quickResults);
         });
-        /* -------- 关键：实时搜索结果也写入缓存 -------- */
-        rebuildVideoCaches(checkedResults);
-        const videoDataMap = AppState.get('videoDataMap') || new Map();
 
-        // 将所有搜索结果按影片分组，以供播放页的线路切换功能使用
-        const videoSourceMap = new Map();
-        checkedResults.forEach(item => {
-            if (item.vod_id) {
-                // 使用 "名称|年份" 作为分组的键
-                const videoKey = `${item.vod_name}|${item.vod_year || ''}`;
-                if (!videoSourceMap.has(videoKey)) {
-                    videoSourceMap.set(videoKey, []);
-                }
-                videoSourceMap.get(videoKey).push(item);
-            }
-        });
-        // 将分组后的线路信息保存到 sessionStorage
-        sessionStorage.setItem('videoSourceMap', JSON.stringify(Array.from(videoSourceMap.entries())));
+        backgroundQualityUpdate(quickResults);
 
-        checkedResults.forEach(item => {
-            if (item.vod_id) {
-                const uniqueVideoKey = `${item.source_code}_${item.vod_id}`;
-                videoDataMap.set(uniqueVideoKey, item);
-            }
-        });
-        AppState.set('videoDataMap', videoDataMap);
-        sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
+        /* 3. 立即把 quickResults 作为 30 天缓存的初始值写入 */
+        saveSearchCache(query, selectedAPIs, quickResults);
 
-        // 保存搜索缓存
-        const completeResults = checkedResults.filter(item =>
-            item.detectionMethod !== 'pending' &&
-            item.quality !== '检测中...'
-        );
+        /* 4. 用占位结果作为函数的立即返回值 */
+        checkedResults = quickResults;
 
-        if (completeResults.length > 0) {
-            saveSearchCache(query, selectedAPIs, completeResults);
-        }
-
-
-        return checkedResults;
-    } catch (error) {
-        console.error("执行搜索或预检测时出错:", error);
-        return [];
+    } else {
+        // 不检测时，设置默认值以保持数据结构一致
+        checkedResults = allResults.map(item => ({
+            ...item,
+            quality: '未知',
+            loadSpeed: 'N/A',
+            pingTime: -1,
+            detectionMethod: 'disabled',
+            sortPriority: 50
+        }));
     }
+    checkedResults.sort((a, b) => {
+        // 排序逻辑：优先级 + 速度
+
+        // 1. 首先按检测方法的可靠性排序（sortPriority越小越优先）
+        const priorityA = a.sortPriority || 50;
+        const priorityB = b.sortPriority || 50;
+
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+        }
+
+        // 2. 相同优先级的情况下，按实际速度排序
+        const getSpeedValue = (loadSpeed) => {
+            if (!loadSpeed || loadSpeed === 'N/A') return 0;
+            if (loadSpeed === '极速') return 10000; // 关键词识别的最高分
+            if (loadSpeed === '连接正常') return 1000; // 连接正常的固定分数
+            if (loadSpeed === '连接超时') return 0; // 超时的最低分
+
+            // 解析实际速度
+            const match = loadSpeed.match(/^([\d.]+)\s*(KB\/s|MB\/s)$/);
+            if (match) {
+                const value = parseFloat(match[1]);
+                const unit = match[2];
+                return unit === 'MB/s' ? value * 1024 : value;
+            }
+
+            return 100; // 其他情况的默认分数
+        };
+
+        const speedA = getSpeedValue(a.loadSpeed);
+        const speedB = getSpeedValue(b.loadSpeed);
+
+        return speedB - speedA; // 速度高的排在前面
+    });
+    /* -------- 关键：实时搜索结果也写入缓存 -------- */
+    rebuildVideoCaches(checkedResults);
+    const videoDataMap = AppState.get('videoDataMap') || new Map();
+
+    // 将所有搜索结果按影片分组，以供播放页的线路切换功能使用
+    const videoSourceMap = new Map();
+    checkedResults.forEach(item => {
+        if (item.vod_id) {
+            // 使用 "名称|年份" 作为分组的键
+            const videoKey = `${item.vod_name}|${item.vod_year || ''}`;
+            if (!videoSourceMap.has(videoKey)) {
+                videoSourceMap.set(videoKey, []);
+            }
+            videoSourceMap.get(videoKey).push(item);
+        }
+    });
+    // 将分组后的线路信息保存到 sessionStorage
+    sessionStorage.setItem('videoSourceMap', JSON.stringify(Array.from(videoSourceMap.entries())));
+
+    checkedResults.forEach(item => {
+        if (item.vod_id) {
+            const uniqueVideoKey = `${item.source_code}_${item.vod_id}`;
+            videoDataMap.set(uniqueVideoKey, item);
+        }
+    });
+    AppState.set('videoDataMap', videoDataMap);
+    sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
+
+    // 保存搜索缓存
+    const completeResults = checkedResults.filter(item =>
+        item.detectionMethod !== 'pending' &&
+        item.quality !== '检测中...'
+    );
+
+    if (completeResults.length > 0) {
+        saveSearchCache(query, selectedAPIs, completeResults);
+    }
+
+
+    return checkedResults;
+} catch (error) {
+    console.error("执行搜索或预检测时出错:", error);
+    return [];
+}
 }
 
 function renderSearchResults(allResults, doubanSearchedTitle = null) {
