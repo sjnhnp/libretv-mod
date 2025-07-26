@@ -4,10 +4,11 @@
 // 解决弊端1-8：画质不一致、重复检测、后台浪费、缓存粒度粗、数据混乱、无效代码、缓存键不合理、内存泄漏
 // ================================
 
-// 画质缓存配置
+// 画质和速度缓存配置
 const QUALITY_CACHE_CONFIG = {
     CACHE_KEY: 'independentQualityCache',
-    EXPIRE_TIME: 30 * 24 * 60 * 60 * 1000, // 30天缓存时间
+    QUALITY_EXPIRE_TIME: 15 * 24 * 60 * 60 * 1000, // 15天画质缓存时间
+    SPEED_EXPIRE_TIME: 2 * 60 * 60 * 1000, // 2小时速度缓存时间
     MAX_CACHE_SIZE: 1000 // 最大缓存条目数，防止内存溢出
 };
 
@@ -44,15 +45,17 @@ function saveQualityCache(cacheKey, qualityResult) {
             console.log(`画质缓存已满，删除最旧条目: ${oldestKey}`);
         }
         
-        // 保存完整的检测结果
+        // 保存完整的检测结果，分别记录画质和速度的缓存时间
+        const now = Date.now();
         const cacheData = {
             quality: qualityResult.quality || '未知',
             loadSpeed: qualityResult.loadSpeed || 'N/A',
             pingTime: qualityResult.pingTime || -1,
             detectionMethod: qualityResult.detectionMethod || 'unknown',
             sortPriority: qualityResult.sortPriority || 50,
-            cacheTime: Date.now(),
-            version: '1.0' // 缓存版本，便于未来升级
+            qualityCacheTime: now, // 画质缓存时间
+            speedCacheTime: now,   // 速度缓存时间
+            version: '1.1' // 缓存版本，支持分离缓存
         };
         
         qualityCache.set(cacheKey, cacheData);
@@ -71,7 +74,7 @@ function saveQualityCache(cacheKey, qualityResult) {
     }
 }
 
-// 获取画质缓存 - 增强版本，支持过期检查和数据验证
+// 获取画质缓存 - 支持画质和速度分离过期检查
 function getCachedQuality(cacheKey) {
     try {
         const cachedData = qualityCache.get(cacheKey);
@@ -80,24 +83,22 @@ function getCachedQuality(cacheKey) {
             return null; // 没有缓存
         }
         
-        // 检查缓存是否过期
-        const isExpired = Date.now() - cachedData.cacheTime > QUALITY_CACHE_CONFIG.EXPIRE_TIME;
+        const now = Date.now();
         
-        if (isExpired) {
-            // 删除过期缓存
+        // 兼容旧版本缓存数据
+        const qualityCacheTime = cachedData.qualityCacheTime || cachedData.cacheTime || 0;
+        const speedCacheTime = cachedData.speedCacheTime || cachedData.cacheTime || 0;
+        
+        // 检查画质缓存是否过期
+        const qualityExpired = now - qualityCacheTime > QUALITY_CACHE_CONFIG.QUALITY_EXPIRE_TIME;
+        // 检查速度缓存是否过期
+        const speedExpired = now - speedCacheTime > QUALITY_CACHE_CONFIG.SPEED_EXPIRE_TIME;
+        
+        // 如果画质和速度都过期，删除整个缓存
+        if (qualityExpired && speedExpired) {
             qualityCache.delete(cacheKey);
-            
-            // 更新localStorage
-            try {
-                localStorage.setItem(
-                    QUALITY_CACHE_CONFIG.CACHE_KEY,
-                    JSON.stringify(Array.from(qualityCache.entries()))
-                );
-            } catch (e) {
-                console.warn("更新画质缓存失败:", e);
-            }
-            
-            console.log(`画质缓存已过期: ${cacheKey}`);
+            updateQualityCacheStorage();
+            console.log(`画质和速度缓存都已过期: ${cacheKey}`);
             return null;
         }
         
@@ -108,8 +109,28 @@ function getCachedQuality(cacheKey) {
             return null;
         }
         
-        console.log(`画质缓存命中: ${cacheKey} -> ${cachedData.quality}`);
-        return cachedData;
+        // 构建返回结果，根据过期情况决定是否包含速度信息
+        const result = {
+            quality: cachedData.quality,
+            detectionMethod: cachedData.detectionMethod || 'unknown',
+            sortPriority: cachedData.sortPriority || 50,
+            qualityFromCache: !qualityExpired,
+            speedFromCache: !speedExpired
+        };
+        
+        // 如果速度未过期，包含速度信息
+        if (!speedExpired) {
+            result.loadSpeed = cachedData.loadSpeed || 'N/A';
+            result.pingTime = cachedData.pingTime || -1;
+        } else {
+            // 速度过期，需要重新检测
+            result.loadSpeed = null;
+            result.pingTime = null;
+            console.log(`速度缓存已过期，需要重新检测: ${cacheKey}`);
+        }
+        
+        console.log(`画质缓存命中: ${cacheKey} -> ${result.quality} (速度${speedExpired ? '已过期' : '有效'})`);
+        return result;
         
     } catch (e) {
         console.warn("读取画质缓存失败:", e);
@@ -117,27 +138,49 @@ function getCachedQuality(cacheKey) {
     }
 }
 
-// 清理过期的画质缓存
+// 更新缓存存储的辅助函数
+function updateQualityCacheStorage() {
+    try {
+        localStorage.setItem(
+            QUALITY_CACHE_CONFIG.CACHE_KEY,
+            JSON.stringify(Array.from(qualityCache.entries()))
+        );
+    } catch (e) {
+        console.warn("更新画质缓存存储失败:", e);
+    }
+}
+
+// 清理过期的画质缓存 - 支持画质和速度分离清理
 function cleanExpiredQualityCache() {
     try {
         const now = Date.now();
-        let cleanedCount = 0;
+        let fullyExpiredCount = 0;
+        let speedExpiredCount = 0;
         
         for (const [key, data] of qualityCache.entries()) {
-            if (now - data.cacheTime > QUALITY_CACHE_CONFIG.EXPIRE_TIME) {
+            // 兼容旧版本缓存数据
+            const qualityCacheTime = data.qualityCacheTime || data.cacheTime || 0;
+            const speedCacheTime = data.speedCacheTime || data.cacheTime || 0;
+            
+            const qualityExpired = now - qualityCacheTime > QUALITY_CACHE_CONFIG.QUALITY_EXPIRE_TIME;
+            const speedExpired = now - speedCacheTime > QUALITY_CACHE_CONFIG.SPEED_EXPIRE_TIME;
+            
+            if (qualityExpired && speedExpired) {
+                // 画质和速度都过期，删除整个条目
                 qualityCache.delete(key);
-                cleanedCount++;
+                fullyExpiredCount++;
+            } else if (speedExpired && !qualityExpired) {
+                // 只有速度过期，清除速度信息但保留画质信息
+                data.loadSpeed = null;
+                data.pingTime = null;
+                data.speedCacheTime = 0; // 标记速度信息已清除
+                speedExpiredCount++;
             }
         }
         
-        if (cleanedCount > 0) {
-            console.log(`清理了 ${cleanedCount} 个过期的画质缓存条目`);
-            
-            // 更新localStorage
-            localStorage.setItem(
-                QUALITY_CACHE_CONFIG.CACHE_KEY,
-                JSON.stringify(Array.from(qualityCache.entries()))
-            );
+        if (fullyExpiredCount > 0 || speedExpiredCount > 0) {
+            console.log(`清理缓存: ${fullyExpiredCount} 个完全过期, ${speedExpiredCount} 个速度过期`);
+            updateQualityCacheStorage();
         }
         
     } catch (e) {
@@ -145,7 +188,7 @@ function cleanExpiredQualityCache() {
     }
 }
 
-// 带缓存的画质检测函数 - 核心功能，包装原有检测逻辑
+// 带缓存的画质检测函数 - 支持画质和速度分离缓存
 async function getQualityWithCache(episodeUrl, sourceCode = '', vodId = '') {
     try {
         // 生成缓存键
@@ -153,19 +196,73 @@ async function getQualityWithCache(episodeUrl, sourceCode = '', vodId = '') {
         
         // 检查缓存
         const cachedResult = getCachedQuality(cacheKey);
-        if (cachedResult) {
-            // 缓存命中，返回缓存结果
+        
+        if (cachedResult && cachedResult.qualityFromCache && cachedResult.speedFromCache) {
+            // 画质和速度都命中缓存
+            console.log(`完全缓存命中: ${episodeUrl}`);
             return {
                 quality: cachedResult.quality,
                 loadSpeed: cachedResult.loadSpeed,
                 pingTime: cachedResult.pingTime,
-                detectionMethod: cachedResult.detectionMethod + '_cached',
+                detectionMethod: cachedResult.detectionMethod + '_fully_cached',
                 sortPriority: cachedResult.sortPriority
             };
         }
         
-        // 缓存未命中，执行原有检测逻辑
-        console.log(`画质缓存未命中，开始检测: ${episodeUrl}`);
+        if (cachedResult && cachedResult.qualityFromCache && !cachedResult.speedFromCache) {
+            // 画质命中但速度过期，只重新检测速度
+            console.log(`画质缓存命中，速度需要重新检测: ${episodeUrl}`);
+            
+            if (!episodeUrl || !window.precheckSource) {
+                // 无法检测速度，返回画质信息和默认速度
+                return {
+                    quality: cachedResult.quality,
+                    loadSpeed: 'N/A',
+                    pingTime: -1,
+                    detectionMethod: cachedResult.detectionMethod + '_quality_cached',
+                    sortPriority: cachedResult.sortPriority
+                };
+            }
+            
+            try {
+                // 重新检测获取最新的速度信息
+                const freshResult = await window.precheckSource(episodeUrl);
+                
+                // 合并缓存的画质和新检测的速度
+                const combinedResult = {
+                    quality: cachedResult.quality, // 使用缓存的画质
+                    loadSpeed: freshResult.loadSpeed || 'N/A', // 使用新检测的速度
+                    pingTime: freshResult.pingTime || -1,
+                    detectionMethod: cachedResult.detectionMethod + '_quality_cached_speed_fresh',
+                    sortPriority: cachedResult.sortPriority
+                };
+                
+                // 更新缓存中的速度信息
+                const existingCache = qualityCache.get(cacheKey);
+                if (existingCache) {
+                    existingCache.loadSpeed = combinedResult.loadSpeed;
+                    existingCache.pingTime = combinedResult.pingTime;
+                    existingCache.speedCacheTime = Date.now(); // 更新速度缓存时间
+                    updateQualityCacheStorage();
+                }
+                
+                return combinedResult;
+                
+            } catch (error) {
+                console.warn("重新检测速度失败:", error);
+                // 速度检测失败，返回缓存的画质和默认速度
+                return {
+                    quality: cachedResult.quality,
+                    loadSpeed: 'N/A',
+                    pingTime: -1,
+                    detectionMethod: cachedResult.detectionMethod + '_quality_cached_speed_failed',
+                    sortPriority: cachedResult.sortPriority
+                };
+            }
+        }
+        
+        // 缓存完全未命中，执行完整检测
+        console.log(`画质缓存完全未命中，开始完整检测: ${episodeUrl}`);
         
         if (!episodeUrl || !window.precheckSource) {
             // 检测条件不满足时的默认返回
@@ -280,23 +377,43 @@ function getQualityCacheStats() {
     let newestTime = 0;
     
     for (const [key, data] of qualityCache.entries()) {
-        const age = now - data.cacheTime;
-        const isExpired = age > QUALITY_CACHE_CONFIG.EXPIRE_TIME;
+        // 兼容旧版本缓存数据
+        const qualityCacheTime = data.qualityCacheTime || data.cacheTime || 0;
+        const speedCacheTime = data.speedCacheTime || data.cacheTime || 0;
         
-        if (isExpired) {
+        const qualityAge = now - qualityCacheTime;
+        const speedAge = now - speedCacheTime;
+        
+        const qualityExpired = qualityAge > QUALITY_CACHE_CONFIG.QUALITY_EXPIRE_TIME;
+        const speedExpired = speedAge > QUALITY_CACHE_CONFIG.SPEED_EXPIRE_TIME;
+        
+        if (qualityExpired && speedExpired) {
             stats.expiredEntries++;
         } else {
             stats.validEntries++;
         }
         
-        if (data.cacheTime < oldestTime) {
-            oldestTime = data.cacheTime;
-            stats.oldestEntry = { key, age: Math.floor(age / 1000 / 60) }; // 分钟
+        // 使用画质缓存时间作为主要时间参考
+        if (qualityCacheTime < oldestTime) {
+            oldestTime = qualityCacheTime;
+            stats.oldestEntry = { 
+                key, 
+                qualityAge: Math.floor(qualityAge / 1000 / 60), // 分钟
+                speedAge: Math.floor(speedAge / 1000 / 60),
+                qualityExpired,
+                speedExpired
+            };
         }
         
-        if (data.cacheTime > newestTime) {
-            newestTime = data.cacheTime;
-            stats.newestEntry = { key, age: Math.floor(age / 1000 / 60) }; // 分钟
+        if (qualityCacheTime > newestTime) {
+            newestTime = qualityCacheTime;
+            stats.newestEntry = { 
+                key, 
+                qualityAge: Math.floor(qualityAge / 1000 / 60), // 分钟
+                speedAge: Math.floor(speedAge / 1000 / 60),
+                qualityExpired,
+                speedExpired
+            };
         }
     }
     
@@ -330,7 +447,14 @@ if (typeof window !== 'undefined') {
         clearAll: clearAllQualityCache,
         cleanExpired: cleanExpiredQualityCache,
         getCache: () => Array.from(qualityCache.entries()),
-        config: QUALITY_CACHE_CONFIG
+        config: QUALITY_CACHE_CONFIG,
+        // 新增：显示缓存时间配置
+        getCacheTimeConfig: () => ({
+            qualityExpireTime: `${QUALITY_CACHE_CONFIG.QUALITY_EXPIRE_TIME / (24 * 60 * 60 * 1000)} 天`,
+            speedExpireTime: `${QUALITY_CACHE_CONFIG.SPEED_EXPIRE_TIME / (60 * 60 * 1000)} 小时`,
+            qualityExpireMs: QUALITY_CACHE_CONFIG.QUALITY_EXPIRE_TIME,
+            speedExpireMs: QUALITY_CACHE_CONFIG.SPEED_EXPIRE_TIME
+        })
     };
 }
 
