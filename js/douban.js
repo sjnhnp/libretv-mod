@@ -1,4 +1,3 @@
-// douban.js
 // 用同一个 Overlay，反复插拔
 let globalLoadingOverlay = null;
 // 常量配置区域 
