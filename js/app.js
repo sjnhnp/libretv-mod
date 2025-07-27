@@ -25,6 +25,20 @@ function sortBySpeed(arr) {
     });
 }
 
+/* 把测速完成后的值写进已存在的卡片速度标签 */
+function refreshSpeedBadges(results) {
+    results.forEach(it => {
+        const badge = document.querySelector(
+            `.card-hover[data-id="${it.vod_id}"][data-source-code="${it.source_code}"] [data-field="speed-tag"]`
+        );
+        if (badge && isValidSpeedValue(it.loadSpeed)) {
+            badge.textContent = it.loadSpeed;
+            badge.classList.remove('hidden');
+            badge.style.backgroundColor = '#16a34a';
+        }
+    });
+}
+
 // 主应用程序逻辑 使用AppState进行状态管理，DOMCache进行DOM元素缓存
 const AppState = (function () {
     const state = new Map();
@@ -399,8 +413,11 @@ function backgroundSpeedUpdate(results) {
                     JSON.stringify(Array.from(vMap.entries()))
                 );
 
-                /* ---- 计数，全部结束后 resolve ---- */
-                if (--remain === 0) resolve();
+                /* ---- 计数，全部结束后刷 UI 并 resolve ---- */
+                if (--remain === 0) {
+                    refreshSpeedBadges(results);   // ★ 把全部测速结果写进现有卡片
+                    resolve();
+                }
             }
         }
 
@@ -772,14 +789,16 @@ async function performSearch(query, selectedAPIs) {
         rebuildVideoCaches(cacheResult.results);
 
         // 若打开了速度检测，则后台刷新速度；画质检测随配置而定
-        // 1) 速度：只有 loadSpeed === '检测中...' 的才补测
+        // 1) 速度：只有待测条目才补测
         if (speedDetectionEnabled &&
             cacheResult.results.some(r => !r.loadSpeed || r.loadSpeed === '检测中...')) {
 
             backgroundSpeedUpdate(cacheResult.results).then(() => {
-                sortBySpeed(cacheResult.results);          // ★ 统一排序
-                rebuildVideoCaches(cacheResult.results);
-                renderSearchResults(cacheResult.results);  // 或 reorderResultCards
+                sortBySpeed(cacheResult.results);              // 统一排序
+                rebuildVideoCaches(cacheResult.results);       // 刷新缓存
+                refreshSpeedBadges(cacheResult.results);       // ★ 把速度写回卡片
+                //renderSearchResults(cacheResult.results);      // 如要丝滑可换 reorderResultCards
+                reorderResultCards(cacheResult.results);
             });
         }
 
@@ -842,17 +861,21 @@ async function performSearch(query, selectedAPIs) {
                 quality: '检测中...',
                 detectionMethod: 'pending'
             }));
-
+            // 占位阶段也按照“速度优先”排好
+            sortBySpeed(quickResults);
             // 把占位结果写进缓存，页面可马上渲染
             rebuildVideoCaches(quickResults);
 
             /* 2. 后台启动测速 → 画质检测（互不阻塞） */
             /* 先测速，等全部测速完成后再重新排序并刷新界面 */
             backgroundSpeedUpdate(quickResults).then(() => {
-                sortBySpeed(quickResults);                 // ★ 统一排序
+                sortBySpeed(quickResults);
                 rebuildVideoCaches(quickResults);
-                renderSearchResults(quickResults);         // 如用“丝滑重排”可换成 reorderResultCards
+                refreshSpeedBadges(quickResults);
+                // renderSearchResults(quickResults);      // 若要丝滑用 reorderResultCards
+                reorderResultCards(quickResults);
             });
+
 
             backgroundQualityUpdate(quickResults);
 
@@ -872,41 +895,9 @@ async function performSearch(query, selectedAPIs) {
                 detectionMethod: 'disabled',
                 sortPriority: 50
             }));
+            sortBySpeed(checkedResults);
         }
-        checkedResults.sort((a, b) => {
-            // 排序逻辑：优先级 + 速度
 
-            // 1. 首先按检测方法的可靠性排序（sortPriority越小越优先）
-            const priorityA = a.sortPriority || 50;
-            const priorityB = b.sortPriority || 50;
-
-            if (priorityA !== priorityB) {
-                return priorityA - priorityB;
-            }
-
-            // 2. 相同优先级的情况下，按实际速度排序
-            const getSpeedValue = (loadSpeed) => {
-                if (!loadSpeed || loadSpeed === 'N/A') return 0;
-                if (loadSpeed === '极速') return 10000; // 关键词识别的最高分
-                if (loadSpeed === '连接正常') return 1000; // 连接正常的固定分数
-                if (loadSpeed === '连接超时') return 0; // 超时的最低分
-
-                // 解析实际速度
-                const match = loadSpeed.match(/^([\d.]+)\s*(KB\/s|MB\/s)$/);
-                if (match) {
-                    const value = parseFloat(match[1]);
-                    const unit = match[2];
-                    return unit === 'MB/s' ? value * 1024 : value;
-                }
-
-                return 100; // 其他情况的默认分数
-            };
-
-            const speedA = getSpeedValue(a.loadSpeed);
-            const speedB = getSpeedValue(b.loadSpeed);
-
-            return speedB - speedA; // 速度高的排在前面
-        });
         /* -------- 关键：实时搜索结果也写入缓存 -------- */
         rebuildVideoCaches(checkedResults);
         const videoDataMap = AppState.get('videoDataMap') || new Map();
@@ -1042,11 +1033,11 @@ function restoreSearchFromCache() {
                 backgroundSpeedUpdate(parsed).then(() => {
                     sortBySpeed(parsed);
                     rebuildVideoCaches(parsed);
-
-                    /* 若想丝滑，用 reorderResultCards；否则重渲染 */
-                    renderSearchResults(parsed);
-                    // reorderResultCards(parsed);
+                    refreshSpeedBadges(parsed);
+                    //renderSearchResults(parsed);
+                    reorderResultCards(parsed);
                 });
+
             }
 
             /* —— 再补画质（若需要） —— */
@@ -1085,6 +1076,8 @@ function renderSearchResultsFromCache(cachedResults) {
         });
         gridContainer.appendChild(fragment);
         searchResultsContainer.appendChild(gridContainer);
+        // 刷速度标签，让已测条目立即显示
+        refreshSpeedBadges(cachedResults);
     }
     const searchArea = getElement('searchArea');
     if (searchArea) {
