@@ -1,4 +1,29 @@
+/**
+ * 先按 sortPriority 升序，再按速度值降序。
+ * 无测速(检测中 / 空) 的速度值记为 -1，这样被排到最后。
+ */
+function sortBySpeed(arr) {
 
+    const speedVal = (v) => {
+        if (!v || v === '检测中...' || v === 'pending') return -1; // 无测速
+        if (v === '连接超时') return 0;
+        if (v === '连接正常') return 1e3;
+        if (v === '极速') return 1e5;
+        const m = v.match(/^([\d.]+)\s*(KB\/s|MB\/s)$/i);
+        if (m) {
+            const num = parseFloat(m[1]);
+            return m[2].toUpperCase() === 'MB/S' ? num * 1024 : num; // 统一成 KB/s
+        }
+        return 1;  // 兜底
+    };
+
+    arr.sort((a, b) => {
+        const prA = a.sortPriority ?? 50;
+        const prB = b.sortPriority ?? 50;
+        if (prA !== prB) return prA - prB;          // 先比 priority
+        return speedVal(b.loadSpeed) - speedVal(a.loadSpeed); // 再比速度值(大→小)
+    });
+}
 
 // 主应用程序逻辑 使用AppState进行状态管理，DOMCache进行DOM元素缓存
 const AppState = (function () {
@@ -303,13 +328,14 @@ function backgroundSpeedUpdate(results) {
     return new Promise(resolve => {
         const concurrency = 2;          // 同时跑 2 条线路即可
         let cursor = 0;
-        let remain = results.filter(r => r.loadSpeed === '检测中...').length;
+        const isPending = v => !v || v === '检测中...' || v === 'pending';
+        let remain = results.filter(r => isPending(r.loadSpeed)).length;
         if (remain === 0) return resolve();  // 没有要测的
 
         async function worker() {
             while (cursor < results.length) {
                 const item = results[cursor++];
-                if (!item || item.loadSpeed !== '检测中...') continue;
+                if (!item || !isPending(item.loadSpeed)) continue;
 
                 /* ———原来的测速 try/catch 整段保留——— */
                 try {
@@ -322,6 +348,40 @@ function backgroundSpeedUpdate(results) {
                         item.loadSpeed = '连接超时';
                         item.sortPriority = 99;
                     }
+
+                    /* ------------ ① 写回 sessionStorage + localStorage 缓存 ------------ */
+                    try {
+                        const q = AppState.get('latestQuery');
+                        const ap = AppState.get('latestAPIs') || [];
+                        if (q && ap.length) {
+                            const cacheKey = getSearchCacheKey(q, ap);
+                            const uniqKey = `${item.source_code}_${item.vod_id}`;
+
+                            /* sessionStorage.searchResults（本页刷新用） */
+                            const srRaw = sessionStorage.getItem('searchResults');
+                            if (srRaw) {
+                                const sr = JSON.parse(srRaw);
+                                const i = sr.findIndex(r => `${r.source_code}_${r.vod_id}` === uniqKey);
+                                if (i !== -1) {
+                                    sr[i] = { ...sr[i], ...item };
+                                    sessionStorage.setItem('searchResults', JSON.stringify(sr));
+                                }
+                            }
+
+                            /* localStorage 长期缓存（30 天） */
+                            const obj = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+                            if (obj.results) {
+                                const j = obj.results.findIndex(r => `${r.source_code}_${r.vod_id}` === uniqKey);
+                                if (j !== -1) {
+                                    obj.results[j] = { ...obj.results[j], ...item };
+                                    localStorage.setItem(cacheKey, JSON.stringify(obj));
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('写回测速缓存失败:', e);
+                    }
+
                 } catch {
                     item.loadSpeed = '连接超时';
                     item.sortPriority = 99;
@@ -329,6 +389,7 @@ function backgroundSpeedUpdate(results) {
 
                 /* ---- 更新缓存、弹窗显示（原逻辑不变） ---- */
                 updateModalSpeedDisplay(item);
+
                 const key = `${item.source_code}_${item.vod_id}`;
                 const vMap = AppState.get('videoDataMap') || new Map();
                 vMap.set(key, item);
@@ -713,35 +774,14 @@ async function performSearch(query, selectedAPIs) {
         // 若打开了速度检测，则后台刷新速度；画质检测随配置而定
         // 1) 速度：只有 loadSpeed === '检测中...' 的才补测
         if (speedDetectionEnabled &&
-            cacheResult.results.some(r => r.loadSpeed === '检测中...')) {
+            cacheResult.results.some(r => !r.loadSpeed || r.loadSpeed === '检测中...')) {
 
             backgroundSpeedUpdate(cacheResult.results).then(() => {
-                /* ---- 重新排序 ---- */
-                cacheResult.results.sort((a, b) => {
-                    const prA = a.sortPriority ?? 50;
-                    const prB = b.sortPriority ?? 50;
-                    if (prA !== prB) return prA - prB;
-
-                    const speedToNum = v => {
-                        if (!v || v === 'N/A' || v === '连接超时') return 0;
-                        if (v === '极速') return 10000;
-                        if (v === '连接正常') return 1000;
-                        const m = v.match(/^([\d.]+)\s*(KB\/s|MB\/s)$/i);
-                        if (m) {
-                            const n = parseFloat(m[1]);
-                            return m[2].toUpperCase() === 'MB/S' ? n * 1024 : n;
-                        }
-                        return 100;
-                    };
-                    return speedToNum(b.loadSpeed) - speedToNum(a.loadSpeed);
-                });
-
-                /* ---- 覆盖缓存、刷新界面 ---- */
+                sortBySpeed(cacheResult.results);          // ★ 统一排序
                 rebuildVideoCaches(cacheResult.results);
-                renderSearchResults(cacheResult.results);
+                renderSearchResults(cacheResult.results);  // 或 reorderResultCards
             });
         }
-
 
         // 2) 画质：只要存在 pending 项就补测
         if (cacheResult.results.some(
@@ -808,34 +848,11 @@ async function performSearch(query, selectedAPIs) {
 
             /* 2. 后台启动测速 → 画质检测（互不阻塞） */
             /* 先测速，等全部测速完成后再重新排序并刷新界面 */
-            backgroundSpeedUpdate(quickResults)
-                .then(() => {
-                    /* ------------- 重新按速度 + sortPriority 排序 ------------- */
-                    quickResults.sort((a, b) => {
-                        const prA = a.sortPriority ?? 50;
-                        const prB = b.sortPriority ?? 50;
-                        if (prA !== prB) return prA - prB;
-
-                        const speedToNum = (v) => {
-                            if (!v || v === 'N/A' || v === '连接超时') return 0;
-                            if (v === '极速') return 10000;
-                            if (v === '连接正常') return 1000;
-                            const m = v.match(/^([\d.]+)\s*(KB\/s|MB\/s)$/i);
-                            if (m) {
-                                const val = parseFloat(m[1]);
-                                return m[2].toUpperCase() === 'MB/S' ? val * 1024 : val;
-                            }
-                            return 100;
-                        };
-
-                        return speedToNum(b.loadSpeed) - speedToNum(a.loadSpeed);
-                    });
-
-                    /* ------------ 覆盖缓存并重渲染 ------------ */
-                    rebuildVideoCaches(quickResults);      // 更新 Map / sessionStorage
-                    renderSearchResults(quickResults);     // 重新生成卡片网格
-                });
-
+            backgroundSpeedUpdate(quickResults).then(() => {
+                sortBySpeed(quickResults);                 // ★ 统一排序
+                rebuildVideoCaches(quickResults);
+                renderSearchResults(quickResults);         // 如用“丝滑重排”可换成 reorderResultCards
+            });
 
             backgroundQualityUpdate(quickResults);
 
@@ -1014,11 +1031,31 @@ function restoreSearchFromCache() {
             const parsed = JSON.parse(cachedResults);
             renderSearchResultsFromCache(parsed);
             /* ------------ 关键：发现 pending 就补检测 ------------ */
+            const speedDetectionEnabled =
+                getBoolConfig(PLAYER_CONFIG.speedDetectionStorage,
+                    PLAYER_CONFIG.speedDetectionEnabled);
+
+            /* —— 先补测速（若需要） —— */
+            if (speedDetectionEnabled &&
+                parsed.some(r => !r.loadSpeed || r.loadSpeed === '检测中...')) {
+
+                backgroundSpeedUpdate(parsed).then(() => {
+                    sortBySpeed(parsed);
+                    rebuildVideoCaches(parsed);
+
+                    /* 若想丝滑，用 reorderResultCards；否则重渲染 */
+                    renderSearchResults(parsed);
+                    // reorderResultCards(parsed);
+                });
+            }
+
+            /* —— 再补画质（若需要） —— */
             if (parsed.some(r =>
                 r.detectionMethod === 'pending' ||
                 r.quality === '检测中...')) {
                 setTimeout(() => backgroundQualityUpdate(parsed), 120);
             }
+
             if (typeof closeModal === 'function') closeModal();
 
         }
@@ -1828,3 +1865,24 @@ async function manualRetryDetection(qualityId, videoData) {
 }
 
 window.manualRetryDetection = manualRetryDetection;
+
+function reorderResultCards(sortedResults) {
+    const grid = document.querySelector('#searchResults .grid');
+    if (!grid) return;
+
+    // 把现有卡片收集成 Map
+    const cardMap = new Map();
+    grid.querySelectorAll('.card-hover').forEach(card => {
+        cardMap.set(`${card.dataset.sourceCode}_${card.dataset.id}`,
+            card.parentElement);          // 外层列
+    });
+
+    // 按排序结果重新拼装
+    const frag = document.createDocumentFragment();
+    sortedResults.forEach(r => {
+        const key = `${r.source_code}_${r.vod_id}`;
+        const col = cardMap.get(key);
+        if (col) frag.appendChild(col);
+    });
+    grid.appendChild(frag);  // append 到尾部即可完成重排
+}
