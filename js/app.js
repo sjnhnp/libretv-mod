@@ -883,8 +883,11 @@ async function performSearch(query, selectedAPIs) {
                 sortBySpeed(quickResults);
                 rebuildVideoCaches(quickResults);
                 refreshSpeedBadges(quickResults);
-                // renderSearchResults(quickResults);      // 若要丝滑用 reorderResultCards
                 reorderResultCards(quickResults);
+
+                // 把最终排序结果写回缓存
+                sessionStorage.setItem('searchResults', JSON.stringify(quickResults));
+                saveSearchCache(query, selectedAPIs, quickResults); // 覆盖 30 天缓存
             });
 
 
@@ -1031,6 +1034,8 @@ function restoreSearchFromCache() {
                 }
             }
             const parsed = JSON.parse(cachedResults);
+            // 若缓存里已有速度，则先排一次
+            sortBySpeed(parsed);
             renderSearchResultsFromCache(parsed);
             /* ------------ 关键：发现 pending 就补检测 ------------ */
             const speedDetectionEnabled =
@@ -1045,10 +1050,16 @@ function restoreSearchFromCache() {
                     sortBySpeed(parsed);
                     rebuildVideoCaches(parsed);
                     refreshSpeedBadges(parsed);
-                    //renderSearchResults(parsed);
                     reorderResultCards(parsed);
-                });
 
+                    // 把最终排序结果写回缓存
+                    try {
+                        const query = sessionStorage.getItem('searchQuery');
+                        const apis = JSON.parse(sessionStorage.getItem('searchSelectedAPIs') || '[]');
+                        sessionStorage.setItem('searchResults', JSON.stringify(parsed));
+                        if (query && apis.length > 0) saveSearchCache(query, apis, parsed);
+                    } catch (e) { console.error("回写缓存失败", e) }
+                });
             }
 
             /* —— 再补画质（若需要） —— */
