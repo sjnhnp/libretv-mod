@@ -145,6 +145,16 @@ services:
       }
       ```
 
+* **`index.html`**
+      ```
+        <!-- 比如Facebook抓取的预览 -->
+    <meta property="og:title" content="X" />
+    <meta property="og:description" content="TV Aggregation" />
+    <meta property="og:image" content="https://yourwebsite.com/images/tv1.png" />
+    <meta property="og:url" content="https://yourwebsite.com" />
+    <meta property="og:type" content="website" />
+      ```
+
 ## 许可证 (License)
 
 本项目遵循与上游项目相同的许可证。
