@@ -287,7 +287,8 @@ function getBoolConfig(key, defaultValue) {
 
 // 搜索缓存相关函数
 function getSearchCacheKey(query, selectedAPIs) {
-    return `searchCache_${query}_${selectedAPIs.sort().join('_')}`;
+    const sortedCopy = [...selectedAPIs].sort();   // 不破坏原数组
+    return `searchCache_${query}_${sortedCopy.join('_')}`;
 }
 
 function checkSearchCache(query, selectedAPIs) {
@@ -1397,11 +1398,11 @@ function createResultItemUsingTemplate(item) {
     cardElement.dataset.director = item.vod_director || '';
     cardElement.dataset.blurb = item.vod_blurb || '';
     /* 让列节点本身带上标识，便于重排 */
-const wrapper = cardElement.closest('[data-list-col]') || cardElement.parentElement;
-if (wrapper){
-    wrapper.dataset.id          = item.vod_id   || '';
-    wrapper.dataset.sourceCode  = item.source_code || '';
-}
+    const wrapper = cardElement.closest('[data-list-col]') || cardElement.parentElement;
+    if (wrapper) {
+        wrapper.dataset.id = item.vod_id || '';
+        wrapper.dataset.sourceCode = item.source_code || '';
+    }
 
     cardElement.onclick = handleResultClick;
     return clone;
@@ -1866,18 +1867,18 @@ async function manualRetryDetection(qualityId, videoData) {
 
 window.manualRetryDetection = manualRetryDetection;
 
-function reorderResultCards(sorted){
+function reorderResultCards(sorted) {
     const grid = document.querySelector('#searchResults .grid');
     if (!grid) return;
 
     // 以“列节点”而非 card.parentElement 作为单位
     const colMap = new Map();
-    grid.querySelectorAll('[data-id][data-source-code]').forEach(col=>{
+    grid.querySelectorAll('[data-id][data-source-code]').forEach(col => {
         colMap.set(`${col.dataset.sourceCode}_${col.dataset.id}`, col);
     });
 
     const frag = document.createDocumentFragment();
-    sorted.forEach(r=>{
+    sorted.forEach(r => {
         const key = `${r.source_code}_${r.vod_id}`;
         const col = colMap.get(key);
         if (col) frag.appendChild(col);
