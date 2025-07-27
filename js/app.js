@@ -1396,6 +1396,13 @@ function createResultItemUsingTemplate(item) {
     cardElement.dataset.actor = item.vod_actor || '';
     cardElement.dataset.director = item.vod_director || '';
     cardElement.dataset.blurb = item.vod_blurb || '';
+    /* 让列节点本身带上标识，便于重排 */
+const wrapper = cardElement.closest('[data-list-col]') || cardElement.parentElement;
+if (wrapper){
+    wrapper.dataset.id          = item.vod_id   || '';
+    wrapper.dataset.sourceCode  = item.source_code || '';
+}
+
     cardElement.onclick = handleResultClick;
     return clone;
 }
@@ -1859,23 +1866,22 @@ async function manualRetryDetection(qualityId, videoData) {
 
 window.manualRetryDetection = manualRetryDetection;
 
-function reorderResultCards(sortedResults) {
+function reorderResultCards(sorted){
     const grid = document.querySelector('#searchResults .grid');
     if (!grid) return;
 
-    // 把现有卡片收集成 Map
-    const cardMap = new Map();
-    grid.querySelectorAll('.card-hover').forEach(card => {
-        cardMap.set(`${card.dataset.sourceCode}_${card.dataset.id}`,
-            card.parentElement);          // 外层列
+    // 以“列节点”而非 card.parentElement 作为单位
+    const colMap = new Map();
+    grid.querySelectorAll('[data-id][data-source-code]').forEach(col=>{
+        colMap.set(`${col.dataset.sourceCode}_${col.dataset.id}`, col);
     });
 
-    // 按排序结果重新拼装
     const frag = document.createDocumentFragment();
-    sortedResults.forEach(r => {
+    sorted.forEach(r=>{
         const key = `${r.source_code}_${r.vod_id}`;
-        const col = cardMap.get(key);
+        const col = colMap.get(key);
         if (col) frag.appendChild(col);
     });
-    grid.appendChild(frag);  // append 到尾部即可完成重排
+    grid.appendChild(frag);
 }
+
