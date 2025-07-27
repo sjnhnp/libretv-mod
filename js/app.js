@@ -140,10 +140,12 @@ async function playVideo(episodeString, title, episodeIndex, sourceName = '', so
 }
 
 function generateUniversalId(title, year, episodeIndex) {
-    const normalizedTitle = title.toLowerCase().replace(/[^\w\u4e00-\u9fa5]/g, '').replace(/\s+/g, '');
-    const normalizedYear = year ? year : 'unknown';
+    // 提取核心标题和归一化
+    const normalizedTitle = getCoreTitle(title).toLowerCase().replace(/[^\w\u4e00-\u9fa5]/g, '').replace(/\s+/g, '');
+    const normalizedYear = year ? String(year) : 'unknown';
     return `${normalizedTitle}_${normalizedYear}_${episodeIndex}`;
 }
+
 
 function playPreviousEpisode() {
     const currentIndex = AppState.get('currentEpisodeIndex');
