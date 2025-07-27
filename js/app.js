@@ -368,6 +368,7 @@ function backgroundSpeedUpdate(results) {
                     if (tested && tested.loadSpeed !== 'N/A') {
                         item.loadSpeed = tested.loadSpeed;
                         item.sortPriority = tested.sortPriority;
+                        refreshSpeedBadges([item]);
                     } else {
                         item.loadSpeed = '连接超时';
                         item.sortPriority = 99;
@@ -457,7 +458,11 @@ function isValidSpeedValue(speed) {
         return false;
     }
     // 只显示包含数字+单位的速度值
-    return /^\d+(\.\d+)?\s*(KB\/s|MB\/s|kb\/s|mb\/s)$/i.test(speed);
+    return (
+        /^\d+(\.\d+)?\s*(KB\/s|MB\/s|kb\/s|mb\/s)$/i.test(speed) ||
+        speed === '连接正常' ||
+        speed === '极速'
+    );    
 }
 
 function updateModalSpeedDisplay(item) {
