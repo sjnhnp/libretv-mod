@@ -424,9 +424,11 @@ function backgroundSpeedUpdate(results) {
 
                 /* ---- 计数，全部结束后刷 UI 并 resolve ---- */
                 if (--remain === 0) {
-                    refreshSpeedBadges(results);   // ★ 把全部测速结果写进现有卡片
+                    sortBySpeed(results);          // ★ 全部测完，再统一排序
+                    refreshSpeedBadges(results);   // 写速度徽章
                     resolve();
                 }
+
             }
         }
 
@@ -803,7 +805,6 @@ async function performSearch(query, selectedAPIs) {
             cacheResult.results.some(r => !r.loadSpeed || r.loadSpeed === '检测中...')) {
 
             backgroundSpeedUpdate(cacheResult.results).then(() => {
-                sortBySpeed(cacheResult.results);              // 统一排序
                 rebuildVideoCaches(cacheResult.results);       // 刷新缓存
                 refreshSpeedBadges(cacheResult.results);       // ★ 把速度写回卡片
                 //renderSearchResults(cacheResult.results);      // 如要丝滑可换 reorderResultCards
@@ -1039,7 +1040,6 @@ function restoreSearchFromCache() {
                 parsed.some(r => !r.loadSpeed || r.loadSpeed === '检测中...')) {
 
                 backgroundSpeedUpdate(parsed).then(() => {
-                    sortBySpeed(parsed);
                     rebuildVideoCaches(parsed);
                     refreshSpeedBadges(parsed);
                     //renderSearchResults(parsed);
