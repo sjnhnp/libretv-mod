@@ -117,6 +117,7 @@ services:
     * `speedDetectionEnabled: getBoolConfig('speedDetectionEnabled', true)`: 画质和速度检测功能的默认开关状态
     * `const MAX_HISTORY_ITEMS`：搜索历史标签最大数，默认5
 
+
     ```
     // 预加载集数开关
     const DEFAULTS = {
@@ -125,6 +126,7 @@ services:
         debugMode: false      // 调试模式 
     };
     ```
+
     ```
     // 搜索结果缓存
     const SEARCH_CACHE_CONFIG = {
