@@ -910,47 +910,11 @@ async function performSearch(query, selectedAPIs) {
                 sortPriority: 50
             }));
             sortBySpeed(checkedResults);
+
+            // 在关闭检测时，结果是最终的，所以在这里重建并保存缓存
+            rebuildVideoCaches(checkedResults);
+            saveSearchCache(query, selectedAPIs, checkedResults);
         }
-
-        /* -------- 关键：实时搜索结果也写入缓存 -------- */
-        rebuildVideoCaches(checkedResults);
-        const videoDataMap = AppState.get('videoDataMap') || new Map();
-
-        // 将所有搜索结果按影片分组，以供播放页的线路切换功能使用
-        const videoSourceMap = new Map();
-        checkedResults.forEach(item => {
-            if (item.vod_id) {
-                // 使用 "名称|年份" 作为分组的键
-                const videoKey = `${item.vod_name}|${item.vod_year || ''}`;
-                if (!videoSourceMap.has(videoKey)) {
-                    videoSourceMap.set(videoKey, []);
-                }
-                videoSourceMap.get(videoKey).push(item);
-            }
-        });
-        // 将分组后的线路信息保存到 sessionStorage
-        sessionStorage.setItem('videoSourceMap', JSON.stringify(Array.from(videoSourceMap.entries())));
-
-        checkedResults.forEach(item => {
-            if (item.vod_id) {
-                const uniqueVideoKey = `${item.source_code}_${item.vod_id}`;
-                videoDataMap.set(uniqueVideoKey, item);
-            }
-        });
-        AppState.set('videoDataMap', videoDataMap);
-        sessionStorage.setItem('videoDataCache', JSON.stringify(Array.from(videoDataMap.entries())));
-
-        // 保存搜索缓存
-        const completeResults = checkedResults.filter(item =>
-            item.detectionMethod !== 'pending' &&
-            item.quality !== '检测中...'
-        );
-
-        if (completeResults.length > 0) {
-            saveSearchCache(query, selectedAPIs, completeResults);
-        }
-
-
         return checkedResults;
     } catch (error) {
         console.error("执行搜索或预检测时出错:", error);
