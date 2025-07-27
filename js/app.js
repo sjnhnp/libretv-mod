@@ -296,7 +296,8 @@ function getBoolConfig(key, defaultValue) {
 
 // 搜索缓存相关函数
 function getSearchCacheKey(query, selectedAPIs) {
-    return `searchCache_${query}_${selectedAPIs.sort().join('_')}`;
+    const sortedCopy = [...selectedAPIs].sort();   // 不破坏原数组
+    return `searchCache_${query}_${sortedCopy.join('_')}`;
 }
 
 function checkSearchCache(query, selectedAPIs) {
