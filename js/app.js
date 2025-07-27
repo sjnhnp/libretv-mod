@@ -861,8 +861,7 @@ async function performSearch(query, selectedAPIs) {
                 quality: '检测中...',
                 detectionMethod: 'pending'
             }));
-            // 占位阶段也按照“速度优先”排好
-            sortBySpeed(quickResults);
+      
             // 把占位结果写进缓存，页面可马上渲染
             rebuildVideoCaches(quickResults);
 
