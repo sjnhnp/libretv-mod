@@ -424,10 +424,23 @@ function backgroundSpeedUpdate(results) {
 
                 /* ---- 计数，全部结束后刷 UI 并 resolve ---- */
                 if (--remain === 0) {
-                    sortBySpeed(results);          // ★ 全部测完，再统一排序
-                    refreshSpeedBadges(results);   // 写速度徽章
-                    resolve();
+                    /* ① 全部测完，先按速度排序 */
+                    sortBySpeed(results);
+                
+                    /* ② 刷新缓存，写速度徽章，重排 DOM */
+                    rebuildVideoCaches(results);
+                    refreshSpeedBadges(results);
+                    reorderResultCards(results);          // ← 必须有
+                
+                    /* ③ 覆盖 sessionStorage / localStorage 缓存 */
+                    sessionStorage.setItem('searchResults', JSON.stringify(results));
+                    const q  = AppState.get('latestQuery');
+                    const ap = AppState.get('latestAPIs') || [];
+                    if (q && ap.length) saveSearchCache(q, ap, results);
+                
+                    resolve();   // 最后再 resolve
                 }
+                
 
             }
         }
