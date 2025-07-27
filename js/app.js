@@ -682,9 +682,19 @@ function backgroundQualityUpdate(results) {
             try {
                 const q = await window.precheckSource(
                     firstEpisodeUrl,
-                    item.m3u8Content || null            // 把 m3u8 文本传进去
+                    item.m3u8Content || null    // 把 m3u8 文本传进去
                 );
-                Object.assign(item, q);                 // 合并画质结果
+
+                // 属性更新，确保只更新画质相关字段
+                // 这样就不会意外覆盖由其他进程（如速度检测）写入的数据
+                if (q) {
+                    if (q.quality) {
+                        item.quality = q.quality;
+                    }
+                    if (q.detectionMethod) {
+                        item.detectionMethod = q.detectionMethod;
+                    }
+                }
             } catch {
                 item.quality = '检测失败';
                 item.detectionMethod = 'failed';
