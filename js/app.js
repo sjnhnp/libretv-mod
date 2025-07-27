@@ -876,11 +876,13 @@ async function performSearch(query, selectedAPIs) {
             /* 2. 后台启动测速 → 画质检测（互不阻塞） */
             /* 先测速，等全部测速完成后再重新排序并刷新界面 */
             backgroundSpeedUpdate(quickResults).then(() => {
-                sortBySpeed(quickResults);
                 rebuildVideoCaches(quickResults);
                 refreshSpeedBadges(quickResults);
                 // renderSearchResults(quickResults);      // 若要丝滑用 reorderResultCards
                 reorderResultCards(quickResults);
+                sessionStorage.setItem('searchResults', JSON.stringify(quickResults));
+                saveSearchCache(query, selectedAPIs, quickResults);
+
             });
 
 
@@ -902,7 +904,6 @@ async function performSearch(query, selectedAPIs) {
                 detectionMethod: 'disabled',
                 sortPriority: 50
             }));
-            sortByPriority(checkedResults);
         }
 
         /* -------- 关键：实时搜索结果也写入缓存 -------- */
