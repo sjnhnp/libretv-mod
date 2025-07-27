@@ -25,6 +25,15 @@ function sortBySpeed(arr) {
     });
 }
 
+// 仅按 sortPriority 升序，不看速度（首屏使用）
+function sortByPriority(arr) {
+    arr.sort((a, b) => {
+        const pa = a.sortPriority ?? 50;
+        const pb = b.sortPriority ?? 50;
+        return pa - pb;
+    });
+}
+
 /* 把测速完成后的值写进已存在的卡片速度标签 */
 function refreshSpeedBadges(results) {
     results.forEach(it => {
@@ -861,7 +870,7 @@ async function performSearch(query, selectedAPIs) {
                 quality: '检测中...',
                 detectionMethod: 'pending'
             }));
-      
+            sortByPriority(quickResults);
             // 把占位结果写进缓存，页面可马上渲染
             rebuildVideoCaches(quickResults);
 
@@ -894,7 +903,7 @@ async function performSearch(query, selectedAPIs) {
                 detectionMethod: 'disabled',
                 sortPriority: 50
             }));
-            sortBySpeed(checkedResults);
+            sortByPriority(checkedResults);
         }
 
         /* -------- 关键：实时搜索结果也写入缓存 -------- */
