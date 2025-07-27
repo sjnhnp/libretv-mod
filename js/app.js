@@ -423,12 +423,10 @@ function backgroundSpeedUpdate(results) {
                 }
             }
         }
-
         // 启动并发 worker
         Array(concurrency).fill(0).forEach(worker);
     });
 }
-
 
 function isValidSpeedValue(speed) {
     if (!speed || speed === 'N/A' || speed === '连接超时' || speed === '未知' || speed === '检测失败') {
@@ -631,7 +629,7 @@ function search(options = {}) {
         });
 }
 
-/* ========= 搜索结果 → Map / sessionStorage 公用写入 ========= */
+// 搜索结果 → Map / sessionStorage 公用写入
 function rebuildVideoCaches(results) {
     // 1. videoDataMap
     const videoDataMap = new Map();
@@ -759,14 +757,14 @@ function backgroundQualityUpdate(results) {
                 const idx = resultsArr.findIndex(r => `${r.source_code}_${r.vod_id}` === key);
 
                 if (idx !== -1) {
-                    resultsArr[idx] = { ...resultsArr[idx], ...item };   // 覆盖
+                    resultsArr[idx] = { ...resultsArr[idx], ...item };
                 } else {
-                    resultsArr.push({ ...item });                        // 新增
+                    resultsArr.push({ ...item });
                 }
 
                 cacheObj.results = resultsArr;
 
-                /* ------------ 写回 localStorage ------------ */
+                // 写回 localStorage
                 localStorage.setItem(cacheKey, JSON.stringify(cacheObj));
 
             } catch (e) {
@@ -775,7 +773,7 @@ function backgroundQualityUpdate(results) {
         }
     }
 
-    // 开启并发 worker
+    // 开启并发worker
     Array(concurrency).fill(0).forEach(worker);
 }
 
@@ -787,7 +785,6 @@ async function performSearch(query, selectedAPIs) {
     // 检查是否启用速度检测
     const speedDetectionEnabled = getBoolConfig(PLAYER_CONFIG.speedDetectionStorage, PLAYER_CONFIG.speedDetectionEnabled);
 
-    // 如果启用速度检测，先检查缓存
     /* ============================================================
      * 1) 先检查 30 天搜索结果缓存 —— 与速度检测无关
      * ============================================================ */
@@ -1077,7 +1074,7 @@ function renderSearchResultsFromCache(cachedResults) {
 }
 
 // 获取视频详情
-async function getVideoDetail(id, sourceCode, apiUrl = '') { // apiUrl参数可能不再需要，但暂时保留
+async function getVideoDetail(id, sourceCode, apiUrl = '') {
     if (!id || !sourceCode) {
         showToast('无效的视频信息', 'error');
         return;
@@ -1089,12 +1086,11 @@ async function getVideoDetail(id, sourceCode, apiUrl = '') { // apiUrl参数可�
     }
 
     try {
-        // 行为: 修改
         // 将原来复杂的获取和解析逻辑，替换为对新辅助函数的单行调用
         const data = await fetchSpecialDetail(id, sourceCode);
         const episodes = data.episodes;
 
-        if (episodes.length === 0) { // 行为: 插入 (虽然fetchSpecialDetail会抛出错误，但双重保险无害)
+        if (episodes.length === 0) {
             throw new Error('未找到剧集信息');
         }
 
@@ -1481,55 +1477,22 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
         const el = modalContent.querySelector(`[data-field="${key}"]`);
         if (el) el.textContent = value;
     }
+
     // 渲染画质标签（在showVideoEpisodesModal函数里）
     const qualityTagElement = modalContent.querySelector('[data-field="quality-tag"]');
     if (qualityTagElement) {
-        // 优先使用检测结果，并避免回退到“高清”
-        // 检查是否启用画质检测
         const speedDetectionEnabled = getBoolConfig(PLAYER_CONFIG.speedDetectionStorage, PLAYER_CONFIG.speedDetectionEnabled);
         if (speedDetectionEnabled) {
-            const sourceProvidedQuality = videoData.vod_quality; // API直接提供的质量
-            const detectedQuality = videoData.quality; // 我们检测的质量
-
-            // 优先用API提供的，其次用我们检测的，最后是未知
+            const sourceProvidedQuality = videoData.vod_quality;
+            const detectedQuality = videoData.quality;
             const finalQuality = sourceProvidedQuality || detectedQuality || '未知';
-
-            qualityTagElement.textContent = finalQuality;
-            qualityTagElement.classList.remove('hidden');
-
-            // 给不同画质加颜色（方便区分）
-            const qualityLower = finalQuality.toLowerCase();
-            if (qualityLower.includes('4k')) {
-                qualityTagElement.style.backgroundColor = '#4f46e5'; // 紫色
-            } else if (qualityLower.includes('1080')) {
-                qualityTagElement.style.backgroundColor = '#7c3aed'; // 深紫色
-            } else if (qualityLower.includes('720')) {
-                qualityTagElement.style.backgroundColor = '#2563eb'; // 蓝色
-            } else if (finalQuality === '高清') {
-                qualityTagElement.style.backgroundColor = '#10b981'; // 绿色
-            } else if (finalQuality === '标清') {
-                qualityTagElement.style.backgroundColor = '#6b7280'; // 灰色
-            } else {
-                qualityTagElement.style.backgroundColor = '#6b7280'; // 未知用灰色
-            }
-
-            // 如果是未知或检测失败，添加点击重新检测功能
-            if (['未知', '检测失败', '检测超时', '编码不支持', '播放失败', '无有效链接'].includes(finalQuality)) {
-                qualityTagElement.style.cursor = 'pointer';
-                qualityTagElement.title = '点击重新检测';
-                qualityTagElement.onclick = (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    event.stopImmediatePropagation();
-                    const qualityId = `${sourceCode}_${id}`;
-                    manualRetryDetection(qualityId, videoData);
-                };
-            }
+            updateQualityBadgeUI(uniqueVideoKey, finalQuality, qualityTagElement);
         } else {
             // 关闭画质检测时隐藏标签
             qualityTagElement.classList.add('hidden');
         }
     }
+
     const speedTagElement = modalContent.querySelector('[data-field="speed-tag"]');
     if (speedTagElement && videoData.loadSpeed && isValidSpeedValue(videoData.loadSpeed)) {
         speedTagElement.textContent = videoData.loadSpeed;
