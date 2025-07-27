@@ -1785,6 +1785,31 @@ async function manualRetryDetection(qualityId, videoData) {
             }
         }
 
+        // 在手动更新单个条目后，立即同步更新两个核心的“搜索结果列表”缓存
+        try {
+            // 1. 更新 sessionStorage 中的搜索结果列表
+            const searchResultsRaw = sessionStorage.getItem('searchResults');
+            if (searchResultsRaw) {
+                const resultsArray = JSON.parse(searchResultsRaw);
+                const indexToUpdate = resultsArray.findIndex(item => `${item.source_code}_${item.vod_id}` === qualityId);
+
+                if (indexToUpdate !== -1) {
+                    // 用最新的、完整的结果替换掉旧的
+                    resultsArray[indexToUpdate] = testedResult;
+                    sessionStorage.setItem('searchResults', JSON.stringify(resultsArray));
+
+                    // 2. 更新 localStorage 中的长期缓存
+                    const q = AppState.get('latestQuery');
+                    const ap = AppState.get('latestAPIs') || [];
+                    if (q && ap.length > 0) {
+                        saveSearchCache(q, ap, resultsArray);
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('手动重测后，回写搜索结果缓存列表失败:', e);
+        }
+
     } catch (error) {
         console.error('手动重新检测失败:', error);
         // 如果出错，也在UI上明确显示失败
