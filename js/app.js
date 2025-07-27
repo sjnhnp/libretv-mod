@@ -1075,7 +1075,7 @@ function renderSearchResultsFromCache(cachedResults) {
 }
 
 // 获取视频详情
-async function getVideoDetail(id, sourceCode, apiUrl = '') {
+async function getVideoDetail(id, sourceCode, apiUrl = '') { // apiUrl参数可能不再需要，但暂时保留
     if (!id || !sourceCode) {
         showToast('无效的视频信息', 'error');
         return;
@@ -1087,35 +1087,12 @@ async function getVideoDetail(id, sourceCode, apiUrl = '') {
     }
 
     try {
-        let url = `/api/detail?id=${id}&source=${sourceCode}`;
+        // 行为: 修改
+        // 将原来复杂的获取和解析逻辑，替换为对新辅助函数的单行调用
+        const data = await fetchSpecialDetail(id, sourceCode);
+        const episodes = data.episodes;
 
-        // 对于自定义API，添加customApi参数
-        if (sourceCode === 'custom' && apiUrl) {
-            url += `&customApi=${encodeURIComponent(apiUrl)}&useDetail=true`;
-        }
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        // 剧集解析逻辑 - 支持多种格式
-        let episodes = [];
-
-        // 情况1：标准episodes数组
-        if (Array.isArray(data.episodes) && data.episodes.length > 0) {
-            episodes = data.episodes;
-        }
-        // 情况2：从vod_play_url解析
-        else if (data.vod_play_url) {
-            console.warn("使用备用字段 vod_play_url 解析剧集");
-            episodes = parseVodPlayUrl(data.vod_play_url);
-        }
-        // 情况3：从HTML内容解析（当响应是HTML时）
-        else if (typeof data === 'string' && data.includes('stui-content__playlist')) {
-            console.warn("从HTML内容解析剧集数据");
-            episodes = parseHtmlEpisodeList(data);
-        }
-
-        if (episodes.length === 0) {
+        if (episodes.length === 0) { // 行为: 插入 (虽然fetchSpecialDetail会抛出错误，但双重保险无害)
             throw new Error('未找到剧集信息');
         }
 
@@ -1443,68 +1420,31 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
 
     // 3. 后台异步获取真实地址（不阻塞弹窗显示）
     const isSpecialSource = !sourceCode.startsWith('custom_') && API_SITES[sourceCode] && API_SITES[sourceCode].detail;
-    if (isSpecialSource) {
-        // 真实地址获取放在弹窗打开后执行（原代码逻辑）
-        setTimeout(async () => {
-            try {
-                const detailUrl = `/api/detail?id=${id}&source=${sourceCode}`;
-                const response = await fetch(detailUrl);
-                const detailData = await response.json();
-                if (detailData.code === 200 && Array.isArray(detailData.episodes)) {
-                    // 用真实地址更新按钮（不刷新弹窗，仅替换链接）
-                    episodes = detailData.episodes;
-                    AppState.set('currentEpisodes', episodes);
-                    localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
-                    // 重新渲染按钮（不关闭弹窗）
-                    const episodeGrid = document.querySelector('#modalContent [data-field="episode-buttons-grid"]');
-                    if (episodeGrid) {
-                        episodeGrid.innerHTML = renderEpisodeButtons(episodes, title, sourceCode, sourceNameForDisplay, effectiveTypeName);
-                    }
-                }
-            } catch (e) {
-                console.log('后台获取真实地址失败（不影响弹窗显示）', e);
-            }
-        }, 500); // 延迟执行，确保弹窗已打开
-    }
 
-    // 处理自定义detail源的真实地址获取
+    // 将 isCustomSpecialSource 的定义移到这里，并与 isSpecialSource 合并判断
     const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
     const apiInfo = APISourceManager.getCustomApiInfo(customIndex);
     const isCustomSpecialSource = sourceCode.startsWith('custom_') && apiInfo?.detail;
-    if (isCustomSpecialSource) {
-        // 自定义源弹窗中的异步地址获取
+
+    if (isSpecialSource || isCustomSpecialSource) {
         setTimeout(async () => {
             try {
-                const customIndex = parseInt(sourceCode.replace('custom_', ''), 10);
-                const apiInfo = APISourceManager.getCustomApiInfo(customIndex);
-                if (!apiInfo) throw new Error('自定义源信息不存在');
+                // 直接调用新的辅助函数获取数据
+                const detailData = await fetchSpecialDetail(id, sourceCode);
 
-                // 获取真实地址
-                const detailResult = await handleCustomApiSpecialDetail(id, apiInfo.detail);
-                const detailData = JSON.parse(detailResult);
+                // 使用获取到的真实地址更新UI
+                episodes = detailData.episodes;
+                AppState.set('currentEpisodes', episodes);
+                localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
 
-                if (detailData.code === 200 && Array.isArray(detailData.episodes)) {
-                    // 关键：立即更新缓存（同步到localStorage和AppState）
-                    const realPlayUrls = detailData.episodes;
-                    AppState.set('currentEpisodes', realPlayUrls); // 更新全局状态
-                    localStorage.setItem('currentEpisodes', JSON.stringify(realPlayUrls)); // 持久化缓存
-
-                    // 同时更新弹窗中的播放地址（避免用户二次点击仍无效）
-                    const episodeGrid = document.querySelector('#modalContent [data-field="episode-buttons-grid"]');
-                    if (episodeGrid) {
-                        episodeGrid.innerHTML = renderEpisodeButtons(
-                            realPlayUrls, // 使用真实地址重新渲染弹窗按钮
-                            title,
-                            sourceCode,
-                            sourceNameForDisplay,
-                            effectiveTypeName
-                        );
-                    }
+                const episodeGrid = document.querySelector('#modalContent [data-field="episode-buttons-grid"]');
+                if (episodeGrid) {
+                    episodeGrid.innerHTML = renderEpisodeButtons(episodes, title, sourceCode, sourceNameForDisplay, effectiveTypeName);
                 }
             } catch (e) {
-                console.error('自定义API地址获取失败:', e);
+                console.log('后台获取真实地址失败:', e.message);
             }
-        }, 500); // 保持延迟，但确保成功后立即更新缓存
+        }, 500);
     }
 
     // 4. 渲染弹窗（原代码逻辑）
@@ -1870,4 +1810,17 @@ function reorderResultCards(sorted) {
     });
     grid.appendChild(frag);
 }
+// 专门用于获取特殊源（内置或自定义）真实播放地址的辅助函数
+async function fetchSpecialDetail(id, sourceCode) {
+    const detailUrl = `/api/detail?id=${id}&source=${sourceCode}`;
 
+    const response = await fetch(detailUrl);
+    if (!response.ok) {
+        throw new Error(`API请求失败: ${response.status}`);
+    }
+    const data = await response.json();
+    if (data.code !== 200 || !Array.isArray(data.episodes) || data.episodes.length === 0) {
+        throw new Error(data.msg || '未能获取到有效的剧集信息');
+    }
+    return data;
+}
