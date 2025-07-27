@@ -5,7 +5,7 @@ const MAX_HISTORY_ITEMS = 5;
 
 // 搜索缓存配置
 const SEARCH_CACHE_CONFIG = {
-    expireTime: 30 * 24 * 60 * 60 * 1000, // 7天过期时间
+    expireTime: 15 * 24 * 60 * 60 * 1000, // 默认15天效期
     enabled: true // 是否启用搜索缓存
 };
 
@@ -22,8 +22,8 @@ const SITE_CONFIG = {
     name: 'x',
     url: '',
     description: '',
-    logo: 'https://images.icon-icons.com/38/PNG/512/retrotv_5520.png',
-    version: '1.0.3'
+    logo: '',
+    version: ''
 };
 
 window.SITE_CONFIG = SITE_CONFIG;
@@ -107,9 +107,9 @@ const PLAYER_CONFIG = {
     height: '600',
     timeout: 15000, // 播放器加载超时时间 
     autoPlayNext: true, // 默认启用自动连播功能 
-    adFilteringEnabled: getBoolConfig('adFilteringEnabled', true), // 默认关闭分片广告过滤（如果localStorage无记录），开启会导致某些资源卡住 
+    adFilteringEnabled: getBoolConfig('adFilteringEnabled', true), // 默认关闭分片广告过滤，开启会导致某些资源卡住 
     adFilteringStorage: 'adFilteringEnabled', // 存储广告过滤设置的键名 
-    speedDetectionEnabled: getBoolConfig('speedDetectionEnabled', true), // 默认启用画质速度检测（可修改此处的true/false来改变默认值）
+    speedDetectionEnabled: getBoolConfig('speedDetectionEnabled', true), // 默认启用画质速度检测
     speedDetectionStorage: 'speedDetectionEnabled', // 存储画质速度检测设置的键名
     enablePreloading: getBoolConfig('enablePreloading', DEFAULTS.enablePreloading),
     preloadCount: getIntConfig('preloadCount', DEFAULTS.preloadCount, 1, 10),
