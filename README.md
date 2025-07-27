@@ -35,8 +35,8 @@
 >> - 以上请知悉
 
 * **无缝线路切换**: 
-      - 跨线路共享所有播放进度+相同剧集命名不同的切换线路聚合，比如港剧/美剧
-      - 线路显示更新状态，比如`已完结`
+    - 跨线路共享所有播放进度+相同剧集命名不同的切换线路聚合，比如港剧/美剧
+    - 线路显示更新状态，比如`已完结`
 * **记住进度**: 独立于观看历史，记住每集的播放进度
 * **播放预加载**: 启用后会自动预加载
 * **跳过片头/片尾**: 秒。
@@ -146,14 +146,16 @@ services:
       ```
 
 * **`index.html`**
-      ```
+
+    ```
         <!-- 比如Facebook抓取的预览 -->
     <meta property="og:title" content="X" />
     <meta property="og:description" content="TV Aggregation" />
     <meta property="og:image" content="https://yourwebsite.com/images/tv1.png" />
     <meta property="og:url" content="https://yourwebsite.com" />
     <meta property="og:type" content="website" />
-      ```
+     
+    ```
 
 ## 许可证 (License)
 
