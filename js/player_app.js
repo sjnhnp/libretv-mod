@@ -1777,3 +1777,4 @@ window.playPreviousEpisode = playPreviousEpisode;
 window.copyLinks = copyLinks;
 window.toggleEpisodeOrder = toggleEpisodeOrder;
 window.toggleLockScreen = toggleLockScreen;
+window.getCoreTitle = getCoreTitle;
