@@ -870,7 +870,6 @@ async function performSearch(query, selectedAPIs) {
                 quality: '检测中...',
                 detectionMethod: 'pending'
             }));
-            sortByPriority(quickResults);
             // 把占位结果写进缓存，页面可马上渲染
             rebuildVideoCaches(quickResults);
 
