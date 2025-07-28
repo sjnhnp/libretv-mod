@@ -1653,31 +1653,31 @@ function setupPlaySettingsEvents() {
 
             // 关键步骤：重新加载播放器以应用设置
             if (player) {
-                const originalUrlParams = new URLSearchParams(window.location.search);
-                const originalUrl = originalUrlParams.get('url');
+                const originalUrl = new URLSearchParams(window.location.search).get('url');
+                if (!originalUrl) return;
 
-                if (originalUrl) {
-                    const currentTime = player.currentTime || 0;
-                    const processedUrl = await processVideoUrl(originalUrl);
+                const resumeAt = player.currentTime || 0;          // 先记下当前位置
 
-                    // 清理可能存在的旧Blob URL
-                    if (player.currentSrc && player.currentSrc.startsWith('blob:')) {
-                        URL.revokeObjectURL(player.currentSrc);
-                    }
-
-                    player.src = { src: processedUrl, type: 'application/x-mpegurl' };
-
-                    // 恢复播放位置
-                    if (currentTime > 0) {
-                        player.addEventListener('loadedmetadata', function onLoadedMetadata() {
-                            player.currentTime = currentTime;
-                            player.removeEventListener('loadedmetadata', onLoadedMetadata);
-                        }, { once: true });
-                    }
-
-                    player.play().catch(e => console.warn("重新加载播放失败:", e));
-                    showToast('广告过滤设置已立即生效', 'success');
+                // 先挂监听器，再换 src，保证一定能收到 loadedmetadata
+                if (resumeAt > 0) {
+                    const restore = () => {
+                        player.currentTime = resumeAt;
+                        player.removeEventListener('loadedmetadata', restore);
+                    };
+                    player.addEventListener('loadedmetadata', restore);
                 }
+
+                const processedUrl = await processVideoUrl(originalUrl);
+
+                // 清理旧 blob URL（如有）
+                if (player.currentSrc && player.currentSrc.startsWith('blob:')) {
+                    URL.revokeObjectURL(player.currentSrc);
+                }
+
+                player.src = { src: processedUrl, type: 'application/x-mpegurl' };
+                player.play().catch(e => console.warn('重新加载播放失败:', e));
+
+                showToast('广告过滤设置已立即生效', 'success');
             }
         });
 
