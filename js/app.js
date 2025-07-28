@@ -537,11 +537,42 @@ function initializeEventListeners() {
                     window.adFilteringEnabled = enabled;
                 }
                 
-                // 提示用户可能需要刷新
-                if (typeof player !== 'undefined' && player.src) {
-                    setTimeout(() => {
-                        showToast('设置已更新，如需立即生效请切换线路', 'warning');
-                    }, 1000);
+                // 立即重新处理当前视频URL
+                if (typeof player !== 'undefined' && typeof processVideoUrl === 'function') {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const originalUrl = urlParams.get('url');
+                    
+                    if (originalUrl && player.src) {
+                        // 异步重新处理视频URL
+                        processVideoUrl(originalUrl).then(processedUrl => {
+                            // 清理旧的blob URL
+                            if (player.currentSrc && player.currentSrc.startsWith('blob:')) {
+                                URL.revokeObjectURL(player.currentSrc);
+                            }
+                            
+                            // 记录当前播放时间
+                            const currentTime = player.currentTime || 0;
+                            
+                            // 设置新的视频源
+                            player.src = { src: processedUrl, type: 'application/x-mpegurl' };
+                            
+                            // 恢复播放位置
+                            if (currentTime > 0) {
+                                player.addEventListener('loadedmetadata', function seekToTime() {
+                                    player.currentTime = currentTime;
+                                    player.removeEventListener('loadedmetadata', seekToTime);
+                                }, { once: true });
+                            }
+                            
+                            // 继续播放
+                            player.play().catch(e => console.warn("重新播放失败:", e));
+                            
+                            showToast('广告过滤设置已立即生效', 'success');
+                        }).catch(err => {
+                            console.error('重新处理视频URL失败:', err);
+                            showToast('设置已更新，请切换线路以生效', 'warning');
+                        });
+                    }
                 }
             }
         });
