@@ -1681,45 +1681,45 @@ function setupPlaySettingsEvents() {
         adFilterToggle.setAttribute('data-initialized', 'true');
     }
 
-// 设置预加载开关
-const preloadToggle = document.getElementById('preloadToggle');
-if (preloadToggle && !preloadToggle.hasAttribute('data-initialized')) {
-    // 从 localStorage 初始化开关状态
-    const preloadEnabled = localStorage.get('preloadEnabled', 'true') === 'true';
-    preloadToggle.checked = preloadEnabled;
+    // 设置预加载开关
+    const preloadToggle = document.getElementById('preloadToggle');
+    if (preloadToggle && !preloadToggle.hasAttribute('data-initialized')) {
+        // 从 localStorage 初始化开关状态
+        const preloadEnabled = localStorage.get('preloadEnabled', 'true') === 'true';
+        preloadToggle.checked = preloadEnabled;
 
-    // 添加事件监听器以响应变化
-    preloadToggle.addEventListener('change', function () {
-        localStorage.set('preloadEnabled', this.checked);
-        showToast(this.checked ? '预加载已开启' : '预加载已关闭', 'info');
-    });
+        // 添加事件监听器以响应变化
+        preloadToggle.addEventListener('change', function () {
+            localStorage.set('preloadEnabled', this.checked);
+            showToast(this.checked ? '预加载已开启' : '预加载已关闭', 'info');
+        });
 
-    preloadToggle.setAttribute('data-initialized', 'true');
-}
+        preloadToggle.setAttribute('data-initialized', 'true');
+    }
 
-// 设置自定义预加载集数
-const preloadEpisodeCountInput = document.getElementById('preloadEpisodeCount');
-if (preloadEpisodeCountInput && !preloadEpisodeCountInput.hasAttribute('data-initialized')) {
-    // 从 localStorage 初始化输入框的值
-    const preloadEpisodeCount = localStorage.get('preloadEpisodeCount', '3');
-    preloadEpisodeCountInput.value = preloadEpisodeCount;
+    // 设置自定义预加载集数
+    const preloadEpisodeCountInput = document.getElementById('preloadEpisodeCount');
+    if (preloadEpisodeCountInput && !preloadEpisodeCountInput.hasAttribute('data-initialized')) {
+        // 从 localStorage 初始化输入框的值
+        const preloadEpisodeCount = localStorage.get('preloadEpisodeCount', '3');
+        preloadEpisodeCountInput.value = preloadEpisodeCount;
 
-    // 添加事件监听器以响应变化
-    preloadEpisodeCountInput.addEventListener('change', function () {
-        const count = parseInt(this.value, 10);
-        // 验证输入值是否为有效的正数
-        if (count > 0) {
-            localStorage.set('preloadEpisodeCount', count);
-            showToast(`预加载集数已设置为 ${count}`, 'info');
-        } else {
-            // 如果输入无效，则恢复之前的值
-            this.value = localStorage.get('preloadEpisodeCount', '3');
-            showToast('请输入有效的预加载集数（正整数）', 'error');
-        }
-    });
+        // 添加事件监听器以响应变化
+        preloadEpisodeCountInput.addEventListener('change', function () {
+            const count = parseInt(this.value, 10);
+            // 验证输入值是否为有效的正数
+            if (count > 0) {
+                localStorage.set('preloadEpisodeCount', count);
+                showToast(`预加载集数已设置为 ${count}`, 'info');
+            } else {
+                // 如果输入无效，则恢复之前的值
+                this.value = localStorage.get('preloadEpisodeCount', '3');
+                showToast('请输入有效的预加载集数（正整数）', 'error');
+            }
+        });
 
-    preloadEpisodeCountInput.setAttribute('data-initialized', 'true');
-}
+        preloadEpisodeCountInput.setAttribute('data-initialized', 'true');
+    }
 }
 
 function closeAllDropdowns() {
