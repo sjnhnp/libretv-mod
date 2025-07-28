@@ -1640,57 +1640,47 @@ function setupPlaySettingsEvents() {
 
         adFilterToggle.addEventListener('change', async function (event) {
             adFilteringEnabled = event.target.checked;
-
             // 更新localStorage（保持与首页同步）
             localStorage.setItem('adFilteringEnabled', adFilteringEnabled.toString());
-
             // 更新URL中的af参数，以便刷新或分享时保留设置
             const url = new URL(window.location);
             url.searchParams.set('af', adFilteringEnabled ? '1' : '0');
             window.history.replaceState({}, '', url);
-
             showToast(adFilteringEnabled ? '已开启分片广告过滤' : '已关闭分片广告过滤', 'info');
-
             // 关键步骤：重新加载播放器以应用设置
             if (player) {
                 const originalUrl = new URLSearchParams(window.location.search).get('url');
                 if (!originalUrl) return;
-
                 const resumeAt = player.currentTime || 0;   // 记下当前位置
-
-                // ------------ 定义恢复函数（事件 + 轮询都会调用）------------
-                function restorePosition() {
-                    try { player.currentTime = resumeAt; } catch { }
-                    player.removeEventListener('loadedmetadata', restorePosition);
-                    player.removeEventListener('canplay', restorePosition);
-                    clearInterval(seekTimer);
-                }
-
-                // 事件监听（一次即可）
-                if (resumeAt > 0) {
-                    player.addEventListener('loadedmetadata', restorePosition, { once: true });
-                    player.addEventListener('canplay', restorePosition, { once: true });
-                }
+                // 预设置下次定位位置（用于播放器内部状态同步）
+                nextSeekPosition = resumeAt;
 
                 const processedUrl = await processVideoUrl(originalUrl);
-
                 // 清理旧 blob URL（如有）
                 if (player.currentSrc && player.currentSrc.startsWith('blob:')) {
                     URL.revokeObjectURL(player.currentSrc);
                 }
 
-                // ------------ 启动兜底轮询（最多 3 秒）------------
-                let waited = 0;
-                const seekTimer = setInterval(() => {
-                    waited += 200;
-                    if (player.readyState >= 1 || waited >= 3000) {
-                        restorePosition();
+                // 定义恢复函数（优先使用loadedmetadata确保定位准确）
+                function restorePosition() {
+                    if (resumeAt > 0 && player.duration > resumeAt) {
+                        player.currentTime = resumeAt;
                     }
-                }, 200);
+                    player.removeEventListener('loadedmetadata', restorePosition);
+                }
+
+                // 只使用loadedmetadata事件确保在元数据加载完成后定位
+                player.addEventListener('loadedmetadata', restorePosition, { once: true });
 
                 // 真正换源
                 player.src = { src: processedUrl, type: 'application/x-mpegurl' };
-                player.play().catch(e => console.warn('重新加载播放失败:', e));
+
+                // 播放时直接从指定位置开始
+                player.play().then(() => {
+                    if (resumeAt > 0) {
+                        player.currentTime = resumeAt;
+                    }
+                }).catch(e => console.warn('重新加载播放失败:', e));
             }
         });
 
