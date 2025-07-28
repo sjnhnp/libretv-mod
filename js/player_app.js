@@ -1629,7 +1629,57 @@ function setupPlaySettingsEvents() {
 
         speedSelect.setAttribute('data-initialized', 'true');
     }
-    // 记住进度功能已在setupRememberEpisodeProgressToggle中处理
+
+    // 设置分片广告过滤
+    const adFilterToggle = document.getElementById('adFilterToggle');
+    if (adFilterToggle && !adFilterToggle.hasAttribute('data-initialized')) {
+        // 从URL参数初始化开关状态
+        const urlParams = new URLSearchParams(window.location.search);
+        adFilteringEnabled = urlParams.get('af') === '1';
+        adFilterToggle.checked = adFilteringEnabled;
+
+        adFilterToggle.addEventListener('change', async function (event) {
+            adFilteringEnabled = event.target.checked;
+
+            // 更新URL中的af参数，以便刷新或分享时保留设置
+            const url = new URL(window.location);
+            url.searchParams.set('af', adFilteringEnabled ? '1' : '0');
+            window.history.replaceState({}, '', url);
+
+            showToast(adFilteringEnabled ? '已开启分片广告过滤' : '已关闭分片广告过滤', 'info');
+
+            // 关键步骤：重新加载播放器以应用设置
+            if (player && player.currentSrc) {
+                const originalUrlParams = new URLSearchParams(window.location.search);
+                const originalUrl = originalUrlParams.get('url');
+
+                if (originalUrl) {
+                    const currentTime = player.currentTime || 0;
+                    const processedUrl = await processVideoUrl(originalUrl);
+
+                    // 清理可能存在的旧Blob URL
+                    if (player.currentSrc && player.currentSrc.startsWith('blob:')) {
+                        URL.revokeObjectURL(player.currentSrc);
+                    }
+
+                    player.src = { src: processedUrl, type: 'application/x-mpegurl' };
+
+                    // 恢复播放位置
+                    if (currentTime > 0) {
+                        player.addEventListener('loadedmetadata', function onLoadedMetadata() {
+                            player.currentTime = currentTime;
+                            player.removeEventListener('loadedmetadata', onLoadedMetadata);
+                        }, { once: true });
+                    }
+
+                    player.play().catch(e => console.warn("重新加载播放失败:", e));
+                    showToast('广告过滤设置已立即生效', 'success');
+                }
+            }
+        });
+
+        adFilterToggle.setAttribute('data-initialized', 'true');
+    }
 }
 
 function closeAllDropdowns() {
