@@ -524,69 +524,8 @@ function initializeEventListeners() {
             const enabled = e.target.checked;
             localStorage.setItem(PLAYER_CONFIG.adFilteringStorage, enabled.toString());
             showToast(enabled ? '已启用广告过滤' : '已禁用广告过滤', 'info');
-            
-            // 如果在播放器页面，更新URL参数和全局变量
-            if (window.location.pathname.includes('player.html')) {
-                // 更新URL参数
-                const url = new URL(window.location);
-                url.searchParams.set('af', enabled ? '1' : '0');
-                window.history.replaceState({}, '', url);
-                
-                // 更新全局变量
-                if (typeof adFilteringEnabled !== 'undefined') {
-                    window.adFilteringEnabled = enabled;
-                }
-                
-                // 立即重新处理当前视频URL
-                if (typeof player !== 'undefined' && typeof processVideoUrl === 'function') {
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const originalUrl = urlParams.get('url');
-                    
-                    if (originalUrl && player.src) {
-                        // 异步重新处理视频URL
-                        processVideoUrl(originalUrl).then(processedUrl => {
-                            // 清理旧的blob URL
-                            if (player.currentSrc && player.currentSrc.startsWith('blob:')) {
-                                URL.revokeObjectURL(player.currentSrc);
-                            }
-                            
-                            // 记录当前播放时间
-                            const currentTime = player.currentTime || 0;
-                            
-                            // 设置新的视频源
-                            player.src = { src: processedUrl, type: 'application/x-mpegurl' };
-                            
-                            // 恢复播放位置
-                            if (currentTime > 0) {
-                                player.addEventListener('loadedmetadata', function seekToTime() {
-                                    player.currentTime = currentTime;
-                                    player.removeEventListener('loadedmetadata', seekToTime);
-                                }, { once: true });
-                            }
-                            
-                            // 继续播放
-                            player.play().catch(e => console.warn("重新播放失败:", e));
-                            
-                            showToast('广告过滤设置已立即生效', 'success');
-                        }).catch(err => {
-                            console.error('重新处理视频URL失败:', err);
-                            showToast('设置已更新，请切换线路以生效', 'warning');
-                        });
-                    }
-                }
-            }
         });
-        
-        // 初始化开关状态
-        if (window.location.pathname.includes('player.html')) {
-            // 在播放器页面，从URL参数读取状态
-            const urlParams = new URLSearchParams(window.location.search);
-            const currentAfValue = urlParams.get('af') === '1';
-            adFilteringToggle.checked = currentAfValue;
-        } else {
-            // 在首页，从localStorage读取状态
-            adFilteringToggle.checked = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, PLAYER_CONFIG.adFilteringEnabled);
-        }
+        adFilteringToggle.checked = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, PLAYER_CONFIG.adFilteringEnabled);
     }
     const yellowFilterToggle = DOMCache.get('yellowFilterToggle');
     if (yellowFilterToggle) {

@@ -1641,6 +1641,9 @@ function setupPlaySettingsEvents() {
         adFilterToggle.addEventListener('change', async function (event) {
             adFilteringEnabled = event.target.checked;
 
+            // 更新localStorage（保持与首页同步）
+            localStorage.setItem('adFilteringEnabled', adFilteringEnabled.toString());
+
             // 更新URL中的af参数，以便刷新或分享时保留设置
             const url = new URL(window.location);
             url.searchParams.set('af', adFilteringEnabled ? '1' : '0');
