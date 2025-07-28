@@ -524,8 +524,38 @@ function initializeEventListeners() {
             const enabled = e.target.checked;
             localStorage.setItem(PLAYER_CONFIG.adFilteringStorage, enabled.toString());
             showToast(enabled ? '已启用广告过滤' : '已禁用广告过滤', 'info');
+            
+            // 如果在播放器页面，更新URL参数和全局变量
+            if (window.location.pathname.includes('player.html')) {
+                // 更新URL参数
+                const url = new URL(window.location);
+                url.searchParams.set('af', enabled ? '1' : '0');
+                window.history.replaceState({}, '', url);
+                
+                // 更新全局变量
+                if (typeof adFilteringEnabled !== 'undefined') {
+                    window.adFilteringEnabled = enabled;
+                }
+                
+                // 提示用户可能需要刷新
+                if (typeof player !== 'undefined' && player.src) {
+                    setTimeout(() => {
+                        showToast('设置已更新，如需立即生效请切换线路', 'warning');
+                    }, 1000);
+                }
+            }
         });
-        adFilteringToggle.checked = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, PLAYER_CONFIG.adFilteringEnabled);
+        
+        // 初始化开关状态
+        if (window.location.pathname.includes('player.html')) {
+            // 在播放器页面，从URL参数读取状态
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentAfValue = urlParams.get('af') === '1';
+            adFilteringToggle.checked = currentAfValue;
+        } else {
+            // 在首页，从localStorage读取状态
+            adFilteringToggle.checked = getBoolConfig(PLAYER_CONFIG.adFilteringStorage, PLAYER_CONFIG.adFilteringEnabled);
+        }
     }
     const yellowFilterToggle = DOMCache.get('yellowFilterToggle');
     if (yellowFilterToggle) {
