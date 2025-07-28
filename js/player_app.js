@@ -1652,7 +1652,7 @@ function setupPlaySettingsEvents() {
             showToast(adFilteringEnabled ? '已开启分片广告过滤' : '已关闭分片广告过滤', 'info');
 
             // 关键步骤：重新加载播放器以应用设置
-            if (player && player.currentSrc) {
+            if (player) {
                 const originalUrlParams = new URLSearchParams(window.location.search);
                 const originalUrl = originalUrlParams.get('url');
 
