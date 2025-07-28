@@ -96,7 +96,7 @@ const CUSTOM_PLAYER_URL = 'player.html';
 const DEFAULTS = {
     enablePreloading: true, // 预加载 
     preloadCount: 2,       // 预加载集数 
-    debugMode: false      // 调试模式 
+    debugMode: true      // 调试模式 
 };
 
 // 播放器配置
