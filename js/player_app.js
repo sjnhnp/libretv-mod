@@ -493,7 +493,8 @@ async function processVideoUrl(url) {
 async function initPlayer(videoUrl, title) {
     // 直接获取在 HTML 中声明好的播放器元素
     player = document.getElementById('player');
-
+    window.player = player;
+    
     if (!player) {
         showError("播放器元素 (#player) 未在HTML中找到");
         return;
