@@ -1656,15 +1656,20 @@ function setupPlaySettingsEvents() {
                 const originalUrl = new URLSearchParams(window.location.search).get('url');
                 if (!originalUrl) return;
 
-                const resumeAt = player.currentTime || 0;          // 先记下当前位置
+                const resumeAt = player.currentTime || 0;   // 记下当前位置
 
-                // 先挂监听器，再换 src，保证一定能收到 loadedmetadata
+                // ------------ 定义恢复函数（事件 + 轮询都会调用）------------
+                function restorePosition() {
+                    try { player.currentTime = resumeAt; } catch { }
+                    player.removeEventListener('loadedmetadata', restorePosition);
+                    player.removeEventListener('canplay', restorePosition);
+                    clearInterval(seekTimer);
+                }
+
+                // 事件监听（一次即可）
                 if (resumeAt > 0) {
-                    const restore = () => {
-                        player.currentTime = resumeAt;
-                        player.removeEventListener('loadedmetadata', restore);
-                    };
-                    player.addEventListener('loadedmetadata', restore);
+                    player.addEventListener('loadedmetadata', restorePosition, { once: true });
+                    player.addEventListener('canplay', restorePosition, { once: true });
                 }
 
                 const processedUrl = await processVideoUrl(originalUrl);
@@ -1674,10 +1679,18 @@ function setupPlaySettingsEvents() {
                     URL.revokeObjectURL(player.currentSrc);
                 }
 
+                // ------------ 启动兜底轮询（最多 3 秒）------------
+                let waited = 0;
+                const seekTimer = setInterval(() => {
+                    waited += 200;
+                    if (player.readyState >= 1 || waited >= 3000) {
+                        restorePosition();
+                    }
+                }, 200);
+
+                // 真正换源
                 player.src = { src: processedUrl, type: 'application/x-mpegurl' };
                 player.play().catch(e => console.warn('重新加载播放失败:', e));
-
-                showToast('广告过滤设置已立即生效', 'success');
             }
         });
 
