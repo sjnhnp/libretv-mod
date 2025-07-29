@@ -1,5 +1,3 @@
-// File: js/player_preload.js (兼容 Vidstack Player 的新版本 v2)
-
 (function () {
     // --- 模块级变量 ---
     let isPreloadingActive = false;
