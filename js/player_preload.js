@@ -3,8 +3,8 @@
     let isPreloadingActive = false;
     let isPreloadingInProgress = false; // [FIX] 添加状态锁，防止重复执行
     let timeUpdateListener = null;
-    let nextButtonHoverListener = null;
-    let nextButtonTouchListener = null;
+    // let nextButtonHoverListener = null;
+    // let nextButtonTouchListener = null;
     let episodeGridClickListener = null;
 
     // --- 辅助函数 ---
@@ -145,14 +145,15 @@
         };
         window.player.addEventListener('time-update', timeUpdateListener);
 
+        /* 悬停和触摸触发预加载
         const nextBtn = document.getElementById('next-episode');
-        if (nextBtn) {
-            nextButtonHoverListener = () => preloadNextEpisodeParts();
+         if (nextBtn) {
+        nextButtonHoverListener = () => preloadNextEpisodeParts();
             nextButtonTouchListener = () => preloadNextEpisodeParts();
             nextBtn.addEventListener('mouseenter', nextButtonHoverListener, { passive: true });
             nextBtn.addEventListener('touchstart', nextButtonTouchListener, { passive: true });
-        }
-
+          }
+          */
         const episodesListContainer = document.getElementById('episode-grid');
         if (episodesListContainer) {
             episodeGridClickListener = (e) => {
@@ -171,6 +172,7 @@
             window.player.removeEventListener('time-update', timeUpdateListener);
             timeUpdateListener = null;
         }
+        /*
         const nextBtn = document.getElementById('next-episode');
         if (nextBtn) {
             if (nextButtonHoverListener) nextBtn.removeEventListener('mouseenter', nextButtonHoverListener);
@@ -178,6 +180,7 @@
             nextButtonHoverListener = null;
             nextButtonTouchListener = null;
         }
+        */
         const episodesListContainer = document.getElementById('episode-grid');
         if (episodesListContainer && episodeGridClickListener) {
             episodesListContainer.removeEventListener('click', episodeGridClickListener);
