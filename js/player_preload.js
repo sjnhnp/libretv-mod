@@ -190,7 +190,11 @@
     }
 
     function startPreloading() {
-        if (isPreloadingActive) return;
+        if (isPreloadingActive) {
+            // 如果已激活，重新触发预加载（使用新设置）
+            preloadNextEpisodeParts();
+            return;
+        }
         isPreloadingActive = true;
 
         let tries = 0;
@@ -199,7 +203,7 @@
                 clearInterval(initialCheck);
                 if (PLAYER_CONFIG.debugMode) console.log('[Preload] System ready, starting preloading features.');
                 registerPreloadEvents();
-                preloadNextEpisodeParts();
+                preloadNextEpisodeParts(); // 立即触发一次预加载
             } else if (++tries > 50) {
                 clearInterval(initialCheck);
                 if (PLAYER_CONFIG.debugMode) console.warn('[Preload] Failed to start: player or episode data not available.');
