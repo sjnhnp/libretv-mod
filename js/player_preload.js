@@ -29,8 +29,7 @@
 
     // --- 核心预加载逻辑 ---
 
-    async function preloadNextEpisodeParts() {
-        // [FIX] 核心修复：如果已有预加载任务在进行，则直接退出
+    async function preloadNextEpisodeParts(customStartIndex = null) {
         if (isPreloadingInProgress) {
             if (PLAYER_CONFIG.debugMode) console.log('[Preload] Aborted: another preload is already in progress.');
             return;
@@ -46,22 +45,24 @@
             return;
         }
 
-        if (!window.currentEpisodes || !Array.isArray(window.currentEpisodes) || typeof window.currentEpisodeIndex !== 'number') {
-            if (PLAYER_CONFIG.debugMode) console.log('[Preload] Skipping, episode data or current index is missing.');
+        if (!window.currentEpisodes || !Array.isArray(window.currentEpisodes)) {
+            if (PLAYER_CONFIG.debugMode) console.log('[Preload] Skipping, episode data is missing.');
             return;
         }
 
-        // [FIX] 上锁，并使用 try...finally 确保任务结束后一定解锁
+        // 使用自定义起始索引或当前索引
+        const startIndex = customStartIndex !== null ? customStartIndex : window.currentEpisodeIndex;
+
         isPreloadingInProgress = true;
         if (PLAYER_CONFIG.debugMode) console.log('[Preload] Lock acquired, starting preload cycle.');
 
         try {
             const preloadCount = getPreloadCount();
-            const currentIndex = window.currentEpisodeIndex;
+            const currentIndex = startIndex;
             const totalEpisodes = window.currentEpisodes.length;
 
             if (PLAYER_CONFIG.debugMode) {
-                console.log(`[Preload] Current index: ${currentIndex}, Total: ${totalEpisodes}, Count: ${preloadCount}`);
+                console.log(`[Preload] Start index: ${startIndex}, Current index: ${currentIndex}, Total: ${totalEpisodes}, Count: ${preloadCount}`);
             }
 
             for (let offset = 1; offset <= preloadCount; offset++) {
@@ -79,7 +80,6 @@
                     continue;
                 }
 
-                // [FIX] 优化日志，使其更清晰
                 if (PLAYER_CONFIG.debugMode) {
                     console.log(`[Preload] Attempting to preload episode ${episodeIdxToPreload + 1} (index: ${episodeIdxToPreload}): ${nextEpisodeUrl}`);
                 }
@@ -125,7 +125,7 @@
                 }
             }
         } finally {
-            // [FIX] 解锁，允许下一次预加载
+            // 解锁，允许下一次预加载
             isPreloadingInProgress = false;
             if (PLAYER_CONFIG.debugMode) console.log('[Preload] Lock released, preload cycle finished.');
         }

@@ -494,7 +494,7 @@ async function initPlayer(videoUrl, title) {
     // 直接获取在 HTML 中声明好的播放器元素
     player = document.getElementById('player');
     window.player = player;
-    
+
     if (!player) {
         showError("播放器元素 (#player) 未在HTML中找到");
         return;
@@ -601,6 +601,9 @@ async function playEpisode(index) {
     }
     universalId = generateUniversalId(currentVideoTitle, currentVideoYear, index);
 
+    // 保存原始索引（用于预加载计算）
+    const originalIndex = window.currentEpisodeIndex;
+
     if (player && player.currentTime > 5) {
         saveVideoSpecificProgress();
     }
@@ -633,10 +636,11 @@ async function playEpisode(index) {
         nextSeekPosition = 0;
     }
 
-    doEpisodeSwitch(index, currentEpisodes[index]);
+    // 传递原始索引到 doEpisodeSwitch
+    doEpisodeSwitch(index, currentEpisodes[index], originalIndex);
 }
 
-async function doEpisodeSwitch(index, episodeString) {
+async function doEpisodeSwitch(index, episodeString, originalIndex) {
     let playUrl = episodeString;
     if (episodeString && episodeString.includes('$')) {
         playUrl = episodeString.split('$')[1];
@@ -664,8 +668,21 @@ async function doEpisodeSwitch(index, episodeString) {
         const processedUrl = await processVideoUrl(playUrl);
         player.src = { src: processedUrl, type: 'application/x-mpegurl' };
         player.play().catch(e => console.warn("Autoplay after episode switch was prevented.", e));
+
+        // 基于原始索引触发预加载
+        if (typeof preloadNextEpisodeParts === 'function' && originalIndex !== undefined) {
+            setTimeout(() => {
+                // 使用原始索引计算预加载目标
+                const preloadIndex = originalIndex + 1;
+                if (preloadIndex < currentEpisodes.length) {
+                    console.log(`[Preload] Triggering preload for episode ${preloadIndex + 1} based on original index ${originalIndex}`);
+                    preloadNextEpisodeParts(preloadIndex);
+                }
+            }, 100);
+        }
     }
 }
+
 
 (async function initializePage() {
     // 从localStorage加载最新的custom API配置
