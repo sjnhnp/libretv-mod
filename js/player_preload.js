@@ -234,26 +234,28 @@
     }
 
     function enhancePlayEpisodeForPreloading() {
-        const originalPlayEpisode = window.playEpisode;
-        if (originalPlayEpisode && !originalPlayEpisode._preloadEnhanced) {
-            window.playEpisode = function (...args) {
-                originalPlayEpisode.apply(this, args);
-                setTimeout(() => preloadNextEpisodeParts(), 250);
-            };
-            window.playEpisode._preloadEnhanced = true;
-            if (PLAYER_CONFIG.debugMode) console.log('[Preload] playEpisode function enhanced.');
-        }
+        // const originalPlayEpisode = window.playEpisode;
+        // if (originalPlayEpisode && !originalPlayEpisode._preloadEnhanced) {
+        //     window.playEpisode = function (...args) {
+        //         originalPlayEpisode.apply(this, args);
+        //         setTimeout(() => preloadNextEpisodeParts(), 250);
+        //     };
+        //     window.playEpisode._preloadEnhanced = true;
+        //     if (PLAYER_CONFIG.debugMode) console.log('[Preload] playEpisode function enhanced.');
+        // }
     }
 
     document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => {
-            // 直接使用 PLAYER_CONFIG 中的值
-            if (PLAYER_CONFIG.enablePreloading) {
+            // 修正：直接使用 PLAYER_CONFIG 中的值
+            const isEnabled = PLAYER_CONFIG.enablePreloading;
+            if (isEnabled) {
                 startPreloading();
             } else {
+
                 if (PLAYER_CONFIG.debugMode) console.log('[Preload] Preloading is disabled by user setting on page load.');
             }
-            enhancePlayEpisodeForPreloading();
+            // enhancePlayEpisodeForPreloading(); // <--- 将调用也注释掉
         }, 500);
     });
 
