@@ -1,6 +1,6 @@
 (function () {
     // --- 模块级变量 ---
-    let isPreloadingActive = false;
+    // let isPreloadingActive = false;
     let isPreloadingInProgress = false; // [FIX] 添加状态锁，防止重复执行
     let timeUpdateListener = null;
     // let nextButtonHoverListener = null;
@@ -43,7 +43,7 @@
             return;
         }
 
-        if (!isPreloadingActive) {
+        if (!PLAYER_CONFIG.enablePreloading) {
             if (PLAYER_CONFIG.debugMode) console.log('[Preload] Preloading is globally disabled.');
             return;
         }
@@ -208,30 +208,27 @@
     }
 
     function startPreloading() {
-        if (isPreloadingActive) {
-            // 如果已激活，重新触发预加载（使用新设置）
-            preloadNextEpisodeParts();
-            return;
+        // 确保播放器等环境已就绪
+        if (window.player && window.currentEpisodes && typeof window.currentEpisodeIndex === 'number') {
+            if (PLAYER_CONFIG.debugMode) console.log('[Preload] System ready, starting preloading features.');
+            registerPreloadEvents();
+            preloadNextEpisodeParts(); // 立即触发一次预加载
+        } else {
+            // 如果环境未就绪，可以保留轮询检查的逻辑
+            let tries = 0;
+            const initialCheck = setInterval(() => {
+                if (window.player && window.currentEpisodes && typeof window.currentEpisodeIndex === 'number') {
+                    clearInterval(initialCheck);
+                    registerPreloadEvents();
+                    preloadNextEpisodeParts();
+                } else if (++tries > 50) {
+                    clearInterval(initialCheck);
+                }
+            }, 200);
         }
-        isPreloadingActive = true;
-
-        let tries = 0;
-        const initialCheck = setInterval(() => {
-            if (window.player && window.currentEpisodes && typeof window.currentEpisodeIndex === 'number') {
-                clearInterval(initialCheck);
-                if (PLAYER_CONFIG.debugMode) console.log('[Preload] System ready, starting preloading features.');
-                registerPreloadEvents();
-                preloadNextEpisodeParts(); // 立即触发一次预加载
-            } else if (++tries > 50) {
-                clearInterval(initialCheck);
-                if (PLAYER_CONFIG.debugMode) console.warn('[Preload] Failed to start: player or episode data not available.');
-            }
-        }, 200);
     }
 
     function stopPreloading() {
-        if (!isPreloadingActive) return;
-        isPreloadingActive = false;
         unregisterPreloadEvents();
         if (PLAYER_CONFIG.debugMode) console.log('[Preload] Preloading stopped.');
     }
@@ -250,9 +247,8 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => {
-            // 修正：直接使用 PLAYER_CONFIG 中的值
-            const isEnabled = PLAYER_CONFIG.enablePreloading;
-            if (isEnabled) {
+            // 直接使用 PLAYER_CONFIG 中的值
+            if (PLAYER_CONFIG.enablePreloading) {
                 startPreloading();
             } else {
                 if (PLAYER_CONFIG.debugMode) console.log('[Preload] Preloading is disabled by user setting on page load.');
