@@ -94,8 +94,8 @@ const CUSTOM_PLAYER_URL = 'player.html';
 
 // 预加载集数开关
 const DEFAULTS = {
-    enablePreloading: true, // 预加载 
-    preloadCount: 2,       // 预加载集数 
+    enablePreloading: false, // 预加载 
+    preloadCount: 1,       // 预加载集数 
     debugMode: true      // 调试模式 
 };
 
