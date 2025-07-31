@@ -972,6 +972,22 @@ function renderSearchResults(allResults, doubanSearchedTitle = null) {
     });
     gridContainer.appendChild(fragment);
     searchResultsContainer.appendChild(gridContainer);
+    // 在渲染结果后同步预加载状态
+    if (typeof window.startPreloading !== 'undefined' && typeof window.stopPreloading !== 'undefined') {
+        const preloadEnabled = localStorage.getItem('preloadEnabled') !== 'false';
+        if (preloadEnabled) {
+            // 确保预加载在搜索结果页面正确初始化
+            setTimeout(() => {
+                if (typeof window.startPreloading === 'function') {
+                    window.startPreloading();
+                }
+            }, 100);
+        } else {
+            if (typeof window.stopPreloading === 'function') {
+                window.stopPreloading();
+            }
+        }
+    }
     const searchArea = getElement('searchArea');
     if (searchArea) {
         searchArea.classList.remove('flex-1');

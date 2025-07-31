@@ -30,6 +30,14 @@
     // --- 核心预加载逻辑 ---
 
     async function preloadNextEpisodeParts(customStartIndex = null) {
+        let preloadCancelled = false;
+
+        // 添加取消函数
+        window.cancelCurrentPreload = () => {
+            preloadCancelled = true;
+            if (PLAYER_CONFIG.debugMode) console.log('[Preload] Current preload cancelled');
+        };
+
         if (isPreloadingInProgress) {
             if (PLAYER_CONFIG.debugMode) console.log('[Preload] Aborted: another preload is already in progress.');
             return;
@@ -66,6 +74,12 @@
             }
 
             for (let offset = 1; offset <= preloadCount; offset++) {
+                // 在每次循环开始时检查取消状态
+                if (preloadCancelled) {
+                    if (PLAYER_CONFIG.debugMode) console.log('[Preload] Preload was cancelled, exiting');
+                    return;
+                }
+
                 const episodeIdxToPreload = currentIndex + offset;
                 if (episodeIdxToPreload >= totalEpisodes) {
                     if (PLAYER_CONFIG.debugMode) console.log(`[Preload] Reached end of playlist.`);
@@ -122,12 +136,16 @@
                     }
                 } catch (e) {
                     if (PLAYER_CONFIG.debugMode) console.error(`[Preload] Error preloading for ${nextEpisodeUrl}:`, e);
+                    // 继续下一个，不要中断整个预加载
+                    continue;
                 }
             }
+        } catch (e) {
+            if (PLAYER_CONFIG.debugMode) console.error(`[Preload] Fatal error in preload cycle:`, e);
         } finally {
-            // 解锁，允许下一次预加载
             isPreloadingInProgress = false;
-            if (PLAYER_CONFIG.debugMode) console.log('[Preload] Lock released, preload cycle finished.');
+            preloadCancelled = false; // 确保状态重置
+            if (PLAYER_CONFIG.debugMode) console.log('[Preload] Lock released, preload cycle finished');
         }
     }
 

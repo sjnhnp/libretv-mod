@@ -667,6 +667,22 @@ async function doEpisodeSwitch(index, episodeString, originalIndex) {
     if (player) {
         const processedUrl = await processVideoUrl(playUrl);
         player.src = { src: processedUrl, type: 'application/x-mpegurl' };
+        // 在调用预加载前添加状态检查
+        if (typeof preloadNextEpisodeParts === 'function') {
+            // 取消之前的预加载
+            if (typeof window.cancelCurrentPreload === 'function') {
+                window.cancelCurrentPreload();
+            }
+            // 延迟触发预加载，确保状态同步
+            setTimeout(() => {
+                const preloadEnabled = localStorage.getItem('preloadEnabled') !== 'false';
+                if (preloadEnabled && typeof preloadNextEpisodeParts === 'function') {
+                    preloadNextEpisodeParts(originalIndex).catch(e => {
+                        console.error('Preload error:', e);
+                    });
+                }
+            }, 500);
+        }
         player.play().catch(e => console.warn("Autoplay after episode switch was prevented.", e));
 
         // 基于原始索引触发预加载
@@ -1501,6 +1517,21 @@ async function switchLine(newSourceCode, newVodId) {
         currentEpisodes = newEps;
         window.currentEpisodes = newEps;
         localStorage.setItem('currentEpisodes', JSON.stringify(newEps));
+        // 在更新currentEpisodes后添加预加载重置
+        currentEpisodes = newEps;
+        window.currentEpisodes = newEps;
+        localStorage.setItem('currentEpisodes', JSON.stringify(newEps));
+        // 重置预加载状态
+        if (typeof window.cancelCurrentPreload === 'function') {
+            window.cancelCurrentPreload();
+        }
+        // 重新初始化预加载（如果启用）
+        const preloadEnabled = localStorage.getItem('preloadEnabled') !== 'false';
+        if (preloadEnabled && typeof startPreloading === 'function') {
+            setTimeout(() => {
+                startPreloading();
+            }, 300);
+        }
 
         currentVideoTitle = targetSourceItem.vod_name;
         currentVideoYear = targetSourceItem.vod_year;
@@ -1715,11 +1746,21 @@ function setupPlaySettingsEvents() {
         preloadToggle.addEventListener('change', function () {
             localStorage.setItem('preloadEnabled', this.checked.toString());
             showToast(this.checked ? '预加载已开启' : '预加载已关闭', 'info');
-            // 触发预加载逻辑（新增：开关变化时立即生效）
+
+            // 取消当前预加载
+            if (typeof window.cancelCurrentPreload === 'function') {
+                window.cancelCurrentPreload();
+            }
+
+            // 根据新状态启动/停止预加载
             if (this.checked) {
-                startPreloading();
+                if (typeof startPreloading === 'function') {
+                    startPreloading();
+                }
             } else {
-                stopPreloading();
+                if (typeof stopPreloading === 'function') {
+                    stopPreloading();
+                }
             }
         });
         preloadToggle.setAttribute('data-initialized', 'true');
@@ -1735,16 +1776,21 @@ function setupPlaySettingsEvents() {
         // 添加事件监听器以响应变化（使用正确的setItem方法）
         preloadEpisodeCountInput.addEventListener('change', function () {
             const count = parseInt(this.value, 10);
-            // 验证输入值是否为有效的正数（限制1-10集，与首页逻辑一致）
             if (count >= 1 && count <= 10) {
                 localStorage.setItem('preloadEpisodeCount', count.toString());
                 showToast(`预加载集数已设置为 ${count}`, 'info');
-                // 触发预加载逻辑（新增：集数变化时立即生效）
-                if (localStorage.getItem('preloadEnabled') !== 'false') {
-                    startPreloading();
+
+                // 重新启动预加载（如果启用）
+                const preloadEnabled = localStorage.getItem('preloadEnabled') !== 'false';
+                if (preloadEnabled && typeof startPreloading === 'function') {
+                    // 取消当前预加载
+                    if (typeof window.cancelCurrentPreload === 'function') {
+                        window.cancelCurrentPreload();
+                    }
+                    // 重新启动
+                    setTimeout(() => startPreloading(), 300);
                 }
             } else {
-                // 如果输入无效，则恢复之前的值
                 this.value = localStorage.getItem('preloadEpisodeCount') || '2';
                 showToast('请输入1-10之间的有效数字', 'error');
             }
