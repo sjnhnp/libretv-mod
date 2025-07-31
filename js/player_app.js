@@ -677,8 +677,8 @@ async function doEpisodeSwitch(index, episodeString, originalIndex) {
             setTimeout(() => {
                 const preloadEnabled = localStorage.getItem('preloadEnabled') !== 'false';
                 if (preloadEnabled && typeof preloadNextEpisodeParts === 'function') {
-                    preloadNextEpisodeParts(originalIndex).catch(e => {
-                        console.error('Preload error:', e);
+                    preloadNextEpisodeParts(index).catch(e => { 
+                    console.error('Preload error:', e);
                     });
                 }
             }, 500);
