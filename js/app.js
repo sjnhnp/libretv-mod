@@ -547,35 +547,33 @@ function initializeEventListeners() {
     }
     const preloadingToggle = DOMCache.get('preloadingToggle');
     if (preloadingToggle) {
+        // 直接使用 PLAYER_CONFIG 中的值
+        preloadingToggle.checked = PLAYER_CONFIG.enablePreloading;
+
         preloadingToggle.addEventListener('change', (e) => {
             const enabled = e.target.checked;
             localStorage.setItem('preloadingEnabled', enabled.toString());
+            // 更新 PLAYER_CONFIG 中的值
             PLAYER_CONFIG.enablePreloading = enabled;
             showToast(enabled ? '已启用预加载' : '已禁用预加载', 'info');
-            const preloadCountInput = DOMCache.get('preloadCountInput');
-            if (preloadCountInput) preloadCountInput.disabled = !enabled;
         });
-        const preloadingEnabled = getBoolConfig('preloadingEnabled', true);
-        preloadingToggle.checked = preloadingEnabled;
-        PLAYER_CONFIG.enablePreloading = preloadingEnabled;
-        const preloadCountInput = DOMCache.get('preloadCountInput');
-        if (preloadCountInput) preloadCountInput.disabled = !preloadingEnabled;
     }
+
     const preloadCountInput = DOMCache.get('preloadCountInput');
     if (preloadCountInput) {
+        // 直接使用 PLAYER_CONFIG 中的值
+        preloadCountInput.value = PLAYER_CONFIG.preloadCount;
+
         preloadCountInput.addEventListener('change', (e) => {
             let count = parseInt(e.target.value);
             if (isNaN(count) || count < 1) count = 1;
             else if (count > 10) count = 10;
             e.target.value = count;
             localStorage.setItem('preloadCount', count.toString());
+            // 更新 PLAYER_CONFIG 中的值
             PLAYER_CONFIG.preloadCount = count;
             showToast(`预加载数量已设置为 ${count}`, 'info');
         });
-        const savedCount = localStorage.getItem('preloadCount');
-        const preloadCount = savedCount ? parseInt(savedCount) : 2;
-        preloadCountInput.value = preloadCount;
-        PLAYER_CONFIG.preloadCount = preloadCount;
     }
 }
 

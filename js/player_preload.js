@@ -10,8 +10,8 @@
     // --- 辅助函数 ---
 
     function getPreloadCount() {
-        const count = localStorage.getItem('preloadCount');
-        return count ? parseInt(count, 10) : 2;
+        // 直接使用 PLAYER_CONFIG 中的值
+        return PLAYER_CONFIG.preloadCount;
     }
 
     function supportsCacheStorage() {
@@ -250,7 +250,8 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => {
-            const isEnabled = localStorage.getItem('preloadingEnabled') !== 'false';
+            // 修正：直接使用 PLAYER_CONFIG 中的值
+            const isEnabled = PLAYER_CONFIG.enablePreloading;
             if (isEnabled) {
                 startPreloading();
             } else {
