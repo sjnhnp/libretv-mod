@@ -1506,6 +1506,9 @@ async function switchLine(newSourceCode, newVodId) {
         currentEpisodes = newEps;
         window.currentEpisodes = newEps;
         localStorage.setItem('currentEpisodes', JSON.stringify(newEps));
+        if (window.preloadedEpisodeUrls) window.preloadedEpisodeUrls.clear();
+        if (window.inFlightEpisodeUrls) window.inFlightEpisodeUrls.clear();
+
         // 清空本页已缓存的预加载地址
         if (window.preloadedEpisodeUrls) {
             window.preloadedEpisodeUrls.clear();

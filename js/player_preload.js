@@ -2,6 +2,7 @@
     // --- 模块级变量 ---
     // let isPreloadingActive = false;
     const preloadedEpisodeUrls = new Set();
+    const inFlightEpisodeUrls = new Set();
     let isPreloadingInProgress = false;
     let timeUpdateListener = null;
     // let nextButtonHoverListener = null;
@@ -88,13 +89,15 @@
                 if (!nextEpisodeUrl || !nextEpisodeUrl.startsWith('http')) continue; // 无效地址
 
                 // ③ 如果已经预加载过 → 直接跳过
-                if (preloadedEpisodeUrls.has(nextEpisodeUrl)) {
+                if (preloadedEpisodeUrls.has(nextEpisodeUrl) ||
+                    inFlightEpisodeUrls.has(nextEpisodeUrl)) {
                     if (PLAYER_CONFIG.debugMode)
                         console.log(`[Preload] Skip cached ep ${episodeIdxToPreload + 1}`);
-                    continue;    // 进入下一轮 offset++
+                    continue;    // 进入下一轮 offset
                 }
+                inFlightEpisodeUrls.add(nextEpisodeUrl);   // 标记为“正在抓取”
 
-                /* ===== 以下保持原有“拉 m3u8 → 抓 3 个 ts” 的逻辑 ===== */
+                /* ===== 拉 m3u8 → 抓 3 个 ts” 的逻辑 ===== */
                 try {
                     const m3u8Response = await fetch(nextEpisodeUrl, { method: "GET", mode: 'cors' });
                     if (!m3u8Response.ok) continue;
@@ -135,9 +138,9 @@
                         }
                     }
 
-                    /* ☆ 只有真正缓存到 ≥1 个 ts，才认为这一集预加载完成 */
-                    if (tsCached > 0) {
-                        preloadedEpisodeUrls.add(nextEpisodeUrl);
+                    // 只有真正缓存到 ≥1 个 ts，才认为这一集预加载完成
+                    if (tsCached > 0 && !preloadedEpisodeUrls.has(nextEpisodeUrl)) {
+                        preloadedEpisodeUrls.add(nextEpisodeUrl);   // 真正完成          
                         loaded++;
                         if (PLAYER_CONFIG.debugMode)
                             console.log(`[Preload] ✔ ep ${episodeIdxToPreload + 1} cached (${tsCached} ts)`);
@@ -147,6 +150,8 @@
                     }
                 } catch (e) {
                     if (PLAYER_CONFIG.debugMode) console.error('[Preload] error:', e);
+                } finally {
+                    inFlightEpisodeUrls.delete(nextEpisodeUrl);
                 }
             }
         } catch (e) {
