@@ -684,18 +684,6 @@ async function doEpisodeSwitch(index, episodeString, originalIndex) {
             }, 500);
         }
         player.play().catch(e => console.warn("Autoplay after episode switch was prevented.", e));
-
-        // 基于原始索引触发预加载
-        if (typeof preloadNextEpisodeParts === 'function' && originalIndex !== undefined) {
-            setTimeout(() => {
-                // 使用原始索引计算预加载目标
-                const preloadIndex = originalIndex + 1;
-                if (preloadIndex < currentEpisodes.length) {
-                    console.log(`[Preload] Triggering preload for episode ${preloadIndex + 1} based on original index ${originalIndex}`);
-                    preloadNextEpisodeParts(preloadIndex);
-                }
-            }, 100);
-        }
     }
 }
 
