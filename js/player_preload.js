@@ -35,6 +35,7 @@
         // 添加取消函数
         window.cancelCurrentPreload = () => {
             preloadCancelled = true;
+            isPreloadingInProgress = false;
             if (PLAYER_CONFIG.debugMode) console.log('[Preload] Current preload cancelled');
         };
 
