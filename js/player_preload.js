@@ -1,7 +1,8 @@
 (function () {
     // --- 模块级变量 ---
     // let isPreloadingActive = false;
-    let isPreloadingInProgress = false; // [FIX] 添加状态锁，防止重复执行
+    const preloadedEpisodeUrls = new Set();
+    let isPreloadingInProgress = false;
     let timeUpdateListener = null;
     // let nextButtonHoverListener = null;
     // let nextButtonTouchListener = null;
@@ -74,51 +75,44 @@
                 console.log(`[Preload] Start index: ${startIndex}, Current index: ${currentIndex}, Total: ${totalEpisodes}, Count: ${preloadCount}`);
             }
 
-            for (let offset = 1; offset <= preloadCount; offset++) {
-                // 在每次循环开始时检查取消状态
-                if (preloadCancelled) {
-                    if (PLAYER_CONFIG.debugMode) console.log('[Preload] Preload was cancelled, exiting');
-                    return;
-                }
+            /* ---------- 跳过已缓存集数 ---------- */
+            for (let offset = 1, loaded = 0; loaded < preloadCount; offset++) {
 
-                const episodeIdxToPreload = currentIndex + offset;
-                if (episodeIdxToPreload >= totalEpisodes) {
-                    if (PLAYER_CONFIG.debugMode) console.log(`[Preload] Reached end of playlist.`);
-                    break;
-                }
+                // ① 计算要尝试的剧集索引
+                const episodeIdxToPreload = startIndex + offset;
+                if (episodeIdxToPreload >= totalEpisodes) break;     // 已到末尾
 
+                // ② 拿到播放地址
                 const episodeString = window.currentEpisodes[episodeIdxToPreload];
                 const nextEpisodeUrl = episodeString ? episodeString.split('$').pop() : null;
+                if (!nextEpisodeUrl || !nextEpisodeUrl.startsWith('http')) continue; // 无效地址
 
-                if (!nextEpisodeUrl || !nextEpisodeUrl.startsWith('http')) {
-                    if (PLAYER_CONFIG.debugMode) console.log(`[Preload] Skipped invalid URL at index ${episodeIdxToPreload}.`);
-                    continue;
+                // ③ 如果已经预加载过 → 直接跳过
+                if (preloadedEpisodeUrls.has(nextEpisodeUrl)) {
+                    if (PLAYER_CONFIG.debugMode)
+                        console.log(`[Preload] Skip cached ep ${episodeIdxToPreload + 1}`);
+                    continue;    // 进入下一轮 offset++
                 }
 
-                if (PLAYER_CONFIG.debugMode) {
-                    console.log(`[Preload] Attempting to preload episode ${episodeIdxToPreload + 1} (index: ${episodeIdxToPreload}): ${nextEpisodeUrl}`);
-                }
-
+                /* ===== 以下保持原有“拉 m3u8 → 抓 3 个 ts” 的逻辑 ===== */
                 try {
                     const m3u8Response = await fetch(nextEpisodeUrl, { method: "GET", mode: 'cors' });
-                    if (!m3u8Response.ok) {
-                        if (PLAYER_CONFIG.debugMode) console.log(`[Preload] Failed to fetch M3U8 for ${nextEpisodeUrl}. Status: ${m3u8Response.status}`);
-                        continue;
-                    }
+                    if (!m3u8Response.ok) continue;
+
                     const m3u8Text = await m3u8Response.text();
                     const tsUrls = [];
                     const baseUrlForSegments = nextEpisodeUrl.substring(0, nextEpisodeUrl.lastIndexOf('/') + 1);
 
                     m3u8Text.split('\n').forEach(line => {
                         const trimmedLine = line.trim();
-                        if (trimmedLine && !trimmedLine.startsWith("#") && (trimmedLine.endsWith(".ts") || trimmedLine.includes(".ts?")) && tsUrls.length < 3) {
-                            tsUrls.push(trimmedLine.startsWith("http") ? trimmedLine : new URL(trimmedLine, baseUrlForSegments).href);
+                        if (trimmedLine && !trimmedLine.startsWith("#") &&
+                            (trimmedLine.endsWith(".ts") || trimmedLine.includes(".ts?")) &&
+                            tsUrls.length < 3) {
+                            tsUrls.push(trimmedLine.startsWith("http") ?
+                                trimmedLine :
+                                new URL(trimmedLine, baseUrlForSegments).href);
                         }
                     });
-
-                    if (PLAYER_CONFIG.debugMode) {
-                        console.log(`[Preload] M3U8 for episode ${episodeIdxToPreload + 1} parsed. Found ${tsUrls.length} TS segments.`);
-                    }
 
                     for (const tsUrl of tsUrls) {
                         if (supportsCacheStorage()) {
@@ -126,19 +120,19 @@
                             const cachedResponse = await cache.match(tsUrl);
                             if (!cachedResponse) {
                                 const segmentResponse = await fetch(tsUrl, { method: "GET", mode: 'cors' });
-                                if (segmentResponse.ok) {
-                                    await cache.put(tsUrl, segmentResponse.clone());
-                                    if (PLAYER_CONFIG.debugMode) console.log(`[Preload] TS segment cached: ${tsUrl}`);
-                                }
+                                segmentResponse.ok && await cache.put(tsUrl, segmentResponse.clone());
                             }
                         } else {
                             await fetch(tsUrl, { method: "GET", mode: 'cors' });
                         }
                     }
+
+                    // ④ 标记为已预加载，并计数 +1
+                    preloadedEpisodeUrls.add(nextEpisodeUrl);
+                    loaded++;
+
                 } catch (e) {
-                    if (PLAYER_CONFIG.debugMode) console.error(`[Preload] Error preloading for ${nextEpisodeUrl}:`, e);
-                    // 继续下一个，不要中断整个预加载
-                    continue;
+                    if (PLAYER_CONFIG.debugMode) console.error('[Preload] error:', e);
                 }
             }
         } catch (e) {
@@ -260,7 +254,7 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => {
-            // 修正：直接使用 PLAYER_CONFIG 中的值
+            // 直接使用 PLAYER_CONFIG 中的值
             const isEnabled = PLAYER_CONFIG.enablePreloading;
             if (isEnabled) {
                 startPreloading();
@@ -268,12 +262,13 @@
 
                 if (PLAYER_CONFIG.debugMode) console.log('[Preload] Preloading is disabled by user setting on page load.');
             }
-            // enhancePlayEpisodeForPreloading(); // <--- 将调用也注释掉
         }, 500);
     });
 
     window.startPreloading = startPreloading;
     window.stopPreloading = stopPreloading;
     window.preloadNextEpisodeParts = preloadNextEpisodeParts;
+    window.preloadedEpisodeUrls = preloadedEpisodeUrls;   
+
 
 })();

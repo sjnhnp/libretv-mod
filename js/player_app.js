@@ -677,8 +677,8 @@ async function doEpisodeSwitch(index, episodeString, originalIndex) {
             setTimeout(() => {
                 const preloadEnabled = localStorage.getItem('preloadEnabled') !== 'false';
                 if (preloadEnabled && typeof preloadNextEpisodeParts === 'function') {
-                    preloadNextEpisodeParts(index).catch(e => { 
-                    console.error('Preload error:', e);
+                    preloadNextEpisodeParts(index).catch(e => {
+                        console.error('Preload error:', e);
                     });
                 }
             }, 500);
@@ -1502,13 +1502,14 @@ async function switchLine(newSourceCode, newVodId) {
         const timeToSeek = player.currentTime;
 
         vodIdForPlayer = newVodId;
+        // 更新剧集列表（变量、全局、localStorage）
         currentEpisodes = newEps;
         window.currentEpisodes = newEps;
         localStorage.setItem('currentEpisodes', JSON.stringify(newEps));
-        // 在更新currentEpisodes后添加预加载重置
-        currentEpisodes = newEps;
-        window.currentEpisodes = newEps;
-        localStorage.setItem('currentEpisodes', JSON.stringify(newEps));
+        // 清空本页已缓存的预加载地址
+        if (window.preloadedEpisodeUrls) {
+            window.preloadedEpisodeUrls.clear();
+        }
         // 重置预加载状态
         if (typeof window.cancelCurrentPreload === 'function') {
             window.cancelCurrentPreload();
