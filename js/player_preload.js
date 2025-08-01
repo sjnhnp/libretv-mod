@@ -93,6 +93,7 @@
                     inFlightEpisodeUrls.has(nextEpisodeUrl)) {
                     if (PLAYER_CONFIG.debugMode)
                         console.log(`[Preload] Skip cached ep ${episodeIdxToPreload + 1}`);
+                    loaded++;
                     continue;    // 进入下一轮 offset
                 }
                 inFlightEpisodeUrls.add(nextEpisodeUrl);   // 标记为“正在抓取”
