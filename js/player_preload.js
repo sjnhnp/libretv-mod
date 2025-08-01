@@ -3,6 +3,8 @@
     // let isPreloadingActive = false;
     const preloadedEpisodeUrls = new Set();
     const inFlightEpisodeUrls = new Set();
+    let lastPreloadIndex = -1;
+    let eventsRegistered = false;
     let isPreloadingInProgress = false;
     let timeUpdateListener = null;
     // let nextButtonHoverListener = null;
@@ -234,19 +236,44 @@
         if (PLAYER_CONFIG.debugMode) console.log('[Preload] All event listeners unregistered.');
     }
 
+
     function startPreloading() {
+        // 防重：同一集已处理就直接返回
+        if (window.currentEpisodeIndex === lastPreloadIndex) {
+            return;
+        }
+        lastPreloadIndex = window.currentEpisodeIndex;
+
         // 确保播放器等环境已就绪
-        if (window.player && window.currentEpisodes && typeof window.currentEpisodeIndex === 'number') {
-            if (PLAYER_CONFIG.debugMode) console.log('[Preload] System ready, starting preloading features.');
-            registerPreloadEvents();
-            preloadNextEpisodeParts(); // 立即触发一次预加载
+        if (window.player &&
+            window.currentEpisodes &&
+            typeof window.currentEpisodeIndex === 'number') {
+
+            if (PLAYER_CONFIG.debugMode)
+                console.log('[Preload] System ready, starting preloading features.');
+
+            // 事件只注册一次
+            if (!eventsRegistered) {
+                registerPreloadEvents();
+                eventsRegistered = true;
+            }
+
+            preloadNextEpisodeParts();  // 立即触发一次预加载
         } else {
             // 如果环境未就绪，可以保留轮询检查的逻辑
             let tries = 0;
             const initialCheck = setInterval(() => {
-                if (window.player && window.currentEpisodes && typeof window.currentEpisodeIndex === 'number') {
+                if (window.player &&
+                    window.currentEpisodes &&
+                    typeof window.currentEpisodeIndex === 'number') {
+
                     clearInterval(initialCheck);
-                    registerPreloadEvents();
+
+                    if (!eventsRegistered) {
+                        registerPreloadEvents();
+                        eventsRegistered = true;
+                    }
+
                     preloadNextEpisodeParts();
                 } else if (++tries > 50) {
                     clearInterval(initialCheck);
