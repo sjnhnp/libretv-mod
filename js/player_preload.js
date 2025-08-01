@@ -176,9 +176,21 @@
         const episodesListContainer = document.getElementById('episode-grid');
         if (episodesListContainer) {
             episodeGridClickListener = (e) => {
-                if (e.target.closest('button[data-index]')) {
-                    setTimeout(() => preloadNextEpisodeParts(), 200);
+                const btn = e.target.closest('button[data-index]');
+                if (!btn) return;
+
+                // 目标集数（原始索引）
+                const targetIndex = parseInt(btn.dataset.index, 10);
+
+                /* 先取消正在进行的预加载（如有） */
+                if (typeof window.cancelCurrentPreload === 'function') {
+                    window.cancelCurrentPreload();
                 }
+
+                // 延迟一点点，等 doEpisodeSwitch 启动后再预加载
+                setTimeout(() => {
+                    preloadNextEpisodeParts(targetIndex);
+                }, 200);
             };
             episodesListContainer.addEventListener('click', episodeGridClickListener);
         }
