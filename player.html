@@ -47,19 +47,142 @@
 <body class="bg-black text-white font-sans min-h-screen">
     <div class="player-container relative">
 
+        <!-- 历史记录面板 -->
+        <aside id="historyPanel"
+            class="history-panel fixed left-0 top-0 h-full bg-black/20 backdrop-blur-xl border-r border-white/10 p-6 z-40 transform -translate-x-full transition-transform duration-300"
+            aria-label="观看历史" tabindex="-1">
+            <div class="flex justify-between items-center mb-8">
+                <button id="closeHistoryPanelButton"
+                    class="text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl p-2 transition-all duration-300"
+                    aria-label="关闭历史" type="button">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+                <h3 class="text-2xl font-bold gradient-text mx-auto">观看历史</h3>
+                <div class="w-9"></div>
+            </div>
+            <div id="historyList" class="pb-4" role="region" aria-live="polite">
+                <div class="text-center text-white/60 py-12">
+                    <svg class="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <p class="text-lg font-medium">暂无观看记录</p>
+                    <p class="text-sm text-white/40 mt-2">开始观看视频后，历史记录会显示在这里</p>
+                </div>
+            </div>
+            <div class="mt-4 text-center sticky bottom-0 pb-2 pt-2">
+                <button onclick="clearViewingHistory()" class="clear-history-btn w-full transition-all duration-300"
+                    type="button">
+                    清空历史记录
+                </button>
+            </div>
+        </aside>
+
+        <!-- 搜索面板 -->
+        <div id="searchPanel"
+            class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center transition-opacity duration-300 z-50"
+            role="dialog" aria-modal="true" aria-labelledby="searchPanelTitle" aria-hidden="true" tabindex="-1">
+            <div class="bg-black/20 backdrop-blur-xl border border-white/10 p-8 rounded-2xl w-11/12 max-w-6xl max-h-[90vh] flex flex-col shadow-2xl">
+                <div class="flex justify-between items-center mb-8 flex-none">
+                    <h2 id="searchPanelTitle" class="text-3xl font-bold gradient-text">搜索视频</h2>
+                    <button id="closeSearchPanelButton"
+                        class="text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl p-2 transition-all duration-300 flex-shrink-0"
+                        aria-label="关闭搜索" type="button">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- 搜索区域 -->
+                <div class="flex-none mb-6">
+                    <form id="searchForm">
+                        <div class="relative group">
+                            <div class="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 to-purple-600/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                            </div>
+                            <div class="relative flex items-stretch h-16 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                                <input type="text" id="searchInput"
+                                    class="flex-1 bg-transparent text-white px-6 py-0 focus:outline-none placeholder-white/50 text-lg"
+                                    placeholder="搜索你想看的影视内容..." autocomplete="off" aria-label="视频搜索框">
+                                <button type="submit"
+                                    class="px-6 flex items-center justify-center bg-gradient-to-r from-purple-600 to-indigo-500 text-white font-medium hover:from-purple-700 hover:to-indigo-600 transition-all duration-300 shadow-lg"
+                                    aria-label="搜索按钮">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                    <span class="hidden sm:inline">搜索</span>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    
+                    <!-- 搜索历史标签 -->
+                    <div id="recentSearches" class="mt-6 flex flex-wrap gap-3 justify-center" aria-label="最近搜索记录"
+                        aria-live="polite">
+                    </div>
+                </div>
+                
+                <!-- 搜索结果区域 -->
+                <div class="overflow-auto flex-1 min-h-0 bg-white/5 rounded-xl p-6">
+                    <div id="searchFeedbackArea" class="w-full text-center mb-4 hidden">
+                    </div>
+                    
+                    <div id="searchResultsArea" class="w-full hidden" aria-label="搜索结果">
+                        <div class="flex justify-end items-center mb-4">
+                            <div class="text-sm text-gray-400">
+                                <span id="searchResultsCount">0</span> 个结果
+                            </div>
+                        </div>
+                        <div id="searchResults" role="region" aria-live="polite">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 顶部导航栏 -->
         <header class="flex items-center justify-between p-6">
-            <button id="back-button"
-                class="flex items-center gap-3 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 hover:border-white/40 rounded-xl px-4 py-2.5 text-white/90 hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl"
-                aria-label="返回">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    class="feather feather-arrow-left" aria-hidden="true">
-                    <line x1="19" y1="12" x2="5" y2="12"></line>
-                    <polyline points="12 19 5 12 12 5"></polyline>
-                </svg>
-                <span class="font-medium">返回</span>
-            </button>
+            <div class="flex items-center gap-3">
+                <button id="back-button"
+                    class="flex items-center gap-3 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 hover:border-white/40 rounded-xl px-4 py-2.5 text-white/90 hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl"
+                    aria-label="返回">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="feather feather-arrow-left" aria-hidden="true">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                    <span class="font-medium">返回</span>
+                </button>
+                
+                <!-- 历史按钮 -->
+                <button id="historyButton"
+                    class="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 hover:border-white/40 rounded-xl px-4 py-2.5 flex items-center gap-2 transition-all duration-300 text-white/90 hover:text-white shadow-lg hover:shadow-xl"
+                    aria-label="观看历史" type="button">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="hidden sm:inline font-medium">历史</span>
+                </button>
+                
+                <!-- 搜索按钮 -->
+                <button id="searchButton"
+                    class="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 hover:border-white/40 rounded-xl px-4 py-2.5 flex items-center gap-2 transition-all duration-300 text-white/90 hover:text-white shadow-lg hover:shadow-xl"
+                    aria-label="搜索视频" type="button">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <span class="hidden sm:inline font-medium">搜索</span>
+                </button>
+            </div>
+            
             <div class="flex items-center ml-auto">
                 <button id="fullscreen-button"
                     class="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 hover:border-white/40 rounded-xl p-3 text-white/90 hover:text-white allow-when-locked transition-all duration-300 shadow-lg hover:shadow-xl"
@@ -329,6 +452,42 @@
         </div>
         <div id="message" class="fixed top-4 right-4 p-4 rounded shadow-lg z-50 hidden" aria-live="polite"></div>
 
+        <!-- 详情模态框 -->
+        <div id="modal"
+            class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center transition-opacity duration-300 z-40"
+            role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true" tabindex="-1">
+            <div
+                class="bg-black/20 backdrop-blur-xl border border-white/10 p-8 rounded-2xl w-11/12 max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
+                <div class="flex justify-between items-center mb-8 flex-none">
+                    <h2 id="modalTitle" class="text-3xl font-bold gradient-text break-words pr-4 max-w-[80%]"></h2>
+                    <button id="closeModalButton"
+                        class="text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl p-2 transition-all duration-300 flex-shrink-0"
+                        aria-label="关闭详情" type="button">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+                <div id="modalContent" class="overflow-auto flex-1 min-h-0 bg-white/5 rounded-xl p-6">
+                </div>
+            </div>
+        </div>
+
+        <!-- 加载提示 -->
+        <div id="loading" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center z-50">
+            <div class="bg-black/20 backdrop-blur-xl border border-white/10 p-8 rounded-2xl text-center">
+                <div class="loading-spinner mb-4"></div>
+                <p class="text-white text-lg">加载中...</p>
+            </div>
+        </div>
+
+        <!-- Toast 消息 -->
+        <div id="toast"
+            class="fixed top-4 left-1/2 -translate-x-1/2 opacity-0 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 text-white z-[10001] pointer-events-none">
+            <span id="toastMessage"></span>
+        </div>
+
         <!-- 记住进度弹窗 -->
         <div id="progress-restore-modal" tabindex="-1" aria-modal="true" role="dialog" style="display: none;">
             <div class="progress-restore-card" role="document">
@@ -342,8 +501,66 @@
         </div>
     </div>
 
+    <!-- Templates -->
+    <template id="search-result-template">
+        <div class="card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full shadow-sm hover:shadow-md"
+            data-id="" data-source-code="">
+            <div class="flex h-full">
+                <div class="flex-1 p-4 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-white font-medium text-base mb-2 line-clamp-2 leading-tight" data-field="title">
+                        </h3>
+                        <div class="flex flex-wrap gap-2 text-xs text-gray-400 mb-2">
+                            <span data-field="type" class="bg-gray-700 px-2 py-1 rounded"></span>
+                            <span data-field="year" class="bg-gray-700 px-2 py-1 rounded"></span>
+                            <span data-field="source" class="bg-blue-600 px-2 py-1 rounded text-white"></span>
+                            <span data-field="speed-tag" class="hidden bg-green-600 px-2 py-1 rounded text-white"></span>
+                        </div>
+                        <p class="text-gray-300 text-xs line-clamp-3 leading-relaxed" data-field="content"></p>
+                    </div>
+                    <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-700">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-500" data-field="quality">检测中...</span>
+                        </div>
+                        <button class="text-blue-400 hover:text-blue-300 text-xs font-medium transition-colors"
+                            data-action="show-detail">
+                            详情
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="video-details-template">
+        <div class="text-white text-sm">
+            <div class="grid grid-cols-2 gap-x-4 gap-y-2 mb-4">
+                <div><span class="text-gray-400">类型:</span> <span data-field="type"></span></div>
+                <div><span class="text-gray-400">年份:</span> <span data-field="year"></span></div>
+                <div><span class="text-gray-400">地区:</span> <span data-field="area"></span></div>
+                <div><span class="text-gray-400">语言:</span> <span data-field="lang"></span></div>
+                <div><span class="text-gray-400">导演:</span> <span data-field="director"></span></div>
+                <div><span class="text-gray-400">主演:</span> <span data-field="actor"></span></div>
+                <div class="col-span-2"><span class="text-gray-400">来源:</span> <span data-field="source"
+                        class="text-blue-400"></span></div>
+            </div>
+            <div class="mb-4">
+                <div class="text-gray-400 mb-2">剧情简介:</div>
+                <p class="text-gray-300 leading-relaxed" data-field="content"></p>
+            </div>
+            <div class="mb-4">
+                <div class="text-gray-400 mb-2">播放列表:</div>
+                <div class="max-h-60 overflow-y-auto">
+                    <div data-field="episodes" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
     <!-- 启动脚本 -->
     <script src="js/utils.js" defer></script>
+    <script src="js/player_search_history.js" defer></script>
     <script type="module" src="./js/player_app.js"></script>
 </body>
 

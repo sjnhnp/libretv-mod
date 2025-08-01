@@ -757,6 +757,11 @@ async function doEpisodeSwitch(index, episodeString, originalIndex) {
         window.currentEpisodeIndex = currentEpisodeIndex;
 
         setupAllUI();
+        
+        // 初始化搜索和历史功能
+        if (typeof initPlayerSearchHistory === 'function') {
+            initPlayerSearchHistory();
+        }
 
         const positionFromUrl = urlParams.get('position');
         if (positionFromUrl) {
