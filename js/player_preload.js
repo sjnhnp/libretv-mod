@@ -114,23 +114,37 @@
                         }
                     });
 
+                    let tsCached = 0;                                 // ☆ 统计成功缓存数
+
                     for (const tsUrl of tsUrls) {
                         if (supportsCacheStorage()) {
                             const cache = await caches.open('video-preload-cache');
                             const cachedResponse = await cache.match(tsUrl);
                             if (!cachedResponse) {
                                 const segmentResponse = await fetch(tsUrl, { method: "GET", mode: 'cors' });
-                                segmentResponse.ok && await cache.put(tsUrl, segmentResponse.clone());
+                                if (segmentResponse.ok) {
+                                    await cache.put(tsUrl, segmentResponse.clone());
+                                    tsCached++;                       // ☆ 成功 +1
+                                }
+                            } else {
+                                tsCached++;                           // ☆ 已在缓存里也算成功
                             }
                         } else {
-                            await fetch(tsUrl, { method: "GET", mode: 'cors' });
+                            const segmentResponse = await fetch(tsUrl, { method: "GET", mode: 'cors' });
+                            segmentResponse.ok && tsCached++;
                         }
                     }
 
-                    // ④ 标记为已预加载，并计数 +1
-                    preloadedEpisodeUrls.add(nextEpisodeUrl);
-                    loaded++;
-
+                    /* ☆ 只有真正缓存到 ≥1 个 ts，才认为这一集预加载完成 */
+                    if (tsCached > 0) {
+                        preloadedEpisodeUrls.add(nextEpisodeUrl);
+                        loaded++;
+                        if (PLAYER_CONFIG.debugMode)
+                            console.log(`[Preload] ✔ ep ${episodeIdxToPreload + 1} cached (${tsCached} ts)`);
+                    } else {
+                        if (PLAYER_CONFIG.debugMode)
+                            console.log(`[Preload] ✖ ep ${episodeIdxToPreload + 1} had no ts, ignore`);
+                    }
                 } catch (e) {
                     if (PLAYER_CONFIG.debugMode) console.error('[Preload] error:', e);
                 }
@@ -268,7 +282,7 @@
     window.startPreloading = startPreloading;
     window.stopPreloading = stopPreloading;
     window.preloadNextEpisodeParts = preloadNextEpisodeParts;
-    window.preloadedEpisodeUrls = preloadedEpisodeUrls;   
+    window.preloadedEpisodeUrls = preloadedEpisodeUrls;
 
 
 })();
