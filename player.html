@@ -85,9 +85,9 @@
         <div id="searchPanel"
             class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center transition-opacity duration-300 z-[10001]"
             role="dialog" aria-modal="true" aria-labelledby="searchPanelTitle" aria-hidden="true" tabindex="-1">
-            <div class="bg-black/20 backdrop-blur-xl border border-white/10 p-8 rounded-2xl w-11/12 max-w-6xl max-h-[90vh] flex flex-col shadow-2xl">
-                <div class="flex justify-between items-center mb-8 flex-none">
-                    <h2 id="searchPanelTitle" class="text-3xl font-bold gradient-text">搜索视频</h2>
+            <div class="bg-black/20 backdrop-blur-xl border border-white/10 p-6 rounded-2xl w-11/12 max-w-3xl max-h-[85vh] flex flex-col shadow-2xl">
+                <div class="flex justify-between items-center mb-6 flex-none">
+                    <h2 id="searchPanelTitle" class="text-2xl font-bold gradient-text">搜索视频</h2>
                     <button id="closeSearchPanelButton"
                         class="text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl p-2 transition-all duration-300 flex-shrink-0"
                         aria-label="关闭搜索" type="button">
@@ -99,12 +99,12 @@
                 </div>
                 
                 <!-- 搜索区域 -->
-                <div class="flex-none mb-6">
+                <div class="flex-none mb-4">
                     <form id="searchForm">
                         <div class="relative group">
-                            <div class="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 to-purple-600/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                            <div class="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 to-purple-600/20 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                             </div>
-                            <div class="relative flex items-stretch h-16 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                            <div class="relative flex items-stretch h-12 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden shadow-2xl">
                                 <input type="text" id="searchInput"
                                     class="flex-1 bg-transparent text-white px-6 py-0 focus:outline-none placeholder-white/50 text-lg"
                                     placeholder="搜索你想看的影视内容..." autocomplete="off" aria-label="视频搜索框">
@@ -122,18 +122,18 @@
                     </form>
                     
                     <!-- 搜索历史标签 -->
-                    <div id="recentSearches" class="mt-6 flex flex-wrap gap-3 justify-center" aria-label="最近搜索记录"
+                    <div id="recentSearches" class="mt-4 flex flex-wrap gap-2 justify-center" aria-label="最近搜索记录"
                         aria-live="polite">
                     </div>
                 </div>
                 
                 <!-- 搜索结果区域 -->
-                <div class="overflow-auto flex-1 min-h-0 bg-white/5 rounded-xl p-6">
+                <div class="overflow-auto flex-1 min-h-0 bg-white/5 rounded-xl p-4">
                     <div id="searchFeedbackArea" class="w-full text-center mb-4 hidden">
                     </div>
                     
                     <div id="searchResultsArea" class="w-full hidden" aria-label="搜索结果">
-                        <div class="flex justify-end items-center mb-4">
+                        <div class="flex justify-end items-center mb-3">
                             <div class="text-sm text-gray-400">
                                 <span id="searchResultsCount">0</span> 个结果
                             </div>
