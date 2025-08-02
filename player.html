@@ -49,7 +49,7 @@
 
         <!-- 历史记录面板 -->
         <aside id="historyPanel"
-            class="history-panel fixed left-0 top-0 h-full bg-black/20 backdrop-blur-xl border-r border-white/10 p-6 z-40 transform -translate-x-full transition-transform duration-300"
+            class="history-panel fixed left-0 top-0 h-full bg-black/20 backdrop-blur-xl border-r border-white/10 p-6 z-[10000] transform -translate-x-full transition-transform duration-300"
             aria-label="观看历史" tabindex="-1">
             <div class="flex justify-between items-center mb-8">
                 <button id="closeHistoryPanelButton"
@@ -83,7 +83,7 @@
 
         <!-- 搜索面板 -->
         <div id="searchPanel"
-            class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center transition-opacity duration-300 z-50"
+            class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center transition-opacity duration-300 z-[10001]"
             role="dialog" aria-modal="true" aria-labelledby="searchPanelTitle" aria-hidden="true" tabindex="-1">
             <div class="bg-black/20 backdrop-blur-xl border border-white/10 p-8 rounded-2xl w-11/12 max-w-6xl max-h-[90vh] flex flex-col shadow-2xl">
                 <div class="flex justify-between items-center mb-8 flex-none">
@@ -454,7 +454,7 @@
 
         <!-- 详情模态框 -->
         <div id="modal"
-            class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center transition-opacity duration-300 z-40"
+            class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center transition-opacity duration-300 z-[10002]"
             role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true" tabindex="-1">
             <div
                 class="bg-black/20 backdrop-blur-xl border border-white/10 p-8 rounded-2xl w-11/12 max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
@@ -475,7 +475,7 @@
         </div>
 
         <!-- 加载提示 -->
-        <div id="loading" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center z-50">
+        <div id="loading" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center z-[10003]">
             <div class="bg-black/20 backdrop-blur-xl border border-white/10 p-8 rounded-2xl text-center">
                 <div class="loading-spinner mb-4"></div>
                 <p class="text-white text-lg">加载中...</p>
@@ -484,7 +484,7 @@
 
         <!-- Toast 消息 -->
         <div id="toast"
-            class="fixed top-4 left-1/2 -translate-x-1/2 opacity-0 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 text-white z-[10001] pointer-events-none">
+            class="fixed top-4 left-1/2 -translate-x-1/2 opacity-0 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 text-white z-[10004] pointer-events-none">
             <span id="toastMessage"></span>
         </div>
 

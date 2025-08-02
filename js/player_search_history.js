@@ -19,7 +19,8 @@ function initPlayerSearchHistory() {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', setupPlayerSearchHistory);
     } else {
-        setupPlayerSearchHistory();
+        // 使用setTimeout确保所有元素都已渲染
+        setTimeout(setupPlayerSearchHistory, 100);
     }
 }
 
@@ -48,6 +49,15 @@ function setupPlayerSearchHistory() {
     // 初始化搜索历史显示
     if (typeof renderSearchHistory === 'function') {
         renderSearchHistory();
+        // 重新绑定搜索历史标签的点击事件
+        setTimeout(() => {
+            const recentSearches = document.getElementById('recentSearches');
+            if (recentSearches) {
+                // 移除旧的事件监听器，添加新的
+                recentSearches.removeEventListener('click', handlePlayerSearchTagClick);
+                recentSearches.addEventListener('click', handlePlayerSearchTagClick);
+            }
+        }, 100);
     }
     
     // 设置面板自动关闭
@@ -73,7 +83,11 @@ function setupPlayerEventListeners() {
     // 关闭历史面板按钮
     const closeHistoryButton = document.getElementById('closeHistoryPanelButton');
     if (closeHistoryButton) {
-        closeHistoryButton.addEventListener('click', closePlayerHistory);
+        closeHistoryButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closePlayerHistory();
+        });
     }
     
     // 关闭搜索面板按钮
@@ -663,9 +677,29 @@ function handlePlayerHistoryClick(e) {
  * 处理搜索标签点击
  */
 function handlePlayerSearchTagClick(e) {
-    // 复用首页的搜索标签点击处理逻辑
-    if (typeof handleSearchTagClick === 'function') {
-        handleSearchTagClick(e);
+    // 处理删除按钮点击
+    const delSpan = e.target.closest('span[data-deletequery]');
+    if (delSpan) {
+        if (typeof deleteSingleSearchHistory === 'function') {
+            deleteSingleSearchHistory(delSpan.dataset.deletequery);
+        }
+        e.stopPropagation();
+        return;
+    }
+
+    // 标签点击（只有非X按钮才允许搜索）
+    const tagBtn = e.target.closest('.search-tag');
+    if (tagBtn && !e.target.closest('span[data-deletequery]')) {
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            const query = tagBtn.textContent.trim();
+            searchInput.value = query;
+            
+            // 直接执行搜索
+            PlayerPageState.currentSearchQuery = query;
+            performPlayerSearch(query);
+        }
+        return;
     }
 }
 

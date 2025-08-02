@@ -1552,7 +1552,7 @@ media-fullscreen-button {
   backdrop-filter: blur(20px);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1000;
+  z-index: 10000 !important;
 }
 
 .history-panel.show {
@@ -1663,6 +1663,12 @@ media-fullscreen-button {
 /* 搜索面板样式 */
 #searchPanel {
   backdrop-filter: blur(20px);
+  z-index: 10001 !important;
+}
+
+/* 确保模态框在最上层 */
+#modal {
+  z-index: 10002 !important;
 }
 
 /* 搜索历史标签样式 */
@@ -1695,6 +1701,16 @@ media-fullscreen-button {
   border-radius: 50%;
   border-top-color: #ffffff;
   animation: spin 1s ease-in-out infinite;
+}
+
+/* 确保加载提示在最上层 */
+#loading {
+  z-index: 10003 !important;
+}
+
+/* 确保Toast在最上层 */
+#toast {
+  z-index: 10004 !important;
 }
 
 @keyframes spin {
