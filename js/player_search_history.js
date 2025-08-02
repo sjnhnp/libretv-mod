@@ -457,6 +457,7 @@ function renderSearchResultsWithTemplate(results) {
     
     const gridContainer = document.createElement('div');
     gridContainer.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4';
+    gridContainer.id = 'results'; // 添加ID以匹配CSS选择器
     
     const fragment = document.createDocumentFragment();
     
@@ -488,32 +489,45 @@ function createResultItemUsingTemplate(item) {
     cardElement.dataset.id = item.vod_id || '';
     cardElement.dataset.sourceCode = item.source_code || '';
     
-    // 填充数据
-    const titleElement = cardElement.querySelector('[data-field="title"]');
-    if (titleElement) titleElement.textContent = item.vod_name || '';
-    
-    const typeElement = cardElement.querySelector('[data-field="type"]');
-    if (typeElement) typeElement.textContent = item.type_name || '';
-    
-    const yearElement = cardElement.querySelector('[data-field="year"]');
-    if (yearElement) {
-        if (item.vod_year) {
-            yearElement.textContent = item.vod_year;
-            yearElement.style.display = 'inline';
-        } else {
-            yearElement.style.display = 'none';
-        }
+    // 填充封面图片
+    const picElement = cardElement.querySelector('[data-field="pic"]');
+    if (picElement && item.vod_pic) {
+        picElement.src = item.vod_pic;
+        picElement.alt = item.vod_name || '视频封面';
     }
     
+    // 填充标题
+    const titleElement = cardElement.querySelector('[data-field="title"]');
+    if (titleElement) {
+        titleElement.textContent = item.vod_name || '';
+        titleElement.title = item.vod_name || '';
+    }
+    
+    // 填充类型
+    const typeElement = cardElement.querySelector('[data-field="type"]');
+    if (typeElement && item.type_name) {
+        typeElement.textContent = item.type_name;
+        typeElement.classList.remove('hidden');
+    }
+    
+    // 填充年份
+    const yearElement = cardElement.querySelector('[data-field="year"]');
+    if (yearElement && item.vod_year) {
+        yearElement.textContent = item.vod_year;
+        yearElement.classList.remove('hidden');
+    }
+    
+    // 填充备注/更新状态
+    const remarksElement = cardElement.querySelector('[data-field="remarks"]');
+    if (remarksElement && item.vod_remarks) {
+        remarksElement.textContent = item.vod_remarks;
+        remarksElement.classList.remove('hidden');
+    }
+    
+    // 填充数据源
     const sourceElement = cardElement.querySelector('[data-field="source"]');
-    if (sourceElement) sourceElement.textContent = item.source_name || '';
-    
-    const contentElement = cardElement.querySelector('[data-field="content"]');
-    if (contentElement) contentElement.textContent = item.vod_content || '';
-    
-    const qualityElement = cardElement.querySelector('[data-field="quality"]');
-    if (qualityElement) {
-        qualityElement.textContent = item.quality || '检测中...';
+    if (sourceElement) {
+        sourceElement.textContent = item.source_name || '';
     }
     
     // 速度标签

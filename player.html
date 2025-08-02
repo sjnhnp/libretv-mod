@@ -506,22 +506,26 @@
         <div class="card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full shadow-sm hover:shadow-md"
             data-id="" data-source-code="">
             <div class="flex h-full">
-                <div class="flex-1 p-4 flex flex-col justify-between">
-                    <div>
-                        <h3 class="text-white font-medium text-base mb-2 line-clamp-2 leading-tight" data-field="title">
+                <div class="search-card-img-container relative flex-shrink-0">
+                    <img src="https://via.placeholder.com/100x150/191919/555555?text=No+Image" alt="视频封面"
+                        class="result-img h-full w-full object-cover transition-transform hover:scale-110"
+                        loading="lazy" data-field="pic"
+                        onerror="this.onerror=null; this.src='https://via.placeholder.com/100x150/191919/555555?text=Error'; this.classList.add('object-contain');">
+                    <div class="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent"></div>
+                </div>
+                <div class="p-2 flex flex-col flex-grow">
+                    <div class="flex-grow">
+                        <h3 class="result-title font-semibold text-sm mb-1 break-words line-clamp-2" data-field="title" title="视频标题">视频标题
                         </h3>
-                        <div class="flex flex-wrap gap-2 text-xs text-gray-400 mb-2">
-                            <span data-field="type" class="bg-gray-700 px-2 py-1 rounded"></span>
-                            <span data-field="year" class="bg-gray-700 px-2 py-1 rounded"></span>
-                            <span data-field="source" class="bg-blue-600 px-2 py-1 rounded text-white"></span>
-                            <span data-field="speed-tag" class="hidden bg-green-600 px-2 py-1 rounded text-white"></span>
+                        <div class="result-meta flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
+                            <span class="result-type hidden text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-blue-500 text-blue-300" data-field="type">类型</span>
+                            <span class="result-year hidden text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-purple-500 text-purple-300" data-field="year">年份</span>
+                            <span data-field="speed-tag" class="hidden text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-green-500 text-green-300"></span>
                         </div>
-                        <p class="text-gray-300 text-xs line-clamp-3 leading-relaxed" data-field="content"></p>
+                        <p class="result-remarks hidden text-xs text-gray-400 mb-1 line-clamp-1" data-field="remarks">更新状态</p>
                     </div>
-                    <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-700">
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-500" data-field="quality">检测中...</span>
-                        </div>
+                    <div class="result-source flex justify-between items-center mt-auto pt-1 border-t border-gray-800">
+                        <span class="result-source-name text-xs text-gray-500" data-field="source">数据源</span>
                         <button class="text-blue-400 hover:text-blue-300 text-xs font-medium transition-colors"
                             data-action="show-detail">
                             详情
