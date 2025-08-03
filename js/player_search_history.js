@@ -851,7 +851,7 @@ function initializeQualityTag(element, item) {
     
     // 开始画质检测
     element.textContent = '检测中...';
-    element.className = 'quality-tag text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-yellow-500 text-yellow-300 cursor-pointer transition-colors hover:bg-opacity-30';
+    element.className = 'quality-tag text-xs font-medium py-0.5 px-1.5 rounded bg-gray-500 text-white cursor-pointer transition-colors hover:opacity-80';
     
     // 异步检测画质
     detectVideoQuality(item).then(quality => {
@@ -894,7 +894,7 @@ function handleQualityTagClick(element, item) {
         qualityDetectionDebounce.set(itemKey, Date.now());
         
         element.textContent = '检测中...';
-        element.className = 'quality-tag text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-yellow-500 text-yellow-300 cursor-pointer transition-colors hover:bg-opacity-30';
+        element.className = 'quality-tag text-xs font-medium py-0.5 px-1.5 rounded bg-gray-500 text-white cursor-pointer transition-colors hover:opacity-80';
         
         // 执行画质重测
         detectVideoQuality(item, true).then(quality => {
@@ -918,22 +918,27 @@ function handleQualityTagClick(element, item) {
 function updateQualityTag(element, quality) {
     element.textContent = quality;
     
-    // 根据画质设置不同颜色
+    // 根据画质设置不同颜色（与首页保持一致）
     const qualityColors = {
-        '4K': 'bg-purple-500 text-purple-300',
-        '2K': 'bg-indigo-500 text-indigo-300', 
-        '1080p': 'bg-green-500 text-green-300',
-        '720p': 'bg-blue-500 text-blue-300',
-        '480p': 'bg-yellow-500 text-yellow-300',
-        'SD': 'bg-orange-500 text-orange-300',
-        '未知': 'bg-gray-500 text-gray-300',
-        '检测失败': 'bg-red-500 text-red-300',
-        '检测超时': 'bg-red-400 text-red-200',
-        '检测中...': 'bg-yellow-500 text-yellow-300'
+        '4K': 'bg-amber-500 text-white',
+        '2K': 'bg-purple-600 text-purple-100',
+        '1080p': 'bg-purple-600 text-purple-100',
+        '720p': 'bg-blue-600 text-blue-100',
+        '高清': 'bg-green-600 text-green-100',
+        '480p': 'bg-green-600 text-green-100',
+        'SD': 'bg-gray-500 text-gray-100',
+        '标清': 'bg-gray-500 text-gray-100',
+        '未知': 'bg-red-600 text-red-100',
+        '检测失败': 'bg-red-600 text-red-100',
+        '检测超时': 'bg-red-600 text-red-100',
+        '编码不支持': 'bg-red-600 text-red-100',
+        '播放失败': 'bg-red-600 text-red-100',
+        '无有效链接': 'bg-red-600 text-red-100',
+        '检测中...': 'bg-gray-500 text-white'
     };
     
     const colorClass = qualityColors[quality] || qualityColors['未知'];
-    element.className = `quality-tag text-xs py-0.5 px-1.5 rounded bg-opacity-20 ${colorClass} cursor-pointer transition-colors hover:bg-opacity-30`;
+    element.className = `quality-tag text-xs font-medium py-0.5 px-1.5 rounded ${colorClass} cursor-pointer transition-colors hover:opacity-80`;
     
     // 设置提示文本
     if (quality === '未知' || quality === '检测失败' || quality === '检测超时') {

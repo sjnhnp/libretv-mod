@@ -528,7 +528,9 @@ function restoreSearchStateFromPlayer() {
                 const results = JSON.parse(searchResults);
                 if (Array.isArray(results) && results.length > 0) {
                     renderSearchResults(results);
-                    showMessage(`已恢复搜索结果: "${searchQuery}"`, 'info', 3000);
+                    if (typeof showToast === 'function') {
+                        showToast(`已恢复搜索结果: "${searchQuery}"`, 'info', 3000);
+                    }
                 }
             } catch (e) {
                 console.error('恢复搜索结果失败:', e);
