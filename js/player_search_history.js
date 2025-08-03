@@ -305,7 +305,7 @@ async function performPlayerSearch(query) {
             return;
         }
         
-        // 调用搜索函数
+        // 调用首页的完整搜索函数，确保排序和速度检测功能
         let results;
         if (typeof performSearch === 'function') {
             results = await performSearch(query, selectedAPIs);
@@ -324,6 +324,35 @@ async function performPlayerSearch(query) {
         
         // 显示结果区域
         searchResultsArea.classList.remove('hidden');
+        
+        // 如果启用了速度检测，且结果中有需要检测的项目，触发后台速度更新
+        const speedDetectionEnabled = getBoolConfig(PLAYER_CONFIG.speedDetectionStorage, PLAYER_CONFIG.speedDetectionEnabled);
+        if (speedDetectionEnabled && results.some(item => !item.loadSpeed || item.loadSpeed === '检测中...')) {
+            // 延迟触发速度检测，确保DOM已渲染
+            setTimeout(() => {
+                if (typeof backgroundSpeedUpdate === 'function') {
+                    backgroundSpeedUpdate(results).then(() => {
+                        // 重新排序并刷新速度标签
+                        if (typeof sortBySpeed === 'function') {
+                            sortBySpeed(results);
+                        }
+                        refreshPlayerSpeedBadges(results);
+                        // 重新渲染以应用新的排序
+                        renderPlayerSearchResults(results);
+                    }).catch(error => {
+                        console.error('播放页速度检测失败:', error);
+                    });
+                } else {
+                    // 如果没有backgroundSpeedUpdate函数，至少刷新现有的速度标签
+                    refreshPlayerSpeedBadges(results);
+                }
+            }, 200);
+        } else {
+            // 如果没有启用速度检测，至少刷新现有的速度标签
+            setTimeout(() => {
+                refreshPlayerSpeedBadges(results);
+            }, 100);
+        }
         
     } catch (error) {
         console.error('搜索出错:', error);
@@ -401,6 +430,11 @@ function renderPlayerSearchResults(results) {
             const type = item.type_name || '';
             return !/(伦理片|福利片|写真)/.test(type) && !/(伦理|写真|福利|成人|情色|AV)/i.test(title);
         });
+    }
+    
+    // 应用排序（与首页保持一致）
+    if (typeof sortBySpeed === 'function') {
+        sortBySpeed(results);
     }
     
     // 使用模板渲染搜索结果
@@ -540,11 +574,22 @@ function createResultItemUsingTemplate(item) {
         sourceElement.textContent = item.source_name || '';
     }
     
-    // 速度标签
+    // 速度标签处理
     const speedElement = cardElement.querySelector('[data-field="speed-tag"]');
-    if (speedElement && item.loadSpeed && isValidSpeedValue(item.loadSpeed)) {
-        speedElement.textContent = item.loadSpeed;
-        speedElement.classList.remove('hidden');
+    if (speedElement) {
+        if (item.loadSpeed && isValidSpeedValue(item.loadSpeed)) {
+            speedElement.textContent = item.loadSpeed;
+            speedElement.classList.remove('hidden');
+            // 设置速度标签的颜色
+            speedElement.className = 'text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-green-500 text-green-300';
+        } else if (item.loadSpeed === '检测中...') {
+            speedElement.textContent = '检测中...';
+            speedElement.classList.remove('hidden');
+            speedElement.className = 'text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-yellow-500 text-yellow-300';
+        } else {
+            // 如果没有速度信息，隐藏标签
+            speedElement.classList.add('hidden');
+        }
     }
     
     // 画质标签处理
@@ -1034,6 +1079,22 @@ async function basicQualityDetection(url) {
     } catch (error) {
         return '检测失败';
     }
+}
+
+/**
+ * 刷新播放页搜索结果中的速度标签
+ */
+function refreshPlayerSpeedBadges(results) {
+    results.forEach(item => {
+        const badge = document.querySelector(
+            `.card-hover[data-id="${item.vod_id}"][data-source-code="${item.source_code}"] [data-field="speed-tag"]`
+        );
+        if (badge && item.loadSpeed && isValidSpeedValue(item.loadSpeed)) {
+            badge.textContent = item.loadSpeed;
+            badge.classList.remove('hidden');
+            badge.className = 'text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-green-500 text-green-300';
+        }
+    });
 }
 
 /**
