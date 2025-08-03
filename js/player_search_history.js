@@ -122,12 +122,6 @@ function setupPlayerEventListeners() {
     
     // ESC键关闭面板
     document.addEventListener('keydown', handlePlayerKeydown);
-    
-    // 清除搜索历史按钮
-    const clearSearchHistory = document.getElementById('clearSearchHistory');
-    if (clearSearchHistory) {
-        clearSearchHistory.addEventListener('click', handleClearSearchHistory);
-    }
 }
 
 /**
@@ -1097,24 +1091,7 @@ function refreshPlayerSpeedBadges(results) {
     });
 }
 
-/**
- * 处理清除搜索历史
- */
-function handleClearSearchHistory(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (typeof clearSearchHistory === 'function') {
-        clearSearchHistory();
-        // 重新渲染搜索历史
-        if (typeof renderSearchHistory === 'function') {
-            renderSearchHistory();
-        }
-        if (typeof showToast === 'function') {
-            showToast('搜索历史已清除', 'info');
-        }
-    }
-}
+
 
 /**
  * 获取布尔配置值
