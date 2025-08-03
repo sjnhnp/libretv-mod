@@ -1136,7 +1136,7 @@ function savePlayerSearchHistory(query) {
 }
 
 /**
- * 播放页专用的搜索历史渲染函数（不创建重复的header）
+ * 播放页专用的搜索历史渲染函数
  */
 function renderPlayerSearchHistory() {
     const historyContainer = document.getElementById('recentSearches');
@@ -1151,26 +1151,27 @@ function renderPlayerSearchHistory() {
 
     const frag = document.createDocumentFragment();
 
-    // 只渲染搜索历史标签，不创建header（因为HTML中已经有了）
+    // 仅生成搜索标签
     history.forEach(item => {
-        // 外部包裹，让标签和x对齐
+        // 外部包裹，让标签和 x 对齐
         const tagWrap = document.createElement('div');
         tagWrap.className = 'inline-flex items-center mb-2 mr-2';
 
-        // 搜索标签
         const tag = document.createElement('button');
         tag.className = 'search-tag';
         tag.textContent = item.text;
-        if (item.timestamp) tag.title = `搜索于: ${new Date(item.timestamp).toLocaleString()}`;
+        if (item.timestamp) {
+            tag.title = `搜索于: ${new Date(item.timestamp).toLocaleString()}`;
+        }
 
         // 删除按钮
         const deleteBtn = document.createElement('span');
-        deleteBtn.className = 'ml-2 text-gray-400 hover:text-red-500 cursor-pointer select-none flex items-center';
+        deleteBtn.className =
+            'ml-2 text-gray-400 hover:text-red-500 cursor-pointer select-none flex items-center';
         deleteBtn.setAttribute('role', 'button');
         deleteBtn.setAttribute('aria-label', '删除');
         deleteBtn.dataset.deletequery = item.text;
         deleteBtn.style.fontSize = '1.15em';
-
         deleteBtn.innerHTML =
             '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="pointer-events:none;">' +
             '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>' +
@@ -1181,6 +1182,7 @@ function renderPlayerSearchHistory() {
         frag.appendChild(tagWrap);
     });
 
+    // 先清空，再插入标签
     historyContainer.innerHTML = '';
     historyContainer.appendChild(frag);
 }
