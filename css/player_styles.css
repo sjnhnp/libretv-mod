@@ -1424,16 +1424,6 @@ header {
   height: 56px;
 }
 
-#back-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 1rem;
-  line-height: 1.5;
-  min-width: 72px;
-  padding: 6px 0;
-}
-
 #fullscreen-button {
   display: flex;
   align-items: center;
@@ -1623,18 +1613,6 @@ media-fullscreen-button {
   .quality-tag {
     font-size: 0.6875rem;
     padding: 0.1875rem 0.375rem;
-  }
-  
-  /* 移动端搜索历史区域调整 */
-  #searchPanel .flex.items-center.gap-3.flex-wrap {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 0.5rem !important;
-  }
-  
-  #clearSearchHistory {
-    margin-left: 0 !important;
-    align-self: flex-end;
   }
 }
 
