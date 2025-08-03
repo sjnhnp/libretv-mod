@@ -526,10 +526,12 @@
                     </div>
                     <div class="result-source flex justify-between items-center mt-auto pt-1 border-t border-gray-800">
                         <span class="result-source-name text-xs text-gray-500" data-field="source">数据源</span>
-                        <button class="text-blue-400 hover:text-blue-300 text-xs font-medium transition-colors"
-                            data-action="show-detail">
-                            详情
-                        </button>
+                        <span class="quality-tag text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-gray-500 text-gray-300 cursor-pointer transition-colors hover:bg-opacity-30"
+                              data-field="quality-tag"
+                              data-action="retest-quality"
+                              title="点击重新检测画质">
+                            检测中...
+                        </span>
                     </div>
                 </div>
             </div>

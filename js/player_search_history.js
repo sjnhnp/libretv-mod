@@ -269,6 +269,10 @@ async function performPlayerSearch(query) {
     
     if (!searchResults || !searchResultsArea) return;
     
+    // 保存播放页搜索状态
+    sessionStorage.setItem('playerSearchPerformed', 'true');
+    sessionStorage.setItem('playerSearchQuery', query);
+    
     // 显示加载状态
     if (typeof showLoading === 'function') {
         showLoading(`正在搜索"${query}"`);
@@ -537,20 +541,24 @@ function createResultItemUsingTemplate(item) {
         speedElement.classList.remove('hidden');
     }
     
-    // 添加点击事件
+    // 画质标签处理
+    const qualityElement = cardElement.querySelector('[data-field="quality-tag"]');
+    if (qualityElement) {
+        // 初始化画质标签
+        initializeQualityTag(qualityElement, item);
+        
+        // 添加画质标签点击事件
+        qualityElement.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleQualityTagClick(qualityElement, item);
+        });
+    }
+    
+    // 添加卡片点击事件（打开详情）
     cardElement.addEventListener('click', (e) => {
         e.preventDefault();
         handlePlayerSearchResultClick(item);
     });
-    
-    // 详情按钮点击事件
-    const detailButton = cardElement.querySelector('[data-action="show-detail"]');
-    if (detailButton) {
-        detailButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showPlayerVideoDetail(item);
-        });
-    }
     
     return cardElement;
 }
@@ -607,6 +615,8 @@ function showPlayerVideoDetail(item) {
                 
                 episodeButton.textContent = episodeName;
                 episodeButton.addEventListener('click', () => {
+                    // 重置搜索状态
+                    PlayerSearchState.isFromSearch = false;
                     closePlayerModal();
                     closePlayerSearch();
                     
@@ -657,12 +667,21 @@ function isValidSpeedValue(speed) {
 }
 
 /**
+ * 播放页搜索状态跟踪
+ */
+const PlayerSearchState = {
+    isFromSearch: false,
+    searchQuery: '',
+    searchResults: []
+};
+
+/**
  * 处理搜索结果点击
  */
 function handlePlayerSearchResultClick(item) {
     try {
-        // 关闭搜索面板
-        closePlayerSearch();
+        // 设置状态标记，表示弹窗是从搜索结果打开的
+        PlayerSearchState.isFromSearch = true;
         
         // 显示详情模态框
         showPlayerVideoDetail(item);
@@ -723,6 +742,12 @@ function handlePlayerSearchTagClick(e) {
 function closePlayerModal() {
     if (typeof closeModal === 'function') {
         closeModal();
+    }
+    
+    // 如果是从搜索结果打开的，返回搜索结果
+    if (PlayerSearchState.isFromSearch) {
+        PlayerSearchState.isFromSearch = false;
+        openPlayerSearch();
     }
 }
 
@@ -812,6 +837,192 @@ function generateUniversalId(title, year, episodeIndex) {
     const normalizedTitle = title.toLowerCase().replace(/[^\w\u4e00-\u9fa5]/g, '').replace(/\s+/g, '');
     const normalizedYear = year ? String(year) : 'unknown';
     return `${normalizedTitle}_${normalizedYear}_${episodeIndex}`;
+}
+
+/**
+ * 初始化画质标签
+ */
+function initializeQualityTag(element, item) {
+    // 如果已有画质信息，直接显示
+    if (item.quality && item.quality !== '检测中...') {
+        updateQualityTag(element, item.quality);
+        return;
+    }
+    
+    // 开始画质检测
+    element.textContent = '检测中...';
+    element.className = 'quality-tag text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-yellow-500 text-yellow-300 cursor-pointer transition-colors hover:bg-opacity-30';
+    
+    // 异步检测画质
+    detectVideoQuality(item).then(quality => {
+        updateQualityTag(element, quality);
+        // 更新item对象中的画质信息
+        item.quality = quality;
+    }).catch(error => {
+        console.error('画质检测失败:', error);
+        updateQualityTag(element, '检测失败');
+        item.quality = '检测失败';
+    });
+}
+
+// 防抖机制，避免频繁点击
+const qualityDetectionDebounce = new Map();
+
+/**
+ * 画质标签点击处理
+ */
+function handleQualityTagClick(element, item) {
+    const currentQuality = element.textContent;
+    
+    // 如果正在检测中，忽略点击
+    if (currentQuality === '检测中...') {
+        return;
+    }
+    
+    // 如果是未知、检测失败或检测超时，允许重测
+    if (currentQuality === '未知' || currentQuality === '检测失败' || currentQuality === '检测超时') {
+        const itemKey = `${item.vod_id}_${item.source_code}`;
+        
+        // 防抖：如果2秒内已经点击过，忽略
+        if (qualityDetectionDebounce.has(itemKey)) {
+            const lastClick = qualityDetectionDebounce.get(itemKey);
+            if (Date.now() - lastClick < 2000) {
+                return;
+            }
+        }
+        
+        qualityDetectionDebounce.set(itemKey, Date.now());
+        
+        element.textContent = '检测中...';
+        element.className = 'quality-tag text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-yellow-500 text-yellow-300 cursor-pointer transition-colors hover:bg-opacity-30';
+        
+        // 执行画质重测
+        detectVideoQuality(item, true).then(quality => {
+            updateQualityTag(element, quality);
+            item.quality = quality;
+            // 清除防抖记录
+            qualityDetectionDebounce.delete(itemKey);
+        }).catch(error => {
+            console.error('画质重测失败:', error);
+            updateQualityTag(element, '检测失败');
+            item.quality = '检测失败';
+            // 清除防抖记录
+            qualityDetectionDebounce.delete(itemKey);
+        });
+    }
+}
+
+/**
+ * 更新画质标签显示
+ */
+function updateQualityTag(element, quality) {
+    element.textContent = quality;
+    
+    // 根据画质设置不同颜色
+    const qualityColors = {
+        '4K': 'bg-purple-500 text-purple-300',
+        '2K': 'bg-indigo-500 text-indigo-300', 
+        '1080p': 'bg-green-500 text-green-300',
+        '720p': 'bg-blue-500 text-blue-300',
+        '480p': 'bg-yellow-500 text-yellow-300',
+        'SD': 'bg-orange-500 text-orange-300',
+        '未知': 'bg-gray-500 text-gray-300',
+        '检测失败': 'bg-red-500 text-red-300',
+        '检测超时': 'bg-red-400 text-red-200',
+        '检测中...': 'bg-yellow-500 text-yellow-300'
+    };
+    
+    const colorClass = qualityColors[quality] || qualityColors['未知'];
+    element.className = `quality-tag text-xs py-0.5 px-1.5 rounded bg-opacity-20 ${colorClass} cursor-pointer transition-colors hover:bg-opacity-30`;
+    
+    // 设置提示文本
+    if (quality === '未知' || quality === '检测失败' || quality === '检测超时') {
+        element.title = '点击重新检测画质';
+    } else if (quality === '检测中...') {
+        element.title = '正在检测画质...';
+    } else {
+        element.title = `画质: ${quality}`;
+    }
+}
+
+/**
+ * 检测视频画质
+ */
+async function detectVideoQuality(item, forceRetest = false) {
+    try {
+        // 如果没有播放链接，返回未知
+        if (!item.vod_play_url) {
+            return '未知';
+        }
+        
+        // 获取第一个播放链接进行检测
+        const episodes = item.vod_play_url.split('#');
+        if (episodes.length === 0) {
+            return '未知';
+        }
+        
+        let playUrl = episodes[0];
+        if (playUrl.includes('$')) {
+            playUrl = playUrl.split('$')[1];
+        }
+        
+        if (!playUrl || !playUrl.startsWith('http')) {
+            return '未知';
+        }
+        
+        // 添加超时控制
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('检测超时')), 10000); // 10秒超时
+        });
+        
+        // 使用画质检测器
+        let detectionPromise;
+        if (typeof window.comprehensiveQualityCheck === 'function') {
+            detectionPromise = window.comprehensiveQualityCheck(playUrl);
+        } else if (typeof window.simplePrecheckSource === 'function') {
+            detectionPromise = window.simplePrecheckSource(playUrl);
+        } else {
+            // 备用检测逻辑
+            detectionPromise = basicQualityDetection(playUrl);
+        }
+        
+        const result = await Promise.race([detectionPromise, timeoutPromise]);
+        return result.quality || '未知';
+        
+    } catch (error) {
+        console.error('画质检测出错:', error);
+        if (error.message === '检测超时') {
+            return '检测超时';
+        }
+        return '检测失败';
+    }
+}
+
+/**
+ * 基础画质检测（备用方案）
+ */
+async function basicQualityDetection(url) {
+    try {
+        // 基于URL关键词的简单检测
+        const qualityKeywords = {
+            '4K': [/4k/i, /2160p/i, /3840x2160/i, /超高清/i, /uhd/i],
+            '2K': [/2k/i, /1440p/i, /2560x1440/i, /qhd/i],
+            '1080p': [/1080p/i, /fhd/i, /1920x1080/i, /全高清/i, /fullhd/i],
+            '720p': [/720p/i, /hd/i, /1280x720/i, /高清/i],
+            '480p': [/480p/i, /854x480/i, /sd/i],
+            'SD': [/240p/i, /360p/i, /标清/i, /low/i]
+        };
+        
+        for (const [quality, patterns] of Object.entries(qualityKeywords)) {
+            if (patterns.some(pattern => pattern.test(url))) {
+                return quality;
+            }
+        }
+        
+        return '未知';
+    } catch (error) {
+        return '检测失败';
+    }
 }
 
 /**

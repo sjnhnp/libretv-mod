@@ -873,7 +873,22 @@ function updateBrowserHistory(newEpisodeUrl) {
 
 function setupPlayerControls() {
     const backButton = document.getElementById('back-button');
-    if (backButton) backButton.addEventListener('click', () => { window.location.href = 'index.html'; });
+    if (backButton) {
+        backButton.addEventListener('click', () => {
+            const playerSearchPerformed = sessionStorage.getItem('playerSearchPerformed');
+            
+            if (playerSearchPerformed === 'true') {
+                // 清除播放页搜索状态
+                sessionStorage.removeItem('playerSearchPerformed');
+                sessionStorage.removeItem('playerSearchQuery');
+                
+                // 回到首页并尝试恢复搜索状态
+                window.location.href = 'index.html?restore_search=true';
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+    }
 
 
 
