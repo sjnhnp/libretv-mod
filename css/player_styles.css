@@ -1572,6 +1572,18 @@ media-fullscreen-button {
   transform: translateY(-1px) !important;
 }
 
+/* 清除搜索历史按钮样式 */
+#clearSearchHistory {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  transition: all 0.2s ease;
+}
+
+#clearSearchHistory:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 
 
 /* 播放页搜索结果画质标签样式 */
@@ -1614,8 +1626,15 @@ media-fullscreen-button {
   }
   
   /* 移动端搜索历史区域调整 */
-  #recentSearches {
-    justify-content: flex-start !important;
+  #searchPanel .flex.items-center.gap-3.flex-wrap {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+  
+  #clearSearchHistory {
+    margin-left: 0 !important;
+    align-self: flex-end;
   }
 }
 

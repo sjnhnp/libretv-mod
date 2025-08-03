@@ -111,6 +111,7 @@ function setupPlayerEventListeners() {
     // 搜索历史标签点击事件
     const recentSearches = document.getElementById('recentSearches');
     if (recentSearches) {
+        recentSearches.removeEventListener('click', handlePlayerSearchTagClick);
         recentSearches.addEventListener('click', handlePlayerSearchTagClick);
     }
     
@@ -122,6 +123,12 @@ function setupPlayerEventListeners() {
     
     // ESC键关闭面板
     document.addEventListener('keydown', handlePlayerKeydown);
+    
+    // 清除搜索历史按钮
+    const clearSearchHistory = document.getElementById('clearSearchHistory');
+    if (clearSearchHistory) {
+        clearSearchHistory.addEventListener('click', handleClearSearchHistory);
+    }
 }
 
 /**
@@ -207,10 +214,8 @@ function openPlayerSearch() {
         setTimeout(() => searchInput.focus(), 100);
     }
     
-    // 渲染搜索历史
-    if (typeof renderSearchHistory === 'function') {
-        renderSearchHistory();
-    }
+    // 渲染搜索历史（播放页专用版本）
+    renderPlayerSearchHistory();
 }
 
 /**
@@ -1092,6 +1097,73 @@ function refreshPlayerSpeedBadges(results) {
 }
 
 
+
+/**
+ * 播放页专用的搜索历史渲染函数（不创建重复的header）
+ */
+function renderPlayerSearchHistory() {
+    const historyContainer = document.getElementById('recentSearches');
+    if (!historyContainer) return;
+    
+    // 获取搜索历史
+    const history = typeof getSearchHistory === 'function' ? getSearchHistory() : [];
+    if (!history.length) { 
+        historyContainer.innerHTML = ''; 
+        return; 
+    }
+
+    const frag = document.createDocumentFragment();
+
+    // 只渲染搜索历史标签，不创建header（因为HTML中已经有了）
+    history.forEach(item => {
+        // 外部包裹，让标签和x对齐
+        const tagWrap = document.createElement('div');
+        tagWrap.className = 'inline-flex items-center mb-2 mr-2';
+
+        // 搜索标签
+        const tag = document.createElement('button');
+        tag.className = 'search-tag';
+        tag.textContent = item.text;
+        if (item.timestamp) tag.title = `搜索于: ${new Date(item.timestamp).toLocaleString()}`;
+
+        // 删除按钮
+        const deleteBtn = document.createElement('span');
+        deleteBtn.className = 'ml-2 text-gray-400 hover:text-red-500 cursor-pointer select-none flex items-center';
+        deleteBtn.setAttribute('role', 'button');
+        deleteBtn.setAttribute('aria-label', '删除');
+        deleteBtn.dataset.deletequery = item.text;
+        deleteBtn.style.fontSize = '1.15em';
+
+        deleteBtn.innerHTML =
+            '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="pointer-events:none;">' +
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>' +
+            '</svg>';
+
+        tagWrap.appendChild(tag);
+        tagWrap.appendChild(deleteBtn);
+        frag.appendChild(tagWrap);
+    });
+
+    historyContainer.innerHTML = '';
+    historyContainer.appendChild(frag);
+}
+
+/**
+ * 处理清除搜索历史
+ */
+function handleClearSearchHistory(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (typeof clearSearchHistory === 'function') {
+        clearSearchHistory();
+        // 重新渲染搜索历史（播放页专用版本）
+        renderPlayerSearchHistory();
+        if (typeof showToast === 'function') {
+            showToast('搜索历史已清除', 'info');
+        }
+    }
+}
 
 /**
  * 获取布尔配置值

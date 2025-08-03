@@ -127,9 +127,17 @@
                     </div>
                 </div>
                 
-                <!-- 搜索历史区域：仅显示历史标签 -->
+                <!-- 搜索历史区域：标签和历史记录在一行 -->
                 <div class="flex-none mb-4">
-                    <div id="recentSearches" class="flex flex-wrap gap-2 justify-center" aria-label="最近搜索记录" aria-live="polite">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <span class="text-white/70 text-sm font-medium whitespace-nowrap">最近搜索：</span>
+                        <div id="recentSearches" class="flex flex-wrap gap-2" aria-label="最近搜索记录" aria-live="polite">
+                        </div>
+                        <button id="clearSearchHistory" 
+                            class="text-white/50 hover:text-white/80 text-xs ml-auto whitespace-nowrap transition-colors"
+                            title="清除搜索历史">
+                            清除搜索历史
+                        </button>
                     </div>
                 </div>
                 
