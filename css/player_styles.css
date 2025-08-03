@@ -1544,16 +1544,9 @@ media-fullscreen-button {
 
 /* ==================== 播放页搜索和历史面板样式 ==================== */
 
-/* 搜索弹窗样式精致化 */
-#searchPanelTitle {
-  font-size: 1.5rem !important; /* 从text-3xl(1.875rem)减小到1.5rem */
-  font-weight: 600 !important;
-  margin-bottom: 1.5rem !important; /* 减小底部间距 */
-}
-
-/* 搜索区域到搜索历史标签的距离优化 */
-#searchPanel .flex-none.mb-6 #recentSearches {
-  margin-top: 1rem !important; /* 从mt-6(1.5rem)减小到1rem */
+/* 搜索弹窗新布局样式 */
+#searchPanel .bg-black\/20 {
+  padding: 1.5rem !important; /* 减小整体内边距 */
 }
 
 /* 搜索历史标签样式精致化 */
@@ -1562,13 +1555,14 @@ media-fullscreen-button {
 }
 
 #recentSearches .search-tag {
-  padding: 0.375rem 0.75rem !important; /* 减小内边距 */
-  font-size: 0.875rem !important; /* 减小字体大小 */
-  border-radius: 0.5rem !important; /* 调整圆角 */
+  padding: 0.25rem 0.5rem !important; /* 进一步减小内边距 */
+  font-size: 0.8125rem !important; /* 减小字体大小 */
+  border-radius: 0.375rem !important; /* 调整圆角 */
   background: rgba(255, 255, 255, 0.08) !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
   color: rgba(255, 255, 255, 0.85) !important;
   transition: all 0.2s ease !important;
+  white-space: nowrap !important;
 }
 
 #recentSearches .search-tag:hover {
@@ -1576,6 +1570,18 @@ media-fullscreen-button {
   border-color: rgba(255, 255, 255, 0.25) !important;
   color: rgba(255, 255, 255, 0.95) !important;
   transform: translateY(-1px) !important;
+}
+
+/* 清除搜索历史按钮样式 */
+#clearSearchHistory {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  transition: all 0.2s ease;
+}
+
+#clearSearchHistory:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* 播放页搜索结果画质标签样式 */
@@ -1598,19 +1604,57 @@ media-fullscreen-button {
 
 /* 响应式优化 */
 @media (max-width: 768px) {
-  #searchPanelTitle {
-    font-size: 1.25rem !important; /* 移动端进一步减小 */
-    margin-bottom: 1rem !important;
+  #searchPanel .bg-black\/20 {
+    padding: 1rem !important; /* 移动端减小内边距 */
+  }
+  
+  /* 移动端搜索框高度调整 */
+  #searchPanel .h-14 {
+    height: 3rem !important; /* 减小搜索框高度 */
   }
   
   #recentSearches .search-tag {
-    padding: 0.25rem 0.5rem !important;
-    font-size: 0.8125rem !important;
+    padding: 0.1875rem 0.375rem !important;
+    font-size: 0.75rem !important;
   }
   
   .quality-tag {
     font-size: 0.6875rem;
     padding: 0.1875rem 0.375rem;
+  }
+  
+  /* 移动端搜索历史区域调整 */
+  #searchPanel .flex.items-center.gap-3.flex-wrap {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+  
+  #clearSearchHistory {
+    margin-left: 0 !important;
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  #searchPanel .bg-black\/20 {
+    padding: 0.75rem !important;
+    margin: 0.5rem !important;
+  }
+  
+  #searchPanel .h-14 {
+    height: 2.75rem !important;
+  }
+  
+  #searchInput {
+    font-size: 1rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  #recentSearches .search-tag {
+    padding: 0.125rem 0.25rem !important;
+    font-size: 0.6875rem !important;
   }
 }
 
