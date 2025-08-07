@@ -1495,19 +1495,16 @@ header {
   gap: 8px;
 }
 
-/* 综艺节目按钮的样式 */
-.variety-grid-layout button {
-  /* 外观 */
-  background: #222;
-  color: #d1d5db;
-  border: 1px solid #333;
+/* 综艺节目按钮的样式 (与首页保持一致) */
+.variety-grid-layout .episode-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   padding: 8px 12px;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 0.875rem;
+  color: white;
   transition: all 0.2s ease;
   cursor: pointer;
-
-  /* 文本溢出处理 */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1515,9 +1512,9 @@ header {
   width: 100%;
 }
 
-.variety-grid-layout button:hover {
-  background: #333;
-  color: #fff;
+.variety-grid-layout .episode-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--primary-color);
 }
 
 /* 2. Reposition the button to be on the left of the native fullscreen button */
