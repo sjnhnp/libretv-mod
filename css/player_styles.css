@@ -2024,48 +2024,65 @@ media-fullscreen-button {
 /* 播放页搜索弹窗移动端修复 */
 @media (max-width: 768px) {
   #searchPanel .flex.items-center.gap-4 {
-      flex-wrap: wrap; /* 允许换行 */
-      gap: 1rem; /* 调整间距 */
+    flex-wrap: wrap;
+    /* 允许换行 */
+    gap: 1rem;
+    /* 调整间距 */
+    padding-right: 3rem;
+    /* 为绝对定位的关闭按钮预留空间 */
   }
 
   #searchPanel .flex-1 {
-      min-width: 0; /* 防止flex子项溢出 */
-      width: 100%; /* 在移动端占满宽度 */
+    min-width: 0;
+    /* 防止flex子项溢出 */
+    width: 100%;
+    /* 在移动端占满宽度 */
+  }
+
+  #searchPanel .flex-1.pr-12 {
+    padding-right: 3rem;
+    /* 为关闭按钮预留空间 */
   }
 
   #searchPanel #closeSearchPanelButton {
-      position: absolute; /* 绝对定位，避免影响布局 */
-      top: 1rem;
-      right: 1rem;
-      width: 36px;
-      height: 36px;
-      padding: 0.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10; /* 确保在顶层 */
+    position: absolute;
+    /* 绝对定位，避免影响布局 */
+    top: 1rem;
+    right: 1rem;
+    width: 36px;
+    height: 36px;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    /* 确保在顶层 */
   }
 
   #searchPanel .relative.group {
-      width: 100%;
+    width: 100%;
   }
 
   #searchPanel .relative.group .relative {
-      width: 100%;
+    width: 100%;
   }
-  
+
   /* 调整搜索框高度以适应移动端 */
   #searchPanel .relative.group .relative {
-      height: 48px; /* 减小高度 */
+    height: 48px;
+    /* 减小高度 */
   }
-  
+
   #searchPanel .relative.group .relative input {
-      padding-left: 1rem; /* 调整内边距 */
-      padding-right: 1rem;
-      font-size: 1rem; /* 调整字体大小 */
+    padding-left: 1rem;
+    /* 调整内边距 */
+    padding-right: 1rem;
+    font-size: 1rem;
+    /* 调整字体大小 */
   }
-  
+
   #searchPanel .relative.group .relative button[type="submit"] {
-      width: 48px; /* 调整搜索按钮宽度 */
+    width: 48px;
+    /* 调整搜索按钮宽度 */
   }
 }
