@@ -740,8 +740,7 @@ media-player:focus-within #custom-right-controls {
     justify-content: center;
     min-width: 0;
     /* 防止flex子项溢出 */
-    overflow: hidden;
-    /* 确保内容不溢出容器 */
+    /* 移除 overflow: hidden，允许下拉菜单显示 */
   }
 
   .player-control-bar {
@@ -752,6 +751,8 @@ media-player:focus-within #custom-right-controls {
     width: 100%;
     min-width: 0;
     /* 防止flex容器溢出 */
+    position: relative;
+    /* 为下拉菜单提供定位上下文 */
   }
 
   .control-btn {
@@ -769,6 +770,8 @@ media-player:focus-within #custom-right-controls {
     /* 减小圆角 */
     box-sizing: border-box;
     /* 确保边框和内边距包含在宽度内 */
+    overflow: hidden;
+    /* 只在按钮级别防止内容溢出 */
   }
 
   .control-text {
@@ -781,6 +784,20 @@ media-player:focus-within #custom-right-controls {
     height: 16px !important;
     flex-shrink: 0;
     /* 防止图标被压缩 */
+  }
+
+  /* 确保下拉菜单不被裁剪 */
+  #play-settings-dropdown,
+  #line-switch-dropdown,
+  #skip-control-dropdown {
+    z-index: 1000;
+    /* 确保菜单在顶层 */
+    position: absolute;
+    /* 相对于最近的定位父元素 */
+    bottom: 100%;
+    /* 在按钮上方显示 */
+    right: 0;
+    /* 右对齐 */
   }
 }
 
