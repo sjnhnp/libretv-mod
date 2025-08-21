@@ -2028,8 +2028,11 @@ media-fullscreen-button {
     /* 允许换行 */
     gap: 1rem;
     /* 调整间距 */
-    padding-right: 3rem;
-    /* 为绝对定位的关闭按钮预留空间 */
+    position: relative;
+    /* 为绝对定位的关闭按钮提供定位上下文 */
+    padding-top: 0.5rem;
+    /* 为关闭按钮留出空间 */
+    padding-bottom: 0.5rem;
   }
 
   #searchPanel .flex-1 {
@@ -2039,16 +2042,15 @@ media-fullscreen-button {
     /* 在移动端占满宽度 */
   }
 
-  #searchPanel .flex-1.pr-12 {
-    padding-right: 3rem;
-    /* 为关闭按钮预留空间 */
-  }
-
   #searchPanel #closeSearchPanelButton {
     position: absolute;
     /* 绝对定位，避免影响布局 */
-    top: 1rem;
-    right: 1rem;
+    top: 50%;
+    /* 垂直居中 */
+    right: 0.75rem;
+    /* 距离右边框的距离 */
+    transform: translateY(-50%);
+    /* 精确垂直居中 */
     width: 36px;
     height: 36px;
     padding: 0.5rem;
@@ -2061,6 +2063,8 @@ media-fullscreen-button {
 
   #searchPanel .relative.group {
     width: 100%;
+    padding-right: 3rem;
+    /* 为关闭按钮预留空间 */
   }
 
   #searchPanel .relative.group .relative {
