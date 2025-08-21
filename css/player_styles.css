@@ -246,9 +246,11 @@ media-player .vds-controls-group {
 /* 自定义右侧控制条 - 覆盖在播放器上，与底部控制条同步 */
 #custom-right-controls {
   position: absolute;
-  top: 50%; /* 将顶部定位改为50% */
+  top: 50%;
+  /* 将顶部定位改为50% */
   right: 1rem;
-  transform: translateY(-50%); /* 使用transform向上偏移自身高度的一半，实现垂直居中 */
+  transform: translateY(-50%);
+  /* 使用transform向上偏移自身高度的一半，实现垂直居中 */
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -284,7 +286,8 @@ media-player:focus-within #custom-right-controls {
   width: 32px;
   height: 32px;
   border: none;
-  background: transparent; /* Current background */
+  background: transparent;
+  /* Current background */
   backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: rgba(255, 255, 255, 0.9);
@@ -321,8 +324,10 @@ media-player:focus-within #custom-right-controls {
 
 /* 确保按钮图标居中 */
 #web-fullscreen-control-btn svg {
-  width: 16px; /* 调整图标宽度，使其更小 */
-  height: 16px; /* 调整图标高度，使其更小 */
+  width: 16px;
+  /* 调整图标宽度，使其更小 */
+  height: 16px;
+  /* 调整图标高度，使其更小 */
   stroke-width: 2;
 }
 
@@ -733,48 +738,49 @@ media-player:focus-within #custom-right-controls {
     flex: 1;
     display: flex;
     justify-content: center;
+    min-width: 0;
+    /* 防止flex子项溢出 */
+    overflow: hidden;
+    /* 确保内容不溢出容器 */
   }
 
   .player-control-bar {
-    gap: 0;
-    /* 移除间距 */
+    gap: 4px;
+    /* 添加按钮间距 */
     justify-content: space-between;
-    /* 均匀分布 */
     flex-wrap: nowrap;
-    /* 防止换行 */
     width: 100%;
-    /* 确保占满宽度 */
+    min-width: 0;
+    /* 防止flex容器溢出 */
   }
 
   .control-btn {
     width: 100%;
-    /* 占满容器宽度 */
-    height: 40px;
-    /* 固定高度 */
+    height: 36px;
+    /* 减小按钮高度 */
     min-width: unset;
-    /* 移除最小宽度限制 */
-    min-height: 40px;
-    /* 确保最小高度 */
+    min-height: 36px;
     padding: 0;
-    /* 移除内边距 */
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0;
-    border-radius: 8px;
-    /* 稍微减小圆角，更统一 */
+    border-radius: 6px;
+    /* 减小圆角 */
+    box-sizing: border-box;
+    /* 确保边框和内边距包含在宽度内 */
   }
 
-  /* 移动端隐藏文字 */
   .control-text {
     display: none !important;
   }
 
-  /* 统一所有按钮内的图标大小 */
   .control-icon {
-    width: 18px !important;
-    /* 统一所有图标大小 */
-    height: 18px !important;
+    width: 16px !important;
+    /* 减小图标尺寸 */
+    height: 16px !important;
+    flex-shrink: 0;
+    /* 防止图标被压缩 */
   }
 }
 
@@ -1533,18 +1539,23 @@ media-fullscreen-button {
 
 /* 搜索弹窗新布局样式 */
 #searchPanel .bg-black\/20 {
-  padding: 1.5rem !important; /* 减小整体内边距 */
+  padding: 1.5rem !important;
+  /* 减小整体内边距 */
 }
 
 /* 搜索历史标签样式精致化 */
 #recentSearches {
-  gap: 0.5rem !important; /* 减小标签间距 */
+  gap: 0.5rem !important;
+  /* 减小标签间距 */
 }
 
 #recentSearches .search-tag {
-  padding: 0.25rem 0.5rem !important; /* 进一步减小内边距 */
-  font-size: 0.8125rem !important; /* 减小字体大小 */
-  border-radius: 0.375rem !important; /* 调整圆角 */
+  padding: 0.25rem 0.5rem !important;
+  /* 进一步减小内边距 */
+  font-size: 0.8125rem !important;
+  /* 减小字体大小 */
+  border-radius: 0.375rem !important;
+  /* 调整圆角 */
   background: rgba(255, 255, 255, 0.08) !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
   color: rgba(255, 255, 255, 0.85) !important;
@@ -1594,19 +1605,21 @@ media-fullscreen-button {
 /* 响应式优化 */
 @media (max-width: 768px) {
   #searchPanel .bg-black\/20 {
-    padding: 1rem !important; /* 移动端减小内边距 */
+    padding: 1rem !important;
+    /* 移动端减小内边距 */
   }
-  
+
   /* 移动端搜索框高度调整 */
   #searchPanel .h-14 {
-    height: 3rem !important; /* 减小搜索框高度 */
+    height: 3rem !important;
+    /* 减小搜索框高度 */
   }
-  
+
   #recentSearches .search-tag {
     padding: 0.1875rem 0.375rem !important;
     font-size: 0.75rem !important;
   }
-  
+
   .quality-tag {
     font-size: 0.6875rem;
     padding: 0.1875rem 0.375rem;
@@ -1618,17 +1631,17 @@ media-fullscreen-button {
     padding: 0.75rem !important;
     margin: 0.5rem !important;
   }
-  
+
   #searchPanel .h-14 {
     height: 2.75rem !important;
   }
-  
+
   #searchInput {
     font-size: 1rem !important;
     padding-left: 1rem !important;
     padding-right: 1rem !important;
   }
-  
+
   #recentSearches .search-tag {
     padding: 0.125rem 0.25rem !important;
     font-size: 0.6875rem !important;
@@ -1837,7 +1850,7 @@ media-fullscreen-button {
   overflow: hidden;
   text-overflow: ellipsis;
   -webkit-line-clamp: 2;
-  line-clamp: 2; 
+  line-clamp: 2;
   line-height: 1.4;
   word-break: break-word;
   hyphens: auto;
@@ -1957,20 +1970,20 @@ media-fullscreen-button {
   .history-panel {
     width: 320px;
   }
-  
+
   .history-title {
     font-size: 0.9rem;
   }
-  
+
   .history-meta {
     font-size: 0.8rem;
   }
-  
+
   .search-tag {
     font-size: 0.8rem;
     padding: 0.4rem 0.8rem;
   }
-  
+
   #searchResults .grid {
     grid-template-columns: 1fr;
     gap: 0.75rem;
@@ -1981,11 +1994,11 @@ media-fullscreen-button {
   .history-panel {
     width: 280px;
   }
-  
+
   .card-hover {
     font-size: 0.875rem;
   }
-  
+
   .card-hover h3 {
     font-size: 0.9rem;
   }
