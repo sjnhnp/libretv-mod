@@ -454,7 +454,7 @@ document.addEventListener('DOMContentLoaded', function () {
     APISourceManager.init();
     initializeEventListeners();
     renderSearchHistory();
-    
+
     // 检查是否需要恢复搜索状态
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('restore_search') === 'true') {
@@ -504,14 +504,14 @@ function restoreSearchStateFromPlayer() {
         const searchQuery = sessionStorage.getItem('searchQuery');
         const searchResults = sessionStorage.getItem('searchResults');
         const selectedAPIs = sessionStorage.getItem('selectedAPIs');
-        
+
         if (searchQuery && searchResults) {
             // 恢复搜索框内容
             const searchInput = DOMCache.get('searchInput');
             if (searchInput) {
                 searchInput.value = searchQuery;
             }
-            
+
             // 恢复API选择状态
             if (selectedAPIs) {
                 try {
@@ -522,7 +522,7 @@ function restoreSearchStateFromPlayer() {
                     console.error('恢复API选择状态失败:', e);
                 }
             }
-            
+
             // 恢复搜索结果
             try {
                 const results = JSON.parse(searchResults);
@@ -540,12 +540,12 @@ function restoreSearchStateFromPlayer() {
                 }
             }
         }
-        
+
         // 清理URL参数
         const url = new URL(window.location);
         url.searchParams.delete('restore_search');
         window.history.replaceState({}, document.title, url.toString());
-        
+
     } catch (error) {
         console.error('恢复搜索状态失败:', error);
         // 降级到普通的缓存恢复
@@ -681,7 +681,7 @@ function search(options = {}) {
     performSearch(query, selectedAPIs)
         .then(resultsData => {
             renderSearchResults(resultsData, options.doubanQuery ? query : null);
-            
+
             // 保存搜索状态到sessionStorage，供播放页返回时恢复
             if (!options.doubanQuery) {
                 try {
@@ -692,7 +692,7 @@ function search(options = {}) {
                     console.error('保存搜索状态失败:', e);
                 }
             }
-            
+
             // 缓存结果已加载，无需额外提示
         })
         .catch(error => {
@@ -729,7 +729,7 @@ function rebuildVideoCaches(results) {
             videoSourceMap.get(key).push(item);
         }
     });
-    sessionStorage.setItem(
+    localStorage.setItem(
         'videoSourceMap',
         JSON.stringify(Array.from(videoSourceMap.entries()))
     );
