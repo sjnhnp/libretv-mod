@@ -1515,53 +1515,51 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
     const apiInfo = APISourceManager.getCustomApiInfo(customIndex);
     const isCustomSpecialSource = sourceCode.startsWith('custom_') && apiInfo?.detail;
 
-// 修改后的代码
-if (isSpecialSource || isCustomSpecialSource) {
-    setTimeout(async () => {
-        try {
-            // 直接调用新的辅助函数获取数据
-            const detailData = await fetchSpecialDetail(id, sourceCode);
-
-            // 使用获取到的真实地址更新UI
-            episodes = detailData.episodes;
-            AppState.set('currentEpisodes', episodes);
-            localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
-
-            // 【关键修复】重新生成 universalId，基于真实的剧集数据
-            const realEpisodeUrl = episodes[currentEpisodeIndex];
-            if (realEpisodeUrl && realEpisodeUrl !== episodeUrlForPlayer) {
-                // 真实地址与初始地址不同时，需要重新生成 universalId
-                universalId = generateUniversalId(currentVideoTitle, currentVideoYear, currentEpisodeIndex);
-                
-                // 更新 URL 参数中的 universalId
-                const newUrlForBrowser = new URL(window.location.href);
-                newUrlForBrowser.searchParams.set('universalId', universalId);
-                newUrlForBrowser.searchParams.set('url', realEpisodeUrl);
-                window.history.replaceState({}, '', newUrlForBrowser.toString());
-                
-                // 【新增】重新检查进度并应用
-                const rememberOn = localStorage.getItem(REMEMBER_EPISODE_PROGRESS_ENABLED_KEY) !== 'false';
-                if (rememberOn && player) {
-                    const allProgress = JSON.parse(localStorage.getItem(VIDEO_SPECIFIC_EPISODE_PROGRESSES_KEY) || '{}');
-                    const savedProgress = allProgress[universalId];
-                    
-                    if (savedProgress && savedProgress > 5 && player.duration > savedProgress) {
-                        // 如果找到了进度且播放器已加载，直接跳转
-                        player.currentTime = savedProgress;
-                        console.log(`[特殊源进度恢复] 已跳转到 ${savedProgress}秒`);
+    if (isSpecialSource || isCustomSpecialSource) {
+        setTimeout(async () => {
+            try {
+                // 直接调用新的辅助函数获取数据
+                const detailData = await fetchSpecialDetail(id, sourceCode);
+    
+                // 使用获取到的真实地址更新UI和缓存
+                episodes = detailData.episodes;
+                AppState.set('currentEpisodes', episodes);
+                localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
+    
+                // 【关键修复1】更新 videoDataMap 中的缓存数据
+                const videoDataMap = AppState.get('videoDataMap');
+                if (videoDataMap) {
+                    const cachedItem = videoDataMap.get(uniqueVideoKey);
+                    if (cachedItem) {
+                        // 更新缓存中的播放地址为真实地址
+                        cachedItem.vod_play_url = detailData.episodes.join('#');
+                        videoDataMap.set(uniqueVideoKey, cachedItem);
+                        
+                        // 同步到 sessionStorage
+                        sessionStorage.setItem(
+                            'videoDataCache',
+                            JSON.stringify(Array.from(videoDataMap.entries()))
+                        );
                     }
                 }
+    
+                // 【关键修复2】解析并保存原始剧集名称
+                const originalEpisodeNames = episodes.map(ep => {
+                    const parts = ep.split('$');
+                    return parts.length > 1 ? parts[0].trim() : '';
+                });
+                AppState.set('originalEpisodeNames', originalEpisodeNames);
+                localStorage.setItem('originalEpisodeNames', JSON.stringify(originalEpisodeNames));
+    
+                const episodeGrid = document.querySelector('#modalContent [data-field="episode-buttons-grid"]');
+                if (episodeGrid) {
+                    episodeGrid.innerHTML = renderEpisodeButtons(episodes, title, sourceCode, sourceNameForDisplay, effectiveTypeName);
+                }
+            } catch (e) {
+                console.log('后台获取真实地址失败:', e.message);
             }
-
-            const episodeGrid = document.querySelector('#modalContent [data-field="episode-buttons-grid"]');
-            if (episodeGrid) {
-                episodeGrid.innerHTML = renderEpisodeButtons(episodes, title, sourceCode, sourceNameForDisplay, effectiveTypeName);
-            }
-        } catch (e) {
-            console.log('后台获取真实地址失败:', e.message);
-        }
-    }, 500);
-}
+        }, 500);
+    }    
 
     // 4. 渲染弹窗（原代码逻辑）
     hideLoading(); // 移除加载提示，立即显示弹窗
