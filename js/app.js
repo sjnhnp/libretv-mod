@@ -1520,37 +1520,12 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
             try {
                 // 直接调用新的辅助函数获取数据
                 const detailData = await fetchSpecialDetail(id, sourceCode);
-    
-                // 使用获取到的真实地址更新UI和缓存
+
+                // 使用获取到的真实地址更新UI
                 episodes = detailData.episodes;
                 AppState.set('currentEpisodes', episodes);
                 localStorage.setItem('currentEpisodes', JSON.stringify(episodes));
-    
-                // 【关键修复1】更新 videoDataMap 中的缓存数据
-                const videoDataMap = AppState.get('videoDataMap');
-                if (videoDataMap) {
-                    const cachedItem = videoDataMap.get(uniqueVideoKey);
-                    if (cachedItem) {
-                        // 更新缓存中的播放地址为真实地址
-                        cachedItem.vod_play_url = detailData.episodes.join('#');
-                        videoDataMap.set(uniqueVideoKey, cachedItem);
-                        
-                        // 同步到 sessionStorage
-                        sessionStorage.setItem(
-                            'videoDataCache',
-                            JSON.stringify(Array.from(videoDataMap.entries()))
-                        );
-                    }
-                }
-    
-                // 【关键修复2】解析并保存原始剧集名称
-                const originalEpisodeNames = episodes.map(ep => {
-                    const parts = ep.split('$');
-                    return parts.length > 1 ? parts[0].trim() : '';
-                });
-                AppState.set('originalEpisodeNames', originalEpisodeNames);
-                localStorage.setItem('originalEpisodeNames', JSON.stringify(originalEpisodeNames));
-    
+
                 const episodeGrid = document.querySelector('#modalContent [data-field="episode-buttons-grid"]');
                 if (episodeGrid) {
                     episodeGrid.innerHTML = renderEpisodeButtons(episodes, title, sourceCode, sourceNameForDisplay, effectiveTypeName);
@@ -1559,7 +1534,7 @@ async function showVideoEpisodesModal(id, title, sourceCode, apiUrl, fallbackDat
                 console.log('后台获取真实地址失败:', e.message);
             }
         }, 500);
-    }    
+    }
 
     // 4. 渲染弹窗（原代码逻辑）
     hideLoading(); // 移除加载提示，立即显示弹窗
