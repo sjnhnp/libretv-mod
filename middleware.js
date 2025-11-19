@@ -1,10 +1,10 @@
-import { sha256 } from './js/sha256.js'; // 需新建或引入SHA-256实现
+import { sha256 } from './js/sha256.js';
 
-// Vercel Middleware to inject environment variables
-export default async function middleware(request) {
+// Vercel Edge Middleware to inject environment variables
+export async function middleware(request) {
   // Get the URL from the request
   const url = new URL(request.url);
-  
+
   // Only process HTML pages
   const isHtmlPage = url.pathname.endsWith('.html') || url.pathname.endsWith('/');
   if (!isHtmlPage) {
@@ -13,7 +13,7 @@ export default async function middleware(request) {
 
   // Fetch the original response
   const response = await fetch(request);
-  
+
   // Check if it's an HTML response
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('text/html')) {
@@ -22,19 +22,33 @@ export default async function middleware(request) {
 
   // Get the HTML content
   const originalHtml = await response.text();
-  
-  // Replace the placeholder with actual environment variable
-  // If PASSWORD is not set, replace with empty string
+
+  // Get environment variables
   const password = process.env.PASSWORD || '';
+  const settingsPassword = process.env.SETTINGS_PASSWORD || '';
+
   let passwordHash = '';
+  let settingsPasswordHash = '';
+
   if (password) {
     passwordHash = await sha256(password);
   }
-  const modifiedHtml = originalHtml.replace(
-    'window.__ENV__.PASSWORD = "{{PASSWORD}}";',
-    `window.__ENV__.PASSWORD = "${passwordHash}"; // SHA-256 hash`
+  if (settingsPassword) {
+    settingsPasswordHash = await sha256(settingsPassword);
+  }
+
+  // Replace PASSWORD placeholder
+  let modifiedHtml = originalHtml.replace(
+    /window\.__ENV__\.PASSWORD\s*=\s*["']\{\{PASSWORD\}\}["'];?/g,
+    `window.__ENV__.PASSWORD = "${passwordHash}";`
   );
-  
+
+  // Replace SETTINGS_PASSWORD placeholder
+  modifiedHtml = modifiedHtml.replace(
+    /window\.__ENV__\.SETTINGS_PASSWORD\s*=\s*["']\{\{SETTINGS_PASSWORD\}\}["'];?/g,
+    `window.__ENV__.SETTINGS_PASSWORD = "${settingsPasswordHash}";`
+  );
+
   // Create a new response with the modified HTML
   return new Response(modifiedHtml, {
     status: response.status,

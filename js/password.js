@@ -219,7 +219,3 @@ document.addEventListener('DOMContentLoaded', () => {
     initPasswordProtection();
     initPasswordModalListeners(); // 统一初始化所有监听器
 });
-
-
-// DOM加载完成自动初始化
-document.addEventListener('DOMContentLoaded', initPasswordProtection);
