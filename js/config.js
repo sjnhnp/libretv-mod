@@ -30,13 +30,13 @@ window.SITE_CONFIG = SITE_CONFIG;
 
 // API站点配置
 const API_SITES = {
+    yjzy: { api: 'https://caiji.maotaizy.cc/api.php/provide/vod', name: '影剧资源' },
     bfzy: { api: 'https://bfzyapi.com/api.php/provide/vod', name: '暴风资源' },
     mozhua: { api: 'https://mozhuazy.com/api.php/provide/vod', name: '魔爪资源' },
     dyttzy: { api: 'https://caiji.dyttzyapi.com/api.php/provide/vod', name: '电影天堂', detail: 'https://caiji.dyttzyapi.com' },
     tyyszy: { api: 'https://tyyszy.com/api.php/provide/vod', name: '天涯资源' },
     mdzy: { api: 'https://www.mdzyapi.com/api.php/provide/vod', name: '魔都资源' },
     maotai: { api: 'https://caiji.maotaizy.cc/api.php/provide/vod', name: '茅台资源' },
-    jisu: { api: 'https://jszyapi.com/api.php/provide/vod', name: '极速资源', detail: 'https://jszyapi.com' },
     yzzy: { api: 'https://api.yzzy-api.com/inc/apijson.php', name: '优质资源' },
     ruyi: { api: 'https://cj.rycjapi.com/api.php/provide/vod', name: '如意资源' },
     wolong: { api: 'https://wolongzyw.com/api.php/provide/vod', name: '卧龙资源' },
@@ -45,6 +45,7 @@ const API_SITES = {
     hwba: { api: 'https://cjhwba.com/api.php/provide/vod', name: '华为吧资源' },
     jmzy: { api: 'https://api.jmzy.com/api.php/provide/vod', name: '金马资源' },
     zy360: { api: 'https://360zy.com/api.php/provide/vod', name: '360资源' },
+    jisu: { api: 'https://jszyapi.com/api.php/provide/vod', name: '极速资源', detail: 'https://jszyapi.com' },
     zuid: { api: 'https://api.zuidapi.com/api.php/provide/vod', name: '最大资源' },
     baidu: { api: 'https://api.apibdzy.com/api.php/provide/vod', name: '百度云资源' },
     wujin: { api: 'https://api.wujinapi.me/api.php/provide/vod', name: '无尽资源' },
@@ -53,7 +54,7 @@ const API_SITES = {
 };
 
 window.API_SITES = API_SITES;
-const DEFAULT_SELECTED_APIS = ["mozhua", "bfzy", "dyttzy", "maotai", "tyyszy"];
+const DEFAULT_SELECTED_APIS = ["yjzy", "mdzy", "mozhua", "bfzy", "dyttzy", "tyyszy"];
 window.DEFAULT_SELECTED_APIS = DEFAULT_SELECTED_APIS;
 
 // 聚合搜索配置
